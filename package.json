@@ -1,0 +1,8 @@
+{
+  "name": "abcd-danceclass",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd studioflow/web && npm install && npm run build"
+  }
+}
