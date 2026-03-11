@@ -203,7 +203,7 @@ async function setup() {
 
   await conn.query(`
     INSERT INTO schools (id, name, owner_name, email, phone, city, dance_style) VALUES
-    (1, 'Rhythm & Grace Dance Academy', 'Priya Sharma',  'priya@rhythmgrace.com',  '212-555-0100', 'New York',    'Ballet'),
+    (1, 'Rhythm & Grace Dance Academy', 'Swapna Varma',  'priya@rhythmgrace.com',  '212-555-0100', 'New York',    'Ballet'),
     (2, 'Urban Groove Dance Studio',    'Marcus Lee',    'marcus@urbangroove.com', '310-555-0200', 'Los Angeles', 'Hip-Hop')
   `);
   console.log('✅ Schools seeded');
@@ -212,7 +212,7 @@ async function setup() {
   await conn.query(`
     INSERT INTO users (id, name, email, password, role, school_id) VALUES
     (1, 'Super Admin',    'admin@studioflow.app',      '${adminPw}',   'superadmin',  NULL),
-    (2, 'Swapna',          'priya@rhythmgrace.com',     '${schoolPw}',  'school_admin', 1),
+    (2, 'Swapna Varma',    'priya@rhythmgrace.com',     '${schoolPw}',  'school_admin', 1),
     (3, 'Marcus Lee',     'marcus@urbangroove.com',    '${schoolPw}',  'school_admin', 2),
     (4, 'Aisha Patel',    'teacher@rhythmgrace.com',   '${teacherPw}', 'teacher', 1),
     (5, 'Jay Kim',        'jay@urbangroove.com',       '${teacherPw}', 'teacher', 2),
@@ -245,8 +245,8 @@ async function setup() {
   // ── Seed Batches ───────────────────────────────────────────
   await conn.query(`
     INSERT INTO batches (id, school_id, name, dance_style, level, teacher_id, teacher_name, max_size, notes) VALUES
-    (1, 1, 'Little Stars',     'Ballet',       'Beginner',     2, 'Priya Sharma', 10, 'Ages 8-11'),
-    (2, 1, 'Junior Ballet',    'Ballet',       'Intermediate', 2, 'Priya Sharma', 12, 'Ages 11-13'),
+    (1, 1, 'Little Stars',     'Ballet',       'Beginner',     2, 'Swapna Varma', 10, 'Ages 8-11'),
+    (2, 1, 'Junior Ballet',    'Ballet',       'Intermediate', 2, 'Swapna Varma', 12, 'Ages 11-13'),
     (3, 1, 'Senior Company',   'Contemporary', 'Advanced',     4, 'Aisha Patel',  8,  'Ages 13+'),
     (4, 2, 'Foundations Crew', 'Hip-Hop',      'Beginner',     3, 'Marcus Lee',   12, 'Ages 12-14'),
     (5, 2, 'Elite Cypher',     'Hip-Hop',      'Advanced',     3, 'Marcus Lee',   8,  'Competition team'),
