@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "StudioFlow",
+    "slug": "studioflow",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": { "backgroundColor": "#1e1228" },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.studioflow.app"
+    },
+    "android": {
+      "adaptiveIcon": { "backgroundColor": "#1e1228" },
+      "package": "com.studioflow.app"
+    }
+  }
+}

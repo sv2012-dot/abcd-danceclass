@@ -1,0 +1,11 @@
+{
+  "name": "studioflow",
+  "version": "1.0.0",
+  "private": true,
+  "description": "StudioFlow — Dance School Management Platform",
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:web": "cd web && npm start",
+    "dev:mobile": "cd mobile && npx expo start"
+  }
+}
