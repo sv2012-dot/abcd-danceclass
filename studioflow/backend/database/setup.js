@@ -212,7 +212,7 @@ async function setup() {
   await conn.query(`
     INSERT INTO users (id, name, email, password, role, school_id) VALUES
     (1, 'Super Admin',    'admin@studioflow.app',      '${adminPw}',   'superadmin',  NULL),
-    (2, 'Priya Sharma',   'priya@rhythmgrace.com',     '${schoolPw}',  'school_admin', 1),
+    (2, 'Swapna',          'priya@rhythmgrace.com',     '${schoolPw}',  'school_admin', 1),
     (3, 'Marcus Lee',     'marcus@urbangroove.com',    '${schoolPw}',  'school_admin', 2),
     (4, 'Aisha Patel',    'teacher@rhythmgrace.com',   '${teacherPw}', 'teacher', 1),
     (5, 'Jay Kim',        'jay@urbangroove.com',       '${teacherPw}', 'teacher', 2),
