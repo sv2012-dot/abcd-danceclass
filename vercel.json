@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "buildCommand": "cd studioflow/web && npm install && npm run build",
+  "outputDirectory": "studioflow/web/build",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
