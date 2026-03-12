@@ -203,7 +203,7 @@ async function setup() {
 
   await conn.query(`
     INSERT INTO schools (id, name, owner_name, email, phone, city, dance_style) VALUES
-    (1, 'Rhythm & Grace Dance Academy', 'Swapna Varma',  'priya@rhythmgrace.com',  '212-555-0100', 'New York',    'Ballet'),
+    (1, 'Rhythm & Grace Dance Academy', 'Swapna Varma',  'swapna@rhythmgrace.com',  '212-555-0100', 'New York',    'Ballet'),
     (2, 'Urban Groove Dance Studio',    'Marcus Lee',    'marcus@urbangroove.com', '310-555-0200', 'Los Angeles', 'Hip-Hop')
   `);
   console.log('✅ Schools seeded');
@@ -212,7 +212,7 @@ async function setup() {
   await conn.query(`
     INSERT INTO users (id, name, email, password, role, school_id) VALUES
     (1, 'Super Admin',    'admin@studioflow.app',      '${adminPw}',   'superadmin',  NULL),
-    (2, 'Swapna Varma',    'priya@rhythmgrace.com',     '${schoolPw}',  'school_admin', 1),
+    (2, 'Swapna Varma',    'swapna@rhythmgrace.com',     '${schoolPw}',  'school_admin', 1),
     (3, 'Marcus Lee',     'marcus@urbangroove.com',    '${schoolPw}',  'school_admin', 2),
     (4, 'Aisha Patel',    'teacher@rhythmgrace.com',   '${teacherPw}', 'teacher', 1),
     (5, 'Jay Kim',        'jay@urbangroove.com',       '${teacherPw}', 'teacher', 2),
@@ -361,7 +361,7 @@ async function setup() {
   console.log('\n🎉 Database setup complete!\n');
   console.log('Default logins:');
   console.log('  Super Admin  → admin@studioflow.app    / Admin123!');
-  console.log('  School Admin → priya@rhythmgrace.com   / School123!');
+  console.log('  School Admin → swapna@rhythmgrace.com   / School123!');
   console.log('  Teacher      → teacher@rhythmgrace.com / Teacher123!');
   console.log('  Parent       → parent@rhythmgrace.com  / Parent123!\n');
 }
