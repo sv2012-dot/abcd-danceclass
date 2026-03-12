@@ -125,6 +125,7 @@ export default function BatchesPage() {
     if (!activeBatch) return;
     setForm({ name:activeBatch.name||"", dance_style:activeBatch.dance_style||"", level:activeBatch.level||"Beginner", teacher_name:activeBatch.teacher_name||"", max_size:activeBatch.max_size||"", notes:activeBatch.notes||"" });
     setFormSchedules(batchSchedules.map(s => ({ id:s.id, day_of_week:s.day_of_week, start_time:s.start_time?.slice(0,5)||"09:00", end_time:s.end_time?.slice(0,5)||"10:00", room:s.room||"" })));
+    setSelected(null);
     setModal(activeBatch);
   };
   const openEnroll = () => { if (!activeBatch) return; setEnrollSel(detailStudents.map(s=>s.id)); setEnrollModal(activeBatch); };
