@@ -49,8 +49,8 @@ export default function LoginPage() {
           <div style={{marginTop:20,padding:14,background:'#f8f4f9',borderRadius:10,fontSize:12,color:'var(--muted)'}}>
             <div style={{fontWeight:700,marginBottom:6}}>Demo accounts:</div>
             <div>admin@studioflow.app / ChangeMe123!</div>
-            <div>priya@rhythmgrace.com / Admin123!</div>
-            <div>meera@email.com / Parent123!</div>
+            <div>swapna@rhythmgrace.com / School123!</div>
+            <div>parent@rhythmgrace.com / Parent123!</div>
           </div>
         </div>
       </div>
