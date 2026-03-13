@@ -168,50 +168,79 @@ export default function BatchesPage() {
 
       ) : view === "grid" ? (
         /* ── Grid cards ── */
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(210px, 1fr))", gap:12 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:16 }}>
           {list.map((b,i) => {
             const color  = BATCH_COLORS[i % BATCH_COLORS.length];
             const active = b.id === activeId;
             const days   = getBatchDays(b.id);
             const capPct = b.max_size ? Math.min(100, Math.round(((b.student_count||0)/b.max_size)*100)) : null;
+            const schedules = allSchedules.filter(s => s.batch_id === b.id);
+            const firstSch  = schedules[0];
             return (
-              <div key={b.id} onClick={() => setActiveId(b.id)} style={{
-                background:"var(--card)", borderRadius:14, cursor:"pointer", overflow:"hidden",
-                border:`2px solid ${active ? color : "var(--border)"}`,
-                boxShadow: active ? `0 0 0 3px ${color}22` : "0 1px 4px rgba(0,0,0,.05)",
-                transition:"all .15s"
+              <div key={b.id} style={{
+                background:"var(--card)", borderRadius:14, overflow:"hidden",
+                border:`1.5px solid ${active ? color : "var(--border)"}`,
+                boxShadow: active ? `0 0 0 3px ${color}22` : "0 2px 8px rgba(0,0,0,.06)",
+                transition:"all .15s", display:"flex", flexDirection:"column",
               }}>
-                {/* Color stripe */}
-                <div style={{ height:5, background:color }} />
-                <div style={{ padding:"12px 14px 14px" }}>
-                  {/* Name + count */}
-                  <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:6, marginBottom:8 }}>
-                    <div style={{ fontFamily:"var(--font-d)", fontWeight:800, fontSize:14, lineHeight:1.3 }}>{b.name}</div>
-                    <span style={{ fontSize:11, fontWeight:700, color, flexShrink:0, background:color+"18", borderRadius:20, padding:"2px 7px" }}>
-                      {b.student_count||0}{b.max_size ? `/${b.max_size}` : ""} 👥
-                    </span>
-                  </div>
-                  {/* Level + style */}
-                  <div style={{ display:"flex", gap:5, marginBottom:8, flexWrap:"wrap", alignItems:"center" }}>
-                    <span style={{ fontSize:10, background:color+"22", color, borderRadius:20, padding:"2px 8px", fontWeight:700 }}>{b.level}</span>
-                    {b.dance_style && <span style={{ fontSize:11, color:"var(--muted)" }}>{b.dance_style}</span>}
+                <div style={{ padding:"18px 18px 14px" }}>
+                  {/* Name + color dot */}
+                  <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8, marginBottom:4 }}>
+                    <div style={{ fontWeight:700, fontSize:15, lineHeight:1.3, color:"var(--foreground)" }}>{b.name}</div>
+                    <div style={{ width:10, height:10, borderRadius:"50%", background:color, flexShrink:0, marginTop:4 }} />
                   </div>
                   {/* Instructor */}
-                  {b.teacher_name && <div style={{ fontSize:11, color:"var(--muted)", marginBottom:9 }}>👩‍🏫 {b.teacher_name}</div>}
-                  {/* Day pills */}
-                  {days.length > 0 && (
-                    <div style={{ display:"flex", gap:3, flexWrap:"wrap", marginBottom:10 }}>
-                      {days.map(d => (
-                        <span key={d} style={{ fontSize:9, fontWeight:700, background:color+"20", color, borderRadius:4, padding:"2px 5px" }}>{d}</span>
-                      ))}
+                  {b.teacher_name && <div style={{ fontSize:13, color:"var(--muted)", marginBottom:12 }}>Instructor: {b.teacher_name}</div>}
+                  {/* Badges */}
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:14 }}>
+                    {b.dance_style && <span style={{ fontSize:11, fontWeight:600, background:color+"18", color, borderRadius:20, padding:"3px 10px", border:`1px solid ${color}30` }}>{b.dance_style}</span>}
+                    <span style={{ fontSize:11, fontWeight:600, background:"#F3F4F6", color:"#6B7280", borderRadius:20, padding:"3px 10px", border:"1px solid #E5E7EB" }}>{b.level}</span>
+                  </div>
+                  {/* Schedule row */}
+                  {firstSch && (
+                    <div style={{ display:"flex", gap:16, marginBottom:10 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:"var(--muted)" }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        {days.length > 0 ? days.join(" & ") : firstSch.day_of_week}, {firstSch.start_time?.slice(0,5)}
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:"var(--muted)" }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        {(() => { if (!firstSch.start_time || !firstSch.end_time) return "—"; const [sh,sm]=firstSch.start_time.split(":").map(Number); const [eh,em]=firstSch.end_time.split(":").map(Number); return `${(eh*60+em)-(sh*60+sm)} min`; })()}
+                      </div>
                     </div>
                   )}
-                  {/* Capacity bar */}
+                  {/* Enrollment row */}
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color:"var(--muted)",flexShrink:0}}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span style={{ fontSize:12, color:"var(--muted)", flex:1 }}>Enrollment</span>
+                    <span style={{ fontSize:12, fontWeight:700, color:"var(--foreground)" }}>
+                      {b.student_count||0}{b.max_size ? `/${b.max_size}` : ""}
+                    </span>
+                  </div>
                   {capPct !== null && (
-                    <div style={{ height:4, borderRadius:2, background:"var(--border)", overflow:"hidden" }}>
-                      <div style={{ height:"100%", width:capPct+"%", background:capPct>=90 ? "var(--danger)" : color, borderRadius:2, transition:"width .3s" }} />
+                    <div style={{ height:5, borderRadius:3, background:"#E5E7EB", overflow:"hidden", marginBottom:2 }}>
+                      <div style={{ height:"100%", width:capPct+"%", background: capPct>=90 ? "#EF4444" : "#111827", borderRadius:3, transition:"width .3s" }} />
                     </div>
                   )}
+                </div>
+                {/* Action buttons */}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", borderTop:"1px solid var(--border)", marginTop:"auto" }}>
+                  <button onClick={() => setActiveId(b.id)} style={{
+                    padding:"11px 8px", border:"none", borderRight:"1px solid var(--border)",
+                    background:"transparent", fontSize:13, fontWeight:500, cursor:"pointer",
+                    color:"var(--foreground)", transition:"background .15s",
+                  }}
+                    onMouseEnter={e=>e.currentTarget.style.background="var(--secondary)"}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+                  >View Details</button>
+                  <button onClick={() => { setActiveId(b.id); setTimeout(openEdit, 50); }} style={{
+                    padding:"11px 8px", border:"none",
+                    background:"transparent", fontSize:13, fontWeight:500, cursor:"pointer",
+                    color:"var(--foreground)", transition:"background .15s",
+                  }}
+                    onMouseEnter={e=>e.currentTarget.style.background="var(--secondary)"}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+                  >Edit</button>
                 </div>
               </div>
             );
