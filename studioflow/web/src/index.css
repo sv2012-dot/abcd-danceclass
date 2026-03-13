@@ -42,9 +42,9 @@
   --chart-5: oklch(0.2916 0.1574 280.1404);
 
   /* Typography */
-  --font-sans:  'Inter', system-ui, sans-serif;
-  --font-serif: 'Source Serif 4', Georgia, serif;
-  --font-mono:  'JetBrains Mono', 'Courier New', monospace;
+  --font-sans:  'Nunito', system-ui, sans-serif;
+  --font-serif: 'Noto Serif', Georgia, serif;
+  --font-mono:  'Roboto Mono', 'Courier New', monospace;
 
   /* Radius */
   --radius: 0.75rem;
