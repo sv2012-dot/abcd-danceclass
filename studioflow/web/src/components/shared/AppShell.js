@@ -60,16 +60,15 @@ const NAV_ITEMS = {
   ],
   school_admin: [
     { to:'/', label:'Dashboard', icon:'dashboard' },
-    { to:'/students', label:'Students', icon:'students' },
     { to:'/batches', label:'Batches', icon:'batches' },
     { to:'/schedule', label:'My Events', icon:'schedule' },
-    { to:'/users', label:'Users', icon:'users' },
+    { to:'/students', label:'Students', icon:'users' },
   ],
   teacher: [
     { to:'/', label:'Dashboard', icon:'dashboard' },
-    { to:'/students', label:'Students', icon:'students' },
     { to:'/batches', label:'Batches', icon:'batches' },
     { to:'/schedule', label:'My Events', icon:'schedule' },
+    { to:'/students', label:'Students', icon:'users' },
   ],
   parent: [
     { to:'/', label:'Dashboard', icon:'dashboard' },

@@ -286,16 +286,20 @@ export default function SchedulePage() {
     if (view === "month") {
       return { from: new Date(y, m-1, 20).toISOString(), to: new Date(y, m+2, 10).toISOString() };
     }
-    // week view: Monday–Sunday
+    // week view: Monday 00:00 – Sunday 23:59:59
     const dow = cursor.getDay();
-    const mon = new Date(cursor); mon.setDate(cursor.getDate() - ((dow+6)%7));
-    const sun = new Date(mon);    sun.setDate(mon.getDate() + 6);
+    const mon = new Date(cursor); mon.setDate(cursor.getDate() - ((dow+6)%7)); mon.setHours(0,0,0,0);
+    const sun = new Date(mon);    sun.setDate(mon.getDate() + 6);              sun.setHours(23,59,59,999);
     return { from: mon.toISOString(), to: sun.toISOString() };
   }, [cursor, view]);
 
+  // Wide range for list view (~4 months window)
+  const listFrom = useMemo(() => new Date(today.getFullYear(), today.getMonth()-1, 20).toISOString(), [today]);
+  const listTo   = useMemo(() => new Date(today.getFullYear(), today.getMonth()+3, 10).toISOString(), [today]);
+
   const { data: rawEvents=[], isLoading } = useQuery({
-    queryKey: ["events", sid, from, to],
-    queryFn:  () => api.list(sid, { from, to }),
+    queryKey: ["events", sid, view==="list"?listFrom:from, view==="list"?listTo:to],
+    queryFn:  () => api.list(sid, { from: view==="list"?listFrom:from, to: view==="list"?listTo:to }),
     enabled:  !!sid,
   });
 
@@ -660,12 +664,14 @@ export default function SchedulePage() {
         </div>
 
         {/* Navigation */}
+        {view !== "list" && (
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
           <button onClick={()=>navCalendar(-1)} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:16}}>‹</button>
           <span style={{fontFamily:"var(--font-d)",fontSize:16,fontWeight:700,minWidth:200,textAlign:"center"}}>{label}</span>
           <button onClick={()=>navCalendar(1)} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:16}}>›</button>
           <button onClick={()=>setCursor(new Date())} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,fontWeight:600,color:"var(--muted)"}}>Today</button>
         </div>
+        )}
 
         {isLoading ? <p style={{color:"var(--muted)"}}>Loading…</p> : (
           view==="month" ? <MonthView /> : view==="week" ? <WeekView /> : <ListView />

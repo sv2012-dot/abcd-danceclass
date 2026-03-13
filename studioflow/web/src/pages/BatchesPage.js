@@ -121,12 +121,14 @@ export default function BatchesPage() {
   });
 
   const openAdd = () => { setForm(EMPTY); setFormSchedules([]); setModal({}); };
-  const openEdit = () => {
-    if (!activeBatch) return;
-    setForm({ name:activeBatch.name||"", dance_style:activeBatch.dance_style||"", level:activeBatch.level||"Beginner", teacher_name:activeBatch.teacher_name||"", max_size:activeBatch.max_size||"", notes:activeBatch.notes||"" });
-    setFormSchedules(batchSchedules.map(s => ({ id:s.id, day_of_week:s.day_of_week, start_time:s.start_time?.slice(0,5)||"09:00", end_time:s.end_time?.slice(0,5)||"10:00", room:s.room||"" })));
-    setSelected(null);
-    setModal(activeBatch);
+  const openEdit = (batch) => {
+    const target = batch || activeBatch;
+    if (!target) return;
+    const targetSchedules = allSchedules.filter(s => s.batch_id === target.id);
+    setForm({ name:target.name||"", dance_style:target.dance_style||"", level:target.level||"Beginner", teacher_name:target.teacher_name||"", max_size:target.max_size||"", notes:target.notes||"" });
+    setFormSchedules(targetSchedules.map(s => ({ id:s.id, day_of_week:s.day_of_week, start_time:s.start_time?.slice(0,5)||"09:00", end_time:s.end_time?.slice(0,5)||"10:00", room:s.room||"" })));
+    setActiveId(target.id);
+    setModal(target);
   };
   const openEnroll = () => { if (!activeBatch) return; setEnrollSel(detailStudents.map(s=>s.id)); setEnrollModal(activeBatch); };
   const toggleEnroll = id => setEnrollSel(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev,id]);
@@ -177,11 +179,12 @@ export default function BatchesPage() {
             const schedules = allSchedules.filter(s => s.batch_id === b.id);
             const firstSch  = schedules[0];
             return (
-              <div key={b.id} style={{
+              <div key={b.id} onClick={() => setActiveId(active ? null : b.id)} style={{
                 background:"var(--card)", borderRadius:14, overflow:"hidden",
                 border:`1.5px solid ${active ? color : "var(--border)"}`,
                 boxShadow: active ? `0 0 0 3px ${color}22` : "0 2px 8px rgba(0,0,0,.06)",
                 transition:"all .15s", display:"flex", flexDirection:"column",
+                cursor:"pointer",
               }}>
                 <div style={{ padding:"18px 18px 14px" }}>
                   {/* Name + color dot */}
@@ -222,25 +225,6 @@ export default function BatchesPage() {
                       <div style={{ height:"100%", width:capPct+"%", background: capPct>=90 ? "#EF4444" : "#111827", borderRadius:3, transition:"width .3s" }} />
                     </div>
                   )}
-                </div>
-                {/* Action buttons */}
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", borderTop:"1px solid var(--border)", marginTop:"auto" }}>
-                  <button onClick={() => setActiveId(b.id)} style={{
-                    padding:"11px 8px", border:"none", borderRight:"1px solid var(--border)",
-                    background:"transparent", fontSize:13, fontWeight:500, cursor:"pointer",
-                    color:"var(--foreground)", transition:"background .15s",
-                  }}
-                    onMouseEnter={e=>e.currentTarget.style.background="var(--secondary)"}
-                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-                  >View Details</button>
-                  <button onClick={() => { setActiveId(b.id); setTimeout(openEdit, 50); }} style={{
-                    padding:"11px 8px", border:"none",
-                    background:"transparent", fontSize:13, fontWeight:500, cursor:"pointer",
-                    color:"var(--foreground)", transition:"background .15s",
-                  }}
-                    onMouseEnter={e=>e.currentTarget.style.background="var(--secondary)"}
-                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-                  >Edit</button>
                 </div>
               </div>
             );
@@ -429,7 +413,7 @@ export default function BatchesPage() {
 
             {/* Actions */}
             <div style={{ display:"flex", gap:9, marginTop:24 }}>
-              <button onClick={openEdit}
+              <button onClick={() => openEdit()}
                 style={{ flex:1, padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontFamily:"var(--font-b)", fontWeight:600 }}>
                 ✏️ Edit Batch
               </button>
