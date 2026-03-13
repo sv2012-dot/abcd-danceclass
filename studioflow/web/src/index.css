@@ -42,9 +42,9 @@
   --chart-5: oklch(0.2916 0.1574 280.1404);
 
   /* Typography */
-  --font-sans:  'Nunito', system-ui, sans-serif;
-  --font-serif: 'Nunito', system-ui, sans-serif;
-  --font-mono:  'Nunito', system-ui, sans-serif;
+  --font-sans:  'Open Sans', system-ui, sans-serif;
+  --font-serif: 'Open Sans', system-ui, sans-serif;
+  --font-mono:  'Open Sans', system-ui, sans-serif;
 
   /* Radius */
   --radius: 0.75rem;
