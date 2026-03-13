@@ -79,7 +79,7 @@ export default function SchoolAboutPage() {
 
       <Divider />
 
-      {/* ── BHARATANATYAM ────────────────────────────────────── */}
+      {/* ── BHSVATANATYAM ────────────────────────────────────── */}
       <section style={{ padding: '72px 64px', background: '#fff' }}>
         <div style={{ display: 'flex', gap: 80, alignItems: 'flex-start' }}>
 
@@ -165,7 +165,7 @@ export default function SchoolAboutPage() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
-          {/* Ananya Rao */}
+          {/* Swapna Varma */}
           <div style={{ display: 'flex', gap: 48, alignItems: 'flex-start', paddingBottom: 52 }}>
             <div style={{
               width: 72, height: 72, borderRadius: 20,
@@ -173,9 +173,9 @@ export default function SchoolAboutPage() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 22, fontWeight: 800, color: '#fff', flexShrink: 0,
               letterSpacing: '-0.5px',
-            }}>AR</div>
+            }}>SV</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#1d1d1f', letterSpacing: '-0.3px', marginBottom: 4 }}>Ananya Rao</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#1d1d1f', letterSpacing: '-0.3px', marginBottom: 4 }}>Swapna Varma</div>
               <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6e6e73', marginBottom: 16 }}>Founder &amp; Artistic Director</div>
               <p style={{ fontSize: 15, color: '#1d1d1f', lineHeight: 1.75, margin: 0 }}>
                 Ananya founded Nritya Vahini Academy in Seattle with the vision of creating a vibrant
