@@ -29,19 +29,19 @@ const NAV_ITEMS = {
 };
 
 const s = {
-  shell: { display:'flex', height:'100vh', overflow:'hidden' },
-  sidebar: { width:210, background:'#1e1228', display:'flex', flexDirection:'column', flexShrink:0, height:'100vh' },
-  logo: { padding:'22px 18px 16px', borderBottom:'1px solid #2e1e40' },
-  logoRow: { display:'flex', alignItems:'center', gap:9, marginBottom:4 },
-  logoText: { fontFamily:'var(--font-d)', fontSize:17, fontWeight:700, color:'#f0e8f8' },
-  schoolName: { fontSize:11, color:'#7a6a8a', paddingLeft:31, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' },
-  nav: { flex:1, padding:'10px 8px', overflowY:'auto' },
-  navBtn: { display:'flex', alignItems:'center', gap:11, width:'100%', padding:'9px 13px', borderRadius:10, border:'none', marginBottom:2, fontSize:13, fontWeight:500, color:'#9a8aaa', background:'transparent', cursor:'pointer', textDecoration:'none', transition:'all .15s' },
-  navActive: { background:'#c4527a33', color:'#f0a0b8', fontWeight:700 },
-  footer: { padding:'13px 16px', borderTop:'1px solid #2e1e40' },
-  logoutBtn: { background:'none', border:'none', color:'#7a6a8a', fontSize:12, cursor:'pointer', width:'100%', textAlign:'left', padding:'6px 0' },
-  main: { flex:1, overflowY:'auto', background:'var(--bg)' },
-  content: { padding:'28px 32px', maxWidth:1100, margin:'0 auto' },
+  shell:      { display:'flex', height:'100vh', overflow:'hidden' },
+  sidebar:    { width:210, background:'var(--sidebar)', display:'flex', flexDirection:'column', flexShrink:0, height:'100vh', borderRight:'1px solid var(--sidebar-border)' },
+  logo:       { padding:'22px 18px 16px', borderBottom:'1px solid var(--sidebar-border)' },
+  logoRow:    { display:'flex', alignItems:'center', gap:9, marginBottom:4 },
+  logoText:   { fontFamily:'var(--font-serif)', fontSize:17, fontWeight:700, color:'var(--sidebar-foreground)' },
+  schoolName: { fontSize:11, color:'var(--sidebar-muted)', paddingLeft:31, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' },
+  nav:        { flex:1, padding:'10px 8px', overflowY:'auto' },
+  navBtn:     { display:'flex', alignItems:'center', gap:11, width:'100%', padding:'9px 13px', borderRadius:10, border:'none', marginBottom:2, fontSize:13, fontWeight:500, color:'var(--sidebar-muted)', background:'transparent', cursor:'pointer', textDecoration:'none', transition:'all .15s' },
+  navActive:  { background:'var(--sidebar-accent)', color:'var(--sidebar-accent-foreground)', fontWeight:700 },
+  footer:     { padding:'13px 16px', borderTop:'1px solid var(--sidebar-border)' },
+  logoutBtn:  { background:'none', border:'none', color:'var(--sidebar-muted)', fontSize:12, cursor:'pointer', width:'100%', textAlign:'left', padding:'6px 0' },
+  main:       { flex:1, overflowY:'auto', background:'var(--background)' },
+  content:    { padding:'28px 32px', maxWidth:1100, margin:'0 auto' },
 };
 
 export default function AppShell() {
@@ -67,8 +67,8 @@ export default function AppShell() {
           ))}
         </nav>
         <div style={s.footer}>
-          <div style={{fontSize:11,color:'#7a6a8a',marginBottom:2}}>Signed in as</div>
-          <div style={{fontSize:12,fontWeight:600,color:'#e0d0f0',marginBottom:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user?.name}</div>
+          <div style={{fontSize:11,color:'var(--sidebar-muted)',marginBottom:2}}>Signed in as</div>
+          <div style={{fontSize:12,fontWeight:600,color:'var(--sidebar-foreground)',marginBottom:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user?.name}</div>
           <button style={s.logoutBtn} onClick={handleLogout}>Sign out →</button>
         </div>
       </aside>
