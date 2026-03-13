@@ -266,7 +266,7 @@ export default function SchedulePage() {
   const isAdmin = ["superadmin","school_admin","teacher"].includes(user?.role);
 
   // Calendar state
-  const [view, setView]       = useState("list"); // month | week | list
+  const [view, setView]       = useState("month"); // month | week | list
   const [today]               = useState(new Date());
   const [cursor, setCursor]   = useState(new Date());
 
