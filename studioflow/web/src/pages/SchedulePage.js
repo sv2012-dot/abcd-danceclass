@@ -384,7 +384,7 @@ export default function SchedulePage() {
         title={event.title}
         style={{
           background: color+"22", borderLeft: `3px solid ${color}`,
-          borderRadius: 5, padding: compact ? "2px 5px" : "4px 7px",
+          borderRadius: 5, padding: compact ? "10px 5px" : "4px 7px",
           fontSize: compact ? 10 : 11, fontWeight: 600, color: "#1e1228",
           cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis",
           whiteSpace: "nowrap", marginBottom: 2, lineHeight: 1.4,
@@ -428,8 +428,8 @@ export default function SchedulePage() {
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1,background:"var(--border)",borderRadius:12,overflow:"hidden"}}>
           {cells.map((day, i) => {
             const dayEvents = eventsOnDay(day);
-            const visible = dayEvents.slice(0,3);
-            const overflow = dayEvents.length - 3;
+            const visible = dayEvents.slice(0,2);
+            const overflow = dayEvents.length - 2;
             return (
               <div
                 key={i}
