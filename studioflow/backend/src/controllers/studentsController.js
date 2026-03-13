@@ -1,5 +1,8 @@
 const { pool } = require('../database');
 
+// Strip time component so MySQL DATE column always receives 'YYYY-MM-DD'
+const toDateOnly = v => (v ? String(v).split('T')[0] : null);
+
 const list = async (req, res) => {
   try {
     const { search, batch_id, active = 1 } = req.query;
@@ -50,7 +53,7 @@ const create = async (req, res) => {
     const [result] = await pool.query(
       `INSERT INTO students (school_id, name, age, phone, email, guardian_name, guardian_phone, guardian_email, join_date, notes)
        VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      [req.params.schoolId, name, age||null, phone||null, email||null, guardian_name||null, guardian_phone||null, guardian_email||null, join_date||null, notes||null]
+      [req.params.schoolId, name, age||null, phone||null, email||null, guardian_name||null, guardian_phone||null, guardian_email||null, toDateOnly(join_date), notes||null]
     );
     const [student] = await pool.query('SELECT * FROM students WHERE id = ?', [result.insertId]);
     res.status(201).json({ student: student[0] });
@@ -68,7 +71,7 @@ const update = async (req, res) => {
         join_date=COALESCE(?,join_date), notes=COALESCE(?,notes),
         is_active=COALESCE(?,is_active)
        WHERE id = ? AND school_id = ?`,
-      [name,age,phone,email,guardian_name,guardian_phone,guardian_email,join_date,notes,is_active, req.params.studentId, req.params.schoolId]
+      [name,age,phone,email,guardian_name,guardian_phone,guardian_email,toDateOnly(join_date),notes,is_active, req.params.studentId, req.params.schoolId]
     );
     const [updated] = await pool.query('SELECT * FROM students WHERE id = ?', [req.params.studentId]);
     res.json({ student: updated[0] });
