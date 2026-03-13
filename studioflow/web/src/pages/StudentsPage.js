@@ -9,12 +9,32 @@ import Modal from "../components/shared/Modal";
 import { Field, Input, Textarea } from "../components/shared/Field";
 
 // ─── Avatar helper ──────────────────────────────────────────────────────────
-// Mix of real portrait photos (pravatar.cc) + illustrated avatars (DiceBear)
-function getStudentAvatar(student) {
-  const h = ((student.id || 0) * 13 + (student.name?.charCodeAt(0) || 0)) % 10;
-  if (h < 5) return `https://i.pravatar.cc/150?img=${(((student.id || 1) * 7) % 70) + 1}`;
-  if (h < 8) return `https://api.dicebear.com/7.x/avataaars/svg?seed=${student.id}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
-  return `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${encodeURIComponent(student.name || student.id)}`;
+// Cheerful emoji avatars — no stock photos
+const HAPPY_EMOJIS = ['💃','🌟','🎵','🌺','⭐','🎶','✨','🌸','🦋','🎀','🌻','💫','🎭','🌈','🏵️','🎊','🌼','🎯','🪷','🎤'];
+const AVATAR_COLORS = ['#FFB347','#FF6B9D','#7E57C2','#42A5F5','#26C99E','#FFCA28','#EF5350','#29B6F6','#AB47BC','#66BB6A'];
+
+function getStudentEmoji(student) {
+  const i = ((student.id || 0) * 7 + (student.name?.charCodeAt(0) || 0)) % HAPPY_EMOJIS.length;
+  return HAPPY_EMOJIS[i];
+}
+function getStudentColor(student) {
+  const i = ((student.id || 0) * 13 + (student.name?.charCodeAt(1) || 0)) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[i];
+}
+
+function StudentAvatar({ student, size = 44, border, active }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      background: getStudentColor(student),
+      border: border || `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.46, lineHeight: 1, transition: 'border-color .15s',
+      userSelect: 'none',
+    }}>
+      {getStudentEmoji(student)}
+    </div>
+  );
 }
 
 // ─── Small helpers ───────────────────────────────────────────────────────────
@@ -137,7 +157,7 @@ export default function StudentsPage() {
 
       ) : filtered.length === 0 ? (
         <Card style={{ textAlign:"center", padding:48, border:"1.5px dashed var(--border)" }}>
-          <div style={{ fontSize:32, marginBottom:12 }}>👤</div>
+          <div style={{ fontSize:40, marginBottom:12 }}>🌟</div>
           <p style={{ fontWeight:700, marginBottom:4 }}>No students yet</p>
           <p style={{ color:"var(--muted)", fontSize:13, marginBottom:16 }}>Add your first student to get started.</p>
           <Button onClick={openAdd}>Add Student</Button>
@@ -147,7 +167,6 @@ export default function StudentsPage() {
         /* ── Grid cards ── */
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(190px, 1fr))", gap:12 }}>
           {filtered.map(s => {
-            const av = getStudentAvatar(s);
             const active = selected?.id === s.id;
             return (
               <div key={s.id} onClick={() => pick(s)} style={{
@@ -158,10 +177,7 @@ export default function StudentsPage() {
               }}>
                 {/* Avatar + name */}
                 <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
-                  <div style={{ width:44, height:44, borderRadius:"50%", overflow:"hidden", flexShrink:0,
-                    border:`2px solid ${active ? "var(--accent)" : "var(--border)"}`, background:"var(--surface)", transition:"border-color .15s" }}>
-                    <img src={av} alt={s.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                  </div>
+                  <StudentAvatar student={s} size={44} active={active} />
                   <div style={{ minWidth:0 }}>
                     <div style={{ fontWeight:700, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name}</div>
                     {s.age && <div style={{ fontSize:11, color:"var(--muted)" }}>Age {s.age}</div>}
@@ -201,7 +217,6 @@ export default function StudentsPage() {
             </thead>
             <tbody>
               {filtered.map(s => {
-                const av = getStudentAvatar(s);
                 const active = selected?.id === s.id;
                 return (
                   <tr key={s.id} onClick={() => pick(s)} style={{
@@ -210,9 +225,7 @@ export default function StudentsPage() {
                   }}>
                     <td style={{ padding:"10px 14px" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                        <div style={{ width:34, height:34, borderRadius:"50%", overflow:"hidden", flexShrink:0, border:"1.5px solid var(--border)" }}>
-                          <img src={av} alt={s.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                        </div>
+                        <StudentAvatar student={s} size={34} />
                         <span style={{ fontWeight:600, fontSize:13 }}>{s.name}</span>
                       </div>
                     </td>
@@ -253,9 +266,8 @@ export default function StudentsPage() {
 
           {/* Profile hero */}
           <div style={{ padding:"28px 24px 20px", textAlign:"center", borderBottom:"1px solid var(--border)", flexShrink:0, background:"var(--surface)" }}>
-            <div style={{ width:80, height:80, borderRadius:"50%", overflow:"hidden", margin:"0 auto 14px",
-              border:"3px solid var(--accent)", background:"var(--card)", boxShadow:"0 4px 16px rgba(0,0,0,.12)" }}>
-              <img src={getStudentAvatar(selected)} alt={selected.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+            <div style={{ display:"flex", justifyContent:"center", marginBottom:14 }}>
+              <StudentAvatar student={selected} size={80} border="3px solid var(--accent)" />
             </div>
             <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, marginBottom:3 }}>{selected.name}</div>
             {selected.age && <div style={{ fontSize:13, color:"var(--muted)", marginBottom:10 }}>Age {selected.age}</div>}
@@ -281,7 +293,7 @@ export default function StudentsPage() {
 
                 {(selected.guardian_name || selected.guardian_phone || selected.guardian_email) && (
                   <PanelSection title="Guardian">
-                    <InfoRow icon="👤" label="Name"  value={selected.guardian_name} />
+                    <InfoRow icon="🌸" label="Name"  value={selected.guardian_name} />
                     <InfoRow icon="📞" label="Phone" value={selected.guardian_phone} />
                     <InfoRow icon="✉️" label="Email" value={selected.guardian_email} />
                   </PanelSection>
