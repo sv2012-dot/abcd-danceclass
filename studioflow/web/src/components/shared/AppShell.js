@@ -4,28 +4,26 @@ import { useAuth } from '../../context/AuthContext';
 
 const NAV_ITEMS = {
   superadmin: [
-    { to:'/', label:'Dashboard', icon:'🏠' },
+    { to:'/', label:'Home', icon:'🏠' },
     { to:'/schools', label:'Schools', icon:'🏫' },
   ],
   school_admin: [
-    { to:'/', label:'Dashboard', icon:'🏠' },
+    { to:'/', label:'Home', icon:'🏠' },
     { to:'/students', label:'Students', icon:'👤' },
     { to:'/batches', label:'Batches', icon:'📚' },
-    { to:'/schedule', label:'Schedule', icon:'📅' },
     { to:'/recitals', label:'Recitals', icon:'⭐' },
     { to:'/fees', label:'Fees', icon:'💳' },
     { to:'/users', label:'Users', icon:'👥' },
   ],
   teacher: [
-    { to:'/', label:'Dashboard', icon:'🏠' },
+    { to:'/', label:'Home', icon:'🏠' },
     { to:'/students', label:'Students', icon:'👤' },
     { to:'/batches', label:'Batches', icon:'📚' },
-    { to:'/schedule', label:'Schedule', icon:'📅' },
     { to:'/recitals', label:'Recitals', icon:'⭐' },
   ],
   parent: [
+    { to:'/', label:'Home', icon:'🏠' },
     { to:'/parent', label:'My Children', icon:'👨‍👧' },
-    { to:'/schedule', label:'Schedule', icon:'📅' },
     { to:'/recitals', label:'Recitals', icon:'⭐' },
   ],
 };
