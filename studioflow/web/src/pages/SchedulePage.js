@@ -591,7 +591,7 @@ export default function SchedulePage() {
         {/* Header */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,flexWrap:"wrap",gap:10}}>
           <div>
-            <h1 style={{fontFamily:"var(--font-d)",fontSize:24,marginBottom:2}}>Schedule</h1>
+            <h1 style={{fontFamily:"var(--font-d)",fontSize:24,marginBottom:2}}>Upcoming Events</h1>
             <p style={{color:"var(--muted)",fontSize:12}}>Click any day to add an event</p>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>

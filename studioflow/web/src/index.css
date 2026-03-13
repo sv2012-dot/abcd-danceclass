@@ -43,8 +43,8 @@
 
   /* Typography */
   --font-sans:  'Nunito', system-ui, sans-serif;
-  --font-serif: 'Noto Serif', Georgia, serif;
-  --font-mono:  'Roboto Mono', 'Courier New', monospace;
+  --font-serif: 'Nunito', system-ui, sans-serif;
+  --font-mono:  'Nunito', system-ui, sans-serif;
 
   /* Radius */
   --radius: 0.75rem;

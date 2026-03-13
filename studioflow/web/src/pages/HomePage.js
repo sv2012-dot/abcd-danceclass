@@ -198,7 +198,7 @@ function SchoolHomePage() {
   const { data: batches=[]}  = useQuery({ queryKey:["batches",sid],  queryFn:()=>batchesApi.list(sid),  enabled:!!sid });
 
   // ── schedule state ────────────────────────────────────────────────────────
-  const [view, setView]             = useState("list");
+  const [view, setView]             = useState("month");
   const [today]                     = useState(new Date());
   const [cursor, setCursor]         = useState(new Date());
   const [modal, setModal]           = useState(null);
@@ -510,11 +510,11 @@ function SchoolHomePage() {
         {/* Header */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:10}}>
           <div>
-            <h2 style={{fontFamily:"var(--font-d)",fontSize:20,marginBottom:2}}>📅 Schedule</h2>
+            <h2 style={{fontFamily:"var(--font-d)",fontSize:20,marginBottom:2}}>📅 Upcoming Events</h2>
             {isAdmin && <p style={{color:"var(--muted)",fontSize:12}}>Click any day to add an event</p>}
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-            {["list","month","week"].map(v=>(
+            {["month","week","list"].map(v=>(
               <button key={v} onClick={()=>setView(v)} style={{
                 padding:"6px 14px",borderRadius:8,border:"1.5px solid var(--border)",fontSize:12,fontWeight:600,cursor:"pointer",
                 background:v===view?"var(--accent)":"#fff",color:v===view?"#fff":"var(--text)",

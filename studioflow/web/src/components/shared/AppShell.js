@@ -4,25 +4,27 @@ import { useAuth } from '../../context/AuthContext';
 
 const NAV_ITEMS = {
   superadmin: [
-    { to:'/', label:'Home', icon:'🏠' },
+    { to:'/', label:'Dashboard', icon:'🏠' },
     { to:'/schools', label:'Schools', icon:'🏫' },
   ],
   school_admin: [
-    { to:'/', label:'Home', icon:'🏠' },
+    { to:'/', label:'Dashboard', icon:'🏠' },
     { to:'/students', label:'Students', icon:'👤' },
     { to:'/batches', label:'Batches', icon:'📚' },
+    { to:'/schedule', label:'Schedule', icon:'📅' },
     { to:'/recitals', label:'Recitals', icon:'⭐' },
     { to:'/fees', label:'Fees', icon:'💳' },
     { to:'/users', label:'Users', icon:'👥' },
   ],
   teacher: [
-    { to:'/', label:'Home', icon:'🏠' },
+    { to:'/', label:'Dashboard', icon:'🏠' },
     { to:'/students', label:'Students', icon:'👤' },
     { to:'/batches', label:'Batches', icon:'📚' },
+    { to:'/schedule', label:'Schedule', icon:'📅' },
     { to:'/recitals', label:'Recitals', icon:'⭐' },
   ],
   parent: [
-    { to:'/', label:'Home', icon:'🏠' },
+    { to:'/', label:'Dashboard', icon:'🏠' },
     { to:'/parent', label:'My Children', icon:'👨‍👧' },
     { to:'/recitals', label:'Recitals', icon:'⭐' },
   ],
@@ -33,7 +35,7 @@ const s = {
   sidebar:    { width:210, background:'var(--sidebar)', display:'flex', flexDirection:'column', flexShrink:0, height:'100vh', borderRight:'1px solid var(--sidebar-border)' },
   logo:       { padding:'22px 18px 16px', borderBottom:'1px solid var(--sidebar-border)' },
   logoRow:    { display:'flex', alignItems:'center', gap:9, marginBottom:4 },
-  logoText:   { fontFamily:'var(--font-serif)', fontSize:17, fontWeight:700, color:'var(--sidebar-foreground)' },
+  logoText:   { fontFamily:'var(--font-sans)', fontSize:17, fontWeight:700, color:'var(--sidebar-foreground)' },
   schoolName: { fontSize:11, color:'var(--sidebar-muted)', paddingLeft:31, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' },
   nav:        { flex:1, padding:'10px 8px', overflowY:'auto' },
   navBtn:     { display:'flex', alignItems:'center', gap:11, width:'100%', padding:'9px 13px', borderRadius:10, border:'none', marginBottom:2, fontSize:13, fontWeight:500, color:'var(--sidebar-muted)', background:'transparent', cursor:'pointer', textDecoration:'none', transition:'all .15s' },
