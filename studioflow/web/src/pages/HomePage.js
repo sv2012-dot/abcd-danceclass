@@ -8,7 +8,6 @@ import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
 import Modal from "../components/shared/Modal";
 import Badge from "../components/shared/Badge";
-import StatCard from "../components/shared/StatCard";
 import { Field, Input, Select, Textarea } from "../components/shared/Field";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -198,7 +197,7 @@ function SchoolHomePage() {
   const { data: batches=[]}  = useQuery({ queryKey:["batches",sid],  queryFn:()=>batchesApi.list(sid),  enabled:!!sid });
 
   // ── schedule state ────────────────────────────────────────────────────────
-  const [view, setView]             = useState("month");
+  const [view, setView]             = useState("list");
   const [today]                     = useState(new Date());
   const [cursor, setCursor]         = useState(new Date());
   const [modal, setModal]           = useState(null);
@@ -439,21 +438,9 @@ function SchoolHomePage() {
         <p style={{color:"var(--muted)",fontSize:13}}>{school?.name} · {todayStr}</p>
       </div>
 
-      {/* ── Stats row ──────────────────────────────────────────────────── */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:20}}>
-        <StatCard label="Students"       value={stats?.students??'—'}          icon="👤" color="#c4527a" />
-        <StatCard label="Batches"        value={stats?.batches??'—'}           icon="📚" color="#6a7fdb" />
-        <StatCard label="Weekly Classes" value={stats?.schedules??'—'}         icon="📅" color="#f4a041" />
-        <StatCard label="Upcoming Events"value={stats?.upcoming_recitals??'—'} icon="⭐" color="#52c4a0" />
-        {user?.role==="school_admin" && <>
-          <StatCard label="Fees Collected" value={stats?`$${parseFloat(stats.fees_collected||0).toFixed(0)}`:'—'} icon="✅" color="#52c4a0" />
-          <StatCard label="Fees Pending"   value={stats?`$${parseFloat(stats.fees_pending||0).toFixed(0)}`:'—'}   icon="⏳" color="#f4a041" />
-        </>}
-      </div>
-
       {/* ── Quick actions ───────────────────────────────────────────────── */}
       {isAdmin && (
-        <div style={{display:"flex",gap:10,marginBottom:28,flexWrap:"wrap"}}>
+        <div style={{display:"flex",gap:10,marginBottom:28,flexWrap:"wrap",justifyContent:"flex-end"}}>
           {[
             { label:"+ Add Student",   icon:"👤", color:"#c4527a", bg:"#c4527a12", border:"#c4527a33", action:()=>setShowAddStudent(true) },
             { label:"+ Create Batch",  icon:"📚", color:"#6a7fdb", bg:"#6a7fdb12", border:"#6a7fdb33", action:()=>setShowAddBatch(true)   },
@@ -513,7 +500,7 @@ function SchoolHomePage() {
             <h2 style={{fontFamily:"var(--font-d)",fontSize:20,marginBottom:2}}>📅 Upcoming Events</h2>
             {isAdmin && <p style={{color:"var(--muted)",fontSize:12}}>Click any day to add an event</p>}
           </div>
-          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginLeft:"auto"}}>
             {["month","week","list"].map(v=>(
               <button key={v} onClick={()=>setView(v)} style={{
                 padding:"6px 14px",borderRadius:8,border:"1.5px solid var(--border)",fontSize:12,fontWeight:600,cursor:"pointer",
@@ -732,10 +719,6 @@ function SuperAdminDash() {
     <div>
       <h1 style={{fontFamily:"var(--font-d)",fontSize:26,marginBottom:4}}>Super Admin Dashboard</h1>
       <p style={{color:"var(--muted)",marginBottom:24,fontSize:13}}>Manage all schools on the platform</p>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:13,marginBottom:28}}>
-        <StatCard label="Total Schools"  value={schoolList?.length??'—'}                        icon="🏫" color="#c4527a" />
-        <StatCard label="Active Schools" value={schoolList?.filter(s=>s.is_active).length??'—'} icon="✅" color="#52c4a0" />
-      </div>
       <h2 style={{fontFamily:"var(--font-d)",fontSize:17,marginBottom:12}}>All Schools</h2>
       <div style={{display:"grid",gap:9}}>
         {(schoolList||[]).map(s=>(
