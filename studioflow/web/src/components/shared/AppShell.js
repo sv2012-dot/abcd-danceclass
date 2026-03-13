@@ -11,22 +11,18 @@ const NAV_ITEMS = {
     { to:'/', label:'Dashboard', icon:'🏠' },
     { to:'/students', label:'Students', icon:'👤' },
     { to:'/batches', label:'Batches', icon:'📚' },
-    { to:'/schedule', label:'Schedule', icon:'📅' },
-    { to:'/recitals', label:'Recitals', icon:'⭐' },
-    { to:'/fees', label:'Fees', icon:'💳' },
+    { to:'/schedule', label:'My Events', icon:'📅' },
     { to:'/users', label:'Users', icon:'👥' },
   ],
   teacher: [
     { to:'/', label:'Dashboard', icon:'🏠' },
     { to:'/students', label:'Students', icon:'👤' },
     { to:'/batches', label:'Batches', icon:'📚' },
-    { to:'/schedule', label:'Schedule', icon:'📅' },
-    { to:'/recitals', label:'Recitals', icon:'⭐' },
+    { to:'/schedule', label:'My Events', icon:'📅' },
   ],
   parent: [
     { to:'/', label:'Dashboard', icon:'🏠' },
     { to:'/parent', label:'My Children', icon:'👨‍👧' },
-    { to:'/recitals', label:'Recitals', icon:'⭐' },
   ],
 };
 

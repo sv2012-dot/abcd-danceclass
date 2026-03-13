@@ -6,7 +6,7 @@ import { events as api, batches as batchesApi } from "../api";
 import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
-import Modal from "../components/shared/Modal";
+import Modal from "../components/shared/Modal"; // still used for add/edit form
 import Badge from "../components/shared/Badge";
 import { Field, Input, Select, Textarea } from "../components/shared/Field";
 
@@ -254,6 +254,8 @@ function DateTimePicker({ label, value, onChange, minDate }) {
 
 function startOfMonth(year, month) { return new Date(year, month, 1); }
 function daysInMonth(year, month)  { return new Date(year, month+1, 0).getDate(); }
+
+const PANEL_W = 440;
 
 // ── Main Component ───────────────────────────────────────────────────────────
 export default function SchedulePage() {
@@ -586,12 +588,12 @@ export default function SchedulePage() {
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div>
+    <div style={{ paddingRight: detailEvent ? PANEL_W + 20 : 0, transition:"padding .25s ease" }}>
       {/* Main calendar */}
         {/* Header */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,flexWrap:"wrap",gap:10}}>
           <div>
-            <h1 style={{fontFamily:"var(--font-d)",fontSize:24,marginBottom:2}}>Upcoming Events</h1>
+            <h1 style={{fontFamily:"var(--font-d)",fontSize:24,marginBottom:2}}>My Events</h1>
             <p style={{color:"var(--muted)",fontSize:12}}>Click any day to add an event</p>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
@@ -771,76 +773,116 @@ export default function SchedulePage() {
         </Modal>
       )}
 
-      {/* ── Event Detail Modal ── */}
-      {detailEvent && (
-        <Modal title={detailEvent.title} onClose={()=>setDetailEvent(null)}>
-          {(() => {
-            const e = detailEvent;
-            const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
-            return (
-              <div>
-                <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
-                  <Badge color={color}>{e.type}</Badge>
-                  {e.requires_studio && <Badge color={e.studio_booked?"#52c4a0":"#e05c6a"}>{e.studio_booked?"Studio ✓ Booked":"Studio ⚠ Not Booked"}</Badge>}
-                </div>
-                <div style={{display:"grid",gap:8,marginBottom:16}}>
-                  <DetailRow icon="📅" label="Date">{fmtDate(e.start_datetime)}</DetailRow>
-                  <DetailRow icon="⏰" label="Time">{fmtTime(e.start_datetime)} – {fmtTime(e.end_datetime)}</DetailRow>
-                  {(e.batches?.length > 0 || e.batch_name) && (
-                    <DetailRow icon="📚" label={`Batch${(e.batches?.length||0) > 1 ? "es" : ""}`}>
-                      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                        {(e.batches?.length ? e.batches : [{id: e.batch_id, name: e.batch_name}]).map(b => {
-                          const full = batches.find(x => x.id === b.id || String(x.id) === String(b.id));
-                          return (
-                            <button key={b.id} type="button"
-                              onClick={() => { setDetailEvent(null); navigate("/batches"); }}
-                              style={{
-                                display:"inline-flex",alignItems:"center",gap:5,
-                                background:"#6a7fdb15",border:"1.5px solid #6a7fdb44",
-                                borderRadius:20,padding:"4px 13px",cursor:"pointer",
-                                fontSize:12,fontWeight:700,color:"#6a7fdb",transition:"all .15s",
-                              }}
-                              onMouseEnter={ev=>{ ev.currentTarget.style.background="#6a7fdb28"; ev.currentTarget.style.borderColor="#6a7fdb99"; }}
-                              onMouseLeave={ev=>{ ev.currentTarget.style.background="#6a7fdb15"; ev.currentTarget.style.borderColor="#6a7fdb44"; }}
-                            >
-                              {b.name}
-                              {full && <span style={{fontSize:10,fontWeight:400,color:"#6a7fdb99"}}>· {full.student_count} students</span>}
-                              <span style={{fontSize:10,opacity:0.5}}>→</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </DetailRow>
-                  )}
-                  {e.location   && <DetailRow icon="📍" label="Location">{e.location}</DetailRow>}
-                  {e.notes      && <DetailRow icon="📝" label="Notes">{e.notes}</DetailRow>}
-                </div>
-                {isAdmin && (
-                  <div style={{display:"flex",gap:8,paddingTop:12,borderTop:"1px solid var(--border)"}}>
-                    <Button size="sm" variant="outline" onClick={()=>openEdit(e)}>✏ Edit</Button>
-                    <Button size="sm" variant="danger" onClick={()=>{ if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }}>🗑 Delete</Button>
-                    {e.requires_studio && !e.studio_booked && (
-                      <Button size="sm" variant="ghost" onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true}).then(()=>{ qc.invalidateQueries({ queryKey: ["events"], exact: false }); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{marginLeft:"auto",color:"#52c4a0"}}>
-                        Mark Studio Booked ✓
-                      </Button>
-                    )}
+      {/* ── Event Detail Panel ── */}
+      {detailEvent && (() => {
+        const e = detailEvent;
+        const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
+        return (
+          <div style={{
+            position:"fixed", right:0, top:0, bottom:0, width:PANEL_W,
+            background:"var(--card)", borderLeft:"1.5px solid var(--border)",
+            display:"flex", flexDirection:"column", zIndex:300,
+            boxShadow:"-6px 0 32px rgba(0,0,0,.09)",
+          }}>
+            {/* Panel header */}
+            <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+              <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em" }}>Event Details</span>
+              <button onClick={()=>setDetailEvent(null)}
+                style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6 }}>✕</button>
+            </div>
+
+            {/* Event hero */}
+            <div style={{ padding:"22px 22px 18px", borderBottom:"1px solid var(--border)", flexShrink:0, background:"var(--surface)" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:12 }}>
+                <div style={{ width:6, height:48, borderRadius:3, background:color, flexShrink:0, marginTop:2 }} />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, marginBottom:8, lineHeight:1.2 }}>{e.title}</div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                    <Badge color={color}>{e.type}</Badge>
+                    {e.requires_studio && <Badge color={e.studio_booked?"#52c4a0":"#e05c6a"}>{e.studio_booked?"Studio ✓":"Studio ⚠"}</Badge>}
                   </div>
-                )}
+                </div>
               </div>
-            );
-          })()}
-        </Modal>
-      )}
+            </div>
+
+            {/* Scrollable body */}
+            <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
+
+              <div style={{ display:"grid", gap:14, marginBottom:20 }}>
+                <PDetailRow icon="📅" label="Date">{fmtDate(e.start_datetime)}</PDetailRow>
+                <PDetailRow icon="⏰" label="Time">{fmtTime(e.start_datetime)} – {fmtTime(e.end_datetime)}</PDetailRow>
+                {e.location && <PDetailRow icon="📍" label="Location">{e.location}</PDetailRow>}
+                {(e.batches?.length > 0 || e.batch_name) && (
+                  <PDetailRow icon="📚" label={`Batch${(e.batches?.length||0) > 1 ? "es" : ""}`}>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:4}}>
+                      {(e.batches?.length ? e.batches : [{id:e.batch_id, name:e.batch_name}]).map(b => {
+                        const full = batches.find(x => x.id===b.id || String(x.id)===String(b.id));
+                        return (
+                          <button key={b.id} type="button"
+                            onClick={()=>{ setDetailEvent(null); navigate("/batches"); }}
+                            style={{
+                              display:"inline-flex",alignItems:"center",gap:5,
+                              background:"#6a7fdb15",border:"1.5px solid #6a7fdb44",
+                              borderRadius:20,padding:"4px 13px",cursor:"pointer",
+                              fontSize:12,fontWeight:700,color:"#6a7fdb",transition:"all .15s",
+                            }}
+                            onMouseEnter={ev=>{ev.currentTarget.style.background="#6a7fdb28";ev.currentTarget.style.borderColor="#6a7fdb99";}}
+                            onMouseLeave={ev=>{ev.currentTarget.style.background="#6a7fdb15";ev.currentTarget.style.borderColor="#6a7fdb44";}}
+                          >
+                            {b.name}
+                            {full && <span style={{fontSize:10,fontWeight:400,color:"#6a7fdb99"}}>· {full.student_count} students</span>}
+                            <span style={{fontSize:10,opacity:0.5}}>→</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </PDetailRow>
+                )}
+                {e.notes && <PDetailRow icon="📝" label="Notes">{e.notes}</PDetailRow>}
+              </div>
+
+              {e.requires_studio && (
+                <div style={{ padding:"12px 14px", borderRadius:10, background:e.studio_booked?"#52c4a008":"#e05c6a08", border:`1.5px solid ${e.studio_booked?"#52c4a033":"#e05c6a33"}`, marginBottom:20 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:e.studio_booked?"#52c4a0":"#e05c6a" }}>
+                    {e.studio_booked ? "✓ Studio booking confirmed" : "⚠ Studio booking needed"}
+                  </div>
+                </div>
+              )}
+
+              {isAdmin && (
+                <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
+                  <button onClick={()=>openEdit(e)} style={{
+                    padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)",
+                    background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600,
+                  }}>✏️ Edit Event</button>
+                  {e.requires_studio && !e.studio_booked && (
+                    <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{
+                      padding:"9px 16px", borderRadius:9, border:"1.5px solid #52c4a0",
+                      background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:13, fontWeight:600,
+                    }}>✓ Mark Studio Booked</button>
+                  )}
+                  <button onClick={()=>{ if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} style={{
+                    padding:"9px 16px", borderRadius:9, border:"1.5px solid #e05c6a",
+                    background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontWeight:600,
+                  }}>🗑 Delete Event</button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
 
-function DetailRow({ icon, label, children }) {
+function PDetailRow({ icon, label, children }) {
   return (
-    <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
-      <span style={{fontSize:14,flexShrink:0,width:20}}>{icon}</span>
-      <span style={{fontSize:11,fontWeight:700,color:"var(--muted)",minWidth:60,paddingTop:1}}>{label}</span>
-      <span style={{fontSize:13,color:"var(--text)"}}>{children}</span>
+    <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
+      <span style={{ fontSize:16, flexShrink:0, width:22, textAlign:"center", marginTop:1 }}>{icon}</span>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:10, color:"var(--muted)", fontWeight:700, textTransform:"uppercase", letterSpacing:".05em", marginBottom:3 }}>{label}</div>
+        <div style={{ fontSize:13, fontWeight:500, color:"var(--text)" }}>{children}</div>
+      </div>
     </div>
   );
 }
