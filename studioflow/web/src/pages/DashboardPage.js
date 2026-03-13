@@ -1,15 +1,13 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
-import { schools, recitals as recitalApi } from '../api';
-import StatCard from '../components/shared/StatCard';
+import { recitals as recitalApi } from '../api';
 import Card from '../components/shared/Card';
 import Badge from '../components/shared/Badge';
 
 export default function DashboardPage() {
   const { user, school } = useAuth();
   const schoolId = user?.school_id;
-  const { data: stats } = useQuery({ queryKey:['stats',schoolId], queryFn:()=>schools.stats(schoolId), enabled:!!schoolId });
   const { data: recitalList } = useQuery({ queryKey:['recitals',schoolId], queryFn:()=>recitalApi.list(schoolId), enabled:!!schoolId });
 
   const upcoming = (recitalList||[]).filter(r=>new Date(r.event_date)>=new Date()).sort((a,b)=>new Date(a.event_date)-new Date(b.event_date));
@@ -20,16 +18,6 @@ export default function DashboardPage() {
     <div>
       <h1 style={{fontFamily:'var(--font-d)',fontSize:26,marginBottom:4}}>Good day! 👋</h1>
       <p style={{color:'var(--muted)',marginBottom:26,fontSize:13}}>{school?.name} · {user?.name}</p>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:13,marginBottom:28}}>
-        <StatCard label="Students" value={stats?.students??'—'} icon="👤" color="#e8607a" />
-        <StatCard label="Batches" value={stats?.batches??'—'} icon="📚" color="#6a7fdb" />
-        <StatCard label="Weekly Classes" value={stats?.schedules??'—'} icon="📅" color="#f4a041" />
-        <StatCard label="Upcoming Events" value={stats?.upcoming_recitals??'—'} icon="⭐" color="#52c4a0" />
-        {user?.role==='school_admin' && <>
-          <StatCard label="Fees Collected" value={stats?`$${parseFloat(stats.fees_collected||0).toFixed(0)}`:'—'} icon="✅" color="#52c4a0" />
-          <StatCard label="Fees Pending" value={stats?`$${parseFloat(stats.fees_pending||0).toFixed(0)}`:'—'} icon="⏳" color="#f4a041" />
-        </>}
-      </div>
       {upcoming.length > 0 && (
         <div style={{marginBottom:28}}>
           <h2 style={{fontFamily:'var(--font-d)',fontSize:17,marginBottom:12}}>🌟 Upcoming Recitals</h2>
@@ -60,10 +48,6 @@ function SuperAdminDash() {
     <div>
       <h1 style={{fontFamily:'var(--font-d)',fontSize:26,marginBottom:4}}>Super Admin Dashboard</h1>
       <p style={{color:'var(--muted)',marginBottom:24,fontSize:13}}>Manage all schools on the platform</p>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:13,marginBottom:28}}>
-        <StatCard label="Total Schools" value={schoolList?.length??'—'} icon="🏫" color="#c4527a" />
-        <StatCard label="Active Schools" value={schoolList?.filter(s=>s.is_active).length??'—'} icon="✅" color="#52c4a0" />
-      </div>
       <h2 style={{fontFamily:'var(--font-d)',fontSize:17,marginBottom:12}}>All Schools</h2>
       <div style={{display:'grid',gap:9}}>
         {(schoolList||[]).map(s=>(

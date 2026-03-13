@@ -141,7 +141,7 @@ export default function BatchesPage() {
           <h1 style={{ fontFamily:"var(--font-d)", fontSize:24, marginBottom:2 }}>Batches</h1>
           <p style={{ color:"var(--muted)", fontSize:12 }}>{list.length} active groups</p>
         </div>
-        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+        <div style={{ display:"flex", gap:8, alignItems:"center", marginLeft:"auto" }}>
           <div style={{ display:"flex", border:"1.5px solid var(--border)", borderRadius:9, overflow:"hidden" }}>
             <button onClick={() => setView("grid")}
               style={{ padding:"7px 13px", border:"none", cursor:"pointer", fontSize:16, lineHeight:1, transition:"all .15s",

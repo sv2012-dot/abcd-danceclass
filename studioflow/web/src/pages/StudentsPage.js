@@ -132,7 +132,7 @@ export default function StudentsPage() {
           <h1 style={{ fontFamily:"var(--font-d)", fontSize:24, marginBottom:2 }}>Students</h1>
           <p style={{ color:"var(--muted)", fontSize:12 }}>{list.length} enrolled</p>
         </div>
-        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+        <div style={{ display:"flex", gap:8, alignItems:"center", marginLeft:"auto" }}>
           {/* View toggle */}
           <div style={{ display:"flex", border:"1.5px solid var(--border)", borderRadius:9, overflow:"hidden" }}>
             <button onClick={() => setView("grid")} title="Grid view"

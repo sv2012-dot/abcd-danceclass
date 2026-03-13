@@ -266,7 +266,7 @@ export default function SchedulePage() {
   const isAdmin = ["superadmin","school_admin","teacher"].includes(user?.role);
 
   // Calendar state
-  const [view, setView]       = useState("month"); // month | week | list
+  const [view, setView]       = useState("list"); // month | week | list
   const [today]               = useState(new Date());
   const [cursor, setCursor]   = useState(new Date());
 
@@ -596,7 +596,7 @@ export default function SchedulePage() {
             <h1 style={{fontFamily:"var(--font-d)",fontSize:24,marginBottom:2}}>My Events</h1>
             <p style={{color:"var(--muted)",fontSize:12}}>Click any day to add an event</p>
           </div>
-          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginLeft:"auto"}}>
             {/* View toggle */}
             {["month","week","list"].map(v => (
               <button key={v} onClick={()=>setView(v)} style={{
