@@ -95,8 +95,12 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
   const [newInfo,    setNewInfo]    = useState("");  // new bullet input
 
   // Event poster
-  const [poster,     setPoster]     = useState(null); // base64 data URL or null
-  const [posterHover,setPosterHover]= useState(false);
+  const [poster,        setPoster]        = useState(null);  // base64 data URL
+  const [posterHover,   setPosterHover]   = useState(false);
+  // Instagram post as poster
+  const [instaUrl,      setInstaUrl]      = useState("");    // saved IG post URL
+  const [instaInput,    setInstaInput]    = useState("");    // live input
+  const [showInstaForm, setShowInstaForm] = useState(false); // show URL form
 
   const qc = useQueryClient();
 
@@ -106,6 +110,7 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
   const PROGRAM_KEY  = `program_${id}`;
   const INFO_KEY     = `info_items_${id}`;
   const POSTER_KEY   = `poster_${id}`;
+  const INSTA_KEY    = `insta_${id}`;
 
   useEffect(() => {
     const saved = localStorage.getItem(SUG_KEY);
@@ -145,7 +150,10 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
 
     const savedPoster = localStorage.getItem(POSTER_KEY);
     if (savedPoster) setPoster(savedPoster);
-  }, [SUG_KEY, VENDORS_KEY, PROGRAM_KEY, INFO_KEY, POSTER_KEY]);
+
+    const savedInsta = localStorage.getItem(INSTA_KEY);
+    if (savedInsta) { setInstaUrl(savedInsta); setInstaInput(savedInsta); }
+  }, [SUG_KEY, VENDORS_KEY, PROGRAM_KEY, INFO_KEY, POSTER_KEY, INSTA_KEY]);
 
   const persistVendors = (list) => {
     setVendors(list);
@@ -228,6 +236,9 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
     reader.onload = () => {
       const data = reader.result;
       setPoster(data);
+      // Clear Instagram if switching to image
+      setInstaUrl(""); setInstaInput(""); setShowInstaForm(false);
+      localStorage.removeItem(INSTA_KEY);
       try { localStorage.setItem(POSTER_KEY, data); toast.success("Poster saved"); }
       catch { toast("Poster loaded but too large to persist.", { icon:"⚠️" }); }
     };
@@ -239,6 +250,31 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
     setPoster(null);
     localStorage.removeItem(POSTER_KEY);
     toast.success("Poster removed");
+  };
+
+  // ── Instagram helpers ─────────────────────────────────────────────────────
+  const getInstaShortcode = (url) => {
+    const m = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
+    return m ? m[1] : null;
+  };
+
+  const saveInstaUrl = () => {
+    const sc = getInstaShortcode(instaInput.trim());
+    if (!sc) { toast.error("Paste a valid Instagram post, reel, or video URL"); return; }
+    const normalised = `https://www.instagram.com/p/${sc}/`;
+    setInstaUrl(normalised);
+    setShowInstaForm(false);
+    // Clear image if switching to Instagram
+    setPoster(null);
+    localStorage.removeItem(POSTER_KEY);
+    localStorage.setItem(INSTA_KEY, normalised);
+    toast.success("Instagram post linked");
+  };
+
+  const removeInsta = () => {
+    setInstaUrl(""); setInstaInput(""); setShowInstaForm(false);
+    localStorage.removeItem(INSTA_KEY);
+    toast.success("Instagram link removed");
   };
 
   // ── Program schedule helpers ─────────────────────────────────────────────
@@ -453,66 +489,129 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
           <div
             onMouseEnter={() => setPosterHover(true)}
             onMouseLeave={() => setPosterHover(false)}
-            style={{ position:"relative", width:176, height:248, borderRadius:14, overflow:"hidden",
-              border: poster ? "none" : "2px dashed var(--border)",
-              background: poster ? "transparent" : "var(--surface)",
-              boxShadow: poster ? "0 8px 32px rgba(0,0,0,.18)" : "none",
+            style={{
+              position:"relative", width:176, height:248, borderRadius:14, overflow:"hidden",
+              border: (poster || instaUrl) ? "none" : "2px dashed var(--border)",
+              background: (poster || instaUrl) ? "transparent" : "var(--surface)",
+              boxShadow: (poster || instaUrl) ? "0 8px 32px rgba(0,0,0,.18)" : "none",
               transition:"box-shadow .2s",
             }}
           >
-            {poster ? (
+            {/* ── Uploaded image ── */}
+            {poster && (
               <>
                 <img src={poster} alt="Event poster" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
-                {/* Hover overlay */}
                 {posterHover && (
-                  <div style={{
-                    position:"absolute", inset:0, background:"rgba(0,0,0,.55)",
-                    display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10,
-                  }}>
-                    <label style={{
-                      padding:"8px 16px", borderRadius:8, background:"rgba(255,255,255,.92)",
-                      fontSize:12, fontWeight:700, cursor:"pointer", color:"#333",
-                      display:"flex", alignItems:"center", gap:6,
-                    }}>
+                  <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,.55)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10 }}>
+                    <label style={{ padding:"8px 16px", borderRadius:8, background:"rgba(255,255,255,.92)", fontSize:12, fontWeight:700, cursor:"pointer", color:"#333", display:"flex", alignItems:"center", gap:6 }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                       Change
                       <input type="file" accept="image/*" style={{ display:"none" }} onChange={handlePosterUpload} />
                     </label>
-                    <button onClick={removePoster} style={{
-                      padding:"8px 16px", borderRadius:8, background:"rgba(224,92,106,.9)",
-                      fontSize:12, fontWeight:700, cursor:"pointer", color:"#fff", border:"none",
-                      display:"flex", alignItems:"center", gap:6,
-                    }}>
+                    <button onClick={removePoster} style={{ padding:"8px 16px", borderRadius:8, background:"rgba(224,92,106,.9)", fontSize:12, fontWeight:700, cursor:"pointer", color:"#fff", border:"none", display:"flex", alignItems:"center", gap:6 }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                       Remove
                     </button>
                   </div>
                 )}
               </>
-            ) : (
-              /* Empty state — upload prompt */
-              <label style={{
-                width:"100%", height:"100%", display:"flex", flexDirection:"column",
-                alignItems:"center", justifyContent:"center", gap:10,
-                cursor:"pointer", padding:16, boxSizing:"border-box",
-              }}>
-                <div style={{
-                  width:48, height:48, borderRadius:12, background:"var(--border)",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-                    <polyline points="21 15 16 10 5 21"/>
+            )}
+
+            {/* ── Instagram embed ── */}
+            {!poster && instaUrl && !showInstaForm && (() => {
+              const sc = getInstaShortcode(instaUrl);
+              const SCALE = 176 / 326;
+              return (
+                <>
+                  {/* Scaled iframe container */}
+                  <div style={{ position:"absolute", top:0, left:0, width:326, height:460, transform:`scale(${SCALE})`, transformOrigin:"top left", pointerEvents:"none" }}>
+                    <iframe
+                      src={`https://www.instagram.com/p/${sc}/embed/`}
+                      width="326" height="460" frameBorder="0" scrolling="no"
+                      style={{ border:"none", display:"block" }}
+                      title="Instagram post"
+                    />
+                  </div>
+                  {/* Instagram badge */}
+                  <div style={{ position:"absolute", top:8, left:8, background:"rgba(255,255,255,.9)", borderRadius:8, padding:"3px 8px", display:"flex", alignItems:"center", gap:5, boxShadow:"0 1px 6px rgba(0,0,0,.15)" }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="url(#ig)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <defs><linearGradient id="ig" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#f09433"/><stop offset="50%" stopColor="#e6683c"/><stop offset="100%" stopColor="#bc1888"/></linearGradient></defs>
+                      <rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                    </svg>
+                    <span style={{ fontSize:10, fontWeight:700, color:"#333" }}>Instagram</span>
+                  </div>
+                  {/* Hover overlay */}
+                  {posterHover && (
+                    <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,.55)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10 }}>
+                      <a href={instaUrl} target="_blank" rel="noopener noreferrer" style={{ padding:"8px 16px", borderRadius:8, background:"rgba(255,255,255,.92)", fontSize:12, fontWeight:700, cursor:"pointer", color:"#333", textDecoration:"none", display:"flex", alignItems:"center", gap:6 }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        Open Post
+                      </a>
+                      <button onClick={() => { setInstaInput(instaUrl); setShowInstaForm(true); }} style={{ padding:"8px 16px", borderRadius:8, background:"rgba(255,255,255,.85)", fontSize:12, fontWeight:700, cursor:"pointer", color:"#333", border:"none", display:"flex", alignItems:"center", gap:6 }}>
+                        Change URL
+                      </button>
+                      <button onClick={removeInsta} style={{ padding:"8px 16px", borderRadius:8, background:"rgba(224,92,106,.9)", fontSize:12, fontWeight:700, cursor:"pointer", color:"#fff", border:"none", display:"flex", alignItems:"center", gap:6 }}>
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* ── Instagram URL input form ── */}
+            {!poster && showInstaForm && (
+              <div style={{ width:"100%", height:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10, padding:14, boxSizing:"border-box" }}>
+                {/* IG gradient icon */}
+                <div style={{ width:38, height:38, borderRadius:10, background:"linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
                   </svg>
                 </div>
-                <div style={{ textAlign:"center" }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:"var(--text)", marginBottom:3 }}>Upload Poster</div>
-                  <div style={{ fontSize:11, color:"var(--muted)", lineHeight:1.4 }}>JPG, PNG or WEBP<br/>Max 5 MB</div>
+                <div style={{ fontSize:11, fontWeight:700, color:"var(--text)", textAlign:"center" }}>Paste Instagram URL</div>
+                <input
+                  value={instaInput}
+                  onChange={e => setInstaInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && saveInstaUrl()}
+                  placeholder="instagram.com/p/…"
+                  autoFocus
+                  style={{ width:"100%", padding:"6px 8px", borderRadius:7, fontSize:11, border:"1px solid var(--border)", background:"var(--card)", color:"var(--text)", outline:"none", boxSizing:"border-box" }}
+                />
+                <div style={{ display:"flex", gap:6, width:"100%" }}>
+                  <button onClick={saveInstaUrl} style={{ flex:1, padding:"6px 0", borderRadius:7, background:"linear-gradient(45deg,#f09433,#bc1888)", border:"none", color:"#fff", fontSize:11, fontWeight:700, cursor:"pointer" }}>Link</button>
+                  <button onClick={() => setShowInstaForm(false)} style={{ flex:1, padding:"6px 0", borderRadius:7, background:"var(--border)", border:"none", color:"var(--muted)", fontSize:11, fontWeight:700, cursor:"pointer" }}>Cancel</button>
                 </div>
-                <input type="file" accept="image/*" style={{ display:"none" }} onChange={handlePosterUpload} />
-              </label>
+              </div>
+            )}
+
+            {/* ── Empty state ── */}
+            {!poster && !instaUrl && !showInstaForm && (
+              <div style={{ width:"100%", height:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12, padding:14, boxSizing:"border-box" }}>
+                <div style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".05em" }}>Add Poster</div>
+                {/* Upload image */}
+                <label style={{ width:"100%", padding:"9px 0", borderRadius:9, border:"1px solid var(--border)", background:"var(--card)", display:"flex", alignItems:"center", justifyContent:"center", gap:7, cursor:"pointer", fontSize:12, fontWeight:600, color:"var(--text)" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  Upload Image
+                  <input type="file" accept="image/*" style={{ display:"none" }} onChange={handlePosterUpload} />
+                </label>
+                {/* Or divider */}
+                <div style={{ display:"flex", alignItems:"center", gap:6, width:"100%" }}>
+                  <div style={{ flex:1, height:1, background:"var(--border)" }}/>
+                  <span style={{ fontSize:10, color:"var(--muted)" }}>or</span>
+                  <div style={{ flex:1, height:1, background:"var(--border)" }}/>
+                </div>
+                {/* Instagram */}
+                <button onClick={() => setShowInstaForm(true)} style={{ width:"100%", padding:"9px 0", borderRadius:9, border:"1px solid var(--border)", background:"var(--card)", display:"flex", alignItems:"center", justifyContent:"center", gap:7, cursor:"pointer", fontSize:12, fontWeight:600, color:"var(--text)" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" stroke="url(#ig2)">
+                    <defs><linearGradient id="ig2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#f09433"/><stop offset="100%" stopColor="#bc1888"/></linearGradient></defs>
+                    <rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                  </svg>
+                  Instagram Post
+                </button>
+              </div>
             )}
           </div>
+
           {/* Label below */}
           <div style={{ textAlign:"center", marginTop:8, fontSize:11, fontWeight:600, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".06em" }}>
             Event Poster
