@@ -88,12 +88,19 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
   const dragItem     = useRef(null); // index being dragged
   const dragOverItem = useRef(null); // index being hovered over
 
+  // Inline edit modal (meta + overview)
+  const [editOpen,   setEditOpen]   = useState(false);
+  const [editForm,   setEditForm]   = useState({});
+  const [infoItems,  setInfoItems]  = useState([]); // Important Information bullet list
+  const [newInfo,    setNewInfo]    = useState("");  // new bullet input
+
   const qc = useQueryClient();
 
   // Persist Sign Up Genius URL in localStorage per recital
   const SUG_KEY      = `sug_url_${id}`;
   const VENDORS_KEY  = `vendors_${id}`;
   const PROGRAM_KEY  = `program_${id}`;
+  const INFO_KEY     = `info_items_${id}`;
 
   useEffect(() => {
     const saved = localStorage.getItem(SUG_KEY);
@@ -111,12 +118,26 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
     if (savedProg) {
       try { setProgramItems(JSON.parse(savedProg)); } catch {}
     } else {
-      // Seed demo program with blank extra fields
       const seeded = DEMO_PROGRAM.map(p => ({ ...p, performers:p.group||"", music_url:"", music_name:"", music_data:"", mc_notes:"", lighting_notes:"" }));
       setProgramItems(seeded);
       localStorage.setItem(PROGRAM_KEY, JSON.stringify(seeded));
     }
-  }, [SUG_KEY, VENDORS_KEY, PROGRAM_KEY]);
+
+    const savedInfo = localStorage.getItem(INFO_KEY);
+    if (savedInfo) {
+      try { setInfoItems(JSON.parse(savedInfo)); } catch {}
+    } else {
+      const defaults = [
+        "Doors open 30 minutes before showtime",
+        "Students must arrive 1 hour early for costume and makeup",
+        "Photography and videography by approved vendors only during performance",
+        "Reserved seating for family members (2 tickets per student)",
+        "Reception to follow in the lobby",
+      ];
+      setInfoItems(defaults);
+      localStorage.setItem(INFO_KEY, JSON.stringify(defaults));
+    }
+  }, [SUG_KEY, VENDORS_KEY, PROGRAM_KEY, INFO_KEY]);
 
   const persistVendors = (list) => {
     setVendors(list);
@@ -145,6 +166,50 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
     persistVendors(vendors.filter(v => v.id !== vid));
     toast.success("Vendor removed");
   };
+
+  // ── Inline Edit Event helpers ────────────────────────────────────────────
+  const updateMutation = useMutation({
+    mutationFn: (data) => api.update(sid, id, data),
+    onSuccess: (updated) => {
+      qc.setQueryData(["recital-detail", sid, id], (old) => ({ ...old, ...updated }));
+      qc.invalidateQueries(["recitals", sid]);
+      toast.success("Event updated");
+      setEditOpen(false);
+    },
+    onError: () => toast.error("Failed to save changes"),
+  });
+
+  const openInlineEdit = () => {
+    setEditForm({
+      title:       recital?.title      || "",
+      event_date:  recital?.event_date?.split("T")[0] || "",
+      event_time:  recital?.event_time || "",
+      venue:       recital?.venue      || "",
+      status:      recital?.status     || "Planning",
+      description: recital?.description|| "",
+    });
+    setNewInfo("");
+    setEditOpen(true);
+  };
+
+  const saveInlineEdit = () => {
+    if (!editForm.title?.trim()) { toast.error("Title is required"); return; }
+    // Save important info to localStorage
+    localStorage.setItem(INFO_KEY, JSON.stringify(infoItems));
+    // Save meta + description to backend
+    updateMutation.mutate(editForm);
+  };
+
+  const addInfoItem = () => {
+    const v = newInfo.trim();
+    if (!v) return;
+    setInfoItems(p => [...p, v]);
+    setNewInfo("");
+  };
+
+  const removeInfoItem = (i) => setInfoItems(p => p.filter((_, idx) => idx !== i));
+
+  const editInfoItem = (i, val) => setInfoItems(p => p.map((x, idx) => idx === i ? val : x));
 
   // ── Program schedule helpers ─────────────────────────────────────────────
   const persistProgram = (list) => {
@@ -312,7 +377,7 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
               </span>
             </div>
           </div>
-          <button onClick={() => onEdit(recital)} style={{
+          <button onClick={openInlineEdit} style={{
             display:"inline-flex", alignItems:"center", gap:6,
             padding:"9px 18px", borderRadius:10, border:"1.5px solid var(--border)",
             background:"var(--card)", cursor:"pointer", fontSize:13, fontWeight:600,
@@ -386,36 +451,108 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
               </>
             )}
 
-            <h3 style={{ fontSize:15, fontWeight:700, margin:"0 0 12px" }}>Important Information</h3>
-            <ul style={{ margin:"0 0 32px", padding:"0 0 0 18px", display:"flex", flexDirection:"column", gap:9 }}>
-              {[
-                "Doors open 30 minutes before showtime",
-                "Students must arrive 1 hour early for costume and makeup",
-                "Photography and videography by approved vendors only during performance",
-                "Reserved seating for family members (2 tickets per student)",
-                "Reception to follow in the lobby",
-              ].map(item => (
-                <li key={item} style={{ fontSize:13, color:"var(--muted)", lineHeight:1.5 }}>{item}</li>
-              ))}
-            </ul>
-
-            <h3 style={{ fontSize:15, fontWeight:700, margin:"0 0 16px" }}>Event Stats</h3>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:12 }}>
-              {[
-                { value:"45",  label:"Performers",   color:"#6a7fdb" },
-                { value: String(DEMO_PROGRAM.filter(p=>p.title!=="Intermission" && p.title!=="Finale – Curtain Call").length), label:"Performances", color:"#5b8fff" },
-                { value: String(DEMO_VOLUNTEERS.length), label:"Volunteers",   color:"#52c4a0" },
-                { value: String(DEMO_VENDORS.length),    label:"Vendors",      color:"#f4a041" },
-              ].map(s => (
-                <div key={s.label} style={{
-                  background:s.color+"14", borderRadius:14, padding:"22px 18px", textAlign:"center",
-                }}>
-                  <div style={{ fontSize:34, fontWeight:900, color:s.color, fontFamily:"var(--font-d)", lineHeight:1, marginBottom:8 }}>{s.value}</div>
-                  <div style={{ fontSize:12, color:"var(--muted)", fontWeight:600, letterSpacing:".04em" }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
+            {infoItems.length > 0 && (
+              <>
+                <h3 style={{ fontSize:15, fontWeight:700, margin:"0 0 12px" }}>Important Information</h3>
+                <ul style={{ margin:0, padding:"0 0 0 18px", display:"flex", flexDirection:"column", gap:9 }}>
+                  {infoItems.map((item, i) => (
+                    <li key={i} style={{ fontSize:13, color:"var(--muted)", lineHeight:1.5 }}>{item}</li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
+        )}
+
+        {/* ── Inline Edit Event modal ── */}
+        {editOpen && (
+          <Modal title="Edit Event" onClose={() => setEditOpen(false)}>
+            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+
+              {/* ── Meta fields ── */}
+              <p style={{ margin:0, fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:".06em", color:"var(--muted)" }}>Event Details</p>
+              <Field label="Event Title">
+                <Input value={editForm.title} onChange={e => setEditForm(p=>({...p,title:e.target.value}))} required />
+              </Field>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                <Field label="Date">
+                  <Input type="date" value={editForm.event_date} onChange={e => setEditForm(p=>({...p,event_date:e.target.value}))} />
+                </Field>
+                <Field label="Time">
+                  <Input value={editForm.event_time} onChange={e => setEditForm(p=>({...p,event_time:e.target.value}))} placeholder="e.g. 7:00 PM" />
+                </Field>
+              </div>
+              <Field label="Venue / Location">
+                <Input value={editForm.venue} onChange={e => setEditForm(p=>({...p,venue:e.target.value}))} placeholder="e.g. Main Theater" />
+              </Field>
+              <Field label="Status">
+                <Select value={editForm.status} onChange={e => setEditForm(p=>({...p,status:e.target.value}))}>
+                  {STATUS_OPTIONS.map(s => <option key={s}>{s}</option>)}
+                </Select>
+              </Field>
+
+              {/* ── Description ── */}
+              <div style={{ borderTop:"1px solid var(--border)", paddingTop:14 }}>
+                <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:".06em", color:"var(--muted)" }}>Overview</p>
+                <Field label="Description">
+                  <Textarea rows={3} value={editForm.description} onChange={e => setEditForm(p=>({...p,description:e.target.value}))}
+                    placeholder="Brief description of the event…" />
+                </Field>
+              </div>
+
+              {/* ── Important Information bullets ── */}
+              <div>
+                <p style={{ margin:"0 0 10px", fontSize:13, fontWeight:700, color:"var(--text)" }}>Important Information</p>
+                <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:10 }}>
+                  {infoItems.map((item, i) => (
+                    <div key={i} style={{ display:"flex", gap:8, alignItems:"center" }}>
+                      <input
+                        value={item}
+                        onChange={e => editInfoItem(i, e.target.value)}
+                        style={{
+                          flex:1, padding:"7px 11px", borderRadius:8, fontSize:13,
+                          border:"1px solid var(--border)", background:"var(--surface)",
+                          color:"var(--text)", outline:"none",
+                        }}
+                      />
+                      <button onClick={() => removeInfoItem(i)} title="Remove" style={{
+                        width:28, height:28, borderRadius:6, border:"1px solid #fecaca",
+                        background:"none", cursor:"pointer", color:"#e05c6a", flexShrink:0,
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                      }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {/* Add new bullet */}
+                <div style={{ display:"flex", gap:8 }}>
+                  <input
+                    value={newInfo}
+                    onChange={e => setNewInfo(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addInfoItem(); } }}
+                    placeholder="Add a bullet point…"
+                    style={{
+                      flex:1, padding:"7px 11px", borderRadius:8, fontSize:13,
+                      border:"1.5px dashed var(--border)", background:"var(--surface)",
+                      color:"var(--text)", outline:"none",
+                    }}
+                  />
+                  <button onClick={addInfoItem} style={{
+                    padding:"7px 14px", borderRadius:8, fontSize:12, fontWeight:700,
+                    border:"1px solid var(--border)", background:"none", cursor:"pointer", color:"var(--muted)",
+                  }}>+ Add</button>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
+              <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+              <Button onClick={saveInlineEdit} disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? "Saving…" : "Save Changes"}
+              </Button>
+            </div>
+          </Modal>
         )}
 
         {/* ── PROGRAM SCHEDULE ── */}
