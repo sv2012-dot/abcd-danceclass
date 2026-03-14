@@ -269,7 +269,8 @@ export default function SchedulePage() {
   // Inline recital detail state
   const [recitalDetailId, setRecitalDetailId] = useState(null);
 
-  // Recitals list — used to match Recital-type events to their full detail record
+  // Recitals are the single source of truth for Recital-type events.
+  // They are fetched separately and merged into the calendar display.
   const { data: recitalsList = [] } = useQuery({
     queryKey: ["recitals", sid],
     queryFn:  () => recitalApi.list(sid),
@@ -277,32 +278,12 @@ export default function SchedulePage() {
   });
 
   // Event click handler:
-  // Recital → full-page inline RecitalDetail (auto-creates recital record if none exists)
-  // All others (Class, Rehearsal, Workshop, Additional Class, Other) → side panel
-  const handleEventClick = async (ev) => {
-    if (ev?.type === "Recital") {
-      // Try to find an existing recital by title
-      let match = recitalsList.find(r =>
-        r.title?.toLowerCase().trim() === ev.title?.toLowerCase().trim()
-      );
-      // If no recital record exists yet, auto-create one from the event data
-      if (!match) {
-        try {
-          match = await recitalApi.create(sid, {
-            title:      ev.title,
-            event_date: ev.start_time,
-            venue:      ev.location || "",
-            status:     "Planning",
-            description: ev.notes  || "",
-          });
-          qc.invalidateQueries({ queryKey: ["recitals", sid] });
-        } catch {
-          // If create fails, fall back to side panel
-          setDetailEvent(ev);
-          return;
-        }
-      }
-      if (match?.id) { setRecitalDetailId(match.id); return; }
+  // Recital (_isRecital flag) → full-page inline RecitalDetail via direct ID
+  // All others (Class, Rehearsal, Workshop, Other) → side panel
+  const handleEventClick = (ev) => {
+    if (ev?._isRecital) {
+      setRecitalDetailId(ev._recitalId);
+      return;
     }
     setDetailEvent(ev);
   };
@@ -351,12 +332,30 @@ export default function SchedulePage() {
     enabled:  !!sid,
   });
 
-  // Apply filters
-  const events = useMemo(() => rawEvents.filter(e => {
-    if (filterType !== "All" && e.type !== filterType) return false;
-    if (studioOnly && !e.requires_studio) return false;
-    return true;
-  }), [rawEvents, filterType, studioOnly]);
+  // Convert recitals → calendar event objects (recitals table is single source of truth)
+  const recitalEvents = useMemo(() => recitalsList.map(r => ({
+    id:          `recital_${r.id}`,
+    title:       r.title,
+    type:        "Recital",
+    start_time:  r.event_date,
+    end_time:    r.event_date,
+    location:    r.venue || "",
+    notes:       r.description || "",
+    _isRecital:  true,
+    _recitalId:  r.id,
+  })), [recitalsList]);
+
+  // Merge: non-Recital events from events table + recitals from recitals table
+  // Filter out any legacy Recital-type rows from the events table to avoid duplicates
+  const events = useMemo(() => {
+    const nonRecital = rawEvents.filter(e => e.type !== "Recital");
+    const combined   = [...nonRecital, ...recitalEvents];
+    return combined.filter(e => {
+      if (filterType !== "All" && e.type !== filterType) return false;
+      if (studioOnly && !e.requires_studio) return false;
+      return true;
+    });
+  }, [rawEvents, recitalEvents, filterType, studioOnly]);
 
   // ── Mutations ────────────────────────────────────────────────────────────
   const saveMutation = useMutation({
