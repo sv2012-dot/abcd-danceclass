@@ -134,7 +134,7 @@ const s = {
   platformName: { fontSize:11, fontWeight:700, color:'var(--sidebar-foreground)', letterSpacing:'-0.2px' },
   platformSub:  { fontSize:9, color:'var(--sidebar-muted)', letterSpacing:'0.07em', textTransform:'uppercase', marginTop:1 },
   main:    { flex:1, overflowY:'auto', background:'var(--background)' },
-  content: { padding:'32px 36px', maxWidth:1140, margin:'0 auto' },
+  content: { padding:'32px 36px', maxWidth:1340, margin:'0 auto' },
 };
 
 export default function AppShell() {
