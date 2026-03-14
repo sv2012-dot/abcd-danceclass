@@ -67,14 +67,12 @@ const NAV_ITEMS = {
     { to:'/', label:'Dashboard', icon:'dashboard' },
     { to:'/batches', label:'Batches', icon:'batches' },
     { to:'/schedule', label:'My Events', icon:'schedule' },
-    { to:'/recitals', label:'Recitals & Events', icon:'recitals' },
     { to:'/students', label:'Students', icon:'users' },
   ],
   teacher: [
     { to:'/', label:'Dashboard', icon:'dashboard' },
     { to:'/batches', label:'Batches', icon:'batches' },
     { to:'/schedule', label:'My Events', icon:'schedule' },
-    { to:'/recitals', label:'Recitals & Events', icon:'recitals' },
     { to:'/students', label:'Students', icon:'users' },
   ],
   parent: [

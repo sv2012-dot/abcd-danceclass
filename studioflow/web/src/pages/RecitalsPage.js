@@ -66,7 +66,7 @@ function SectionHead({ title, sub }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Full-page Detail View
 // ─────────────────────────────────────────────────────────────────────────────
-function RecitalDetail({ id, onBack, sid, onEdit }) {
+export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const [tab,         setTab]         = useState("overview");
   const [tasks,       setTasks]       = useState([]);
   const [newTask,     setNewTask]     = useState("");

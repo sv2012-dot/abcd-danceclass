@@ -2,13 +2,14 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
-import { events as api, batches as batchesApi } from "../api";
+import { events as api, batches as batchesApi, recitals as recitalApi } from "../api";
 import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
-import Modal from "../components/shared/Modal"; // still used for add/edit form
+import Modal from "../components/shared/Modal";
 import Badge from "../components/shared/Badge";
 import { Field, Input, Select, Textarea } from "../components/shared/Field";
+import { RecitalDetail } from "./RecitalsPage";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const EVENT_TYPES = ["Class", "Recital", "Rehearsal", "Workshop", "Other"];
@@ -265,11 +266,25 @@ export default function SchedulePage() {
   const navigate = useNavigate();
   const isAdmin = ["superadmin","school_admin","teacher"].includes(user?.role);
 
-  // Recital-type events open the full RecitalsPage detail view; all others show local side panel
+  // Inline recital detail state
+  const [recitalDetailId, setRecitalDetailId] = useState(null);
+
+  // Recitals list — used to match Recital-type events to their full detail record
+  const { data: recitalsList = [] } = useQuery({
+    queryKey: ["recitals", sid],
+    queryFn:  () => recitalApi.list(sid),
+    enabled:  !!sid,
+  });
+
+  // Event click handler:
+  // Recital → full-page inline RecitalDetail
+  // All others (Class, Rehearsal, Workshop, Additional Class, Other) → side panel
   const handleEventClick = (ev) => {
     if (ev?.type === "Recital") {
-      navigate('/recitals', { state: { openTitle: ev.title } });
-      return;
+      const match = recitalsList.find(r =>
+        r.title?.toLowerCase() === ev.title?.toLowerCase()
+      );
+      if (match) { setRecitalDetailId(match.id); return; }
     }
     setDetailEvent(ev);
   };
@@ -600,6 +615,18 @@ export default function SchedulePage() {
   const unbookedStudio = events.filter(e => e.requires_studio && !e.studio_booked);
 
   // ── Render ───────────────────────────────────────────────────────────────
+  // ── Inline recital detail view ────────────────────────────────────────────
+  if (recitalDetailId) {
+    return (
+      <RecitalDetail
+        id={recitalDetailId}
+        sid={sid}
+        onBack={() => setRecitalDetailId(null)}
+        onEdit={() => {}}
+      />
+    );
+  }
+
   return (
     <div style={{ paddingRight: detailEvent ? PANEL_W + 20 : 0, transition:"padding .25s ease" }}>
       {/* Main calendar */}
