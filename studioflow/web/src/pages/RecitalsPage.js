@@ -66,20 +66,63 @@ function SectionHead({ title, sub }) {
 // Full-page Detail View
 // ─────────────────────────────────────────────────────────────────────────────
 function RecitalDetail({ id, onBack, sid, onEdit }) {
-  const [tab,       setTab]       = useState("overview");
-  const [tasks,     setTasks]     = useState([]);
-  const [newTask,   setNewTask]   = useState("");
-  const [sugUrl,    setSugUrl]    = useState("");
-  const [sugInput,  setSugInput]  = useState("");
-  const [editingUrl, setEditingUrl] = useState(false);
+  const [tab,         setTab]         = useState("overview");
+  const [tasks,       setTasks]       = useState([]);
+  const [newTask,     setNewTask]     = useState("");
+  const [sugUrl,      setSugUrl]      = useState("");
+  const [sugInput,    setSugInput]    = useState("");
+  const [editingUrl,  setEditingUrl]  = useState(false);
+  // Vendors state
+  const [vendors,     setVendors]     = useState([]);
+  const [vendorModal, setVendorModal] = useState(null); // null=closed, {}=new, {id,...}=edit
+  const EMPTY_VENDOR = { name:"", service:"", contact:"", phone:"", status:"Pending" };
+  const [vendorForm,  setVendorForm]  = useState(EMPTY_VENDOR);
   const qc = useQueryClient();
 
   // Persist Sign Up Genius URL in localStorage per recital
-  const SUG_KEY = `sug_url_${id}`;
+  const SUG_KEY     = `sug_url_${id}`;
+  const VENDORS_KEY = `vendors_${id}`;
+
   useEffect(() => {
     const saved = localStorage.getItem(SUG_KEY);
     if (saved) { setSugUrl(saved); setSugInput(saved); }
-  }, [SUG_KEY]);
+    const savedVendors = localStorage.getItem(VENDORS_KEY);
+    if (savedVendors) {
+      try { setVendors(JSON.parse(savedVendors)); } catch {}
+    } else {
+      // Seed demo vendors on first open
+      setVendors(DEMO_VENDORS);
+      localStorage.setItem(VENDORS_KEY, JSON.stringify(DEMO_VENDORS));
+    }
+  }, [SUG_KEY, VENDORS_KEY]);
+
+  const persistVendors = (list) => {
+    setVendors(list);
+    localStorage.setItem(VENDORS_KEY, JSON.stringify(list));
+  };
+
+  const openAddVendor  = () => { setVendorForm(EMPTY_VENDOR); setVendorModal({}); };
+  const openEditVendor = (v) => { setVendorForm({ name:v.name, service:v.service, contact:v.contact, phone:v.phone, status:v.status }); setVendorModal(v); };
+
+  const saveVendor = () => {
+    if (!vendorForm.name.trim()) { toast.error("Vendor name is required"); return; }
+    if (vendorModal?.id) {
+      // Edit
+      persistVendors(vendors.map(v => v.id === vendorModal.id ? { ...v, ...vendorForm } : v));
+      toast.success("Vendor updated");
+    } else {
+      // Add
+      const newV = { ...vendorForm, id: Date.now() };
+      persistVendors([...vendors, newV]);
+      toast.success("Vendor added");
+    }
+    setVendorModal(null);
+  };
+
+  const deleteVendor = (vid) => {
+    persistVendors(vendors.filter(v => v.id !== vid));
+    toast.success("Vendor removed");
+  };
 
   const saveSugUrl = () => {
     const trimmed = sugInput.trim();
@@ -460,40 +503,95 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
           <div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
               <SectionHead title="Vendors" sub="Service providers and contractors for the event" />
-              <Button icon="➕" size="sm">Add Vendor</Button>
+              <Button icon="➕" size="sm" onClick={openAddVendor}>Add Vendor</Button>
             </div>
-            <div style={{ borderRadius:12, overflow:"hidden", border:"1px solid var(--border)" }}>
-              {DEMO_VENDORS.map((v, i) => (
-                <div key={v.id} style={{
-                  display:"flex", alignItems:"center", padding:"16px 20px", gap:14,
-                  background: i % 2 === 0 ? "var(--card)" : "var(--surface)",
-                  borderBottom: i < DEMO_VENDORS.length - 1 ? "1px solid var(--border)" : "none",
-                }}>
-                  <div style={{
-                    width:42, height:42, borderRadius:11, flexShrink:0,
-                    background:"linear-gradient(135deg, #f4a041, #e05c6a)",
-                    display:"flex", alignItems:"center", justifyContent:"center",
+
+            {vendors.length === 0 ? (
+              <div style={{ textAlign:"center", padding:"40px 20px", background:"var(--surface)", borderRadius:12, border:"1.5px dashed var(--border)" }}>
+                <div style={{ fontSize:28, marginBottom:10 }}>🏢</div>
+                <p style={{ fontWeight:700, marginBottom:4, fontSize:14 }}>No vendors yet</p>
+                <p style={{ color:"var(--muted)", fontSize:12, marginBottom:16 }}>Add photographers, costume rental, lighting & sound vendors.</p>
+                <Button icon="➕" size="sm" onClick={openAddVendor}>Add First Vendor</Button>
+              </div>
+            ) : (
+              <div style={{ borderRadius:12, overflow:"hidden", border:"1px solid var(--border)" }}>
+                {vendors.map((v, i) => (
+                  <div key={v.id} style={{
+                    display:"flex", alignItems:"center", padding:"14px 18px", gap:14,
+                    background: i % 2 === 0 ? "var(--card)" : "var(--surface)",
+                    borderBottom: i < vendors.length - 1 ? "1px solid var(--border)" : "none",
                   }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="2" y="7" width="20" height="14" rx="2"/>
-                      <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-                    </svg>
+                    <div style={{
+                      width:42, height:42, borderRadius:11, flexShrink:0,
+                      background:"linear-gradient(135deg, #f4a041, #e05c6a)",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                    }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="7" width="20" height="14" rx="2"/>
+                        <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+                      </svg>
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:700, fontSize:14, marginBottom:2 }}>{v.name}</div>
+                      <div style={{ fontSize:12, color:"var(--muted)", marginBottom:1 }}>{v.service}</div>
+                      {(v.contact || v.phone) && (
+                        <div style={{ fontSize:11, color:"var(--muted)" }}>
+                          {v.contact && `Contact: ${v.contact}`}{v.contact && v.phone && " · "}{v.phone}
+                        </div>
+                      )}
+                    </div>
+                    <span style={{
+                      fontSize:11, padding:"5px 13px", borderRadius:20, fontWeight:700, flexShrink:0,
+                      background: v.status === "Confirmed" ? "#52c4a020" : "#f4a04120",
+                      color:      v.status === "Confirmed" ? "#52c4a0"   : "#f4a041",
+                    }}>
+                      {v.status === "Confirmed" ? "✓ " : "⏱ "}{v.status}
+                    </span>
+                    {/* Row actions */}
+                    <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+                      <button onClick={() => openEditVendor(v)} style={{
+                        padding:"5px 10px", fontSize:11, border:"1px solid var(--border)",
+                        borderRadius:7, background:"none", cursor:"pointer", color:"var(--muted)", fontWeight:600,
+                      }}>Edit</button>
+                      <button onClick={() => { if (window.confirm(`Remove ${v.name}?`)) deleteVendor(v.id); }} style={{
+                        padding:"5px 10px", fontSize:11, border:"1px solid #fecaca",
+                        borderRadius:7, background:"none", cursor:"pointer", color:"#e05c6a", fontWeight:600,
+                      }}>Remove</button>
+                    </div>
                   </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:14, marginBottom:2 }}>{v.name}</div>
-                    <div style={{ fontSize:12, color:"var(--muted)", marginBottom:1 }}>{v.service}</div>
-                    <div style={{ fontSize:11, color:"var(--muted)" }}>Contact: {v.contact} · {v.phone}</div>
-                  </div>
-                  <span style={{
-                    fontSize:11, padding:"5px 13px", borderRadius:20, fontWeight:700, flexShrink:0,
-                    background: v.status === "Confirmed" ? "#52c4a020" : "#f4a04120",
-                    color:      v.status === "Confirmed" ? "#52c4a0"   : "#f4a041",
-                  }}>
-                    {v.status === "Confirmed" ? "✓ " : "⏱ "}{v.status}
-                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Add / Edit vendor modal */}
+            {vendorModal !== null && (
+              <Modal title={vendorModal?.id ? "Edit Vendor" : "Add Vendor"} onClose={() => setVendorModal(null)}>
+                <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                  <Field label="Vendor / Company Name">
+                    <Input value={vendorForm.name} onChange={e => setVendorForm(p => ({ ...p, name:e.target.value }))} placeholder="e.g. Spotlight Productions" required />
+                  </Field>
+                  <Field label="Service Type">
+                    <Input value={vendorForm.service} onChange={e => setVendorForm(p => ({ ...p, service:e.target.value }))} placeholder="e.g. Lighting & Sound" />
+                  </Field>
+                  <Field label="Contact Person">
+                    <Input value={vendorForm.contact} onChange={e => setVendorForm(p => ({ ...p, contact:e.target.value }))} placeholder="e.g. John Davis" />
+                  </Field>
+                  <Field label="Phone">
+                    <Input value={vendorForm.phone} onChange={e => setVendorForm(p => ({ ...p, phone:e.target.value }))} placeholder="(555) 000-0000" />
+                  </Field>
+                  <Field label="Status">
+                    <Select value={vendorForm.status} onChange={e => setVendorForm(p => ({ ...p, status:e.target.value }))}>
+                      <option>Pending</option>
+                      <option>Confirmed</option>
+                    </Select>
+                  </Field>
                 </div>
-              ))}
-            </div>
+                <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
+                  <Button variant="outline" onClick={() => setVendorModal(null)}>Cancel</Button>
+                  <Button onClick={saveVendor}>{vendorModal?.id ? "Save Changes" : "Add Vendor"}</Button>
+                </div>
+              </Modal>
+            )}
           </div>
         )}
 
