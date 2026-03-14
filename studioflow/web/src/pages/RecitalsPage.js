@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { recitals as api } from "../api";
@@ -66,10 +66,33 @@ function SectionHead({ title, sub }) {
 // Full-page Detail View
 // ─────────────────────────────────────────────────────────────────────────────
 function RecitalDetail({ id, onBack, sid, onEdit }) {
-  const [tab,     setTab]     = useState("overview");
-  const [tasks,   setTasks]   = useState([]);
-  const [newTask, setNewTask] = useState("");
+  const [tab,       setTab]       = useState("overview");
+  const [tasks,     setTasks]     = useState([]);
+  const [newTask,   setNewTask]   = useState("");
+  const [sugUrl,    setSugUrl]    = useState("");
+  const [sugInput,  setSugInput]  = useState("");
+  const [editingUrl, setEditingUrl] = useState(false);
   const qc = useQueryClient();
+
+  // Persist Sign Up Genius URL in localStorage per recital
+  const SUG_KEY = `sug_url_${id}`;
+  useEffect(() => {
+    const saved = localStorage.getItem(SUG_KEY);
+    if (saved) { setSugUrl(saved); setSugInput(saved); }
+  }, [SUG_KEY]);
+
+  const saveSugUrl = () => {
+    const trimmed = sugInput.trim();
+    localStorage.setItem(SUG_KEY, trimmed);
+    setSugUrl(trimmed);
+    setEditingUrl(false);
+    if (trimmed) toast.success("Sign Up Genius link saved");
+  };
+
+  const clearSugUrl = () => {
+    localStorage.removeItem(SUG_KEY);
+    setSugUrl(""); setSugInput(""); setEditingUrl(false);
+  };
 
   const { data: recital, isLoading } = useQuery({
     queryKey: ["recital-detail", sid, id],
@@ -304,8 +327,100 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
           <div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
               <SectionHead title="Parent Volunteers" sub="Volunteer coordinators and helpers for the event" />
-              <Button icon="➕" size="sm">Add Volunteer</Button>
             </div>
+
+            {/* ── Sign Up Genius integration banner ── */}
+            <div style={{
+              borderRadius:12, border:"1.5px solid #e8e2ff",
+              background:"linear-gradient(135deg, #f5f2ff 0%, #fff 100%)",
+              padding:"18px 20px", marginBottom:22,
+            }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom: sugUrl && !editingUrl ? 14 : 10 }}>
+                {/* Sign Up Genius logo mark */}
+                <div style={{
+                  width:38, height:38, borderRadius:10, flexShrink:0,
+                  background:"linear-gradient(135deg, #00a651, #007a3d)",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <line x1="19" y1="8" x2="19" y2="14"/>
+                    <line x1="22" y1="11" x2="16" y2="11"/>
+                  </svg>
+                </div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:14, fontWeight:800, marginBottom:1 }}>Sign Up Genius</div>
+                  <div style={{ fontSize:12, color:"var(--muted)" }}>
+                    {sugUrl ? "Linked — volunteers can sign up directly" : "Paste your sign-up sheet URL to link it here"}
+                  </div>
+                </div>
+                {sugUrl && !editingUrl && (
+                  <button onClick={() => setEditingUrl(true)} style={{
+                    fontSize:11, color:"var(--muted)", background:"none", border:"1px solid var(--border)",
+                    borderRadius:7, padding:"4px 10px", cursor:"pointer", fontWeight:600,
+                  }}>Edit link</button>
+                )}
+              </div>
+
+              {/* URL saved — show open button */}
+              {sugUrl && !editingUrl && (
+                <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                  <a href={sugUrl} target="_blank" rel="noopener noreferrer" style={{
+                    display:"inline-flex", alignItems:"center", gap:8,
+                    padding:"10px 20px", borderRadius:10, textDecoration:"none",
+                    background:"linear-gradient(135deg, #00a651, #007a3d)",
+                    color:"#fff", fontSize:13, fontWeight:700,
+                    boxShadow:"0 2px 8px rgba(0,166,81,.3)",
+                    transition:"opacity .15s",
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = ".88"}
+                    onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                      <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                    Open Sign Up Sheet
+                  </a>
+                  <button onClick={clearSugUrl} style={{
+                    fontSize:11, color:"#e05c6a", background:"none", border:"none",
+                    cursor:"pointer", padding:"4px 6px", fontWeight:600,
+                  }}>Remove</button>
+                </div>
+              )}
+
+              {/* URL input — initial state or editing */}
+              {(!sugUrl || editingUrl) && (
+                <div style={{ display:"flex", gap:8 }}>
+                  <input
+                    value={sugInput}
+                    onChange={e => setSugInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && saveSugUrl()}
+                    placeholder="https://www.signupgenius.com/go/your-signup-link"
+                    style={{
+                      flex:1, padding:"9px 14px",
+                      border:"1.5px solid #c9b8ff", borderRadius:9,
+                      fontSize:13, background:"#fff",
+                      color:"var(--text)", outline:"none", fontFamily:"inherit",
+                    }}
+                  />
+                  <button onClick={saveSugUrl} style={{
+                    padding:"9px 18px", borderRadius:9, border:"none", cursor:"pointer",
+                    background:"#6a7fdb", color:"#fff", fontSize:13, fontWeight:700,
+                    transition:"opacity .15s",
+                  }}>Save</button>
+                  {editingUrl && (
+                    <button onClick={() => { setEditingUrl(false); setSugInput(sugUrl); }} style={{
+                      padding:"9px 14px", borderRadius:9, border:"1px solid var(--border)",
+                      background:"none", cursor:"pointer", fontSize:13, color:"var(--muted)",
+                    }}>Cancel</button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Volunteer list */}
             <div style={{ borderRadius:12, overflow:"hidden", border:"1px solid var(--border)" }}>
               {DEMO_VOLUNTEERS.map((v, i) => (
                 <div key={v.id} style={{
