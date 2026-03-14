@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { recitals as api } from "../api";
@@ -1314,6 +1315,8 @@ export default function RecitalsPage() {
   const [form,    setForm]    = useState(EMPTY);
   const [detailId, setDetailId] = useState(null);   // ← full-page detail
 
+  const location = useLocation();
+
   const { data: recitals=[], isLoading } = useQuery({
     queryKey: ["recitals", sid],
     queryFn: () => api.list(sid),
@@ -1347,6 +1350,18 @@ export default function RecitalsPage() {
   };
 
   const sorted = [...recitals].sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
+
+  // ── Auto-open a specific recital when navigated here from another page ──────
+  // e.g. clicking a "Recital" event on HomePage or SchedulePage navigates with
+  // { state: { openTitle: "Pranathi Annual Recital" } }
+  useEffect(() => {
+    const openTitle = location.state?.openTitle;
+    if (!openTitle || recitals.length === 0 || detailId) return;
+    const match = recitals.find(
+      r => r.title?.toLowerCase().trim() === openTitle.toLowerCase().trim()
+    );
+    if (match) setDetailId(match.id);
+  }, [recitals, location.state?.openTitle]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Show full-page detail when detailId is set ─────────────────────────────
   if (detailId) {

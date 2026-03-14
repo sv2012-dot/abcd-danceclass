@@ -265,6 +265,15 @@ export default function SchedulePage() {
   const navigate = useNavigate();
   const isAdmin = ["superadmin","school_admin","teacher"].includes(user?.role);
 
+  // Recital-type events open the full RecitalsPage detail view; all others show local side panel
+  const handleEventClick = (ev) => {
+    if (ev?.type === "Recital") {
+      navigate('/recitals', { state: { openTitle: ev.title } });
+      return;
+    }
+    setDetailEvent(ev);
+  };
+
   // Calendar state
   const [view, setView]       = useState("month"); // month | week | list
   const [today]               = useState(new Date());
@@ -380,7 +389,7 @@ export default function SchedulePage() {
     const color = event.color || TYPE_COLORS[event.type] || "#8a7a9a";
     return (
       <div
-        onClick={e => { e.stopPropagation(); setDetailEvent(event); }}
+        onClick={e => { e.stopPropagation(); handleEventClick(event); }}
         title={event.title}
         style={{
           background: color+"22", borderLeft: `3px solid ${color}`,
@@ -505,7 +514,7 @@ export default function SchedulePage() {
                   const noStudio = e.requires_studio && !e.studio_booked;
                   return (
                     <div key={e.id}
-                      onClick={ev => { ev.stopPropagation(); setDetailEvent(e); }}
+                      onClick={ev => { ev.stopPropagation(); handleEventClick(e); }}
                       style={{
                         background: color+"15", border: `2px solid ${color}`,
                         borderRadius: 10, padding: "10px 12px",
@@ -557,7 +566,7 @@ export default function SchedulePage() {
               {grouped[date].sort((a,b)=>a.start_datetime.localeCompare(b.start_datetime)).map(e => {
                 const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
                 return (
-                  <Card key={e.id} onClick={()=>setDetailEvent(e)} style={{display:"flex",alignItems:"center",gap:13,padding:13,cursor:"pointer",borderLeft:`4px solid ${color}`}}>
+                  <Card key={e.id} onClick={()=>handleEventClick(e)} style={{display:"flex",alignItems:"center",gap:13,padding:13,cursor:"pointer",borderLeft:`4px solid ${color}`}}>
                     <div style={{minWidth:60,textAlign:"center"}}>
                       <div style={{fontWeight:700,fontSize:13}}>{fmtTime(e.start_datetime)}</div>
                       <div style={{fontSize:10,color:"var(--muted)"}}>{fmtTime(e.end_datetime)}</div>
@@ -684,7 +693,7 @@ export default function SchedulePage() {
           <span style={{fontWeight:700,fontSize:12,color:"#e05c6a",flexShrink:0}}>⚠ Studio not booked:</span>
           <div style={{display:"flex",gap:7,flexWrap:"wrap",flex:1}}>
             {unbookedStudio.map(e => (
-              <div key={e.id} onClick={()=>setDetailEvent(e)} style={{fontSize:11,cursor:"pointer",padding:"4px 10px",borderRadius:20,background:"#fff",border:"1px solid #e05c6a44",fontWeight:600,color:"#e05c6a"}}>
+              <div key={e.id} onClick={()=>handleEventClick(e)} style={{fontSize:11,cursor:"pointer",padding:"4px 10px",borderRadius:20,background:"#fff",border:"1px solid #e05c6a44",fontWeight:600,color:"#e05c6a"}}>
                 {e.title} · <span style={{fontWeight:400,color:"var(--muted)"}}>{fmtDate(e.start_datetime)}</span>
               </div>
             ))}

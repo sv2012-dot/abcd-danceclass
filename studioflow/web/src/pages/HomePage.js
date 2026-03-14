@@ -191,6 +191,15 @@ function SchoolHomePage() {
   const navigate = useNavigate();
   const isAdmin  = ["superadmin","school_admin","teacher"].includes(user?.role);
 
+  // Recital-type events open the full RecitalsPage detail view; all others show local panel/modal
+  const handleEventClick = (ev) => {
+    if (ev?.type === "Recital") {
+      navigate('/recitals', { state: { openTitle: ev.title } });
+      return;
+    }
+    setDetailEvent(ev);
+  };
+
   // ── data ──────────────────────────────────────────────────────────────────
   const { data: stats }      = useQuery({ queryKey:["stats",sid],    queryFn:()=>schools.stats(sid),    enabled:!!sid });
   const { data: recitalList} = useQuery({ queryKey:["recitals",sid], queryFn:()=>recitalApi.list(sid),  enabled:!!sid });
@@ -303,7 +312,7 @@ function SchoolHomePage() {
   const EventPill = ({ event, compact }) => {
     const color = event.color || TYPE_COLORS[event.type] || "#8a7a9a";
     return (
-      <div onClick={e=>{e.stopPropagation();setDetailEvent(event);}} title={event.title} style={{
+      <div onClick={e=>{e.stopPropagation();handleEventClick(event);}} title={event.title} style={{
         background:color+"22", borderLeft:`3px solid ${color}`, borderRadius:5,
         padding:compact?"2px 5px":"4px 7px", fontSize:compact?10:11, fontWeight:600,
         color:"#1e1228", cursor:"pointer", overflow:"hidden", textOverflow:"ellipsis",
@@ -366,7 +375,7 @@ function SchoolHomePage() {
                 {de.map(e=>{
                   const color=e.color||TYPE_COLORS[e.type]||"#8a7a9a";
                   return (
-                    <div key={e.id} onClick={ev=>{ev.stopPropagation();setDetailEvent(e);}} style={{background:color+"15",border:`2px solid ${color}`,borderRadius:10,padding:"10px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}
+                    <div key={e.id} onClick={ev=>{ev.stopPropagation();handleEventClick(e);}} style={{background:color+"15",border:`2px solid ${color}`,borderRadius:10,padding:"10px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}
                       onMouseEnter={ev=>{ev.currentTarget.style.background=color+"28";}} onMouseLeave={ev=>{ev.currentTarget.style.background=color+"15";}}>
                       <div style={{fontWeight:700,fontSize:12,marginBottom:2}}>{e.title}</div>
                       <div style={{fontSize:10,color:"var(--muted)"}}>{fmtTime(e.start_datetime)}</div>
@@ -401,7 +410,7 @@ function SchoolHomePage() {
               {grouped[date].map(e=>{
                 const color=e.color||TYPE_COLORS[e.type]||"#8a7a9a";
                 return (
-                  <Card key={e.id} onClick={()=>setDetailEvent(e)} style={{display:"flex",alignItems:"center",gap:13,padding:13,cursor:"pointer",borderLeft:`4px solid ${color}`}}>
+                  <Card key={e.id} onClick={()=>handleEventClick(e)} style={{display:"flex",alignItems:"center",gap:13,padding:13,cursor:"pointer",borderLeft:`4px solid ${color}`}}>
                     <div style={{minWidth:60,textAlign:"center"}}>
                       <div style={{fontWeight:700,fontSize:13}}>{fmtTime(e.start_datetime)}</div>
                       <div style={{fontSize:10,color:"var(--muted)"}}>{fmtTime(e.end_datetime)}</div>
@@ -563,7 +572,7 @@ function SchoolHomePage() {
             <span style={{fontWeight:700,fontSize:12,color:"#e05c6a",flexShrink:0}}>⚠ Studio not booked:</span>
             <div style={{display:"flex",gap:7,flexWrap:"wrap",flex:1}}>
               {unbookedStudio.map(e=>(
-                <div key={e.id} onClick={()=>setDetailEvent(e)} style={{fontSize:11,cursor:"pointer",padding:"4px 10px",borderRadius:20,background:"#fff",border:"1px solid #e05c6a44",fontWeight:600,color:"#e05c6a"}}>
+                <div key={e.id} onClick={()=>handleEventClick(e)} style={{fontSize:11,cursor:"pointer",padding:"4px 10px",borderRadius:20,background:"#fff",border:"1px solid #e05c6a44",fontWeight:600,color:"#e05c6a"}}>
                   {e.title} · <span style={{fontWeight:400,color:"var(--muted)"}}>{fmtDate(e.start_datetime)}</span>
                 </div>
               ))}
