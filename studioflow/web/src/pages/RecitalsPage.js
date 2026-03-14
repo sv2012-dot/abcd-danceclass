@@ -94,6 +94,10 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
   const [infoItems,  setInfoItems]  = useState([]); // Important Information bullet list
   const [newInfo,    setNewInfo]    = useState("");  // new bullet input
 
+  // Event poster
+  const [poster,     setPoster]     = useState(null); // base64 data URL or null
+  const [posterHover,setPosterHover]= useState(false);
+
   const qc = useQueryClient();
 
   // Persist Sign Up Genius URL in localStorage per recital
@@ -101,6 +105,7 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
   const VENDORS_KEY  = `vendors_${id}`;
   const PROGRAM_KEY  = `program_${id}`;
   const INFO_KEY     = `info_items_${id}`;
+  const POSTER_KEY   = `poster_${id}`;
 
   useEffect(() => {
     const saved = localStorage.getItem(SUG_KEY);
@@ -137,7 +142,10 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
       setInfoItems(defaults);
       localStorage.setItem(INFO_KEY, JSON.stringify(defaults));
     }
-  }, [SUG_KEY, VENDORS_KEY, PROGRAM_KEY, INFO_KEY]);
+
+    const savedPoster = localStorage.getItem(POSTER_KEY);
+    if (savedPoster) setPoster(savedPoster);
+  }, [SUG_KEY, VENDORS_KEY, PROGRAM_KEY, INFO_KEY, POSTER_KEY]);
 
   const persistVendors = (list) => {
     setVendors(list);
@@ -210,6 +218,28 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
   const removeInfoItem = (i) => setInfoItems(p => p.filter((_, idx) => idx !== i));
 
   const editInfoItem = (i, val) => setInfoItems(p => p.map((x, idx) => idx === i ? val : x));
+
+  // ── Poster helpers ────────────────────────────────────────────────────────
+  const handlePosterUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast.error("Image too large (max 5 MB)"); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const data = reader.result;
+      setPoster(data);
+      try { localStorage.setItem(POSTER_KEY, data); toast.success("Poster saved"); }
+      catch { toast("Poster loaded but too large to persist.", { icon:"⚠️" }); }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const removePoster = () => {
+    setPoster(null);
+    localStorage.removeItem(POSTER_KEY);
+    toast.success("Poster removed");
+  };
 
   // ── Program schedule helpers ─────────────────────────────────────────────
   const persistProgram = (list) => {
@@ -362,57 +392,133 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
       </div>
 
       {/* ── Event header ──────────────────────────────────────────────── */}
-      <div style={{ marginBottom:26 }}>
-        <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:16, flexWrap:"wrap" }}>
-          <div>
-            <h1 style={{ fontFamily:"var(--font-d)", fontSize:30, fontWeight:900, margin:0, marginBottom:10, lineHeight:1.2 }}>
-              {recital.title}
-            </h1>
-            <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
-              <span style={{ fontSize:12, background:"#6a7fdb22", color:"#6a7fdb", borderRadius:20, padding:"4px 12px", fontWeight:700 }}>
-                Performance
-              </span>
-              <span style={{ fontSize:12, background:color+"22", color, borderRadius:20, padding:"4px 12px", fontWeight:700 }}>
-                {STATUS_ICONS[recital.status]} {recital.status}
-              </span>
+      <div style={{ marginBottom:26, display:"flex", gap:28, alignItems:"flex-start" }}>
+
+        {/* Left: title + tags + edit + meta */}
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:16, flexWrap:"wrap", marginBottom:22 }}>
+            <div>
+              <h1 style={{ fontFamily:"var(--font-d)", fontSize:30, fontWeight:900, margin:0, marginBottom:10, lineHeight:1.2 }}>
+                {recital.title}
+              </h1>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
+                <span style={{ fontSize:12, background:"#6a7fdb22", color:"#6a7fdb", borderRadius:20, padding:"4px 12px", fontWeight:700 }}>
+                  Performance
+                </span>
+                <span style={{ fontSize:12, background:color+"22", color, borderRadius:20, padding:"4px 12px", fontWeight:700 }}>
+                  {STATUS_ICONS[recital.status]} {recital.status}
+                </span>
+              </div>
             </div>
+            <button onClick={openInlineEdit} style={{
+              display:"inline-flex", alignItems:"center", gap:6,
+              padding:"9px 18px", borderRadius:10, border:"1.5px solid var(--border)",
+              background:"var(--card)", cursor:"pointer", fontSize:13, fontWeight:600,
+              color:"var(--text)", transition:"all .15s", flexShrink:0,
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = "var(--surface)"}
+              onMouseLeave={e => e.currentTarget.style.background = "var(--card)"}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              Edit Event
+            </button>
           </div>
-          <button onClick={openInlineEdit} style={{
-            display:"inline-flex", alignItems:"center", gap:6,
-            padding:"9px 18px", borderRadius:10, border:"1.5px solid var(--border)",
-            background:"var(--card)", cursor:"pointer", fontSize:13, fontWeight:600,
-            color:"var(--text)", transition:"all .15s", flexShrink:0,
-          }}
-            onMouseEnter={e => e.currentTarget.style.background = "var(--surface)"}
-            onMouseLeave={e => e.currentTarget.style.background = "var(--card)"}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-            Edit Event
-          </button>
+
+          {/* Metadata strip */}
+          <div style={{
+            display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:0,
+            background:"var(--border)", borderRadius:14, overflow:"hidden",
+            border:"1px solid var(--border)",
+          }}>
+            {META.map((m, i) => (
+              <div key={m.label} style={{
+                background:"var(--card)", padding:"16px 22px",
+                borderRight: i < META.length-1 ? "1px solid var(--border)" : "none",
+              }}>
+                <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7, color:"var(--muted)" }}>
+                  {m.icon}
+                  <span style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".07em" }}>{m.label}</span>
+                </div>
+                <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Metadata strip */}
-        <div style={{
-          display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:0,
-          background:"var(--border)", borderRadius:14, overflow:"hidden",
-          border:"1px solid var(--border)", marginTop:22,
-        }}>
-          {META.map((m, i) => (
-            <div key={m.label} style={{
-              background:"var(--card)", padding:"16px 22px",
-              borderRight: i < META.length-1 ? "1px solid var(--border)" : "none",
-            }}>
-              <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7, color:"var(--muted)" }}>
-                {m.icon}
-                <span style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".07em" }}>{m.label}</span>
-              </div>
-              <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
-            </div>
-          ))}
+        {/* Right: Event Poster */}
+        <div style={{ flexShrink:0, width:176 }}>
+          <div
+            onMouseEnter={() => setPosterHover(true)}
+            onMouseLeave={() => setPosterHover(false)}
+            style={{ position:"relative", width:176, height:248, borderRadius:14, overflow:"hidden",
+              border: poster ? "none" : "2px dashed var(--border)",
+              background: poster ? "transparent" : "var(--surface)",
+              boxShadow: poster ? "0 8px 32px rgba(0,0,0,.18)" : "none",
+              transition:"box-shadow .2s",
+            }}
+          >
+            {poster ? (
+              <>
+                <img src={poster} alt="Event poster" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                {/* Hover overlay */}
+                {posterHover && (
+                  <div style={{
+                    position:"absolute", inset:0, background:"rgba(0,0,0,.55)",
+                    display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10,
+                  }}>
+                    <label style={{
+                      padding:"8px 16px", borderRadius:8, background:"rgba(255,255,255,.92)",
+                      fontSize:12, fontWeight:700, cursor:"pointer", color:"#333",
+                      display:"flex", alignItems:"center", gap:6,
+                    }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      Change
+                      <input type="file" accept="image/*" style={{ display:"none" }} onChange={handlePosterUpload} />
+                    </label>
+                    <button onClick={removePoster} style={{
+                      padding:"8px 16px", borderRadius:8, background:"rgba(224,92,106,.9)",
+                      fontSize:12, fontWeight:700, cursor:"pointer", color:"#fff", border:"none",
+                      display:"flex", alignItems:"center", gap:6,
+                    }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Empty state — upload prompt */
+              <label style={{
+                width:"100%", height:"100%", display:"flex", flexDirection:"column",
+                alignItems:"center", justifyContent:"center", gap:10,
+                cursor:"pointer", padding:16, boxSizing:"border-box",
+              }}>
+                <div style={{
+                  width:48, height:48, borderRadius:12, background:"var(--border)",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                </div>
+                <div style={{ textAlign:"center" }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:"var(--text)", marginBottom:3 }}>Upload Poster</div>
+                  <div style={{ fontSize:11, color:"var(--muted)", lineHeight:1.4 }}>JPG, PNG or WEBP<br/>Max 5 MB</div>
+                </div>
+                <input type="file" accept="image/*" style={{ display:"none" }} onChange={handlePosterUpload} />
+              </label>
+            )}
+          </div>
+          {/* Label below */}
+          <div style={{ textAlign:"center", marginTop:8, fontSize:11, fontWeight:600, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".06em" }}>
+            Event Poster
+          </div>
         </div>
+
       </div>
 
       {/* ── Tab bar ───────────────────────────────────────────────────── */}
