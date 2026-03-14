@@ -74,27 +74,47 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
   const [editingUrl,  setEditingUrl]  = useState(false);
   // Vendors state
   const [vendors,     setVendors]     = useState([]);
-  const [vendorModal, setVendorModal] = useState(null); // null=closed, {}=new, {id,...}=edit
+  const [vendorModal, setVendorModal] = useState(null);
   const EMPTY_VENDOR = { name:"", service:"", contact:"", phone:"", status:"Pending" };
   const [vendorForm,  setVendorForm]  = useState(EMPTY_VENDOR);
+
+  // Program schedule state
+  const EMPTY_PROG = { time:"", duration:"", title:"", performers:"", music_url:"", music_name:"", music_data:"", mc_notes:"", lighting_notes:"" };
+  const [programItems,   setProgramItems]   = useState([]);
+  const [progModal,      setProgModal]      = useState(null); // null=closed, {}=new, {id,...}=edit
+  const [progForm,       setProgForm]       = useState(EMPTY_PROG);
+  const [expandedNotes,  setExpandedNotes]  = useState(new Set()); // MC notes expanded row ids
+  const [expandedLight,  setExpandedLight]  = useState(new Set()); // Lighting notes expanded
+
   const qc = useQueryClient();
 
   // Persist Sign Up Genius URL in localStorage per recital
-  const SUG_KEY     = `sug_url_${id}`;
-  const VENDORS_KEY = `vendors_${id}`;
+  const SUG_KEY      = `sug_url_${id}`;
+  const VENDORS_KEY  = `vendors_${id}`;
+  const PROGRAM_KEY  = `program_${id}`;
 
   useEffect(() => {
     const saved = localStorage.getItem(SUG_KEY);
     if (saved) { setSugUrl(saved); setSugInput(saved); }
+
     const savedVendors = localStorage.getItem(VENDORS_KEY);
     if (savedVendors) {
       try { setVendors(JSON.parse(savedVendors)); } catch {}
     } else {
-      // Seed demo vendors on first open
       setVendors(DEMO_VENDORS);
       localStorage.setItem(VENDORS_KEY, JSON.stringify(DEMO_VENDORS));
     }
-  }, [SUG_KEY, VENDORS_KEY]);
+
+    const savedProg = localStorage.getItem(PROGRAM_KEY);
+    if (savedProg) {
+      try { setProgramItems(JSON.parse(savedProg)); } catch {}
+    } else {
+      // Seed demo program with blank extra fields
+      const seeded = DEMO_PROGRAM.map(p => ({ ...p, performers:p.group||"", music_url:"", music_name:"", music_data:"", mc_notes:"", lighting_notes:"" }));
+      setProgramItems(seeded);
+      localStorage.setItem(PROGRAM_KEY, JSON.stringify(seeded));
+    }
+  }, [SUG_KEY, VENDORS_KEY, PROGRAM_KEY]);
 
   const persistVendors = (list) => {
     setVendors(list);
@@ -123,6 +143,57 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
     persistVendors(vendors.filter(v => v.id !== vid));
     toast.success("Vendor removed");
   };
+
+  // ── Program schedule helpers ─────────────────────────────────────────────
+  const persistProgram = (list) => {
+    // Strip music_data before storing if too large (>4 MB)
+    const safe = list.map(p => {
+      if (p.music_data && p.music_data.length > 4_000_000) {
+        toast("Music file too large to persist — it will be available until you leave the page.", { icon:"⚠️" });
+        return { ...p, music_data:"" };
+      }
+      return p;
+    });
+    setProgramItems(list);
+    try { localStorage.setItem(PROGRAM_KEY, JSON.stringify(safe)); } catch { /* quota exceeded */ }
+  };
+
+  const openAddProg  = () => { setProgForm(EMPTY_PROG); setProgModal({}); };
+  const openEditProg = (p) => {
+    setProgForm({ time:p.time||"", duration:p.duration||"", title:p.title||"", performers:p.performers||p.group||"",
+      music_url:p.music_url||"", music_name:p.music_name||"", music_data:p.music_data||"",
+      mc_notes:p.mc_notes||"", lighting_notes:p.lighting_notes||"" });
+    setProgModal(p);
+  };
+
+  const handleMusicUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { toast.error("File exceeds 10 MB. Use an external URL instead."); return; }
+    const reader = new FileReader();
+    reader.onload = () => setProgForm(p => ({ ...p, music_data:reader.result, music_name:file.name, music_url:"" }));
+    reader.readAsDataURL(file);
+  };
+
+  const saveProg = () => {
+    if (!progForm.title.trim()) { toast.error("Title is required"); return; }
+    if (progModal?.id) {
+      persistProgram(programItems.map(p => p.id === progModal.id ? { ...p, ...progForm } : p));
+      toast.success("Number updated");
+    } else {
+      persistProgram([...programItems, { ...progForm, id:Date.now() }]);
+      toast.success("Number added");
+    }
+    setProgModal(null);
+  };
+
+  const deleteProg = (pid) => {
+    persistProgram(programItems.filter(p => p.id !== pid));
+    toast.success("Number removed");
+  };
+
+  const toggleNote  = (id) => setExpandedNotes(prev => { const s=new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+  const toggleLight = (id) => setExpandedLight(prev => { const s=new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
 
   const saveSugUrl = () => {
     const trimmed = sugInput.trim();
@@ -340,28 +411,212 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
           <div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
               <SectionHead title="Program Schedule" sub="Performance timeline and running order" />
-              <Button icon="➕" size="sm">Add Number</Button>
+              <Button icon="➕" size="sm" onClick={openAddProg}>Add Number</Button>
             </div>
-            <div style={{ borderRadius:12, overflow:"hidden", border:"1px solid var(--border)" }}>
-              {DEMO_PROGRAM.map((p, i) => (
-                <div key={p.id} style={{
-                  display:"flex", alignItems:"stretch",
-                  background: i % 2 === 0 ? "var(--card)" : "var(--surface)",
-                  borderBottom: i < DEMO_PROGRAM.length - 1 ? "1px solid var(--border)" : "none",
-                }}>
-                  <div style={{ width:110, padding:"16px 18px", flexShrink:0, borderRight:"1px solid var(--border)" }}>
-                    <div style={{ fontSize:13, fontWeight:800, color:"#6a7fdb" }}>{p.time}</div>
-                    <div style={{ fontSize:11, color:"var(--muted)", marginTop:3 }}>{p.duration}</div>
+
+            {/* Scrollable table */}
+            <div style={{ overflowX:"auto", borderRadius:12, border:"1px solid var(--border)" }}>
+              <table style={{ width:"100%", borderCollapse:"collapse", minWidth:960, tableLayout:"fixed", fontSize:13 }}>
+                <colgroup>
+                  <col style={{width:85}}/>
+                  <col style={{width:68}}/>
+                  <col style={{width:180}}/>
+                  <col style={{width:140}}/>
+                  <col style={{width:155}}/>
+                  <col style={{width:185}}/>
+                  <col style={{width:165}}/>
+                  <col style={{width:98}}/>
+                </colgroup>
+                <thead>
+                  <tr style={{ background:"var(--surface)", borderBottom:"1.5px solid var(--border)" }}>
+                    {["Time","Duration","Title","Performers","Music","MC Notes","Lighting Notes",""].map((h,i) => (
+                      <th key={i} style={{
+                        padding:"10px 14px", textAlign:"left", fontSize:11, fontWeight:700,
+                        color:"var(--muted)", textTransform:"uppercase", letterSpacing:.5,
+                        borderRight: i < 7 ? "1px solid var(--border)" : "none",
+                      }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {programItems.length === 0 && (
+                    <tr><td colSpan={8} style={{ padding:"32px 20px", textAlign:"center", color:"var(--muted)", fontSize:13 }}>
+                      No numbers yet — click <strong>Add Number</strong> to get started.
+                    </td></tr>
+                  )}
+                  {programItems.map((p, i) => {
+                    const hasMusic   = p.music_data || p.music_url;
+                    const mcExpanded = expandedNotes.has(p.id);
+                    const ltExpanded = expandedLight.has(p.id);
+                    return (
+                      <tr key={p.id} style={{
+                        background: i % 2 === 0 ? "var(--card)" : "var(--surface)",
+                        borderBottom: i < programItems.length - 1 ? "1px solid var(--border)" : "none",
+                        verticalAlign:"top",
+                      }}>
+                        {/* Time */}
+                        <td style={{ padding:"14px 14px", borderRight:"1px solid var(--border)" }}>
+                          <div style={{ fontWeight:800, color:"#6a7fdb", fontSize:13 }}>{p.time||"—"}</div>
+                        </td>
+                        {/* Duration */}
+                        <td style={{ padding:"14px 14px", borderRight:"1px solid var(--border)", color:"var(--muted)" }}>
+                          {p.duration||"—"}
+                        </td>
+                        {/* Title */}
+                        <td style={{ padding:"14px 14px", borderRight:"1px solid var(--border)" }}>
+                          <div style={{ fontWeight:700 }}>{p.title}</div>
+                        </td>
+                        {/* Performers */}
+                        <td style={{ padding:"14px 14px", borderRight:"1px solid var(--border)", color:"var(--muted)" }}>
+                          {p.performers || p.group || "—"}
+                        </td>
+                        {/* Music */}
+                        <td style={{ padding:"12px 14px", borderRight:"1px solid var(--border)" }}>
+                          {hasMusic ? (
+                            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                              <div style={{ fontSize:11, fontWeight:700, color:"#333", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:130 }}>
+                                🎵 {p.music_name || "Track"}
+                              </div>
+                              {p.music_data && (
+                                <audio controls src={p.music_data} style={{ width:"100%", maxWidth:130, height:28 }} />
+                              )}
+                              {p.music_url && !p.music_data && (
+                                <a href={p.music_url} target="_blank" rel="noopener noreferrer"
+                                  style={{ fontSize:11, color:"#6a7fdb", textDecoration:"none", fontWeight:600 }}>
+                                  ▶ Open / Play
+                                </a>
+                              )}
+                              {p.music_data && (
+                                <a href={p.music_data} download={p.music_name||"music"}
+                                  style={{ fontSize:11, color:"var(--muted)", textDecoration:"none" }}>
+                                  ⬇ Download
+                                </a>
+                              )}
+                            </div>
+                          ) : (
+                            <span style={{ fontSize:11, color:"var(--border)" }}>—</span>
+                          )}
+                        </td>
+                        {/* MC Notes */}
+                        <td style={{ padding:"14px 14px", borderRight:"1px solid var(--border)" }}>
+                          {p.mc_notes ? (
+                            <div>
+                              <div style={{
+                                fontSize:12, color:"var(--text)", lineHeight:1.5,
+                                overflow: mcExpanded ? "visible" : "hidden",
+                                display: mcExpanded ? "block" : "-webkit-box",
+                                WebkitLineClamp: mcExpanded ? "unset" : 2,
+                                WebkitBoxOrient:"vertical",
+                              }}>{p.mc_notes}</div>
+                              {p.mc_notes.length > 80 && (
+                                <button onClick={() => toggleNote(p.id)} style={{
+                                  fontSize:11, color:"#6a7fdb", background:"none", border:"none",
+                                  cursor:"pointer", padding:"2px 0", fontWeight:600,
+                                }}>{mcExpanded ? "Show less ▲" : "View more ▼"}</button>
+                              )}
+                            </div>
+                          ) : <span style={{ fontSize:11, color:"var(--border)" }}>—</span>}
+                        </td>
+                        {/* Lighting Notes */}
+                        <td style={{ padding:"14px 14px", borderRight:"1px solid var(--border)" }}>
+                          {p.lighting_notes ? (
+                            <div>
+                              <div style={{
+                                fontSize:12, color:"var(--text)", lineHeight:1.5,
+                                overflow: ltExpanded ? "visible" : "hidden",
+                                display: ltExpanded ? "block" : "-webkit-box",
+                                WebkitLineClamp: ltExpanded ? "unset" : 2,
+                                WebkitBoxOrient:"vertical",
+                              }}>{p.lighting_notes}</div>
+                              {p.lighting_notes.length > 80 && (
+                                <button onClick={() => toggleLight(p.id)} style={{
+                                  fontSize:11, color:"#6a7fdb", background:"none", border:"none",
+                                  cursor:"pointer", padding:"2px 0", fontWeight:600,
+                                }}>{ltExpanded ? "Show less ▲" : "View more ▼"}</button>
+                              )}
+                            </div>
+                          ) : <span style={{ fontSize:11, color:"var(--border)" }}>—</span>}
+                        </td>
+                        {/* Actions */}
+                        <td style={{ padding:"12px 10px" }}>
+                          <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+                            <button onClick={() => openEditProg(p)} style={{
+                              fontSize:11, padding:"4px 10px", borderRadius:6,
+                              border:"1px solid var(--border)", background:"none",
+                              cursor:"pointer", color:"var(--muted)", fontWeight:600,
+                            }}>Edit</button>
+                            <button onClick={() => { if(window.confirm("Remove this number?")) deleteProg(p.id); }} style={{
+                              fontSize:11, padding:"4px 10px", borderRadius:6,
+                              border:"1px solid #fecaca", background:"none",
+                              cursor:"pointer", color:"#e05c6a", fontWeight:600,
+                            }}>Remove</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Add / Edit program number modal */}
+            {progModal !== null && (
+              <Modal title={progModal?.id ? "Edit Number" : "Add Number"} onClose={() => setProgModal(null)}>
+                <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                    <Field label="Time"><Input value={progForm.time} onChange={e => setProgForm(p=>({...p,time:e.target.value}))} placeholder="e.g. 6:30 PM" /></Field>
+                    <Field label="Duration"><Input value={progForm.duration} onChange={e => setProgForm(p=>({...p,duration:e.target.value}))} placeholder="e.g. 8 min" /></Field>
                   </div>
-                  <div style={{ flex:1, padding:"16px 20px", display:"flex", alignItems:"center" }}>
-                    <div>
-                      <div style={{ fontSize:14, fontWeight:700, marginBottom:2 }}>{p.title}</div>
-                      <div style={{ fontSize:12, color:"var(--muted)" }}>{p.group}</div>
+                  <Field label="Title *"><Input value={progForm.title} onChange={e => setProgForm(p=>({...p,title:e.target.value}))} placeholder="e.g. Ballet Fundamentals – Swan Lake" required /></Field>
+                  <Field label="Performers"><Input value={progForm.performers} onChange={e => setProgForm(p=>({...p,performers:e.target.value}))} placeholder="e.g. Beginner Ballet Class" /></Field>
+
+                  {/* Music section */}
+                  <Field label="Music">
+                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                      {progForm.music_data ? (
+                        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderRadius:8, background:"var(--surface)", border:"1px solid var(--border)" }}>
+                          <span style={{ fontSize:12, flex:1, fontWeight:600, color:"#333" }}>🎵 {progForm.music_name}</span>
+                          <button onClick={() => setProgForm(p=>({...p,music_data:"",music_name:""}))} style={{
+                            fontSize:11, color:"#e05c6a", background:"none", border:"1px solid #fecaca",
+                            borderRadius:6, padding:"3px 8px", cursor:"pointer",
+                          }}>Remove</button>
+                        </div>
+                      ) : (
+                        <label style={{
+                          display:"flex", alignItems:"center", gap:8, padding:"10px 14px",
+                          borderRadius:8, border:"1.5px dashed var(--border)", cursor:"pointer",
+                          fontSize:12, color:"var(--muted)", background:"var(--surface)",
+                        }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                          Upload audio file (MP3, WAV — max 10 MB)
+                          <input type="file" accept="audio/*" style={{ display:"none" }} onChange={handleMusicUpload} />
+                        </label>
+                      )}
+                      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                        <div style={{ flex:1, height:1, background:"var(--border)" }}/>
+                        <span style={{ fontSize:11, color:"var(--muted)" }}>or paste a URL</span>
+                        <div style={{ flex:1, height:1, background:"var(--border)" }}/>
+                      </div>
+                      <Input value={progForm.music_url} onChange={e => setProgForm(p=>({...p,music_url:e.target.value,music_data:"",music_name:""}))}
+                        placeholder="https://drive.google.com/... or SoundCloud link" disabled={!!progForm.music_data} />
                     </div>
-                  </div>
+                  </Field>
+
+                  <Field label="MC Notes">
+                    <Textarea rows={3} value={progForm.mc_notes} onChange={e => setProgForm(p=>({...p,mc_notes:e.target.value}))}
+                      placeholder="Script lines, introduction text, or cues for the MC…" />
+                  </Field>
+                  <Field label="Lighting Notes / Cues">
+                    <Textarea rows={3} value={progForm.lighting_notes} onChange={e => setProgForm(p=>({...p,lighting_notes:e.target.value}))}
+                      placeholder="e.g. Spotlight center stage, fade to blue at 0:45, follow spot on lead…" />
+                  </Field>
                 </div>
-              ))}
-            </div>
+                <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
+                  <Button variant="outline" onClick={() => setProgModal(null)}>Cancel</Button>
+                  <Button onClick={saveProg}>{progModal?.id ? "Save Changes" : "Add Number"}</Button>
+                </div>
+              </Modal>
+            )}
           </div>
         )}
 
