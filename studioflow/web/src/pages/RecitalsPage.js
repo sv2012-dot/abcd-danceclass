@@ -15,27 +15,6 @@ const STATUS_ICONS   = { Planning:"📋", Confirmed:"✅", Rehearsals:"🎵", Co
 const EMPTY = { title:"", event_date:"", venue:"", status:"Planning", description:"" };
 
 // ── Demo data for tabs that don't yet have a backend ─────────────────────────
-const DEMO_PROGRAM = [
-  { id:1, time:"6:30 PM", duration:"5 min",  title:"Opening Number",                   group:"All Students" },
-  { id:2, time:"6:35 PM", duration:"8 min",  title:"Beginner Ballet – 'Swan Lake'",    group:"Beginner Ballet Class" },
-  { id:3, time:"6:43 PM", duration:"6 min",  title:"Jazz Basics – 'Uptown Funk'",      group:"Jazz Beginner Class" },
-  { id:4, time:"6:49 PM", duration:"7 min",  title:"Hip Hop Groove – 'Street Beat'",   group:"Hip Hop Class" },
-  { id:5, time:"6:56 PM", duration:"15 min", title:"Intermission",                     group:"—" },
-  { id:6, time:"7:11 PM", duration:"9 min",  title:"Contemporary Flow – 'River'",      group:"Advanced Contemporary" },
-  { id:7, time:"7:20 PM", duration:"6 min",  title:"Finale – Curtain Call",            group:"All Students" },
-];
-const DEMO_VOLUNTEERS = [
-  { id:1, name:"Jennifer Smith", role:"Stage Manager",       email:"jennifer.s@email.com", phone:"(555) 234-5678", status:"Confirmed" },
-  { id:2, name:"Michael Brown",  role:"Ticket Coordinator",  email:"michael.b@email.com",  phone:"(555) 345-6789", status:"Confirmed" },
-  { id:3, name:"Sarah Johnson",  role:"Costume Assistant",   email:"sarah.j@email.com",    phone:"(555) 456-7890", status:"Pending" },
-  { id:4, name:"David Lee",      role:"Usher Lead",          email:"david.l@email.com",    phone:"(555) 567-8901", status:"Confirmed" },
-];
-const DEMO_VENDORS = [
-  { id:1, name:"Spotlight Productions",  service:"Lighting & Sound",  contact:"John Davis",    phone:"(555) 111-2222", status:"Confirmed" },
-  { id:2, name:"Dance Elegance Costumes",service:"Costume Rentals",   contact:"Maria Garcia",  phone:"(555) 222-3333", status:"Confirmed" },
-  { id:3, name:"Studio Photography",     service:"Event Photography", contact:"Alex Kim",      phone:"(555) 333-4444", status:"Pending" },
-  { id:4, name:"Main Theater Venue",     service:"Venue Rental",      contact:"Robert Wilson", phone:"(555) 444-5555", status:"Confirmed" },
-];
 
 function initials(name="") { return name.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase()||"?"; }
 function avatarHue(name="") { return (name.charCodeAt(0)||0)*37 % 360; }
@@ -74,10 +53,16 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const [sugInput,    setSugInput]    = useState("");
   const [editingUrl,  setEditingUrl]  = useState(false);
   // Vendors state
-  const [vendors,     setVendors]     = useState([]);
-  const [vendorModal, setVendorModal] = useState(null);
+  const [vendors,        setVendors]        = useState([]);
+  const [vendorModal,    setVendorModal]    = useState(null);
   const EMPTY_VENDOR = { name:"", service:"", contact:"", phone:"", status:"Pending" };
-  const [vendorForm,  setVendorForm]  = useState(EMPTY_VENDOR);
+  const [vendorForm,     setVendorForm]     = useState(EMPTY_VENDOR);
+
+  // Volunteers state
+  const [volunteers,     setVolunteers]     = useState([]);
+  const [volunteerModal, setVolunteerModal] = useState(null);
+  const EMPTY_VOL = { name:"", role:"", email:"", phone:"", status:"Pending" };
+  const [volunteerForm,  setVolunteerForm]  = useState(EMPTY_VOL);
 
   // Program schedule state
   const EMPTY_PROG = { time:"", duration:"", title:"", performers:"", music_url:"", music_name:"", music_data:"", mc_notes:"", lighting_notes:"" };
@@ -106,33 +91,26 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const qc = useQueryClient();
 
   // Persist Sign Up Genius URL in localStorage per recital
-  const SUG_KEY      = `sug_url_${id}`;
-  const VENDORS_KEY  = `vendors_${id}`;
-  const PROGRAM_KEY  = `program_${id}`;
-  const INFO_KEY     = `info_items_${id}`;
-  const POSTER_KEY   = `poster_${id}`;
-  const INSTA_KEY    = `insta_${id}`;
+  const SUG_KEY        = `sug_url_${id}`;
+  const VENDORS_KEY    = `vendors_${id}`;
+  const VOLUNTEERS_KEY = `volunteers_${id}`;
+  const PROGRAM_KEY    = `program_${id}`;
+  const INFO_KEY       = `info_items_${id}`;
+  const POSTER_KEY     = `poster_${id}`;
+  const INSTA_KEY      = `insta_${id}`;
 
   useEffect(() => {
     const saved = localStorage.getItem(SUG_KEY);
     if (saved) { setSugUrl(saved); setSugInput(saved); }
 
     const savedVendors = localStorage.getItem(VENDORS_KEY);
-    if (savedVendors) {
-      try { setVendors(JSON.parse(savedVendors)); } catch {}
-    } else {
-      setVendors(DEMO_VENDORS);
-      localStorage.setItem(VENDORS_KEY, JSON.stringify(DEMO_VENDORS));
-    }
+    if (savedVendors) { try { setVendors(JSON.parse(savedVendors)); } catch {} }
+
+    const savedVols = localStorage.getItem(VOLUNTEERS_KEY);
+    if (savedVols) { try { setVolunteers(JSON.parse(savedVols)); } catch {} }
 
     const savedProg = localStorage.getItem(PROGRAM_KEY);
-    if (savedProg) {
-      try { setProgramItems(JSON.parse(savedProg)); } catch {}
-    } else {
-      const seeded = DEMO_PROGRAM.map(p => ({ ...p, performers:p.group||"", music_url:"", music_name:"", music_data:"", mc_notes:"", lighting_notes:"" }));
-      setProgramItems(seeded);
-      localStorage.setItem(PROGRAM_KEY, JSON.stringify(seeded));
-    }
+    if (savedProg) { try { setProgramItems(JSON.parse(savedProg)); } catch {} }
 
     const savedInfo = localStorage.getItem(INFO_KEY);
     if (savedInfo) {
@@ -182,6 +160,29 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const deleteVendor = (vid) => {
     persistVendors(vendors.filter(v => v.id !== vid));
     toast.success("Vendor removed");
+  };
+
+  // ── Volunteers CRUD ──────────────────────────────────────────────────────
+  const persistVolunteers = (list) => {
+    setVolunteers(list);
+    localStorage.setItem(VOLUNTEERS_KEY, JSON.stringify(list));
+  };
+  const openAddVolunteer  = () => { setVolunteerForm(EMPTY_VOL); setVolunteerModal({}); };
+  const openEditVolunteer = (v) => { setVolunteerForm({ name:v.name, role:v.role, email:v.email, phone:v.phone, status:v.status }); setVolunteerModal(v); };
+  const saveVolunteer = () => {
+    if (!volunteerForm.name.trim()) { toast.error("Name is required"); return; }
+    if (volunteerModal?.id) {
+      persistVolunteers(volunteers.map(v => v.id === volunteerModal.id ? { ...v, ...volunteerForm } : v));
+      toast.success("Volunteer updated");
+    } else {
+      persistVolunteers([...volunteers, { ...volunteerForm, id: Date.now() }]);
+      toast.success("Volunteer added");
+    }
+    setVolunteerModal(null);
+  };
+  const deleteVolunteer = (vid) => {
+    persistVolunteers(volunteers.filter(v => v.id !== vid));
+    toast.success("Volunteer removed");
   };
 
   // ── Inline Edit Event helpers ────────────────────────────────────────────
@@ -999,6 +1000,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
           <div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
               <SectionHead title="Parent Volunteers" sub="Volunteer coordinators and helpers for the event" />
+              <Button icon="➕" size="sm" onClick={openAddVolunteer}>Add Volunteer</Button>
             </div>
 
             {/* ── Sign Up Genius integration banner ── */}
@@ -1093,37 +1095,105 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
             </div>
 
             {/* Volunteer list */}
-            <div style={{ borderRadius:12, overflow:"hidden", border:"1px solid var(--border)" }}>
-              {DEMO_VOLUNTEERS.map((v, i) => (
-                <div key={v.id} style={{
-                  display:"flex", alignItems:"center", padding:"16px 20px", gap:14,
-                  background: i % 2 === 0 ? "var(--card)" : "var(--surface)",
-                  borderBottom: i < DEMO_VOLUNTEERS.length - 1 ? "1px solid var(--border)" : "none",
-                }}>
-                  <div style={{
-                    width:42, height:42, borderRadius:"50%", flexShrink:0,
-                    background:`linear-gradient(135deg, hsl(${avatarHue(v.name)},55%,50%), hsl(${(avatarHue(v.name)+30)%360},55%,42%))`,
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    fontSize:14, fontWeight:800, color:"#fff", letterSpacing:".04em",
-                  }}>{initials(v.name)}</div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:14, marginBottom:2 }}>{v.name}</div>
-                    <div style={{ fontSize:12, color:"var(--muted)", marginBottom:1 }}>{v.role}</div>
-                    <div style={{ fontSize:11, color:"var(--muted)", display:"flex", gap:10 }}>
-                      <span>{v.email}</span>
-                      <span>{v.phone}</span>
+            {volunteers.length === 0 ? (
+              <div style={{ textAlign:"center", padding:"40px 20px", background:"var(--surface)", borderRadius:12, border:"1.5px dashed var(--border)" }}>
+                <div style={{ fontSize:28, marginBottom:10 }}>🙋</div>
+                <p style={{ fontWeight:700, marginBottom:4, fontSize:14 }}>No volunteers yet</p>
+                <p style={{ color:"var(--muted)", fontSize:12, marginBottom:16 }}>Add parent volunteers who will help coordinate and assist at the event.</p>
+                <Button icon="➕" size="sm" onClick={openAddVolunteer}>Add First Volunteer</Button>
+              </div>
+            ) : (
+              <div style={{ borderRadius:12, overflow:"hidden", border:"1px solid var(--border)" }}>
+                {volunteers.map((v, i) => (
+                  <div key={v.id} style={{
+                    display:"flex", alignItems:"center", padding:"16px 20px", gap:14,
+                    background: i % 2 === 0 ? "var(--card)" : "var(--surface)",
+                    borderBottom: i < volunteers.length - 1 ? "1px solid var(--border)" : "none",
+                  }}>
+                    <div style={{
+                      width:42, height:42, borderRadius:"50%", flexShrink:0,
+                      background:`linear-gradient(135deg, hsl(${avatarHue(v.name)},55%,50%), hsl(${(avatarHue(v.name)+30)%360},55%,42%))`,
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      fontSize:14, fontWeight:800, color:"#fff", letterSpacing:".04em",
+                    }}>{initials(v.name)}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:700, fontSize:14, marginBottom:2 }}>{v.name}</div>
+                      <div style={{ fontSize:12, color:"var(--muted)", marginBottom:1 }}>{v.role}</div>
+                      <div style={{ fontSize:11, color:"var(--muted)", display:"flex", gap:10 }}>
+                        <span>{v.email}</span>
+                        <span>{v.phone}</span>
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize:11, padding:"5px 13px", borderRadius:20, fontWeight:700, flexShrink:0,
+                      background: v.status === "Confirmed" ? "#52c4a020" : "#f4a04120",
+                      color:      v.status === "Confirmed" ? "#52c4a0"   : "#f4a041",
+                    }}>
+                      {v.status === "Confirmed" ? "✓ " : "⏱ "}{v.status}
+                    </span>
+                    {/* Row actions */}
+                    <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+                      <button onClick={() => openEditVolunteer(v)} style={{
+                        padding:"5px 10px", fontSize:11, border:"1px solid var(--border)",
+                        borderRadius:7, background:"none", cursor:"pointer", color:"var(--muted)", fontWeight:600,
+                      }}>Edit</button>
+                      <button onClick={() => { if (window.confirm(`Remove ${v.name}?`)) deleteVolunteer(v.id); }} style={{
+                        padding:"5px 10px", fontSize:11, border:"1px solid #fecaca",
+                        borderRadius:7, background:"none", cursor:"pointer", color:"#e05c6a", fontWeight:600,
+                      }}>Remove</button>
                     </div>
                   </div>
-                  <span style={{
-                    fontSize:11, padding:"5px 13px", borderRadius:20, fontWeight:700, flexShrink:0,
-                    background: v.status === "Confirmed" ? "#52c4a020" : "#f4a04120",
-                    color:      v.status === "Confirmed" ? "#52c4a0"   : "#f4a041",
-                  }}>
-                    {v.status === "Confirmed" ? "✓ " : "⏱ "}{v.status}
-                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Add / Edit volunteer modal */}
+            {volunteerModal !== null && (
+              <Modal title={volunteerModal?.id ? "Edit Volunteer" : "Add Volunteer"} onClose={() => setVolunteerModal(null)}>
+                <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                  {[
+                    { label:"Name", field:"name", placeholder:"Parent name" },
+                    { label:"Role / Task", field:"role", placeholder:"e.g. Ticket table, Backstage helper" },
+                    { label:"Email", field:"email", placeholder:"email@example.com" },
+                    { label:"Phone", field:"phone", placeholder:"(555) 000-0000" },
+                  ].map(({ label, field, placeholder }) => (
+                    <div key={field}>
+                      <label style={{ fontSize:12, fontWeight:700, display:"block", marginBottom:5, color:"var(--muted)" }}>{label}</label>
+                      <input
+                        value={volunteerForm[field] || ""}
+                        onChange={e => setVolunteerForm(f => ({ ...f, [field]: e.target.value }))}
+                        placeholder={placeholder}
+                        style={{
+                          width:"100%", boxSizing:"border-box", padding:"9px 13px",
+                          border:"1.5px solid var(--border)", borderRadius:9,
+                          fontSize:13, background:"var(--surface)", color:"var(--text)",
+                          outline:"none", fontFamily:"inherit",
+                        }}
+                      />
+                    </div>
+                  ))}
+                  <div>
+                    <label style={{ fontSize:12, fontWeight:700, display:"block", marginBottom:5, color:"var(--muted)" }}>Status</label>
+                    <select
+                      value={volunteerForm.status || "Pending"}
+                      onChange={e => setVolunteerForm(f => ({ ...f, status: e.target.value }))}
+                      style={{
+                        width:"100%", padding:"9px 13px", border:"1.5px solid var(--border)",
+                        borderRadius:9, fontSize:13, background:"var(--surface)",
+                        color:"var(--text)", outline:"none", fontFamily:"inherit",
+                      }}
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="Confirmed">Confirmed</option>
+                    </select>
+                  </div>
+                  <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:4 }}>
+                    <Button variant="outline" onClick={() => setVolunteerModal(null)}>Cancel</Button>
+                    <Button onClick={saveVolunteer}>{volunteerModal?.id ? "Save Changes" : "Add Volunteer"}</Button>
+                  </div>
                 </div>
-              ))}
-            </div>
+              </Modal>
+            )}
           </div>
         )}
 
