@@ -334,15 +334,15 @@ export default function SchedulePage() {
 
   // Convert recitals → calendar event objects (recitals table is single source of truth)
   const recitalEvents = useMemo(() => recitalsList.map(r => ({
-    id:          `recital_${r.id}`,
-    title:       r.title,
-    type:        "Recital",
-    start_time:  r.event_date,
-    end_time:    r.event_date,
-    location:    r.venue || "",
-    notes:       r.description || "",
-    _isRecital:  true,
-    _recitalId:  r.id,
+    id:             `recital_${r.id}`,
+    title:          r.title,
+    type:           "Recital",
+    start_datetime: r.event_date,
+    end_datetime:   r.event_date,
+    location:       r.venue || "",
+    notes:          r.description || "",
+    _isRecital:     true,
+    _recitalId:     r.id,
   })), [recitalsList]);
 
   // Merge: non-Recital events from events table + recitals from recitals table
