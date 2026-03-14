@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { recitals as api } from "../api";
@@ -85,6 +85,8 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
   const [progForm,       setProgForm]       = useState(EMPTY_PROG);
   const [expandedNotes,  setExpandedNotes]  = useState(new Set()); // MC notes expanded row ids
   const [expandedLight,  setExpandedLight]  = useState(new Set()); // Lighting notes expanded
+  const dragItem     = useRef(null); // index being dragged
+  const dragOverItem = useRef(null); // index being hovered over
 
   const qc = useQueryClient();
 
@@ -194,6 +196,16 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
 
   const toggleNote  = (id) => setExpandedNotes(prev => { const s=new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
   const toggleLight = (id) => setExpandedLight(prev => { const s=new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+
+  const handleDragSort = () => {
+    if (dragItem.current === null || dragOverItem.current === null) return;
+    if (dragItem.current === dragOverItem.current) return;
+    const next = [...programItems];
+    const [moved] = next.splice(dragItem.current, 1);
+    next.splice(dragOverItem.current, 0, moved);
+    dragItem.current = null; dragOverItem.current = null;
+    persistProgram(next);
+  };
 
   const saveSugUrl = () => {
     const trimmed = sugInput.trim();
@@ -415,32 +427,43 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
             </div>
 
             {/* Scrollable table */}
-            <div style={{ overflowX:"auto", borderRadius:12, border:"1px solid var(--border)" }}>
-              <table style={{ width:"100%", borderCollapse:"collapse", minWidth:960, tableLayout:"fixed", fontSize:13 }}>
+            <div style={{ overflowX:"auto", borderRadius:12, border:"1px solid var(--border)", position:"relative" }}>
+              <table style={{ width:"100%", borderCollapse:"collapse", minWidth:1020, tableLayout:"fixed", fontSize:13 }}>
                 <colgroup>
-                  <col style={{width:85}}/>
-                  <col style={{width:68}}/>
-                  <col style={{width:180}}/>
-                  <col style={{width:140}}/>
-                  <col style={{width:155}}/>
-                  <col style={{width:185}}/>
-                  <col style={{width:165}}/>
-                  <col style={{width:98}}/>
+                  <col style={{width:36}}/>  {/* drag handle */}
+                  <col style={{width:42}}/>  {/* # */}
+                  <col style={{width:84}}/>  {/* time */}
+                  <col style={{width:66}}/>  {/* duration */}
+                  <col style={{width:172}}/> {/* title */}
+                  <col style={{width:135}}/> {/* performers */}
+                  <col style={{width:152}}/> {/* music */}
+                  <col style={{width:178}}/> {/* mc notes */}
+                  <col style={{width:162}}/> {/* lighting */}
+                  <col style={{width:68}}/>  {/* actions – sticky */}
                 </colgroup>
                 <thead>
                   <tr style={{ background:"var(--surface)", borderBottom:"1.5px solid var(--border)" }}>
-                    {["Time","Duration","Title","Performers","Music","MC Notes","Lighting Notes",""].map((h,i) => (
-                      <th key={i} style={{
-                        padding:"10px 14px", textAlign:"left", fontSize:11, fontWeight:700,
+                    {/* drag handle header */}
+                    <th style={{ padding:"10px 0 10px 10px", borderRight:"1px solid var(--border)" }}/>
+                    {["#","Time","Duration","Title","Performers","Music","MC Notes","Lighting Notes"].map((h,i) => (
+                      <th key={h} style={{
+                        padding:"10px 12px", textAlign:"left", fontSize:11, fontWeight:700,
                         color:"var(--muted)", textTransform:"uppercase", letterSpacing:.5,
-                        borderRight: i < 7 ? "1px solid var(--border)" : "none",
+                        borderRight:"1px solid var(--border)",
                       }}>{h}</th>
                     ))}
+                    {/* sticky actions header */}
+                    <th style={{
+                      padding:"10px 12px", fontSize:11, fontWeight:700, color:"var(--muted)",
+                      textTransform:"uppercase", letterSpacing:.5,
+                      position:"sticky", right:0, background:"var(--surface)",
+                      boxShadow:"-2px 0 6px rgba(0,0,0,.06)", zIndex:3,
+                    }}/>
                   </tr>
                 </thead>
                 <tbody>
                   {programItems.length === 0 && (
-                    <tr><td colSpan={8} style={{ padding:"32px 20px", textAlign:"center", color:"var(--muted)", fontSize:13 }}>
+                    <tr><td colSpan={10} style={{ padding:"32px 20px", textAlign:"center", color:"var(--muted)", fontSize:13 }}>
                       No numbers yet — click <strong>Add Number</strong> to get started.
                     </td></tr>
                   )}
@@ -448,108 +471,131 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
                     const hasMusic   = p.music_data || p.music_url;
                     const mcExpanded = expandedNotes.has(p.id);
                     const ltExpanded = expandedLight.has(p.id);
+                    const rowBg = i % 2 === 0 ? "var(--card)" : "var(--surface)";
                     return (
-                      <tr key={p.id} style={{
-                        background: i % 2 === 0 ? "var(--card)" : "var(--surface)",
-                        borderBottom: i < programItems.length - 1 ? "1px solid var(--border)" : "none",
-                        verticalAlign:"top",
-                      }}>
+                      <tr key={p.id}
+                        draggable
+                        onDragStart={() => { dragItem.current = i; }}
+                        onDragEnter={() => { dragOverItem.current = i; }}
+                        onDragOver={e => e.preventDefault()}
+                        onDragEnd={handleDragSort}
+                        style={{
+                          background: rowBg,
+                          borderBottom: i < programItems.length - 1 ? "1px solid var(--border)" : "none",
+                          verticalAlign:"top", cursor:"grab",
+                        }}>
+                        {/* Drag handle */}
+                        <td style={{ padding:"14px 0 14px 10px", borderRight:"1px solid var(--border)", color:"var(--muted)", userSelect:"none" }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <line x1="4" y1="7"  x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>
+                          </svg>
+                        </td>
+                        {/* # */}
+                        <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)", color:"var(--muted)", fontWeight:700, fontSize:12, textAlign:"center" }}>
+                          {i + 1}
+                        </td>
                         {/* Time */}
-                        <td style={{ padding:"14px 14px", borderRight:"1px solid var(--border)" }}>
+                        <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)" }}>
                           <div style={{ fontWeight:800, color:"#6a7fdb", fontSize:13 }}>{p.time||"—"}</div>
                         </td>
                         {/* Duration */}
-                        <td style={{ padding:"14px 14px", borderRight:"1px solid var(--border)", color:"var(--muted)" }}>
+                        <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)", color:"var(--muted)" }}>
                           {p.duration||"—"}
                         </td>
                         {/* Title */}
-                        <td style={{ padding:"14px 14px", borderRight:"1px solid var(--border)" }}>
+                        <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)" }}>
                           <div style={{ fontWeight:700 }}>{p.title}</div>
                         </td>
                         {/* Performers */}
-                        <td style={{ padding:"14px 14px", borderRight:"1px solid var(--border)", color:"var(--muted)" }}>
+                        <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)", color:"var(--muted)" }}>
                           {p.performers || p.group || "—"}
                         </td>
                         {/* Music */}
-                        <td style={{ padding:"12px 14px", borderRight:"1px solid var(--border)" }}>
+                        <td style={{ padding:"12px 12px", borderRight:"1px solid var(--border)" }}>
                           {hasMusic ? (
-                            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                              <div style={{ fontSize:11, fontWeight:700, color:"#333", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:130 }}>
+                            <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+                              <div style={{ fontSize:11, fontWeight:700, color:"#333", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:128 }}>
                                 🎵 {p.music_name || "Track"}
                               </div>
                               {p.music_data && (
-                                <audio controls src={p.music_data} style={{ width:"100%", maxWidth:130, height:28 }} />
+                                <audio controls src={p.music_data} style={{ width:"100%", maxWidth:128, height:26 }} />
                               )}
                               {p.music_url && !p.music_data && (
                                 <a href={p.music_url} target="_blank" rel="noopener noreferrer"
-                                  style={{ fontSize:11, color:"#6a7fdb", textDecoration:"none", fontWeight:600 }}>
-                                  ▶ Open / Play
-                                </a>
+                                  style={{ fontSize:11, color:"#6a7fdb", textDecoration:"none", fontWeight:600 }}>▶ Open / Play</a>
                               )}
                               {p.music_data && (
                                 <a href={p.music_data} download={p.music_name||"music"}
-                                  style={{ fontSize:11, color:"var(--muted)", textDecoration:"none" }}>
-                                  ⬇ Download
-                                </a>
+                                  style={{ fontSize:11, color:"var(--muted)", textDecoration:"none" }}>⬇ Download</a>
                               )}
                             </div>
-                          ) : (
-                            <span style={{ fontSize:11, color:"var(--border)" }}>—</span>
-                          )}
+                          ) : <span style={{ fontSize:11, color:"var(--border)" }}>—</span>}
                         </td>
                         {/* MC Notes */}
-                        <td style={{ padding:"14px 14px", borderRight:"1px solid var(--border)" }}>
+                        <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)" }}>
                           {p.mc_notes ? (
                             <div>
                               <div style={{
-                                fontSize:12, color:"var(--text)", lineHeight:1.5,
+                                fontSize:12, lineHeight:1.5,
                                 overflow: mcExpanded ? "visible" : "hidden",
                                 display: mcExpanded ? "block" : "-webkit-box",
                                 WebkitLineClamp: mcExpanded ? "unset" : 2,
                                 WebkitBoxOrient:"vertical",
                               }}>{p.mc_notes}</div>
                               {p.mc_notes.length > 80 && (
-                                <button onClick={() => toggleNote(p.id)} style={{
-                                  fontSize:11, color:"#6a7fdb", background:"none", border:"none",
-                                  cursor:"pointer", padding:"2px 0", fontWeight:600,
-                                }}>{mcExpanded ? "Show less ▲" : "View more ▼"}</button>
+                                <button onClick={() => toggleNote(p.id)} style={{ fontSize:11, color:"#6a7fdb", background:"none", border:"none", cursor:"pointer", padding:"2px 0", fontWeight:600 }}>
+                                  {mcExpanded ? "Show less ▲" : "View more ▼"}
+                                </button>
                               )}
                             </div>
                           ) : <span style={{ fontSize:11, color:"var(--border)" }}>—</span>}
                         </td>
                         {/* Lighting Notes */}
-                        <td style={{ padding:"14px 14px", borderRight:"1px solid var(--border)" }}>
+                        <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)" }}>
                           {p.lighting_notes ? (
                             <div>
                               <div style={{
-                                fontSize:12, color:"var(--text)", lineHeight:1.5,
+                                fontSize:12, lineHeight:1.5,
                                 overflow: ltExpanded ? "visible" : "hidden",
                                 display: ltExpanded ? "block" : "-webkit-box",
                                 WebkitLineClamp: ltExpanded ? "unset" : 2,
                                 WebkitBoxOrient:"vertical",
                               }}>{p.lighting_notes}</div>
                               {p.lighting_notes.length > 80 && (
-                                <button onClick={() => toggleLight(p.id)} style={{
-                                  fontSize:11, color:"#6a7fdb", background:"none", border:"none",
-                                  cursor:"pointer", padding:"2px 0", fontWeight:600,
-                                }}>{ltExpanded ? "Show less ▲" : "View more ▼"}</button>
+                                <button onClick={() => toggleLight(p.id)} style={{ fontSize:11, color:"#6a7fdb", background:"none", border:"none", cursor:"pointer", padding:"2px 0", fontWeight:600 }}>
+                                  {ltExpanded ? "Show less ▲" : "View more ▼"}
+                                </button>
                               )}
                             </div>
                           ) : <span style={{ fontSize:11, color:"var(--border)" }}>—</span>}
                         </td>
-                        {/* Actions */}
-                        <td style={{ padding:"12px 10px" }}>
-                          <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
-                            <button onClick={() => openEditProg(p)} style={{
-                              fontSize:11, padding:"4px 10px", borderRadius:6,
-                              border:"1px solid var(--border)", background:"none",
-                              cursor:"pointer", color:"var(--muted)", fontWeight:600,
-                            }}>Edit</button>
-                            <button onClick={() => { if(window.confirm("Remove this number?")) deleteProg(p.id); }} style={{
-                              fontSize:11, padding:"4px 10px", borderRadius:6,
-                              border:"1px solid #fecaca", background:"none",
-                              cursor:"pointer", color:"#e05c6a", fontWeight:600,
-                            }}>Remove</button>
+                        {/* Sticky actions */}
+                        <td style={{
+                          padding:"10px 8px", position:"sticky", right:0, background: rowBg,
+                          boxShadow:"-2px 0 6px rgba(0,0,0,.06)", zIndex:2,
+                        }}>
+                          <div style={{ display:"flex", gap:4, alignItems:"center", justifyContent:"center" }}>
+                            {/* Edit icon */}
+                            <button onClick={() => openEditProg(p)} title="Edit" style={{
+                              width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center",
+                              border:"1px solid var(--border)", background:"none", cursor:"pointer", color:"var(--muted)",
+                            }}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                              </svg>
+                            </button>
+                            {/* Delete icon */}
+                            <button onClick={() => { if(window.confirm("Remove this number?")) deleteProg(p.id); }} title="Remove" style={{
+                              width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center",
+                              border:"1px solid #fecaca", background:"none", cursor:"pointer", color:"#e05c6a",
+                            }}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                <path d="M10 11v6"/><path d="M14 11v6"/>
+                                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                              </svg>
+                            </button>
                           </div>
                         </td>
                       </tr>
