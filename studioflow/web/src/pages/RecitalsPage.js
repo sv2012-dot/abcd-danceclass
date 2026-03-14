@@ -424,7 +424,7 @@ function RecitalDetail({ id, onBack, sid, onEdit }) {
                       fontSize:14, flex:1,
                       textDecoration: t.is_done ? "line-through" : "none",
                       color: t.is_done ? "var(--muted)" : "var(--text)",
-                    }}>{t.task || t.title || ""}</span>
+                    }}>{t.task_text || t.task || t.title || ""}</span>
                     <span style={{
                       fontSize:11, padding:"4px 12px", borderRadius:20, fontWeight:700, flexShrink:0,
                       background: t.is_done ? "#52c4a020" : "var(--border)",
