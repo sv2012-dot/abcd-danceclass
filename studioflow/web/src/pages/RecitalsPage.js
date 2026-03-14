@@ -1361,7 +1361,7 @@ export default function RecitalsPage() {
       r => r.title?.toLowerCase().trim() === openTitle.toLowerCase().trim()
     );
     if (match) setDetailId(match.id);
-  }, [recitals, location.state?.openTitle]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [recitals, location.state?.openTitle]); // eslint-disable-line
 
   // ── Show full-page detail when detailId is set ─────────────────────────────
   if (detailId) {
