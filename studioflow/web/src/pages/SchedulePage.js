@@ -278,12 +278,29 @@ export default function SchedulePage() {
   });
 
   // Event click handler:
-  // Recital (_isRecital flag) → full-page inline RecitalDetail via direct ID
-  // All others (Class, Rehearsal, Workshop, Other) → side panel
-  const handleEventClick = (ev) => {
+  // _isRecital (from recitals table) → full-page detail via direct ID
+  // Legacy Recital event (events table, no recital record yet) → auto-create then show detail
+  // All others → side panel
+  const handleEventClick = async (ev) => {
     if (ev?._isRecital) {
       setRecitalDetailId(ev._recitalId);
       return;
+    }
+    if (ev?.type === "Recital") {
+      // Legacy event — auto-promote to a recital record
+      try {
+        const created = await recitalApi.create(sid, {
+          title:       ev.title,
+          event_date:  ev.start_datetime,
+          venue:       ev.location || "",
+          status:      "Planning",
+          description: ev.notes   || "",
+        });
+        qc.invalidateQueries({ queryKey: ["recitals", sid] });
+        if (created?.id) { setRecitalDetailId(created.id); return; }
+      } catch {
+        // fall through to side panel on error
+      }
     }
     setDetailEvent(ev);
   };
@@ -346,16 +363,25 @@ export default function SchedulePage() {
   })), [recitalsList]);
 
   // Merge: non-Recital events from events table + recitals from recitals table
-  // Filter out any legacy Recital-type rows from the events table to avoid duplicates
+  // Merge strategy:
+  // - Recitals from recitals table (_isRecital) are authoritative
+  // - Legacy Recital-type events in the events table that have NO matching recital record
+  //   are kept visible so nothing disappears; clicking them auto-creates the recital record
   const events = useMemo(() => {
-    const nonRecital = rawEvents.filter(e => e.type !== "Recital");
-    const combined   = [...nonRecital, ...recitalEvents];
+    const recitalTitles = new Set(
+      recitalsList.map(r => r.title?.toLowerCase().trim()).filter(Boolean)
+    );
+    // Keep non-Recital events + legacy Recital events that have no recital record yet
+    const fromEventsTable = rawEvents.filter(e =>
+      e.type !== "Recital" || !recitalTitles.has(e.title?.toLowerCase().trim())
+    );
+    const combined = [...fromEventsTable, ...recitalEvents];
     return combined.filter(e => {
       if (filterType !== "All" && e.type !== filterType) return false;
       if (studioOnly && !e.requires_studio) return false;
       return true;
     });
-  }, [rawEvents, recitalEvents, filterType, studioOnly]);
+  }, [rawEvents, recitalEvents, recitalsList, filterType, studioOnly]);
 
   // ── Mutations ────────────────────────────────────────────────────────────
   const saveMutation = useMutation({
