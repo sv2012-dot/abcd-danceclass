@@ -291,15 +291,15 @@ export default function SchedulePage() {
       try {
         const created = await recitalApi.create(sid, {
           title:       ev.title,
-          event_date:  ev.start_datetime,
+          event_date:  ev.start_datetime ? ev.start_datetime.slice(0, 10) : new Date().toISOString().slice(0, 10),
           venue:       ev.location || "",
           status:      "Planning",
           description: ev.notes   || "",
         });
         qc.invalidateQueries({ queryKey: ["recitals", sid] });
         if (created?.id) { setRecitalDetailId(created.id); return; }
-      } catch {
-        // fall through to side panel on error
+      } catch (err) {
+        toast.error("Could not open recital: " + (err?.error || err?.message || "unknown error"));
       }
     }
     setDetailEvent(ev);
@@ -386,10 +386,25 @@ export default function SchedulePage() {
   // ── Mutations ────────────────────────────────────────────────────────────
   const saveMutation = useMutation({
     mutationFn: data => modal?.id ? api.update(sid, modal.id, data) : api.create(sid, data),
-    onSuccess: () => {
+    onSuccess: async (savedEvent, submittedData) => {
       qc.invalidateQueries({ queryKey: ["events"], exact: false });
       toast.success(modal?.id ? "Event updated" : "Event(s) created");
       setModal(null);
+      // When a NEW Recital event is created, also create the recital record immediately
+      // so the calendar always opens the full-page detail on first click
+      if (!modal?.id && submittedData?.type === "Recital") {
+        try {
+          const date = submittedData.start_datetime || submittedData.event_date;
+          await recitalApi.create(sid, {
+            title:       submittedData.title,
+            event_date:  date ? date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+            venue:       submittedData.location || "",
+            status:      "Planning",
+            description: submittedData.notes   || "",
+          });
+          qc.invalidateQueries({ queryKey: ["recitals", sid] });
+        } catch { /* non-fatal — user can still click to create later */ }
+      }
     },
     onError: err => toast.error(err.error || "Failed"),
   });
