@@ -277,14 +277,32 @@ export default function SchedulePage() {
   });
 
   // Event click handler:
-  // Recital → full-page inline RecitalDetail
+  // Recital → full-page inline RecitalDetail (auto-creates recital record if none exists)
   // All others (Class, Rehearsal, Workshop, Additional Class, Other) → side panel
-  const handleEventClick = (ev) => {
+  const handleEventClick = async (ev) => {
     if (ev?.type === "Recital") {
-      const match = recitalsList.find(r =>
-        r.title?.toLowerCase() === ev.title?.toLowerCase()
+      // Try to find an existing recital by title
+      let match = recitalsList.find(r =>
+        r.title?.toLowerCase().trim() === ev.title?.toLowerCase().trim()
       );
-      if (match) { setRecitalDetailId(match.id); return; }
+      // If no recital record exists yet, auto-create one from the event data
+      if (!match) {
+        try {
+          match = await recitalApi.create(sid, {
+            title:      ev.title,
+            event_date: ev.start_time,
+            venue:      ev.location || "",
+            status:     "Planning",
+            description: ev.notes  || "",
+          });
+          qc.invalidateQueries({ queryKey: ["recitals", sid] });
+        } catch {
+          // If create fails, fall back to side panel
+          setDetailEvent(ev);
+          return;
+        }
+      }
+      if (match?.id) { setRecitalDetailId(match.id); return; }
     }
     setDetailEvent(ev);
   };
