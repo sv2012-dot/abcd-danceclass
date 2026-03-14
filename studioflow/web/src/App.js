@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage';
 import StudentsPage from './pages/StudentsPage';
 import BatchesPage from './pages/BatchesPage';
 import SchedulePage from './pages/SchedulePage';
+import RecitalsPage from './pages/RecitalsPage';
 import SchoolsPage from './pages/SchoolsPage';
 import ParentPortalPage from './pages/ParentPortalPage';
 import SchoolAboutPage from './pages/SchoolAboutPage';
@@ -29,6 +30,7 @@ function AppRoutes() {
         <Route path="students" element={<RequireAuth roles={['superadmin','school_admin','teacher']}><StudentsPage /></RequireAuth>} />
         <Route path="batches" element={<RequireAuth roles={['superadmin','school_admin','teacher']}><BatchesPage /></RequireAuth>} />
         <Route path="schedule" element={<SchedulePage />} />
+        <Route path="recitals" element={<RequireAuth roles={['superadmin','school_admin','teacher']}><RecitalsPage /></RequireAuth>} />
         <Route path="schools" element={<RequireAuth roles={['superadmin']}><SchoolsPage /></RequireAuth>} />
         <Route path="parent" element={<RequireAuth roles={['parent']}><ParentPortalPage /></RequireAuth>} />
         <Route path="about" element={<SchoolAboutPage />} />
