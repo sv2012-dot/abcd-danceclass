@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 // ── SVG Icons ─────────────────────────────────────────────────────────────────
 const Icons = {
@@ -107,6 +108,7 @@ const MOBILE_BP = 768;
 
 export default function AppShell() {
   const { user, school, logout } = useAuth();
+  const { theme, toggleTheme }   = useTheme();
   const navigate  = useNavigate();
   const location  = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -187,6 +189,37 @@ export default function AppShell() {
           onMouseLeave={e => { e.currentTarget.style.color = 'var(--sidebar-muted)'; }}
           onClick={handleLogout}
         >Sign out →</button>
+      </div>
+
+      {/* Theme toggle */}
+      <div style={{ padding:'10px 16px', borderTop:'1px solid var(--sidebar-border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <span style={{ fontSize:11, color:'var(--sidebar-muted)', fontWeight:600 }}>
+          {theme === 'dark' ? 'Night mode' : 'Day mode'}
+        </span>
+        <button
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to day mode' : 'Switch to night mode'}
+          style={{
+            display:'flex', alignItems:'center', gap:0,
+            background: theme === 'dark' ? 'oklch(0.3715 0 0)' : '#e5e7eb',
+            border:'none', borderRadius:999, padding:'3px 4px',
+            cursor:'pointer', width:44, height:24,
+            position:'relative', transition:'background .25s',
+            flexShrink:0,
+          }}
+        >
+          {/* Track icons */}
+          <span style={{ position:'absolute', left:5, fontSize:11, lineHeight:1, opacity: theme === 'dark' ? 0.3 : 1, transition:'opacity .2s' }}>☀️</span>
+          <span style={{ position:'absolute', right:5, fontSize:11, lineHeight:1, opacity: theme === 'dark' ? 1 : 0.3, transition:'opacity .2s' }}>🌙</span>
+          {/* Knob */}
+          <span style={{
+            display:'block', width:18, height:18, borderRadius:'50%',
+            background:'#fff', boxShadow:'0 1px 4px rgba(0,0,0,0.25)',
+            position:'absolute',
+            left: theme === 'dark' ? 'calc(100% - 22px)' : '3px',
+            transition:'left .25s cubic-bezier(0.4,0,0.2,1)',
+          }} />
+        </button>
       </div>
 
       {/* Platform brand */}
