@@ -127,9 +127,9 @@ export default function StudentsPage() {
   const fmtLong  = d => { if (!d) return null; const [y,m,dy] = (d||'').slice(0,10).split('-').map(Number); return (y&&m&&dy) ? new Date(y,m-1,dy).toLocaleDateString("en",{year:"numeric",month:"long",day:"numeric"}) : null; };
   const fmtShort = d => { if (!d) return null; const [y,m,dy] = (d||'').slice(0,10).split('-').map(Number); return (y&&m&&dy) ? new Date(y,m-1,dy).toLocaleDateString("en",{month:"short",year:"numeric"}) : null; };
 
-  // Age display: show numeric age if ≤ 12, otherwise "Adult", blank if not set
-  const ageLabel = age => { const n = Number(age); if (!age && age !== 0) return null; return n <= 12 ? `${n} yrs` : "Adult"; };
-  const ageDot   = age => { const n = Number(age); if (!age && age !== 0) return "#aaa"; return n <= 12 ? "#6a7fdb" : "#52c4a0"; };
+  // Age display: ≤8 blue · ≤12 yellow · ≤18 green · 18+ Adult · unset hidden
+  const ageLabel = age => { const n = Number(age); if (!age && age !== 0) return null; return n > 18 ? "Adult" : `${n} yrs`; };
+  const ageDot   = age => { const n = Number(age); if (!age && age !== 0) return "#aaa"; if (n <= 8) return "#6a7fdb"; if (n <= 12) return "#f4a041"; if (n <= 18) return "#52c4a0"; return "#52c4a0"; };
 
   const openAdd  = () => { setAddForm({ ...EMPTY, join_date: new Date().toISOString().split("T")[0] }); setShowAdd(true); };
   const pick     = s  => { setSelected(s); setIsEditing(false); };
