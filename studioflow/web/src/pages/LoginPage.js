@@ -35,7 +35,8 @@ export default function LoginPage() {
       toast.success(`Welcome back, ${u.name}!`);
       navigate('/');
     } catch (err) {
-      toast.error(err.error || 'Login failed');
+      const msg = err?.error || err?.message || (typeof err === 'string' ? err : 'Login failed. Please check your credentials.');
+      toast.error(msg);
     } finally { setLoading(false); }
   };
 
@@ -106,9 +107,9 @@ export default function LoginPage() {
 
           {/* Demo hint */}
           <div style={{ marginTop: 20, padding: 14, background: '#f5f5f5', borderRadius: 10, fontSize: 12, color: '#666', borderLeft: '3px solid #ddd' }}>
-            <div style={{ fontWeight: 700, marginBottom: 6, color: '#333' }}>Demo accounts</div>
-            <div style={{ marginBottom: 2 }}>admin@studioflow.app / ChangeMe123!</div>
-            <div style={{ marginBottom: 2 }}>sv@gmail.com / School123!</div>
+            <div style={{ fontWeight: 700, marginBottom: 6, color: '#333' }}>Test accounts</div>
+            <div style={{ marginBottom: 2 }}>sv@gmail.com / School123! <span style={{color:'#999'}}>(Nritya Vahini)</span></div>
+            <div style={{ marginBottom: 2 }}>vinitha@sankalpa.com / Sankalpa123! <span style={{color:'#999'}}>(Sankalpa)</span></div>
             <div>parent@rhythmgrace.com / Parent123!</div>
           </div>
         </div>
