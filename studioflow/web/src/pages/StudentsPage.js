@@ -390,11 +390,11 @@ export default function StudentsPage() {
                   return (<>
                     <Field label="Full Name"><Input value={editForm.name||""} onChange={e=>setEditForm({...editForm,name:e.target.value})} /></Field>
                     <Field label="Age"><Input type="number" value={editForm.age||""} onChange={e=>setEditForm({...editForm,age:e.target.value})} placeholder="e.g. 12" min="0" max="99"/></Field>
-                    {!eMinor && (<>
+                    {(!eKnown || eAdult) && (<>
                       <Field label="Phone / WhatsApp"><Input value={editForm.phone||""} onChange={e=>setEditForm({...editForm,phone:e.target.value})} /></Field>
                       <Field label="Email"><Input value={editForm.email||""} onChange={e=>setEditForm({...editForm,email:e.target.value})} /></Field>
                     </>)}
-                    {!eAdult && (<>
+                    {eMinor && (<>
                       <Field label="Guardian Name"><Input value={editForm.guardian_name||""} onChange={e=>setEditForm({...editForm,guardian_name:e.target.value})} /></Field>
                       <Field label="Guardian Phone"><Input value={editForm.guardian_phone||""} onChange={e=>setEditForm({...editForm,guardian_phone:e.target.value})} /></Field>
                       <Field label="Guardian Email"><Input value={editForm.guardian_email||""} onChange={e=>setEditForm({...editForm,guardian_email:e.target.value})} /></Field>
@@ -427,23 +427,17 @@ export default function StudentsPage() {
             <Field label="Full Name *"><Input value={addForm.name} onChange={e=>setAddForm({...addForm,name:e.target.value})} placeholder="Student name"/></Field>
             <Field label="Age"><Input type="number" value={addForm.age} onChange={e=>setAddForm({...addForm,age:e.target.value})} placeholder="e.g. 12" min="0" max="99"/></Field>
 
-            {/* ── Contact: show adult fields when age > 18 or age unknown ── */}
-            {!isMinor && (
+            {/* ── Contact: age unknown or adult → own phone/email ── */}
+            {(!ageKnown || isAdult) && (
               <>
                 <Field label="Phone / WhatsApp"><Input value={addForm.phone} onChange={e=>setAddForm({...addForm,phone:e.target.value})} placeholder="+1 555 000 0000"/></Field>
                 <Field label="Email"><Input value={addForm.email} onChange={e=>setAddForm({...addForm,email:e.target.value})} placeholder="email@example.com"/></Field>
               </>
             )}
 
-            {/* ── Guardian: show when age ≤ 18 or age unknown ── */}
-            {!isAdult && (
+            {/* ── Guardian: only when age is known and ≤ 18 ── */}
+            {isMinor && (
               <>
-                {isMinor && (
-                  <div style={{ gridColumn:"1/-1", display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:"var(--surface)", borderRadius:9, border:"1px solid var(--border)", marginBottom:2 }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    <span style={{ fontSize:12, color:"var(--muted)" }}>Guardian details required for students aged 18 and under.</span>
-                  </div>
-                )}
                 <Field label="Guardian Name *"><Input value={addForm.guardian_name} onChange={e=>setAddForm({...addForm,guardian_name:e.target.value})} placeholder="Parent or guardian"/></Field>
                 <Field label="Guardian Phone"><Input value={addForm.guardian_phone} onChange={e=>setAddForm({...addForm,guardian_phone:e.target.value})} placeholder="+1 555 000 0000"/></Field>
                 <Field label="Guardian Email"><Input value={addForm.guardian_email} onChange={e=>setAddForm({...addForm,guardian_email:e.target.value})} placeholder="parent@email.com"/></Field>
