@@ -13,8 +13,8 @@ app.use(helmet());
 const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'https://abcd-danceclass.vercel.app',
-  'https://machq.com',
-  'https://www.machq.com',
+  'https://manchq.com',
+  'https://www.manchq.com',
   // Additional origins from env (comma-separated)
   ...(process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean),
 ];
