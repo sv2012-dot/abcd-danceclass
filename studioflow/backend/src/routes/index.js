@@ -10,8 +10,8 @@ router.use('/schools/:schoolId/recitals',  require('./recitals'));
 router.use('/schools/:schoolId/fees',      require('./fees'));
 router.use('/schools/:schoolId/users',     require('./users'));
 router.use('/schools/:schoolId/events',   require('./events'));
-router.use('/schools/:schoolId/todos',    auth, require('./todos'));
-router.use('/schools/:schoolId/studios',  auth, require('./studios'));
+router.use('/schools/:schoolId/todos',    auth(), require('./todos'));
+router.use('/schools/:schoolId/studios',  auth(), require('./studios'));
 router.use('/parent',  require('./parent'));
 
 module.exports = router;
