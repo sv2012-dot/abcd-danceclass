@@ -124,8 +124,12 @@ export default function StudentsPage() {
 
   // ── Helpers ─────────────────────────────────────────────────────────────
   const filtered = list.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()));
-  const fmtLong  = d => d ? new Date(d).toLocaleDateString("en", { year:"numeric", month:"long", day:"numeric" }) : null;
-  const fmtShort = d => d ? new Date(d).toLocaleDateString("en", { month:"short", year:"numeric" }) : null;
+  const fmtLong  = d => { if (!d) return null; const [y,m,dy] = (d||'').slice(0,10).split('-').map(Number); return (y&&m&&dy) ? new Date(y,m-1,dy).toLocaleDateString("en",{year:"numeric",month:"long",day:"numeric"}) : null; };
+  const fmtShort = d => { if (!d) return null; const [y,m,dy] = (d||'').slice(0,10).split('-').map(Number); return (y&&m&&dy) ? new Date(y,m-1,dy).toLocaleDateString("en",{month:"short",year:"numeric"}) : null; };
+
+  // Age display: show numeric age if ≤ 12, otherwise "Adult", blank if not set
+  const ageLabel = age => { const n = Number(age); if (!age && age !== 0) return null; return n <= 12 ? `${n} yrs` : "Adult"; };
+  const ageDot   = age => { const n = Number(age); if (!age && age !== 0) return "#aaa"; return n <= 12 ? "#6a7fdb" : "#52c4a0"; };
 
   const openAdd  = () => { setAddForm({ ...EMPTY, join_date: new Date().toISOString().split("T")[0] }); setShowAdd(true); };
   const pick     = s  => { setSelected(s); setIsEditing(false); };
@@ -173,62 +177,81 @@ export default function StudentsPage() {
         </Card>
 
       ) : view === "grid" ? (
-        /* ── Grid cards (Figma-style) ── */
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))", gap:16 }}>
+        /* ── Grid cards ── */
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(270px, 1fr))", gap:16 }}>
           {filtered.map(s => {
-            const active = selected?.id === s.id;
-            const levelBadgeColor = s.level === "Advanced" ? "#7C3AED" : s.level === "Intermediate" ? "#2563EB" : s.level === "Beginner" ? "#059669" : "#7C3AED";
+            const active    = selected?.id === s.id;
+            const batches   = s.batches ? String(s.batches).split(",").map(b => b.trim()).filter(Boolean) : [];
+            const noEnroll  = batches.length === 0;
+            const label     = ageLabel(s.age);
+            const dotColor  = ageDot(s.age);
+            const joinStr   = fmtShort(s.join_date);
+
             return (
               <div key={s.id} onClick={() => pick(s)} style={{
-                background:"var(--card)", borderRadius:14, padding:"20px 20px 16px", cursor:"pointer",
-                border:`1.5px solid ${active ? "var(--primary)" : "var(--border)"}`,
-                boxShadow: active ? "0 0 0 3px rgba(124,58,237,.12)" : "0 2px 8px rgba(0,0,0,.06)",
-                transition:"all .15s"
+                background:"var(--card)", borderRadius:14, cursor:"pointer",
+                border:`1.5px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                boxShadow: active ? "0 0 0 3px rgba(196,82,122,.13)" : "0 2px 8px rgba(0,0,0,.05)",
+                transition:"all .15s", overflow:"hidden",
               }}>
-                {/* Avatar + name + level badge */}
-                <div style={{ display:"flex", alignItems:"flex-start", gap:14, marginBottom:16 }}>
-                  <StudentAvatar student={s} size={56} active={active} />
-                  <div style={{ minWidth:0, paddingTop:2 }}>
-                    <div style={{ fontWeight:700, fontSize:15, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginBottom:6 }}>{s.name}</div>
-                    {s.batches && (
-                      <span style={{ fontSize:11, fontWeight:600, background:`rgba(124,58,237,0.1)`, color:"#7C3AED", borderRadius:20, padding:"2px 9px", border:"1px solid rgba(124,58,237,0.2)" }}>
-                        {String(s.batches).split(",")[0].trim()}
-                      </span>
+                {/* ── Card header: avatar + name + age ── */}
+                <div style={{ padding:"18px 18px 14px", display:"flex", alignItems:"center", gap:14 }}>
+                  <StudentAvatar student={s} size={52} active={active} />
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontWeight:700, fontSize:15, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:"var(--text)" }}>
+                      {s.name}
+                    </div>
+                    {label && (
+                      <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:4 }}>
+                        <div style={{ width:7, height:7, borderRadius:"50%", background:dotColor, flexShrink:0 }} />
+                        <span style={{ fontSize:12, color:"var(--muted)", fontWeight:500 }}>{label}</span>
+                      </div>
                     )}
                   </div>
                 </div>
-                {/* Info rows */}
-                <div style={{ display:"grid", gap:8 }}>
-                  {s.email && (
-                    <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:"var(--muted)" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                      <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.email}</span>
+
+                {/* ── Divider ── */}
+                <div style={{ height:1, background:"var(--border)", margin:"0 18px" }} />
+
+                {/* ── Join date row ── */}
+                <div style={{ padding:"10px 18px", display:"flex", alignItems:"center", gap:8 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  <span style={{ fontSize:12, color: joinStr ? "var(--muted)" : "var(--border)", fontStyle: joinStr ? "normal" : "italic" }}>
+                    {joinStr ? `Joined ${joinStr}` : "No join date recorded"}
+                  </span>
+                </div>
+
+                {/* ── Divider ── */}
+                <div style={{ height:1, background:"var(--border)", margin:"0 18px" }} />
+
+                {/* ── Enrolled batches ── */}
+                <div style={{ padding:"10px 18px 14px" }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".07em", marginBottom:7 }}>
+                    Enrolled Classes
+                  </div>
+                  {noEnroll ? (
+                    <div style={{
+                      display:"flex", alignItems:"center", gap:7,
+                      background:"#fff8e6", border:"1.5px dashed #f4a041",
+                      borderRadius:8, padding:"6px 10px",
+                    }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f4a041" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                      </svg>
+                      <span style={{ fontSize:11, color:"#b45309", fontWeight:600 }}>Not enrolled in any batch</span>
                     </div>
-                  )}
-                  {s.phone && (
-                    <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:"var(--muted)" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.61 4.86 2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.88 17z"/></svg>
-                      <span>{s.phone}</span>
-                    </div>
-                  )}
-                  {s.join_date && (
-                    <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:"var(--muted)" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                      <span>Joined {fmtShort(s.join_date)}</span>
+                  ) : (
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+                      {batches.map((b,i) => (
+                        <span key={i} style={{ fontSize:11, background:"var(--surface)", color:"var(--text)", borderRadius:20, padding:"3px 10px", border:"1px solid var(--border)", fontWeight:500 }}>
+                          {b}
+                        </span>
+                      ))}
                     </div>
                   )}
                 </div>
-                {/* Enrolled classes */}
-                {s.batches && String(s.batches).split(",").length > 0 && (
-                  <div style={{ marginTop:14, paddingTop:12, borderTop:"1px solid var(--border)" }}>
-                    <div style={{ fontSize:11, color:"var(--muted)", marginBottom:6 }}>Enrolled Classes:</div>
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
-                      {String(s.batches).split(",").map((b,i) => (
-                        <span key={i} style={{ fontSize:11, background:"var(--surface)", color:"var(--text)", borderRadius:20, padding:"2px 9px", border:"1px solid var(--border)", fontWeight:500 }}>{b.trim()}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })}
@@ -259,7 +282,7 @@ export default function StudentsPage() {
                         <span style={{ fontWeight:600, fontSize:13 }}>{s.name}</span>
                       </div>
                     </td>
-                    <td style={{ padding:"10px 14px", fontSize:13, color:"var(--muted)" }}>{s.age || "—"}</td>
+                    <td style={{ padding:"10px 14px", fontSize:13, color:"var(--muted)" }}>{ageLabel(s.age) || "—"}</td>
                     <td style={{ padding:"10px 14px", fontSize:12, color:"var(--muted)", maxWidth:180, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.email || s.phone || "—"}</td>
                     <td style={{ padding:"10px 14px" }}>
                       {s.batches
