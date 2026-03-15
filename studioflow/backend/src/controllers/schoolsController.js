@@ -55,13 +55,17 @@ const create = async (req, res) => {
 
 const update = async (req, res) => {
   try {
-    const { name, owner_name, email, phone, city, address, dance_style, is_active } = req.body;
+    const { name, owner_name, email, phone, city, address, dance_style, is_active, profile_json } = req.body;
+    const pj = profile_json !== undefined ? JSON.stringify(profile_json) : null;
     await pool.query(
-      `UPDATE schools SET name=COALESCE(?,name), owner_name=COALESCE(?,owner_name),
-       email=COALESCE(?,email), phone=COALESCE(?,phone), city=COALESCE(?,city),
-       address=COALESCE(?,address), dance_style=COALESCE(?,dance_style),
-       is_active=COALESCE(?,is_active) WHERE id=?`,
-      [name,owner_name,email,phone,city,address,dance_style,is_active,req.params.schoolId]
+      `UPDATE schools SET
+        name=COALESCE(?,name), owner_name=COALESCE(?,owner_name),
+        email=COALESCE(?,email), phone=COALESCE(?,phone), city=COALESCE(?,city),
+        address=COALESCE(?,address), dance_style=COALESCE(?,dance_style),
+        is_active=COALESCE(?,is_active),
+        profile_json=IF(? IS NOT NULL, ?, profile_json)
+       WHERE id=?`,
+      [name,owner_name,email,phone,city,address,dance_style,is_active,pj,pj,req.params.schoolId]
     );
     const [updated] = await pool.query('SELECT * FROM schools WHERE id=?', [req.params.schoolId]);
     res.json({ school: updated[0] });
