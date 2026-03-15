@@ -258,6 +258,17 @@ function daysInMonth(year, month)  { return new Date(year, month+1, 0).getDate()
 
 const PANEL_W = 440;
 
+// ── useWindowWidth ────────────────────────────────────────────────────────────
+function useWindowWidth() {
+  const [w, setW] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1024);
+  useEffect(() => {
+    const h = () => setW(window.innerWidth);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return w;
+}
+
 // ── Main Component ───────────────────────────────────────────────────────────
 export default function SchedulePage() {
   const { user } = useAuth();
@@ -265,6 +276,8 @@ export default function SchedulePage() {
   const qc  = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 600;
   const isAdmin = ["superadmin","school_admin","teacher"].includes(user?.role);
 
   // Inline recital detail state
@@ -696,7 +709,7 @@ export default function SchedulePage() {
   }
 
   return (
-    <div style={{ paddingRight: detailEvent ? PANEL_W + 20 : 0, transition:"padding .25s ease" }}>
+    <div style={{ paddingRight: detailEvent && !isMobile ? PANEL_W + 20 : 0, transition:"padding .25s ease" }}>
       {/* Main calendar */}
         {/* Header */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,flexWrap:"wrap",gap:10}}>
@@ -889,8 +902,10 @@ export default function SchedulePage() {
         const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
         return (
           <div style={{
-            position:"fixed", right:0, top:0, bottom:0, width:PANEL_W,
-            background:"var(--card)", borderLeft:"1.5px solid var(--border)",
+            position:"fixed", right:0, top:0, bottom:0,
+            width: isMobile ? '100vw' : PANEL_W,
+            left: isMobile ? 0 : 'auto',
+            background:"var(--card)", borderLeft: isMobile ? 'none' : "1.5px solid var(--border)",
             display:"flex", flexDirection:"column", zIndex:300,
             boxShadow:"-6px 0 32px rgba(0,0,0,.09)",
           }}>

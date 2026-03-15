@@ -83,9 +83,9 @@ export default function TodosPage() {
     enabled: !!sid,
   });
 
-  const todos = todosData?.data?.todos || [];
-  const eventsList = eventsData?.data?.events || [];
-  const recitalsList = recitalsData?.data?.recitals || [];
+  const todos = todosData?.todos || [];
+  const eventsList = eventsData?.events || [];
+  const recitalsList = recitalsData?.recitals || [];
 
   const createMut = useMutation({
     mutationFn: (data) => todosApi.create(sid, data),
@@ -104,8 +104,8 @@ export default function TodosPage() {
       await qc.cancelQueries(['todos', sid]);
       const prev = qc.getQueryData(['todos', sid]);
       qc.setQueryData(['todos', sid], old => {
-        if (!old?.data?.todos) return old;
-        return { ...old, data: { todos: old.data.todos.map(t => t.id === id ? { ...t, is_complete: t.is_complete ? 0 : 1 } : t) } };
+        if (!old?.todos) return old;
+        return { ...old, todos: old.todos.map(t => t.id === id ? { ...t, is_complete: t.is_complete ? 0 : 1 } : t) };
       });
       return { prev };
     },

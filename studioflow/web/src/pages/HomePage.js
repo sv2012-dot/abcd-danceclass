@@ -519,7 +519,7 @@ function SchoolHomePage() {
 
       {/* ── Recent To-Dos widget ────────────────────────────────────────── */}
       {(() => {
-        const allTodos = todosData?.data?.todos || [];
+        const allTodos = todosData?.todos || [];
         const openTodos = allTodos
           .filter(t => !t.is_complete)
           .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
@@ -553,7 +553,7 @@ function SchoolHomePage() {
                 return (
                   <div key={todo.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',background:'#fff',borderRadius:10,border:'1px solid var(--border)',marginBottom:6}}>
                     <div
-                      onClick={()=>{ qc.setQueryData(["todos",sid], old => { if (!old?.data?.todos) return old; return {...old, data:{todos:old.data.todos.map(t=>t.id===todo.id?{...t,is_complete:1}:t)}}; }); todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid])); }}
+                      onClick={()=>{ qc.setQueryData(["todos",sid], old => { if (!old?.todos) return old; return {...old, todos: old.todos.map(t=>t.id===todo.id?{...t,is_complete:1}:t)}; }); todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid])); }}
                       style={{width:20,height:20,borderRadius:'50%',border:'2px solid #d2d2d7',background:'#fff',cursor:'pointer',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}
                     />
                     <div style={{flex:1,fontSize:14,color:'#1d1d1f',fontWeight:500}}>{todo.title}</div>
