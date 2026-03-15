@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { events as api, batches as batchesApi, recitals as recitalApi } from "../api";
@@ -264,10 +264,20 @@ export default function SchedulePage() {
   const sid = user?.school_id;
   const qc  = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const isAdmin = ["superadmin","school_admin","teacher"].includes(user?.role);
 
   // Inline recital detail state
   const [recitalDetailId, setRecitalDetailId] = useState(null);
+
+  // If navigated here with a recitalId in state (e.g. from dashboard), open it directly
+  useEffect(() => {
+    if (location.state?.recitalId) {
+      setRecitalDetailId(location.state.recitalId);
+      // Clear the state so back-navigation works cleanly
+      window.history.replaceState({}, '');
+    }
+  }, []); // eslint-disable-line
 
   // Recitals are the single source of truth for Recital-type events.
   // They are fetched separately and merged into the calendar display.
