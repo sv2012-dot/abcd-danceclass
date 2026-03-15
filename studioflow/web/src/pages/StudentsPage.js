@@ -382,15 +382,27 @@ export default function StudentsPage() {
             ) : (
               /* Edit mode */
               <>
-                <Field label="Full Name"><Input value={editForm.name||""} onChange={e=>setEditForm({...editForm,name:e.target.value})} /></Field>
-                <Field label="Age"><Input type="number" value={editForm.age||""} onChange={e=>setEditForm({...editForm,age:e.target.value})} placeholder="e.g. 12"/></Field>
-                <Field label="Phone"><Input value={editForm.phone||""} onChange={e=>setEditForm({...editForm,phone:e.target.value})} /></Field>
-                <Field label="Email"><Input value={editForm.email||""} onChange={e=>setEditForm({...editForm,email:e.target.value})} /></Field>
-                <Field label="Guardian Name"><Input value={editForm.guardian_name||""} onChange={e=>setEditForm({...editForm,guardian_name:e.target.value})} /></Field>
-                <Field label="Guardian Phone"><Input value={editForm.guardian_phone||""} onChange={e=>setEditForm({...editForm,guardian_phone:e.target.value})} /></Field>
-                <Field label="Guardian Email"><Input value={editForm.guardian_email||""} onChange={e=>setEditForm({...editForm,guardian_email:e.target.value})} /></Field>
-                <Field label="Join Date"><Input type="date" value={(editForm.join_date||"").split("T")[0]} onChange={e=>setEditForm({...editForm,join_date:e.target.value})} /></Field>
-                <Field label="Notes"><Textarea value={editForm.notes||""} onChange={e=>setEditForm({...editForm,notes:e.target.value})} placeholder="Any notes…"/></Field>
+                {(() => {
+                  const ea = Number(editForm.age);
+                  const eKnown = editForm.age !== "" && !isNaN(ea);
+                  const eMinor = eKnown && ea <= 18;
+                  const eAdult = eKnown && ea > 18;
+                  return (<>
+                    <Field label="Full Name"><Input value={editForm.name||""} onChange={e=>setEditForm({...editForm,name:e.target.value})} /></Field>
+                    <Field label="Age"><Input type="number" value={editForm.age||""} onChange={e=>setEditForm({...editForm,age:e.target.value})} placeholder="e.g. 12" min="0" max="99"/></Field>
+                    {!eMinor && (<>
+                      <Field label="Phone / WhatsApp"><Input value={editForm.phone||""} onChange={e=>setEditForm({...editForm,phone:e.target.value})} /></Field>
+                      <Field label="Email"><Input value={editForm.email||""} onChange={e=>setEditForm({...editForm,email:e.target.value})} /></Field>
+                    </>)}
+                    {!eAdult && (<>
+                      <Field label="Guardian Name"><Input value={editForm.guardian_name||""} onChange={e=>setEditForm({...editForm,guardian_name:e.target.value})} /></Field>
+                      <Field label="Guardian Phone"><Input value={editForm.guardian_phone||""} onChange={e=>setEditForm({...editForm,guardian_phone:e.target.value})} /></Field>
+                      <Field label="Guardian Email"><Input value={editForm.guardian_email||""} onChange={e=>setEditForm({...editForm,guardian_email:e.target.value})} /></Field>
+                    </>)}
+                    <Field label="Join Date"><Input type="date" value={(editForm.join_date||"").split("T")[0]} onChange={e=>setEditForm({...editForm,join_date:e.target.value})} /></Field>
+                    <Field label="Notes"><Textarea value={editForm.notes||""} onChange={e=>setEditForm({...editForm,notes:e.target.value})} placeholder="Any notes…"/></Field>
+                  </>);
+                })()}
                 <div style={{ display:"flex", gap:9, marginTop:14 }}>
                   <Button onClick={() => editMutation.mutate(editForm)} disabled={!editForm.name || editMutation.isPending}>
                     {editMutation.isPending ? "Saving…" : "Save Changes"}
@@ -404,16 +416,40 @@ export default function StudentsPage() {
       )}
 
       {/* ── Add Student Modal ── */}
-      {showAdd && (
+      {showAdd && (() => {
+        const addAge     = Number(addForm.age);
+        const ageKnown   = addForm.age !== "" && !isNaN(addAge);
+        const isMinor    = ageKnown && addAge <= 18;
+        const isAdult    = ageKnown && addAge > 18;
+        return (
         <Modal title="Add Student" onClose={() => setShowAdd(false)} wide>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
             <Field label="Full Name *"><Input value={addForm.name} onChange={e=>setAddForm({...addForm,name:e.target.value})} placeholder="Student name"/></Field>
-            <Field label="Age"><Input type="number" value={addForm.age} onChange={e=>setAddForm({...addForm,age:e.target.value})} placeholder="e.g. 12"/></Field>
-            <Field label="Phone / WhatsApp"><Input value={addForm.phone} onChange={e=>setAddForm({...addForm,phone:e.target.value})} placeholder="+1 555 000 0000"/></Field>
-            <Field label="Email"><Input value={addForm.email} onChange={e=>setAddForm({...addForm,email:e.target.value})} placeholder="email@example.com"/></Field>
-            <Field label="Guardian Name"><Input value={addForm.guardian_name} onChange={e=>setAddForm({...addForm,guardian_name:e.target.value})} placeholder="Parent or guardian"/></Field>
-            <Field label="Guardian Phone"><Input value={addForm.guardian_phone} onChange={e=>setAddForm({...addForm,guardian_phone:e.target.value})} /></Field>
-            <Field label="Guardian Email"><Input value={addForm.guardian_email} onChange={e=>setAddForm({...addForm,guardian_email:e.target.value})} placeholder="parent@email.com"/></Field>
+            <Field label="Age"><Input type="number" value={addForm.age} onChange={e=>setAddForm({...addForm,age:e.target.value})} placeholder="e.g. 12" min="0" max="99"/></Field>
+
+            {/* ── Contact: show adult fields when age > 18 or age unknown ── */}
+            {!isMinor && (
+              <>
+                <Field label="Phone / WhatsApp"><Input value={addForm.phone} onChange={e=>setAddForm({...addForm,phone:e.target.value})} placeholder="+1 555 000 0000"/></Field>
+                <Field label="Email"><Input value={addForm.email} onChange={e=>setAddForm({...addForm,email:e.target.value})} placeholder="email@example.com"/></Field>
+              </>
+            )}
+
+            {/* ── Guardian: show when age ≤ 18 or age unknown ── */}
+            {!isAdult && (
+              <>
+                {isMinor && (
+                  <div style={{ gridColumn:"1/-1", display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:"var(--surface)", borderRadius:9, border:"1px solid var(--border)", marginBottom:2 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span style={{ fontSize:12, color:"var(--muted)" }}>Guardian details required for students aged 18 and under.</span>
+                  </div>
+                )}
+                <Field label="Guardian Name *"><Input value={addForm.guardian_name} onChange={e=>setAddForm({...addForm,guardian_name:e.target.value})} placeholder="Parent or guardian"/></Field>
+                <Field label="Guardian Phone"><Input value={addForm.guardian_phone} onChange={e=>setAddForm({...addForm,guardian_phone:e.target.value})} placeholder="+1 555 000 0000"/></Field>
+                <Field label="Guardian Email"><Input value={addForm.guardian_email} onChange={e=>setAddForm({...addForm,guardian_email:e.target.value})} placeholder="parent@email.com"/></Field>
+              </>
+            )}
+
             <Field label="Join Date"><Input type="date" value={addForm.join_date} onChange={e=>setAddForm({...addForm,join_date:e.target.value})}/></Field>
           </div>
           <Field label="Notes"><Textarea value={addForm.notes} onChange={e=>setAddForm({...addForm,notes:e.target.value})} placeholder="Any notes…"/></Field>
@@ -424,7 +460,8 @@ export default function StudentsPage() {
             <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
           </div>
         </Modal>
-      )}
+        );
+      })()}
     </div>
   );
 }
