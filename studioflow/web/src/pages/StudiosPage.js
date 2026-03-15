@@ -306,7 +306,7 @@ function AddStudioModal({ onClose, onSave, saving }) {
 
           <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, cursor: "pointer", userSelect: "none" }}>
             <input type="checkbox" checked={form.is_favorite} onChange={e => set("is_favorite", e.target.checked)} style={{ width: 16, height: 16, cursor: "pointer" }} />
-            <span style={{ fontSize: 14, fontWeight: 500 }}>Mark as favourite venue ★</span>
+            <span style={{ fontSize: 14, fontWeight: 500 }}>Mark as favourite venue ♥</span>
           </label>
 
           <div style={{ display: "flex", gap: 9, marginTop: 20 }}>
@@ -348,7 +348,7 @@ function EditStudioModal({ studio, onClose, onSave, saving }) {
       </div>
       <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, cursor: "pointer", userSelect: "none" }}>
         <input type="checkbox" checked={form.is_favorite} onChange={e => set("is_favorite", e.target.checked)} style={{ width: 16, height: 16 }} />
-        <span style={{ fontSize: 14, fontWeight: 500 }}>Mark as favourite venue ★</span>
+        <span style={{ fontSize: 14, fontWeight: 500 }}>Mark as favourite venue ♥</span>
       </label>
       <div style={{ display: "flex", gap: 9, marginTop: 20 }}>
         <Button onClick={() => onSave(form)} disabled={!form.name || saving}>{saving ? "Saving…" : "Save Changes"}</Button>
@@ -365,16 +365,21 @@ function StudioCard({ studio, onEdit, onRemove, onToggleFav }) {
   return (
     <div style={{
       background: "var(--card)", borderRadius: 14,
-      border: studio.is_favorite ? "1.5px solid #f59e0b" : "1.5px solid var(--border)",
-      boxShadow: studio.is_favorite ? "0 2px 12px rgba(245,158,11,.13)" : "0 2px 8px rgba(0,0,0,.06)",
+      border: studio.is_favorite ? "1.5px solid #e0607e" : "1.5px solid var(--border)",
+      boxShadow: studio.is_favorite ? "0 2px 12px rgba(196,82,122,.15)" : "0 2px 8px rgba(0,0,0,.06)",
       display: "flex", flexDirection: "column", overflow: "hidden", transition: "box-shadow .15s, border-color .15s",
     }}>
       <div style={{ padding: "18px 18px 14px", flex: 1 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
           <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.3, color: "var(--text)", flex: 1 }}>{studio.name}</div>
-          <button onClick={() => onToggleFav(studio)} title={studio.is_favorite ? "Remove favourite" : "Mark favourite"}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: "2px 4px", color: studio.is_favorite ? "#f59e0b" : "#d1d5db", transition: "color .15s", flexShrink: 0 }}>
-            {studio.is_favorite ? "★" : "☆"}
+          <button onClick={e => { e.stopPropagation(); onToggleFav(studio); }} title={studio.is_favorite ? "Remove favourite" : "Mark favourite"}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", lineHeight: 1, flexShrink: 0, transition: "transform .15s", color: studio.is_favorite ? "#e0607e" : "#d1d5db" }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.2)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}>
+            {studio.is_favorite
+              ? <svg width="18" height="18" viewBox="0 0 24 24" fill="#e0607e" stroke="#e0607e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            }
           </button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
@@ -454,7 +459,14 @@ export default function StudiosPage() {
   };
 
   const handleToggleFav = async (studio) => {
-    try { await api.update(sid, studio.id, { is_favorite: studio.is_favorite ? 0 : 1 }); qc.invalidateQueries(["studios", sid]); }
+    try {
+      // Must send full payload — backend does a complete SET, not a partial patch
+      const payload = { ...studio, is_favorite: studio.is_favorite ? 0 : 1,
+        capacity: studio.capacity ? Number(studio.capacity) : null,
+        hourly_rate: studio.hourly_rate ? Number(studio.hourly_rate) : null };
+      await api.update(sid, studio.id, payload);
+      qc.invalidateQueries(["studios", sid]);
+    }
     catch { toast.error("Failed to update favourite"); }
   };
 
