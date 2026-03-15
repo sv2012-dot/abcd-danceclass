@@ -260,9 +260,11 @@ function SchoolHomePage() {
     // Use local date string (YYYY-MM-DD) to avoid UTC timezone shifts
     const t = new Date();
     const todayStr = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+    // Normalize event_date — mysql2 may return full ISO string like "2026-08-15T00:00:00.000Z"
+    // .slice(0,10) extracts just the YYYY-MM-DD portion for safe comparison
     return (recitalList||[])
-      .filter(r => (r.event_date||'') >= todayStr)
-      .sort((a,b) => (a.event_date||'').localeCompare(b.event_date||''))
+      .filter(r => (r.event_date||'').slice(0,10) >= todayStr)
+      .sort((a,b) => (a.event_date||'').slice(0,10).localeCompare((b.event_date||'').slice(0,10)))
       .slice(0,3);
   }, [recitalList]);
 
@@ -488,8 +490,8 @@ function SchoolHomePage() {
           <div style={{fontSize:12,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:10}}>🌟 Upcoming Recitals</div>
           <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
             {upcoming.map(r => {
-              // Parse YYYY-MM-DD as local date (avoid UTC midnight shift)
-              const [yr, mo, dy] = (r.event_date||'').split('-').map(Number);
+              // Parse YYYY-MM-DD as local date (avoid UTC midnight shift + ISO suffix from mysql2)
+              const [yr, mo, dy] = (r.event_date||'').slice(0,10).split('-').map(Number);
               const d = new Date(yr, mo - 1, dy);
               return (
                 <div key={r.id} onClick={()=>navigate("/schedule", { state: { recitalId: r.id } })} style={{

@@ -391,7 +391,9 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   }
 
   const color   = STATUS_COLORS[recital.status] || "#888";
-  const d       = new Date(recital.event_date);
+  // Use local-date constructor to avoid UTC midnight shift (mysql2 returns DATE as ISO string)
+  const [_yr, _mo, _dy] = (recital.event_date||'').slice(0,10).split('-').map(Number);
+  const d       = (_yr && _mo && _dy) ? new Date(_yr, _mo - 1, _dy) : new Date(NaN);
   const fmtDate = isNaN(d) ? "—" : d.toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" });
   const done    = tasks.filter(t => t.is_done).length;
   const pct     = tasks.length ? Math.round(done / tasks.length * 100) : 0;
@@ -1419,7 +1421,8 @@ export default function RecitalsPage() {
     setModal(r);
   };
 
-  const sorted = [...recitals].sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
+  // Sort by date string (slice to YYYY-MM-DD to handle ISO suffix from mysql2)
+  const sorted = [...recitals].sort((a, b) => (b.event_date||'').slice(0,10).localeCompare((a.event_date||'').slice(0,10)));
 
   // ── Auto-open a specific recital when navigated here from another page ──────
   // e.g. clicking a "Recital" event on HomePage or SchedulePage navigates with
@@ -1488,7 +1491,8 @@ export default function RecitalsPage() {
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:12 }}>
           {sorted.map(r => {
             const color = STATUS_COLORS[r.status] || "#888";
-            const d     = new Date(r.event_date);
+            const [ryr, rmo, rdy] = (r.event_date||'').slice(0,10).split('-').map(Number);
+            const d     = (ryr && rmo && rdy) ? new Date(ryr, rmo - 1, rdy) : new Date(NaN);
             const pct   = r.task_count ? Math.round(((r.tasks_done || 0) / r.task_count) * 100) : 0;
             return (
               <div key={r.id} onClick={() => setDetailId(r.id)} style={{
@@ -1552,7 +1556,8 @@ export default function RecitalsPage() {
             <tbody>
               {sorted.map(r => {
                 const color = STATUS_COLORS[r.status] || "#888";
-                const d     = new Date(r.event_date);
+                const [tyr, tmo, tdy] = (r.event_date||'').slice(0,10).split('-').map(Number);
+                const d     = (tyr && tmo && tdy) ? new Date(tyr, tmo - 1, tdy) : new Date(NaN);
                 const pct   = r.task_count ? Math.round(((r.tasks_done || 0) / r.task_count) * 100) : null;
                 return (
                   <tr key={r.id} onClick={() => setDetailId(r.id)} style={{
