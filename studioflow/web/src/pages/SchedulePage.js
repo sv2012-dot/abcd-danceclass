@@ -277,7 +277,7 @@ export default function SchedulePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const windowWidth = useWindowWidth();
-  const isMobile = windowWidth < 600;
+  const isMobile = windowWidth < 768; // matches AppShell mobile breakpoint
   const isAdmin = ["superadmin","school_admin","teacher"].includes(user?.role);
 
   // Inline recital detail state
@@ -897,17 +897,23 @@ export default function SchedulePage() {
       )}
 
       {/* ── Event Detail Panel ── */}
+      {detailEvent && isMobile && (
+        <div onClick={()=>setDetailEvent(null)}
+          style={{position:"fixed",inset:0,top:56,background:"rgba(0,0,0,0.4)",zIndex:399}} />
+      )}
       {detailEvent && (() => {
         const e = detailEvent;
         const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
         return (
           <div style={{
-            position:"fixed", right:0, top:0, bottom:0,
-            width: isMobile ? '100vw' : PANEL_W,
-            left: isMobile ? 0 : 'auto',
-            background:"var(--card)", borderLeft: isMobile ? 'none' : "1.5px solid var(--border)",
-            display:"flex", flexDirection:"column", zIndex:300,
-            boxShadow:"-6px 0 32px rgba(0,0,0,.09)",
+            position:"fixed", right:0, bottom:0, zIndex:400,
+            top:    isMobile ? 56 : 0,
+            width:  isMobile ? '100vw' : PANEL_W,
+            left:   isMobile ? 0 : 'auto',
+            background:"var(--card)",
+            borderLeft: isMobile ? 'none' : "1.5px solid var(--border)",
+            display:"flex", flexDirection:"column",
+            boxShadow: isMobile ? "0 -4px 32px rgba(0,0,0,.14)" : "-6px 0 32px rgba(0,0,0,.09)",
           }}>
             {/* Panel header */}
             <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>

@@ -47,6 +47,15 @@ export default function BatchesPage() {
   const [saving,         setSaving]         = useState(false);
   const PANEL_W = 440;
 
+  // ── Responsive panel ─────────────────────────────────────────────────────
+  const [windowWidth, setWindowWidth] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const h = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  const isMobile = windowWidth < 768; // matches AppShell mobile breakpoint
+
   const { data: list=[], isLoading } = useQuery({ queryKey:["batches",sid], queryFn:()=>api.list(sid), enabled:!!sid });
   const { data: allStudents=[]     } = useQuery({ queryKey:["students",sid], queryFn:()=>studentsApi.list(sid), enabled:!!sid });
   const { data: allSchedules=[]   } = useQuery({ queryKey:["schedules",sid], queryFn:()=>schedulesApi.list(sid), enabled:!!sid });
@@ -135,7 +144,7 @@ export default function BatchesPage() {
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (
-    <div style={{ paddingRight: activeBatch ? PANEL_W+20 : 0, transition:"padding .25s ease" }}>
+    <div style={{ paddingRight: activeBatch && !isMobile ? PANEL_W+20 : 0, transition:"padding .25s ease" }}>
 
       {/* ── Header ── */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:10 }}>
@@ -283,12 +292,20 @@ export default function BatchesPage() {
       )}
 
       {/* ── Right Detail Panel ── */}
+      {activeBatch && isMobile && (
+        <div onClick={()=>setActiveId(null)}
+          style={{position:"fixed",inset:0,top:56,background:"rgba(0,0,0,0.4)",zIndex:399}} />
+      )}
       {activeBatch && (
         <div style={{
-          position:"fixed", right:0, top:0, bottom:0, width:PANEL_W,
-          background:"var(--card)", borderLeft:"1.5px solid var(--border)",
-          display:"flex", flexDirection:"column", zIndex:300,
-          boxShadow:"-6px 0 32px rgba(0,0,0,.09)"
+          position:"fixed", right:0, bottom:0, zIndex:400,
+          top:    isMobile ? 56 : 0,
+          width:  isMobile ? '100vw' : PANEL_W,
+          left:   isMobile ? 0 : 'auto',
+          background:"var(--card)",
+          borderLeft: isMobile ? 'none' : "1.5px solid var(--border)",
+          display:"flex", flexDirection:"column",
+          boxShadow: isMobile ? "0 -4px 32px rgba(0,0,0,.14)" : "-6px 0 32px rgba(0,0,0,.09)",
         }}>
           {/* Panel header */}
           <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
