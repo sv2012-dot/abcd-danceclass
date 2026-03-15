@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const patchTables = require('./helpers/patchTables');
 
 const app = express();
 
@@ -51,4 +52,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 StudioFlow API running on port ${PORT}`));
+app.listen(PORT, async () => {
+  console.log(`🚀 StudioFlow API running on port ${PORT}`);
+  await patchTables();
+});

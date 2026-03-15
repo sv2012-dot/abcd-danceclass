@@ -222,6 +222,51 @@ async function migrate() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS todos (
+        id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        school_id   INT UNSIGNED NOT NULL,
+        user_id     INT UNSIGNED NULL,
+        title       VARCHAR(255) NOT NULL,
+        notes       TEXT         NULL,
+        is_complete TINYINT(1)   NOT NULL DEFAULT 0,
+        event_id    INT UNSIGNED NULL,
+        recital_id  INT UNSIGNED NULL,
+        due_date    DATE         NULL,
+        created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_school (school_id),
+        FOREIGN KEY (school_id)  REFERENCES schools(id)  ON DELETE CASCADE,
+        FOREIGN KEY (user_id)    REFERENCES users(id)    ON DELETE SET NULL,
+        FOREIGN KEY (event_id)   REFERENCES events(id)   ON DELETE SET NULL,
+        FOREIGN KEY (recital_id) REFERENCES recitals(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS studios (
+        id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        school_id    INT UNSIGNED NOT NULL,
+        name         VARCHAR(180) NOT NULL,
+        address      VARCHAR(255) NULL,
+        city         VARCHAR(80)  NULL,
+        state        VARCHAR(80)  NULL,
+        zip          VARCHAR(20)  NULL,
+        phone        VARCHAR(40)  NULL,
+        email        VARCHAR(180) NULL,
+        website      VARCHAR(255) NULL,
+        capacity     SMALLINT UNSIGNED NULL,
+        hourly_rate  DECIMAL(8,2) NULL,
+        notes        TEXT         NULL,
+        is_favorite  TINYINT(1)   NOT NULL DEFAULT 0,
+        is_active    TINYINT(1)   NOT NULL DEFAULT 1,
+        created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_school (school_id),
+        FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     await conn.query('SET FOREIGN_KEY_CHECKS = 1');
     console.log('✅ All tables created successfully.');
   } catch (err) {
