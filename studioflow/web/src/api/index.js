@@ -85,3 +85,10 @@ export const parent = {
   schedule: () => api.get('/parent/schedule'),
   recitals: () => api.get('/parent/recitals'),
 };
+
+export const studios = {
+  list:   (schoolId)        => api.get(`/schools/${schoolId}/studios`),
+  create: (schoolId, data)  => api.post(`/schools/${schoolId}/studios`, data),
+  update: (schoolId, id, d) => api.put(`/schools/${schoolId}/studios/${id}`, d),
+  remove: (schoolId, id)    => api.delete(`/schools/${schoolId}/studios/${id}`),
+};

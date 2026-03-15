@@ -10,6 +10,7 @@ import SchoolsPage from './pages/SchoolsPage';
 import ParentPortalPage from './pages/ParentPortalPage';
 import SchoolAboutPage from './pages/SchoolAboutPage';
 import TodosPage from './pages/TodosPage';
+import StudiosPage from './pages/StudiosPage';
 import AppShell from './components/shared/AppShell';
 
 function RequireAuth({ children, roles }) {
@@ -35,6 +36,7 @@ function AppRoutes() {
         <Route path="parent" element={<RequireAuth roles={['parent']}><ParentPortalPage /></RequireAuth>} />
         <Route path="about" element={<SchoolAboutPage />} />
         <Route path="todos" element={<RequireAuth roles={['superadmin','school_admin','teacher']}><TodosPage /></RequireAuth>} />
+        <Route path="studios" element={<RequireAuth roles={['superadmin','school_admin','teacher']}><StudiosPage /></RequireAuth>} />
       </Route>
     </Routes>
   );
