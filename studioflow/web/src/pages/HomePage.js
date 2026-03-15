@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
-import { events as api, batches as batchesApi, students as studentsApi, schools, recitals as recitalApi } from "../api";
+import { events as api, batches as batchesApi, students as studentsApi, schools, recitals as recitalApi, todos as todosApi } from "../api";
 import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
@@ -212,6 +212,7 @@ function SchoolHomePage() {
   const { data: stats }      = useQuery({ queryKey:["stats",sid],    queryFn:()=>schools.stats(sid),    enabled:!!sid });
   const { data: recitalList} = useQuery({ queryKey:["recitals",sid], queryFn:()=>recitalApi.list(sid),  enabled:!!sid });
   const { data: batches=[]}  = useQuery({ queryKey:["batches",sid],  queryFn:()=>batchesApi.list(sid),  enabled:!!sid });
+  const { data: todosData }  = useQuery({ queryKey:["todos",sid],    queryFn:()=>todosApi.list(sid),    enabled:!!sid });
 
   // ── schedule state ────────────────────────────────────────────────────────
   const [view, setView]             = useState("list");
@@ -515,6 +516,67 @@ function SchoolHomePage() {
           </div>
         </div>
       )}
+
+      {/* ── Recent To-Dos widget ────────────────────────────────────────── */}
+      {(() => {
+        const allTodos = todosData?.data?.todos || [];
+        const openTodos = allTodos
+          .filter(t => !t.is_complete)
+          .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
+          .slice(0,5);
+        if (!openTodos.length) return null;
+        const fmtDue = (d) => {
+          if (!d) return null;
+          const [y,m,dy] = d.split('-').map(Number);
+          return new Date(y,m-1,dy).toLocaleDateString([],{month:'short',day:'numeric'});
+        };
+        const overdue = (d) => {
+          if (!d) return false;
+          const [y,m,dy] = d.split('-').map(Number);
+          const due = new Date(y,m-1,dy);
+          const now = new Date(); now.setHours(0,0,0,0);
+          return due < now;
+        };
+        return (
+          <div style={{marginBottom:28}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div style={{fontSize:12,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em"}}>
+                ✅ Recent To-Dos
+              </div>
+              <button onClick={()=>navigate('/todos')} style={{background:'none',border:'none',cursor:'pointer',fontSize:12,color:'var(--accent)',fontWeight:600}}>
+                View all →
+              </button>
+            </div>
+            <div>
+              {openTodos.map(todo => {
+                const od = overdue(todo.due_date);
+                return (
+                  <div key={todo.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',background:'#fff',borderRadius:10,border:'1px solid var(--border)',marginBottom:6}}>
+                    <div
+                      onClick={()=>{ qc.setQueryData(["todos",sid], old => { if (!old?.data?.todos) return old; return {...old, data:{todos:old.data.todos.map(t=>t.id===todo.id?{...t,is_complete:1}:t)}}; }); todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid])); }}
+                      style={{width:20,height:20,borderRadius:'50%',border:'2px solid #d2d2d7',background:'#fff',cursor:'pointer',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}
+                    />
+                    <div style={{flex:1,fontSize:14,color:'#1d1d1f',fontWeight:500}}>{todo.title}</div>
+                    {todo.due_date && (
+                      <span style={{fontSize:11,color:od?'#ff3b30':'#6e6e73',background:od?'#fff0ee':'#f5f5f7',padding:'2px 8px',borderRadius:999,fontWeight:600}}>
+                        {fmtDue(todo.due_date)}
+                      </span>
+                    )}
+                    <button
+                      onClick={()=>{ todosApi.remove(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid])); }}
+                      style={{background:'none',border:'none',cursor:'pointer',color:'#c7c7cc',padding:4,display:'flex',alignItems:'center'}}
+                      onMouseEnter={e=>{e.currentTarget.style.color='#ff3b30';}}
+                      onMouseLeave={e=>{e.currentTarget.style.color='#c7c7cc';}}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2"/></svg>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Schedule section ────────────────────────────────────────────── */}
       <div style={{borderTop:"2px solid var(--border)",paddingTop:24}}>

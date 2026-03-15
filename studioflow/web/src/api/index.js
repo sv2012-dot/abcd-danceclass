@@ -72,6 +72,14 @@ export const events = {
   studioNeeded: (schoolId) => api.get(`/schools/${schoolId}/events/studio-needed`),
 };
 
+export const todos = {
+  list: (schoolId) => api.get(`/schools/${schoolId}/todos`),
+  create: (schoolId, data) => api.post(`/schools/${schoolId}/todos`, data),
+  toggle: (schoolId, id) => api.put(`/schools/${schoolId}/todos/${id}/toggle`),
+  update: (schoolId, id, data) => api.put(`/schools/${schoolId}/todos/${id}`, data),
+  remove: (schoolId, id) => api.delete(`/schools/${schoolId}/todos/${id}`),
+};
+
 export const parent = {
   students: () => api.get('/parent/students'),
   schedule: () => api.get('/parent/schedule'),
