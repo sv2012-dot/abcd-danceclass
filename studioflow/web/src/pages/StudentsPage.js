@@ -384,7 +384,7 @@ export default function StudentsPage() {
               <>
                 {(() => {
                   const ea = Number(editForm.age);
-                  const eKnown = editForm.age !== "" && !isNaN(ea);
+                  const eKnown = String(editForm.age ?? "").trim() !== "" && !isNaN(ea) && ea > 0;
                   const eMinor = eKnown && ea <= 18;
                   const eAdult = eKnown && ea > 18;
                   return (<>
@@ -418,7 +418,7 @@ export default function StudentsPage() {
       {/* ── Add Student Modal ── */}
       {showAdd && (() => {
         const addAge     = Number(addForm.age);
-        const ageKnown   = addForm.age !== "" && !isNaN(addAge);
+        const ageKnown   = String(addForm.age ?? "").trim() !== "" && !isNaN(addAge) && addAge > 0;
         const isMinor    = ageKnown && addAge <= 18;
         const isAdult    = ageKnown && addAge > 18;
         return (
