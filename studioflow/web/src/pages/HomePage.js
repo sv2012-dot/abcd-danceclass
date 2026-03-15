@@ -288,9 +288,9 @@ function SchoolHomePage() {
       {stats && (
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:10,marginBottom:28}}>
           {[
-            { label:"Students",  value:stats.student_count,       color:"#c4527a", icon:"👤", path:"/students" },
-            { label:"Batches",   value:stats.batch_count,         color:"#6a7fdb", icon:"📚", path:"/batches"  },
-            { label:"Recitals",  value:stats.upcoming_recitals,   color:"#f4a041", icon:"🌟", path:"/schedule" },
+            { label:"Students",  value:stats.students ?? stats.student_count,     color:"#c4527a", icon:"👤", path:"/students" },
+            { label:"Batches",   value:stats.batches  ?? stats.batch_count,       color:"#6a7fdb", icon:"📚", path:"/batches"  },
+            { label:"Recitals",  value:stats.upcoming_recitals,                   color:"#f4a041", icon:"🌟", path:"/schedule" },
           ].map(({label,value,color,icon,path}) => (
             <div key={label} onClick={()=>navigate(path)} style={{
               background:"var(--card)",borderRadius:14,padding:"16px 14px",
