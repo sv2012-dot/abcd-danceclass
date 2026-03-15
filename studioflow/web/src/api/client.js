@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+const PROD_API = 'https://abcd-danceclass-production.up.railway.app/api';
+const API_URL = process.env.REACT_APP_API_URL
+  || (process.env.NODE_ENV === 'production' ? PROD_API : 'http://localhost:5000/api');
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+  baseURL: API_URL,
   timeout: 15000,
 });
 
