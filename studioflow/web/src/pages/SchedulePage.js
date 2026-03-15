@@ -135,7 +135,7 @@ function DateTimePicker({ label, value, onChange, minDate }) {
       {/* Trigger */}
       <button type="button" onClick={()=>setOpen(p=>!p)} style={{
         width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
-        background:"#faf8fc",border:`1.5px solid ${open?"var(--accent)":"var(--border)"}`,
+        background:"var(--surface)",border:`1.5px solid ${open?"var(--accent)":"var(--border)"}`,
         borderRadius:9,padding:"9px 13px",cursor:"pointer",
         boxShadow:open?"0 0 0 3px rgba(196,82,122,0.1)":"none",
         transition:"all .15s",textAlign:"left",
@@ -155,7 +155,7 @@ function DateTimePicker({ label, value, onChange, minDate }) {
       {open && (
         <div style={{
           position:"absolute",top:"calc(100% + 8px)",left:0,zIndex:300,
-          background:"#fff",borderRadius:16,
+          background:"var(--card)",borderRadius:16,
           boxShadow:"0 12px 40px rgba(0,0,0,0.16)",border:"1px solid var(--border)",
           width:300,overflow:"hidden",
         }}>
@@ -164,7 +164,7 @@ function DateTimePicker({ label, value, onChange, minDate }) {
             {["date","time"].map(t => (
               <button key={t} type="button" onClick={()=>setTab(t)} style={{
                 flex:1,padding:"11px 0",fontSize:12,fontWeight:700,border:"none",cursor:"pointer",
-                background:tab===t?"#fff":"var(--surface)",
+                background:tab===t?"var(--card)":"var(--surface)",
                 color:tab===t?"var(--accent)":"var(--muted)",
                 borderBottom:tab===t?"2px solid var(--accent)":"2px solid transparent",
               }}>{t==="date"?"📅 Date":"⏰ Time"}</button>
@@ -540,7 +540,7 @@ export default function SchedulePage() {
                 key={i}
                 onClick={() => day && isAdmin && openAdd(new Date(y, m, day))}
                 style={{
-                  background: day ? "#fff" : "#f8f4f9",
+                  background: day ? "var(--card)" : "var(--surface)",
                   minHeight: 100, padding: "6px 5px",
                   cursor: day && isAdmin ? "pointer" : "default",
                 }}
@@ -599,7 +599,7 @@ export default function SchedulePage() {
               <div
                 onClick={() => isAdmin && openAdd(date)}
                 style={{
-                  flex:1,background:"#fff",borderRadius:12,padding:10,border:"1.5px solid var(--border)",
+                  flex:1,background:"var(--card)",borderRadius:12,padding:10,border:"1.5px solid var(--border)",
                   cursor:isAdmin?"pointer":"default",
                   overflow:"auto",display:"flex",flexDirection:"column",gap:8,
                   transition:"all .15s"
@@ -614,7 +614,7 @@ export default function SchedulePage() {
                       style={{
                         background: color+"15", border: `2px solid ${color}`,
                         borderRadius: 10, padding: "10px 12px",
-                        fontSize: 12, fontWeight: 700, color: "#1e1228",
+                        fontSize: 12, fontWeight: 700, color: "var(--text)",
                         cursor: "pointer", transition: "all .15s",
                         display:"flex",alignItems:"flex-start",gap:8,
                       }}
@@ -722,7 +722,7 @@ export default function SchedulePage() {
             {["month","week","list"].map(v => (
               <button key={v} onClick={()=>setView(v)} style={{
                 padding:"6px 14px",borderRadius:8,border:"1.5px solid var(--border)",fontSize:12,fontWeight:600,cursor:"pointer",
-                background:view===v?"var(--accent)":"#fff",color:view===v?"#fff":"var(--text)",
+                background:view===v?"var(--accent)":"var(--card)",color:view===v?"#fff":"var(--text)",
               }}>{v.charAt(0).toUpperCase()+v.slice(1)}</button>
             ))}
             {isAdmin && <Button onClick={()=>openAdd()} icon="➕" size="sm">Add Event</Button>}
@@ -760,7 +760,7 @@ export default function SchedulePage() {
                 <div onClick={()=>setShowLegend(false)} style={{position:"fixed",inset:0,zIndex:99}} />
                 <div style={{
                   position:"absolute",top:"calc(100% + 8px)",left:0,zIndex:100,
-                  background:"#fff",borderRadius:12,padding:14,width:200,
+                  background:"var(--card)",borderRadius:12,padding:14,width:200,
                   boxShadow:"0 8px 32px rgba(0,0,0,0.14)",border:"1px solid var(--border)",
                 }}>
                   <div style={{fontWeight:700,fontSize:11,marginBottom:9,color:"var(--text)"}}>Event Types</div>
@@ -801,7 +801,7 @@ export default function SchedulePage() {
           <span style={{fontWeight:700,fontSize:12,color:"#e05c6a",flexShrink:0}}>⚠ Studio not booked:</span>
           <div style={{display:"flex",gap:7,flexWrap:"wrap",flex:1}}>
             {unbookedStudio.map(e => (
-              <div key={e.id} onClick={()=>handleEventClick(e)} style={{fontSize:11,cursor:"pointer",padding:"4px 10px",borderRadius:20,background:"#fff",border:"1px solid #e05c6a44",fontWeight:600,color:"#e05c6a"}}>
+              <div key={e.id} onClick={()=>handleEventClick(e)} style={{fontSize:11,cursor:"pointer",padding:"4px 10px",borderRadius:20,background:"var(--card)",border:"1px solid #e05c6a44",fontWeight:600,color:"#e05c6a"}}>
                 {e.title} · <span style={{fontWeight:400,color:"var(--muted)"}}>{fmtDate(e.start_datetime)}</span>
               </div>
             ))}

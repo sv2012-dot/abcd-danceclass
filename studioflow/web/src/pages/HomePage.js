@@ -95,7 +95,7 @@ function DateTimePicker({ label, value, onChange }) {
       <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:5}}>{label}</div>
       <button type="button" onClick={()=>setOpen(p=>!p)} style={{
         width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
-        background:"#faf8fc",border:`1.5px solid ${open?"var(--accent)":"var(--border)"}`,
+        background:"var(--surface)",border:`1.5px solid ${open?"var(--accent)":"var(--border)"}`,
         borderRadius:9,padding:"9px 13px",cursor:"pointer",
         boxShadow:open?"0 0 0 3px rgba(196,82,122,0.1)":"none",transition:"all .15s",textAlign:"left",
       }}>
@@ -109,12 +109,12 @@ function DateTimePicker({ label, value, onChange }) {
         <span style={{fontSize:14,color:"var(--muted)",flexShrink:0}}>📅</span>
       </button>
       {open && (
-        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,zIndex:400,background:"#fff",borderRadius:16,boxShadow:"0 12px 40px rgba(0,0,0,0.16)",border:"1px solid var(--border)",width:300,overflow:"hidden"}}>
+        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,zIndex:400,background:"var(--card)",borderRadius:16,boxShadow:"0 12px 40px rgba(0,0,0,0.16)",border:"1px solid var(--border)",width:300,overflow:"hidden"}}>
           <div style={{display:"flex",borderBottom:`1px solid var(--border)`}}>
             {["date","time"].map(t => (
               <button key={t} type="button" onClick={()=>setTab(t)} style={{
                 flex:1,padding:"11px 0",fontSize:12,fontWeight:700,border:"none",cursor:"pointer",
-                background:tab===t?"#fff":"var(--surface)",color:tab===t?"var(--accent)":"var(--muted)",
+                background:tab===t?"var(--card)":"var(--surface)",color:tab===t?"var(--accent)":"var(--muted)",
                 borderBottom:tab===t?"2px solid var(--accent)":"2px solid transparent",
               }}>{t==="date"?"📅 Date":"⏰ Time"}</button>
             ))}
@@ -293,7 +293,7 @@ function SchoolHomePage() {
             { label:"Recitals",  value:stats.upcoming_recitals,   color:"#f4a041", icon:"🌟", path:"/schedule" },
           ].map(({label,value,color,icon,path}) => (
             <div key={label} onClick={()=>navigate(path)} style={{
-              background:"#fff",borderRadius:14,padding:"16px 14px",
+              background:"var(--card)",borderRadius:14,padding:"16px 14px",
               border:"1.5px solid var(--border)",textAlign:"center",
               cursor:"pointer",transition:"all .15s",
             }}
@@ -341,7 +341,7 @@ function SchoolHomePage() {
               return (
                 <div key={r.id} onClick={()=>navigate("/schedule",{state:{recitalId:r.id}})} style={{
                   display:"flex",alignItems:"center",gap:12,padding:"10px 16px",
-                  background:"#fff",borderRadius:12,border:"1.5px solid var(--border)",
+                  background:"var(--card)",borderRadius:12,border:"1.5px solid var(--border)",
                   cursor:"pointer",minWidth:200,flex:"1 1 200px",maxWidth:340,transition:"all .15s",
                 }}
                   onMouseEnter={e=>{e.currentTarget.style.borderColor="#c4527a55";e.currentTarget.style.boxShadow="0 4px 12px #c4527a15";}}
@@ -377,7 +377,7 @@ function SchoolHomePage() {
               return (
                 <div key={e.id} onClick={()=>navigate("/schedule")} style={{
                   display:"flex",alignItems:"center",gap:12,padding:"10px 16px",
-                  background:"#fff",borderRadius:12,border:"1.5px solid var(--border)",
+                  background:"var(--card)",borderRadius:12,border:"1.5px solid var(--border)",
                   cursor:"pointer",minWidth:200,flex:"1 1 200px",maxWidth:340,transition:"all .15s",
                 }}
                   onMouseEnter={ev=>{ev.currentTarget.style.borderColor=color+"55";ev.currentTarget.style.boxShadow=`0 4px 12px ${color}15`;}}
@@ -432,7 +432,7 @@ function SchoolHomePage() {
                 View all →
               </button>
             </div>
-            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid var(--border)",overflow:"hidden"}}>
+            <div style={{background:"var(--card)",borderRadius:14,border:"1.5px solid var(--border)",overflow:"hidden"}}>
               {openTodos.map((todo, idx) => {
                 const od = isOverdue(todo.due_date);
                 return (
@@ -449,12 +449,12 @@ function SchoolHomePage() {
                         todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid]));
                       }}
                       title="Mark complete"
-                      style={{width:20,height:20,borderRadius:"50%",border:"2px solid #d2d2d7",background:"#fff",cursor:"pointer",flexShrink:0,transition:"all .15s"}}
+                      style={{width:20,height:20,borderRadius:"50%",border:"2px solid var(--border)",background:"var(--card)",cursor:"pointer",flexShrink:0,transition:"all .15s"}}
                       onMouseEnter={e=>{e.currentTarget.style.borderColor="#52c4a0";e.currentTarget.style.background="#52c4a015";}}
-                      onMouseLeave={e=>{e.currentTarget.style.borderColor="#d2d2d7";e.currentTarget.style.background="#fff";}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.background="var(--card)";}}
                     />
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,color:"#1d1d1f",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{todo.title}</div>
+                      <div style={{fontSize:13,color:"var(--text)",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{todo.title}</div>
                       {todo.event_title && (
                         <div style={{fontSize:11,color:"var(--muted)",marginTop:1}}>📅 {todo.event_title}</div>
                       )}
@@ -462,7 +462,7 @@ function SchoolHomePage() {
                     {todo.due_date && (
                       <span style={{
                         fontSize:11,fontWeight:600,padding:"2px 9px",borderRadius:999,flexShrink:0,
-                        color:od?"#ff3b30":"#6e6e73",background:od?"#fff0ee":"#f5f5f7",
+                        color:od?"#ff3b30":"var(--muted)",background:od?"#fff0ee":"var(--surface)",
                       }}>
                         {od && "⚠ "}{fmtDue(todo.due_date)}
                       </span>
@@ -605,7 +605,7 @@ function SuperAdminDash() {
       <div style={{display:"grid",gap:9}}>
         {(schoolList||[]).map(s => (
           <div key={s.id} onClick={()=>navigate("/schools")} style={{
-            display:"flex",alignItems:"center",gap:14,padding:14,background:"#fff",
+            display:"flex",alignItems:"center",gap:14,padding:14,background:"var(--card)",
             borderRadius:12,border:"1.5px solid var(--border)",cursor:"pointer",transition:"all .15s",
           }}
             onMouseEnter={e=>{e.currentTarget.style.borderColor="#c4527a44";e.currentTarget.style.boxShadow="0 4px 12px #c4527a10";}}

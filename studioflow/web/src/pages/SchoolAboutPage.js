@@ -6,13 +6,13 @@ import toast from 'react-hot-toast';
 
 /* ── Helpers ───────────────────────────────────────────────── */
 function Divider() {
-  return <div style={{ borderTop: '1px solid #e5e5e7', margin: '0' }} />;
+  return <div style={{ borderTop: '1px solid var(--border)', margin: '0' }} />;
 }
 function Eyebrow({ children, center }) {
   return (
     <div style={{
       fontSize: 12, fontWeight: 700, letterSpacing: '0.1em',
-      textTransform: 'uppercase', color: '#6e6e73',
+      textTransform: 'uppercase', color: 'var(--muted)',
       marginBottom: 14, textAlign: center ? 'center' : 'left',
     }}>
       {children}
@@ -133,7 +133,7 @@ function SectionWrapper({ sectionKey, editMode, dragOverKey, onDragStart, onDrag
           </span>
           <div style={{ flex: 1 }} />
           {/* Duplicate button */}
-          <button onClick={onDuplicate} style={{ background: 'none', border: 'none', color: '#6e6e73', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '2px 6px' }}>
+          <button onClick={onDuplicate} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '2px 6px' }}>
             Duplicate
           </button>
           {baseKey !== 'hero' && (
@@ -185,8 +185,8 @@ function AddSectionButton({ position, addingAt, setAddingAt, available, onAdd })
           top: '100%',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: '#fff',
-          border: '1px solid #d2d2d7',
+          background: 'var(--card)',
+          border: '1px solid var(--border)',
           borderRadius: 12,
           padding: 12,
           zIndex: 100,
@@ -201,8 +201,8 @@ function AddSectionButton({ position, addingAt, setAddingAt, available, onAdd })
               key={key}
               onClick={() => onAdd(key, position)}
               style={{
-                background: '#f5f5f7',
-                border: '1px solid #d2d2d7',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
                 padding: '6px 14px',
                 fontSize: 13,
@@ -444,9 +444,9 @@ export default function SchoolAboutPage() {
     switch (baseKey) {
       case 'hero':
         return (
-          <section key={sectionKey} style={{ padding: '72px 64px 68px', textAlign: 'center', background: '#fff', position: 'relative' }}>
+          <section key={sectionKey} style={{ padding: '72px 64px 68px', textAlign: 'center', background: 'var(--card)', position: 'relative' }}>
             {isAdmin && !editMode && (
-              <button onClick={enterEdit} style={{ position: 'absolute', top: 24, right: 28, display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', border: '1.5px solid #d2d2d7', borderRadius: 10, background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#1d1d1f', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+              <button onClick={enterEdit} style={{ position: 'absolute', top: 24, right: 28, display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', border: '1.5px solid var(--border)', borderRadius: 10, background: 'var(--card)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Edit Page
               </button>
@@ -466,14 +466,14 @@ export default function SchoolAboutPage() {
 
             <Eyebrow center>
               {editMode
-                ? <EText value={D.city} onChange={set('city')} style={{ fontSize: 12, fontWeight: 700, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6e6e73' }} />
+                ? <EText value={D.city} onChange={set('city')} style={{ fontSize: 12, fontWeight: 700, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--muted)'}} />
                 : <>{D.city}{D.city && D.city !== 'Your City' ? ', Washington' : ''}</>
               }
             </Eyebrow>
 
             {editMode
-              ? <EText value={D.name} onChange={set('name')} style={{ fontSize: 40, fontWeight: 900, letterSpacing: '-1.5px', lineHeight: 1.08, color: '#1d1d1f', textAlign: 'center', maxWidth: 640, margin: '0 auto 16px' }} />
-              : <h1 style={{ fontSize: 48, fontWeight: 900, letterSpacing: '-1.5px', lineHeight: 1.08, color: '#1d1d1f', margin: '0 auto 24px', maxWidth: 640 }}>{D.name}</h1>
+              ? <EText value={D.name} onChange={set('name')} style={{ fontSize: 40, fontWeight: 900, letterSpacing: '-1.5px', lineHeight: 1.08, color: 'var(--text)', textAlign: 'center', maxWidth: 640, margin: '0 auto 16px' }} />
+              : <h1 style={{ fontSize: 48, fontWeight: 900, letterSpacing: '-1.5px', lineHeight: 1.08, color: 'var(--text)', margin: '0 auto 24px', maxWidth: 640 }}>{D.name}</h1>
             }
 
             {/* Logo upload controls (edit mode only) */}
@@ -504,25 +504,25 @@ export default function SchoolAboutPage() {
             )}
 
             {editMode
-              ? <EArea value={D.tagline} onChange={set('tagline')} rows={2} style={{ fontSize: 17, color: '#6e6e73', lineHeight: 1.6, maxWidth: 520, margin: '12px auto 0', fontWeight: 400, textAlign: 'center' }} />
-              : <p style={{ fontSize: 19, color: '#6e6e73', lineHeight: 1.6, maxWidth: 520, margin: '0 auto', fontWeight: 400 }}>{D.tagline}</p>
+              ? <EArea value={D.tagline} onChange={set('tagline')} rows={2} style={{ fontSize: 17, color: 'var(--muted)', lineHeight: 1.6, maxWidth: 520, margin: '12px auto 0', fontWeight: 400, textAlign: 'center' }} />
+              : <p style={{ fontSize: 19, color: 'var(--muted)', lineHeight: 1.6, maxWidth: 520, margin: '0 auto', fontWeight: 400 }}>{D.tagline}</p>
             }
           </section>
         );
 
       case 'stats':
         return (
-          <section key={sectionKey} style={{ display: 'flex', padding: '44px 64px', background: '#f5f5f7', gap: 0 }}>
+          <section key={sectionKey} style={{ display: 'flex', padding: '44px 64px', background: 'var(--surface)', gap: 0 }}>
             {(D.stats || []).map(({ stat, label }, i, arr) => (
-              <div key={i} style={{ flex: 1, textAlign: 'center', padding: '0 20px', borderRight: i < arr.length - 1 ? '1px solid #d2d2d7' : 'none' }}>
+              <div key={i} style={{ flex: 1, textAlign: 'center', padding: '0 20px', borderRight: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 {editMode
                   ? <>
-                      <EText value={stat} onChange={setStat(i, 'stat')} style={{ fontSize: 28, fontWeight: 800, color: '#1d1d1f', letterSpacing: '-0.5px', marginBottom: 4, textAlign: 'center' }} />
-                      <EArea value={label} onChange={setStat(i, 'label')} rows={2} style={{ fontSize: 12, color: '#6e6e73', lineHeight: 1.5, textAlign: 'center', marginTop: 6 }} />
+                      <EText value={stat} onChange={setStat(i, 'stat')} style={{ fontSize: 28, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px', marginBottom: 4, textAlign: 'center' }} />
+                      <EArea value={label} onChange={setStat(i, 'label')} rows={2} style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5, textAlign: 'center', marginTop: 6 }} />
                     </>
                   : <>
-                      <div style={{ fontSize: 32, fontWeight: 800, color: '#1d1d1f', letterSpacing: '-0.5px', marginBottom: 6 }}>{stat}</div>
-                      <div style={{ fontSize: 13, color: '#6e6e73', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{label}</div>
+                      <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px', marginBottom: 6 }}>{stat}</div>
+                      <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{label}</div>
                     </>
                 }
               </div>
@@ -532,36 +532,36 @@ export default function SchoolAboutPage() {
 
       case 'art_form':
         return (
-          <section key={sectionKey} style={{ padding: '72px 64px', background: '#fff' }}>
+          <section key={sectionKey} style={{ padding: '72px 64px', background: 'var(--card)' }}>
             <div style={{ display: 'flex', gap: 80, alignItems: 'flex-start' }}>
               <div style={{ flex: '0 0 280px' }}>
                 <Eyebrow>The Art Form</Eyebrow>
                 {editMode
-                  ? <EText value={D.dance_style} onChange={set('dance_style')} style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-0.8px', color: '#1d1d1f' }} />
-                  : <h2 style={{ fontSize: 36, fontWeight: 900, letterSpacing: '-0.8px', lineHeight: 1.1, color: '#1d1d1f', margin: 0 }}>{D.dance_style}.</h2>
+                  ? <EText value={D.dance_style} onChange={set('dance_style')} style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-0.8px', color: 'var(--text)' }} />
+                  : <h2 style={{ fontSize: 36, fontWeight: 900, letterSpacing: '-0.8px', lineHeight: 1.1, color: 'var(--text)', margin: 0 }}>{D.dance_style}.</h2>
                 }
                 <div style={{ marginTop: 14 }}>
                   {editMode
-                    ? <EArea value={D.art_form_tagline} onChange={set('art_form_tagline')} rows={2} style={{ fontSize: 14, color: '#6e6e73', lineHeight: 1.6 }} />
-                    : <p style={{ fontSize: 14, color: '#6e6e73', margin: 0, lineHeight: 1.6 }}>{D.art_form_tagline}</p>
+                    ? <EArea value={D.art_form_tagline} onChange={set('art_form_tagline')} rows={2} style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6 }} />
+                    : <p style={{ fontSize: 14, color: 'var(--muted)', margin: 0, lineHeight: 1.6 }}>{D.art_form_tagline}</p>
                   }
                 </div>
               </div>
               <div style={{ flex: 1 }}>
                 {editMode
-                  ? <EArea value={D.art_form_body} onChange={set('art_form_body')} rows={5} style={{ fontSize: 15, color: '#1d1d1f', lineHeight: 1.75, marginBottom: 16 }} />
-                  : <p style={{ fontSize: 16, color: '#1d1d1f', lineHeight: 1.75, marginBottom: 32 }}>{D.art_form_body}</p>
+                  ? <EArea value={D.art_form_body} onChange={set('art_form_body')} rows={5} style={{ fontSize: 15, color: 'var(--text)', lineHeight: 1.75, marginBottom: 16 }} />
+                  : <p style={{ fontSize: 16, color: 'var(--text)', lineHeight: 1.75, marginBottom: 32 }}>{D.art_form_body}</p>
                 }
-                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6e6e73', marginBottom: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 14 }}>
                   At our {D.city} studio, students learn
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 32px' }}>
                   {(D.art_form_bullets || []).map((item, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                      <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#1d1d1f', flexShrink: 0, marginTop: editMode ? 12 : 8 }} />
+                      <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text)', flexShrink: 0, marginTop: editMode ? 12 : 8 }} />
                       {editMode
-                        ? <EText value={item} onChange={setBullet(i)} style={{ fontSize: 14, color: '#1d1d1f', lineHeight: 1.55 }} />
-                        : <span style={{ fontSize: 14, color: '#1d1d1f', lineHeight: 1.55 }}>{item}</span>
+                        ? <EText value={item} onChange={setBullet(i)} style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.55 }} />
+                        : <span style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.55 }}>{item}</span>
                       }
                     </div>
                   ))}
@@ -573,26 +573,26 @@ export default function SchoolAboutPage() {
 
       case 'philosophy':
         return (
-          <section key={sectionKey} style={{ padding: '80px 64px', background: '#f5f5f7', textAlign: 'center' }}>
+          <section key={sectionKey} style={{ padding: '80px 64px', background: 'var(--surface)', textAlign: 'center' }}>
             <Eyebrow center>Our Philosophy</Eyebrow>
             {editMode
-              ? <EArea value={D.philosophy_quote} onChange={set('philosophy_quote')} rows={3} style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.3, color: '#1d1d1f', maxWidth: 580, margin: '0 auto 16px', textAlign: 'center' }} />
-              : <blockquote style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.6px', lineHeight: 1.25, color: '#1d1d1f', maxWidth: 580, margin: '0 auto 28px', fontStyle: 'normal' }}>
+              ? <EArea value={D.philosophy_quote} onChange={set('philosophy_quote')} rows={3} style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.3, color: 'var(--text)', maxWidth: 580, margin: '0 auto 16px', textAlign: 'center' }} />
+              : <blockquote style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.6px', lineHeight: 1.25, color: 'var(--text)', maxWidth: 580, margin: '0 auto 28px', fontStyle: 'normal' }}>
                   "{D.philosophy_quote}"
                 </blockquote>
             }
             {editMode
-              ? <EArea value={D.philosophy_body} onChange={set('philosophy_body')} rows={4} style={{ fontSize: 14, color: '#6e6e73', maxWidth: 520, margin: '12px auto 0', lineHeight: 1.7, textAlign: 'center' }} />
-              : <p style={{ fontSize: 15, color: '#6e6e73', maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>{D.philosophy_body}</p>
+              ? <EArea value={D.philosophy_body} onChange={set('philosophy_body')} rows={4} style={{ fontSize: 14, color: 'var(--muted)', maxWidth: 520, margin: '12px auto 0', lineHeight: 1.7, textAlign: 'center' }} />
+              : <p style={{ fontSize: 15, color: 'var(--muted)', maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>{D.philosophy_body}</p>
             }
           </section>
         );
 
       case 'people':
         return (
-          <section key={sectionKey} style={{ padding: '72px 64px', background: '#fff' }}>
+          <section key={sectionKey} style={{ padding: '72px 64px', background: 'var(--card)' }}>
             <Eyebrow>The People</Eyebrow>
-            <h2 style={{ fontSize: 36, fontWeight: 900, letterSpacing: '-0.8px', lineHeight: 1.1, color: '#1d1d1f', marginBottom: 52 }}>
+            <h2 style={{ fontSize: 36, fontWeight: 900, letterSpacing: '-0.8px', lineHeight: 1.1, color: 'var(--text)', marginBottom: 52 }}>
               Guided by masters.
             </h2>
 
@@ -634,16 +634,16 @@ export default function SchoolAboutPage() {
                   {/* Content */}
                   <div style={{ flex: 1 }}>
                     {editMode
-                      ? <EText value={member.name} onChange={v => updateMember(member.id, 'name', v)} style={{ fontSize: 22, fontWeight: 800, color: '#1d1d1f', letterSpacing: '-0.3px', marginBottom: 6 }} />
-                      : <div style={{ fontSize: 22, fontWeight: 800, color: '#1d1d1f', letterSpacing: '-0.3px', marginBottom: 4 }}>{member.name}</div>
+                      ? <EText value={member.name} onChange={v => updateMember(member.id, 'name', v)} style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.3px', marginBottom: 6 }} />
+                      : <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.3px', marginBottom: 4 }}>{member.name}</div>
                     }
                     {editMode
-                      ? <EText value={member.title} onChange={v => updateMember(member.id, 'title', v)} style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6e6e73', marginBottom: 12 }} />
-                      : <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6e6e73', marginBottom: 16 }}>{member.title}</div>
+                      ? <EText value={member.title} onChange={v => updateMember(member.id, 'title', v)} style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 12 }} />
+                      : <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 16 }}>{member.title}</div>
                     }
                     {editMode
-                      ? <EArea value={member.bio} onChange={v => updateMember(member.id, 'bio', v)} rows={4} style={{ fontSize: 15, color: '#1d1d1f', lineHeight: 1.75 }} />
-                      : <p style={{ fontSize: 15, color: '#1d1d1f', lineHeight: 1.75, margin: 0 }}>{member.bio}</p>
+                      ? <EArea value={member.bio} onChange={v => updateMember(member.id, 'bio', v)} rows={4} style={{ fontSize: 15, color: 'var(--text)', lineHeight: 1.75 }} />
+                      : <p style={{ fontSize: 15, color: 'var(--text)', lineHeight: 1.75, margin: 0 }}>{member.bio}</p>
                     }
                     {/* Remove member button — only when >1 member and in edit mode */}
                     {editMode && (D.team_members || []).length > 1 && (
@@ -668,29 +668,29 @@ export default function SchoolAboutPage() {
 
       case 'contact':
         return (
-          <section key={sectionKey} style={{ padding: '64px 64px', background: '#f5f5f7' }}>
+          <section key={sectionKey} style={{ padding: '64px 64px', background: 'var(--surface)' }}>
             <Eyebrow>Contact</Eyebrow>
-            <h2 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.6px', color: '#1d1d1f', marginBottom: 32 }}>Get in touch.</h2>
+            <h2 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.6px', color: 'var(--text)', marginBottom: 32 }}>Get in touch.</h2>
             <div style={{ display: 'flex', gap: 48, flexWrap: 'wrap' }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6e6e73', marginBottom: 6 }}>Email</div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>Email</div>
                 {editMode
-                  ? <EText value={D.email} onChange={set('email')} style={{ fontSize: 15, color: '#1d1d1f', fontWeight: 500 }} />
-                  : D.email ? <a href={`mailto:${D.email}`} style={{ fontSize: 15, color: '#1d1d1f', textDecoration: 'none', fontWeight: 500 }}>{D.email}</a> : <span style={{ color: '#aaa', fontSize: 14 }}>—</span>
+                  ? <EText value={D.email} onChange={set('email')} style={{ fontSize: 15, color: 'var(--text)', fontWeight: 500 }} />
+                  : D.email ? <a href={`mailto:${D.email}`} style={{ fontSize: 15, color: 'var(--text)', textDecoration: 'none', fontWeight: 500 }}>{D.email}</a> : <span style={{ color: '#aaa', fontSize: 14 }}>—</span>
                 }
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6e6e73', marginBottom: 6 }}>Phone</div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>Phone</div>
                 {editMode
-                  ? <EText value={D.phone} onChange={set('phone')} style={{ fontSize: 15, color: '#1d1d1f', fontWeight: 500 }} />
-                  : D.phone ? <a href={`tel:${D.phone}`} style={{ fontSize: 15, color: '#1d1d1f', textDecoration: 'none', fontWeight: 500 }}>{D.phone}</a> : <span style={{ color: '#aaa', fontSize: 14 }}>—</span>
+                  ? <EText value={D.phone} onChange={set('phone')} style={{ fontSize: 15, color: 'var(--text)', fontWeight: 500 }} />
+                  : D.phone ? <a href={`tel:${D.phone}`} style={{ fontSize: 15, color: 'var(--text)', textDecoration: 'none', fontWeight: 500 }}>{D.phone}</a> : <span style={{ color: '#aaa', fontSize: 14 }}>—</span>
                 }
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6e6e73', marginBottom: 6 }}>Studio Address</div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>Studio Address</div>
                 {editMode
-                  ? <EArea value={D.address} onChange={set('address')} rows={2} style={{ fontSize: 15, color: '#1d1d1f', fontWeight: 500 }} />
-                  : D.address ? <div style={{ fontSize: 15, color: '#1d1d1f', fontWeight: 500, whiteSpace: 'pre-line' }}>{D.address}</div> : <span style={{ color: '#aaa', fontSize: 14 }}>—</span>
+                  ? <EArea value={D.address} onChange={set('address')} rows={2} style={{ fontSize: 15, color: 'var(--text)', fontWeight: 500 }} />
+                  : D.address ? <div style={{ fontSize: 15, color: 'var(--text)', fontWeight: 500, whiteSpace: 'pre-line' }}>{D.address}</div> : <span style={{ color: '#aaa', fontSize: 14 }}>—</span>
                 }
               </div>
             </div>
@@ -699,23 +699,23 @@ export default function SchoolAboutPage() {
 
       case 'welcome':
         return (
-          <section key={sectionKey} style={{ padding: '80px 64px', background: '#fff', textAlign: 'center' }}>
+          <section key={sectionKey} style={{ padding: '80px 64px', background: 'var(--card)', textAlign: 'center' }}>
             <Eyebrow center>New Students</Eyebrow>
             {editMode
-              ? <EText value={D.welcome_title} onChange={set('welcome_title')} style={{ fontSize: 34, fontWeight: 900, letterSpacing: '-1px', lineHeight: 1.1, color: '#1d1d1f', textAlign: 'center', maxWidth: 560, margin: '0 auto 16px' }} />
-              : <h2 style={{ fontSize: 40, fontWeight: 900, letterSpacing: '-1px', lineHeight: 1.1, color: '#1d1d1f', margin: '0 auto 20px', maxWidth: 560 }}>{D.welcome_title}</h2>
+              ? <EText value={D.welcome_title} onChange={set('welcome_title')} style={{ fontSize: 34, fontWeight: 900, letterSpacing: '-1px', lineHeight: 1.1, color: 'var(--text)', textAlign: 'center', maxWidth: 560, margin: '0 auto 16px' }} />
+              : <h2 style={{ fontSize: 40, fontWeight: 900, letterSpacing: '-1px', lineHeight: 1.1, color: 'var(--text)', margin: '0 auto 20px', maxWidth: 560 }}>{D.welcome_title}</h2>
             }
             {editMode
-              ? <EArea value={D.welcome_body} onChange={set('welcome_body')} rows={3} style={{ fontSize: 15, color: '#6e6e73', lineHeight: 1.7, maxWidth: 480, margin: '12px auto', textAlign: 'center' }} />
-              : <p style={{ fontSize: 17, color: '#6e6e73', lineHeight: 1.7, maxWidth: 480, margin: '0 auto 44px' }}>{D.welcome_body}</p>
+              ? <EArea value={D.welcome_body} onChange={set('welcome_body')} rows={3} style={{ fontSize: 15, color: 'var(--muted)', lineHeight: 1.7, maxWidth: 480, margin: '12px auto', textAlign: 'center' }} />
+              : <p style={{ fontSize: 17, color: 'var(--muted)', lineHeight: 1.7, maxWidth: 480, margin: '0 auto 44px' }}>{D.welcome_body}</p>
             }
             <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap', marginTop: editMode ? 16 : 0 }}>
               {(D.welcome_badges || []).map((label, i) => (
                 editMode
-                  ? <div key={i} style={{ background: '#fff', border: '1px solid #d2d2d7', borderRadius: 999, padding: '4px 8px' }}>
-                      <EText value={label} onChange={setBadge(i)} style={{ fontSize: 14, fontWeight: 500, color: '#1d1d1f', minWidth: 140, textAlign: 'center', background: 'transparent', borderBottom: 'none' }} />
+                  ? <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 999, padding: '4px 8px' }}>
+                      <EText value={label} onChange={setBadge(i)} style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', minWidth: 140, textAlign: 'center', background: 'transparent', borderBottom: 'none' }} />
                     </div>
-                  : <div key={label} style={{ background: '#fff', border: '1px solid #d2d2d7', borderRadius: 999, padding: '9px 20px', fontSize: 14, fontWeight: 500, color: '#1d1d1f' }}>{label}</div>
+                  : <div key={label} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 999, padding: '9px 20px', fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{label}</div>
               ))}
             </div>
           </section>
@@ -728,7 +728,7 @@ export default function SchoolAboutPage() {
 
   /* ── Render ───────────────────────────────────────────── */
   return (
-    <div style={{ fontFamily: 'var(--font-sans)', color: '#1d1d1f', background: '#fff', borderRadius: 20, overflow: 'hidden', paddingBottom: editMode ? 80 : 0 }}>
+    <div style={{ fontFamily: 'var(--font-sans)', color: 'var(--text)', background: 'var(--card)', borderRadius: 20, overflow: 'hidden', paddingBottom: editMode ? 80 : 0 }}>
 
       {editMode ? (
         /* Edit mode: sections with wrappers, drag-to-reorder, add section buttons */

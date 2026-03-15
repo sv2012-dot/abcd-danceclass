@@ -1077,7 +1077,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                     style={{
                       flex:1, padding:"9px 14px",
                       border:"1.5px solid #c9b8ff", borderRadius:9,
-                      fontSize:13, background:"#fff",
+                      fontSize:13, background:"var(--card)",
                       color:"var(--text)", outline:"none", fontFamily:"inherit",
                     }}
                   />

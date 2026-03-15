@@ -26,8 +26,8 @@ const CheckCircle = ({ complete, onClick }) => (
     title={complete ? 'Mark incomplete' : 'Mark complete'}
     style={{
       width: 20, height: 20, borderRadius: '50%',
-      border: complete ? '2px solid #34c759' : '2px solid #d2d2d7',
-      background: complete ? '#34c759' : '#fff',
+      border: complete ? '2px solid #34c759' : '2px solid var(--border)',
+      background: complete ? '#34c759' : 'var(--card)',
       cursor: 'pointer', flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       transition: 'all .15s',
@@ -172,7 +172,7 @@ export default function TodosPage() {
       <div style={{
         display: 'flex', alignItems: 'flex-start', gap: 12,
         padding: '10px 14px',
-        background: '#fff', borderRadius: 10,
+        background: 'var(--card)', borderRadius: 10,
         border: '1px solid var(--border)',
         marginBottom: 6,
         opacity: complete ? 0.7 : 1,
@@ -182,14 +182,14 @@ export default function TodosPage() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
             fontSize: 14,
-            color: complete ? '#aeaeb2' : '#1d1d1f',
+            color: complete ? '#aeaeb2' : 'var(--text)',
             textDecoration: complete ? 'line-through' : 'none',
             fontWeight: 500,
           }}>
             {todo.title}
           </div>
           {todo.notes && (
-            <div style={{ fontSize: 12, color: '#8e8e93', marginTop: 2 }}>{todo.notes}</div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{todo.notes}</div>
           )}
           <div style={{ display: 'flex', gap: 6, marginTop: linkedLabel || todo.due_date ? 5 : 0, flexWrap: 'wrap', alignItems: 'center' }}>
             {linkedLabel && (
@@ -204,8 +204,8 @@ export default function TodosPage() {
             {todo.due_date && (
               <span style={{
                 fontSize: 11,
-                color: overdue ? '#ff3b30' : '#6e6e73',
-                background: overdue ? '#fff0ee' : '#f5f5f7',
+                color: overdue ? '#ff3b30' : 'var(--muted)',
+                background: overdue ? '#fff0ee' : 'var(--surface)',
                 padding: '2px 8px', borderRadius: 999, fontWeight: 600,
               }}>
                 {formatDueDate(todo.due_date)}
@@ -221,8 +221,8 @@ export default function TodosPage() {
   const tabStyle = (key) => ({
     padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
     fontSize: 12, fontWeight: 600,
-    background: activeTab === key ? 'var(--accent)' : '#f5f5f7',
-    color: activeTab === key ? '#fff' : '#1d1d1f',
+    background: activeTab === key ? 'var(--accent)' : 'var(--surface)',
+    color: activeTab === key ? '#fff' : 'var(--text)',
     transition: 'all .15s',
   });
 
@@ -246,7 +246,7 @@ export default function TodosPage() {
       {/* Inline Add Form */}
       {showForm && (
         <div style={{
-          background: '#fff', borderRadius: 14, border: '1.5px solid var(--accent)',
+          background: 'var(--card)', borderRadius: 14, border: '1.5px solid var(--accent)',
           padding: '20px 22px', marginBottom: 24,
           boxShadow: '0 4px 20px rgba(0,0,0,0.07)',
           animation: 'fadeInDown .2s ease',
@@ -314,7 +314,7 @@ export default function TodosPage() {
                     width: '100%', padding: '9px 12px', borderRadius: 8,
                     border: '1.5px solid var(--border)', fontSize: 13,
                     fontFamily: 'var(--font-sans)', boxSizing: 'border-box', outline: 'none',
-                    background: '#fff',
+                    background: 'var(--card)',
                   }}
                 >
                   <option value="">None</option>
@@ -339,7 +339,7 @@ export default function TodosPage() {
               <button
                 type="button"
                 onClick={() => { setShowForm(false); setForm({ title: '', notes: '', due_date: '', association: '' }); }}
-                style={{ padding: '8px 18px', borderRadius: 8, border: '1.5px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                style={{ padding: '8px 18px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--card)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
               >
                 Cancel
               </button>
@@ -376,7 +376,7 @@ export default function TodosPage() {
         <div style={{
           textAlign: 'center', padding: '60px 20px',
           color: 'var(--muted)', fontSize: 14,
-          background: '#fff', borderRadius: 14, border: '1.5px dashed var(--border)',
+          background: 'var(--card)', borderRadius: 14, border: '1.5px dashed var(--border)',
         }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
           <div style={{ fontWeight: 600, marginBottom: 6 }}>No to-dos yet.</div>

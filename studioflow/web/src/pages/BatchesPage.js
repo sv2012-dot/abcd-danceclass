@@ -206,7 +206,7 @@ export default function BatchesPage() {
                   {/* Badges */}
                   <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:14 }}>
                     {b.dance_style && <span style={{ fontSize:11, fontWeight:600, background:color+"18", color, borderRadius:20, padding:"3px 10px", border:`1px solid ${color}30` }}>{b.dance_style}</span>}
-                    <span style={{ fontSize:11, fontWeight:600, background:"#F3F4F6", color:"#6B7280", borderRadius:20, padding:"3px 10px", border:"1px solid #E5E7EB" }}>{b.level}</span>
+                    <span style={{ fontSize:11, fontWeight:600, background:"var(--surface)", color:"var(--muted)", borderRadius:20, padding:"3px 10px", border:"1px solid var(--border)" }}>{b.level}</span>
                   </div>
                   {/* Schedule row */}
                   {firstSch && (
@@ -230,8 +230,8 @@ export default function BatchesPage() {
                     </span>
                   </div>
                   {capPct !== null && (
-                    <div style={{ height:5, borderRadius:3, background:"#E5E7EB", overflow:"hidden", marginBottom:2 }}>
-                      <div style={{ height:"100%", width:capPct+"%", background: capPct>=90 ? "#EF4444" : "#111827", borderRadius:3, transition:"width .3s" }} />
+                    <div style={{ height:5, borderRadius:3, background:"var(--border)", overflow:"hidden", marginBottom:2 }}>
+                      <div style={{ height:"100%", width:capPct+"%", background: capPct>=90 ? "#EF4444" : "var(--text)", borderRadius:3, transition:"width .3s" }} />
                     </div>
                   )}
                 </div>
@@ -520,7 +520,7 @@ export default function BatchesPage() {
                   <div key={s.id} onClick={()=>toggleEnroll(s.id)}
                     style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 13px", borderRadius:10,
                       border:`1.5px solid ${checked ? "var(--accent)" : "var(--border)"}`,
-                      background:checked ? "#c4527a11" : "#faf8fc", cursor:"pointer", transition:"all .15s" }}>
+                      background:checked ? "#c4527a11" : "var(--surface)", cursor:"pointer", transition:"all .15s" }}>
                     <div style={{ width:22, height:22, borderRadius:6, border:`2px solid ${checked ? "var(--accent)" : "var(--border)"}`,
                       background:checked ? "var(--accent)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                       {checked && <span style={{ color:"#fff", fontSize:12, fontWeight:800 }}>✓</span>}

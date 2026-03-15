@@ -224,7 +224,7 @@ export default function StudentsPage() {
                     <div style={{ fontSize:11, color:"var(--muted)", marginBottom:6 }}>Enrolled Classes:</div>
                     <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
                       {String(s.batches).split(",").map((b,i) => (
-                        <span key={i} style={{ fontSize:11, background:"#F3F4F6", color:"#374151", borderRadius:20, padding:"2px 9px", border:"1px solid #E5E7EB", fontWeight:500 }}>{b.trim()}</span>
+                        <span key={i} style={{ fontSize:11, background:"var(--surface)", color:"var(--text)", borderRadius:20, padding:"2px 9px", border:"1px solid var(--border)", fontWeight:500 }}>{b.trim()}</span>
                       ))}
                     </div>
                   </div>

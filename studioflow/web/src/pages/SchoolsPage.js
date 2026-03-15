@@ -39,13 +39,13 @@ export default function SchoolsPage() {
 
   const field = (key, label, type='text', placeholder='') => (
     <div style={{ marginBottom:14 }}>
-      <label style={{ display:'block', fontSize:11, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:'#555', marginBottom:5 }}>{label}</label>
+      <label style={{ display:'block', fontSize:11, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--muted)', marginBottom:5 }}>{label}</label>
       <input
         type={type}
         value={form[key]}
         onChange={e => setForm(f => ({...f, [key]: e.target.value}))}
         placeholder={placeholder}
-        style={{ width:'100%', border:'1.5px solid #e0e0e0', borderRadius:8, padding:'9px 12px', fontSize:14, color:'#111', background:'#fafafa', boxSizing:'border-box' }}
+        style={{ width:'100%', border:'1.5px solid var(--border)', borderRadius:8, padding:'9px 12px', fontSize:14, color:'var(--text)', background:'var(--surface)', boxSizing:'border-box' }}
       />
     </div>
   );
@@ -77,7 +77,7 @@ export default function SchoolsPage() {
             { label:'Upcoming Events', value: stats?.upcoming_recitals ?? '—' },
             { label:'Fees Collected', value: stats?.fees_collected != null ? `$${stats.fees_collected.toLocaleString()}` : '—' },
           ].map(st => (
-            <div key={st.label} style={{ background:'#fff', border:'1px solid var(--border)', borderRadius:12, padding:'18px 20px' }}>
+            <div key={st.label} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:'18px 20px' }}>
               <div style={{ fontSize:26, fontWeight:800, color:'var(--text)', marginBottom:4 }}>{st.value}</div>
               <div style={{ fontSize:12, color:'var(--muted)', fontWeight:500 }}>{st.label}</div>
             </div>
@@ -85,7 +85,7 @@ export default function SchoolsPage() {
         </div>
 
         {/* Info card */}
-        <div style={{ background:'#fff', border:'1px solid var(--border)', borderRadius:14, padding:24 }}>
+        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:24 }}>
           <h2 style={{ fontSize:15, fontWeight:700, marginBottom:18 }}>School Details</h2>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 32px' }}>
             {[
@@ -96,7 +96,7 @@ export default function SchoolsPage() {
               ['Dance Style',      detailSchool.dance_style],
               ['Status',           detailSchool.is_active ? 'Active' : 'Inactive'],
             ].map(([k, v]) => (
-              <div key={k} style={{ paddingBottom:10, borderBottom:'1px solid #f0f0f0' }}>
+              <div key={k} style={{ paddingBottom:10, borderBottom:'1px solid var(--border)' }}>
                 <div style={{ fontSize:11, color:'var(--muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:2 }}>{k}</div>
                 <div style={{ fontSize:14, color:'var(--text)', fontWeight:500 }}>{v || '—'}</div>
               </div>
@@ -134,7 +134,7 @@ export default function SchoolsPage() {
             <div
               key={school.id}
               onClick={() => setDetail(school.id)}
-              style={{ background:'#fff', border:'1px solid var(--border)', borderRadius:16, padding:22, cursor:'pointer', transition:'box-shadow .15s, transform .15s' }}
+              style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:22, cursor:'pointer', transition:'box-shadow .15s, transform .15s' }}
               onMouseEnter={e => { e.currentTarget.style.boxShadow='0 6px 24px rgba(0,0,0,0.09)'; e.currentTarget.style.transform='translateY(-2px)'; }}
               onMouseLeave={e => { e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none'; }}
             >
@@ -156,7 +156,7 @@ export default function SchoolsPage() {
                   ['Students', school.student_count ?? 0],
                   ['Batches',  school.batch_count  ?? 0],
                 ].map(([k,v]) => (
-                  <div key={k} style={{ background:'#f8f8f8', borderRadius:8, padding:'10px 12px' }}>
+                  <div key={k} style={{ background:'var(--surface)', borderRadius:8, padding:'10px 12px' }}>
                     <div style={{ fontSize:20, fontWeight:800, color:'var(--text)' }}>{v}</div>
                     <div style={{ fontSize:11, color:'var(--muted)', fontWeight:500 }}>{k}</div>
                   </div>
@@ -175,13 +175,13 @@ export default function SchoolsPage() {
       {/* Add school modal */}
       {modal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-          <div style={{ background:'#fff', borderRadius:18, padding:28, width:'100%', maxWidth:520, maxHeight:'90vh', overflowY:'auto' }}>
+          <div style={{ background:'var(--card)', borderRadius:18, padding:28, width:'100%', maxWidth:520, maxHeight:'90vh', overflowY:'auto' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:22 }}>
               <h2 style={{ fontSize:18, fontWeight:700 }}>Add New School</h2>
               <button onClick={() => { setModal(false); setForm(EMPTY_FORM); }} style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, color:'var(--muted)' }}>✕</button>
             </div>
 
-            <div style={{ fontSize:12, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:14, paddingBottom:6, borderBottom:'1px solid #eee' }}>School Info</div>
+            <div style={{ fontSize:12, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:14, paddingBottom:6, borderBottom:'1px solid var(--border)' }}>School Info</div>
             {field('name',       'School Name',  'text', 'e.g. Sankalpa Dance Academy')}
             {field('owner_name', 'Owner / Director', 'text', 'Full name')}
             {field('dance_style','Dance Style',  'text', 'e.g. Bharatanatyam, Ballet')}
@@ -189,12 +189,12 @@ export default function SchoolsPage() {
             {field('email',      'School Email', 'email','school@example.com')}
             {field('phone',      'Phone',        'tel',  '')}
 
-            <div style={{ fontSize:12, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'18px 0 14px', paddingBottom:6, borderBottom:'1px solid #eee' }}>Admin Account (optional)</div>
+            <div style={{ fontSize:12, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'18px 0 14px', paddingBottom:6, borderBottom:'1px solid var(--border)' }}>Admin Account (optional)</div>
             {field('admin_email',    'Admin Login Email',    'email', 'admin@school.com')}
             {field('admin_password', 'Admin Login Password', 'password', 'Min 8 chars')}
 
             <div style={{ display:'flex', gap:10, marginTop:20 }}>
-              <button onClick={() => { setModal(false); setForm(EMPTY_FORM); }} style={{ flex:1, padding:'11px', background:'#f0f0f0', border:'none', borderRadius:9, fontSize:14, fontWeight:600, cursor:'pointer', color:'#555' }}>Cancel</button>
+              <button onClick={() => { setModal(false); setForm(EMPTY_FORM); }} style={{ flex:1, padding:'11px', background:'var(--surface)', border:'none', borderRadius:9, fontSize:14, fontWeight:600, cursor:'pointer', color:'var(--muted)' }}>Cancel</button>
               <button
                 onClick={() => createMutation.mutate(form)}
                 disabled={createMutation.isPending || !form.name || !form.owner_name}

@@ -1,5 +1,5 @@
 import React from 'react';
-const inp = { width:'100%', background:'#faf8fc', border:'1.5px solid var(--border)', borderRadius:9, padding:'9px 13px', fontSize:14, color:'var(--text)', fontFamily:'var(--font-b)' };
+const inp = { width:'100%', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:9, padding:'9px 13px', fontSize:14, color:'var(--text)', fontFamily:'var(--font-b)', transition:'background .2s, border-color .2s' };
 export function Field({ label, children }) {
   return (
     <div style={{marginBottom:14}}>
