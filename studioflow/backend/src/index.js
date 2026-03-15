@@ -9,8 +9,23 @@ const app = express();
 
 // Security
 app.use(helmet());
+
+const ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'https://abcd-danceclass.vercel.app',
+  'https://machq.com',
+  'https://www.machq.com',
+  // Additional origins from env (comma-separated)
+  ...(process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean),
+];
+
 app.use(cors({
-  origin: (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()),
+  origin: (origin, cb) => {
+    // Allow requests with no origin (curl, mobile apps, same-origin)
+    if (!origin) return cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    cb(new Error(`CORS: origin ${origin} not allowed`));
+  },
   credentials: true,
 }));
 app.use(express.json());
