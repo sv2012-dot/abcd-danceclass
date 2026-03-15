@@ -45,6 +45,15 @@ function buildDefaults(name, owner, city, style) {
     philosophy_body: `At ${name}, ${style} blends body, mind, and emotion into a living art form passed down through generations. We cultivate respect for tradition, confidence, grace, and a deep connection to musical storytelling.`,
     owner_title: 'Founder & Artistic Director',
     owner_bio: `${(owner || '').split(' ')[0]} founded ${name} in ${city} with the vision of creating a vibrant community space for learning ${style}. With years of teaching experience, their approach blends traditional rigor with encouragement and creativity — helping students build strong technique while genuinely loving the art form.`,
+    team_members: [
+      {
+        id: 'member_1',
+        name: owner,
+        title: 'Founder & Artistic Director',
+        bio: `${(owner || '').split(' ')[0]} founded ${name} in ${city} with the vision of creating a vibrant community space for learning ${style}. With years of teaching experience, their approach blends traditional rigor with encouragement and creativity — helping students build strong technique while genuinely loving the art form.`,
+        photo: null,
+      }
+    ],
     welcome_title: 'Your journey begins here.',
     welcome_body: `We warmly welcome students of all backgrounds. Whether you are discovering ${style} for the first time or continuing your journey, ${name} offers a supportive and inspiring space to learn.`,
     welcome_badges: [
@@ -95,8 +104,9 @@ const SECTION_META = {
 const DEFAULT_SECTION_ORDER = ['hero', 'stats', 'art_form', 'philosophy', 'people', 'contact', 'welcome'];
 
 /* ── SectionWrapper ────────────────────────────────────────── */
-function SectionWrapper({ sectionKey, editMode, dragOverKey, onDragStart, onDragOver, onDrop, onDelete, children }) {
-  const meta = SECTION_META[sectionKey];
+function SectionWrapper({ sectionKey, editMode, dragOverKey, onDragStart, onDragOver, onDrop, onDelete, onDuplicate, children }) {
+  const baseKey = sectionKey.includes('__') ? sectionKey.split('__')[0] : sectionKey;
+  const meta = SECTION_META[baseKey];
   return (
     <div
       draggable={editMode}
@@ -122,7 +132,11 @@ function SectionWrapper({ sectionKey, editMode, dragOverKey, onDragStart, onDrag
             {meta?.label}
           </span>
           <div style={{ flex: 1 }} />
-          {sectionKey !== 'hero' && (
+          {/* Duplicate button */}
+          <button onClick={onDuplicate} style={{ background: 'none', border: 'none', color: '#6e6e73', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '2px 6px' }}>
+            Duplicate
+          </button>
+          {baseKey !== 'hero' && (
             <button
               onClick={onDelete}
               style={{
@@ -213,8 +227,10 @@ export default function SchoolAboutPage() {
   const [dragKey, setDragKey] = useState(null);
   const [dragOverKey, setDragOverKey] = useState(null);
   const [addingAt, setAddingAt] = useState(null);
+  const [editingMemberId, setEditingMemberId] = useState(null);
   const logoInputRef = useRef(null);
   const photoInputRef = useRef(null);
+  const memberPhotoInputRef = useRef(null);
   const isAdmin = user?.role === 'school_admin' || user?.role === 'superadmin';
   const schoolId = user?.school_id;
 
@@ -253,7 +269,18 @@ export default function SchoolAboutPage() {
 
   /* ── Edit helpers ─────────────────────────────────────── */
   const enterEdit = () => {
-    setDraft({ name, owner_name: owner, dance_style: style, city, email, phone, address, ...content });
+    const draft = { name, owner_name: owner, dance_style: style, city, email, phone, address, ...content };
+    // Migrate legacy owner fields if team_members not yet present
+    if (!draft.team_members || draft.team_members.length === 0) {
+      draft.team_members = [{
+        id: 'member_1',
+        name: draft.owner_name || owner,
+        title: draft.owner_title || 'Founder & Artistic Director',
+        bio: draft.owner_bio || '',
+        photo: draft.owner_photo || null,
+      }];
+    }
+    setDraft(draft);
     setEditMode(true);
   };
   const discardEdit = () => { setDraft(null); setEditMode(false); setDragKey(null); setDragOverKey(null); setAddingAt(null); };
@@ -273,6 +300,29 @@ export default function SchoolAboutPage() {
     const arr = [...(draft.welcome_badges || [])];
     arr[i] = val;
     setDraft(d => ({ ...d, welcome_badges: arr }));
+  };
+
+  /* ── Team member helpers ──────────────────────────────── */
+  const updateMember = (id, key, val) => setDraft(d => ({
+    ...d,
+    team_members: (d.team_members || []).map(m => m.id === id ? { ...m, [key]: val } : m),
+  }));
+  const addMember = () => setDraft(d => ({
+    ...d,
+    team_members: [...(d.team_members || []), { id: `member_${Date.now()}`, name: '', title: 'Teacher', bio: '', photo: null }],
+  }));
+  const removeMember = (id) => setDraft(d => ({
+    ...d,
+    team_members: (d.team_members || []).filter(m => m.id !== id),
+  }));
+  const handleMemberPhotoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingMemberId) return;
+    if (file.size > 1024 * 1024) { toast.error('Image must be under 1 MB'); e.target.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = ev => { updateMember(editingMemberId, 'photo', ev.target.result); setEditingMemberId(null); };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   /* display source: draft in edit mode, content otherwise */
@@ -328,6 +378,28 @@ export default function SchoolAboutPage() {
     });
   };
 
+  /* ── Section duplicate ────────────────────────────────── */
+  const handleDuplicateSection = (key) => {
+    // For 'people', duplicate just adds a team member
+    if (key === 'people' || key.startsWith('people')) {
+      addMember();
+      return;
+    }
+    // For other sections, create a new instance with a unique suffix key
+    const newKey = `${key}__${Date.now()}`;
+    setDraft(d => ({
+      ...d,
+      [`__copy_${newKey}`]: true,
+      section_order: (() => {
+        const order = [...(d.section_order || DEFAULT_SECTION_ORDER)];
+        const idx = order.indexOf(key);
+        const insertAt = idx === -1 ? order.length : idx + 1;
+        order.splice(insertAt, 0, newKey);
+        return order;
+      })(),
+    }));
+  };
+
   /* ── Image upload helpers ─────────────────────────────── */
   const handleImageUpload = (field) => (e) => {
     const file = e.target.files?.[0];
@@ -368,10 +440,11 @@ export default function SchoolAboutPage() {
 
   /* ── Section renderers ────────────────────────────────── */
   const renderSection = (sectionKey) => {
-    switch (sectionKey) {
+    const baseKey = sectionKey.includes('__') ? sectionKey.split('__')[0] : sectionKey;
+    switch (baseKey) {
       case 'hero':
         return (
-          <section key="hero" style={{ padding: '72px 64px 68px', textAlign: 'center', background: '#fff', position: 'relative' }}>
+          <section key={sectionKey} style={{ padding: '72px 64px 68px', textAlign: 'center', background: '#fff', position: 'relative' }}>
             {isAdmin && !editMode && (
               <button onClick={enterEdit} style={{ position: 'absolute', top: 24, right: 28, display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', border: '1.5px solid #d2d2d7', borderRadius: 10, background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#1d1d1f', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -439,7 +512,7 @@ export default function SchoolAboutPage() {
 
       case 'stats':
         return (
-          <section key="stats" style={{ display: 'flex', padding: '44px 64px', background: '#f5f5f7', gap: 0 }}>
+          <section key={sectionKey} style={{ display: 'flex', padding: '44px 64px', background: '#f5f5f7', gap: 0 }}>
             {(D.stats || []).map(({ stat, label }, i, arr) => (
               <div key={i} style={{ flex: 1, textAlign: 'center', padding: '0 20px', borderRight: i < arr.length - 1 ? '1px solid #d2d2d7' : 'none' }}>
                 {editMode
@@ -459,7 +532,7 @@ export default function SchoolAboutPage() {
 
       case 'art_form':
         return (
-          <section key="art_form" style={{ padding: '72px 64px', background: '#fff' }}>
+          <section key={sectionKey} style={{ padding: '72px 64px', background: '#fff' }}>
             <div style={{ display: 'flex', gap: 80, alignItems: 'flex-start' }}>
               <div style={{ flex: '0 0 280px' }}>
                 <Eyebrow>The Art Form</Eyebrow>
@@ -500,7 +573,7 @@ export default function SchoolAboutPage() {
 
       case 'philosophy':
         return (
-          <section key="philosophy" style={{ padding: '80px 64px', background: '#f5f5f7', textAlign: 'center' }}>
+          <section key={sectionKey} style={{ padding: '80px 64px', background: '#f5f5f7', textAlign: 'center' }}>
             <Eyebrow center>Our Philosophy</Eyebrow>
             {editMode
               ? <EArea value={D.philosophy_quote} onChange={set('philosophy_quote')} rows={3} style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.3, color: '#1d1d1f', maxWidth: 580, margin: '0 auto 16px', textAlign: 'center' }} />
@@ -517,68 +590,85 @@ export default function SchoolAboutPage() {
 
       case 'people':
         return (
-          <section key="people" style={{ padding: '72px 64px', background: '#fff' }}>
+          <section key={sectionKey} style={{ padding: '72px 64px', background: '#fff' }}>
             <Eyebrow>The People</Eyebrow>
             <h2 style={{ fontSize: 36, fontWeight: 900, letterSpacing: '-0.8px', lineHeight: 1.1, color: '#1d1d1f', marginBottom: 52 }}>
               Guided by masters.
             </h2>
-            <div style={{ display: 'flex', gap: 48, alignItems: 'flex-start' }}>
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                {D.owner_photo
-                  ? <img src={D.owner_photo} alt={D.owner_name} style={{ width: 72, height: 72, borderRadius: 20, objectFit: 'cover', display: 'block' }} />
-                  : (
-                    <div style={{ width: 72, height: 72, borderRadius: 20, background: 'linear-gradient(135deg, #1d1d1f 0%, #424245 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: '#fff' }}>
-                      {initials(D.owner_name)}
-                    </div>
-                  )
-                }
-                {editMode && (
-                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <input
-                      ref={photoInputRef}
-                      type="file"
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      onChange={handleImageUpload('owner_photo')}
-                    />
-                    <button
-                      onClick={() => photoInputRef.current?.click()}
-                      style={{ fontSize: 11, color: '#0071e3', background: 'none', border: '1px solid #0071e3', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                    >
-                      {D.owner_photo ? 'Change photo' : 'Upload photo'}
-                    </button>
-                    {D.owner_photo && (
-                      <button
-                        onClick={() => setDraft(d => ({ ...d, owner_photo: null }))}
-                        style={{ fontSize: 11, color: '#ff3b30', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                      >
-                        Remove photo
+
+            {/* Hidden file input shared across all members */}
+            <input ref={memberPhotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleMemberPhotoUpload} />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {(D.team_members && D.team_members.length > 0 ? D.team_members : [{ id: 'fallback', name: D.owner_name, title: D.owner_title, bio: D.owner_bio, photo: D.owner_photo }]).map((member, idx) => (
+                <div key={member.id} style={{
+                  display: 'flex', gap: 48, alignItems: 'flex-start',
+                  paddingTop: idx > 0 ? 40 : 0,
+                  marginTop: idx > 0 ? 40 : 0,
+                  borderTop: idx > 0 ? '1px solid #e5e5e7' : 'none',
+                }}>
+                  {/* Avatar / photo */}
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    {member.photo
+                      ? <img src={member.photo} alt={member.name} style={{ width: 72, height: 72, borderRadius: 20, objectFit: 'cover', display: 'block' }} />
+                      : <div style={{ width: 72, height: 72, borderRadius: 20, background: 'linear-gradient(135deg, #1d1d1f 0%, #424245 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: '#fff' }}>
+                          {initials(member.name)}
+                        </div>
+                    }
+                    {editMode && (
+                      <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                        <button onClick={() => { setEditingMemberId(member.id); memberPhotoInputRef.current?.click(); }}
+                          style={{ fontSize: 11, color: '#0071e3', background: 'none', border: '1px solid #0071e3', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          {member.photo ? 'Change' : 'Photo'}
+                        </button>
+                        {member.photo && (
+                          <button onClick={() => updateMember(member.id, 'photo', null)}
+                            style={{ fontSize: 11, color: '#ff3b30', background: 'none', border: 'none', cursor: 'pointer' }}>
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div style={{ flex: 1 }}>
+                    {editMode
+                      ? <EText value={member.name} onChange={v => updateMember(member.id, 'name', v)} style={{ fontSize: 22, fontWeight: 800, color: '#1d1d1f', letterSpacing: '-0.3px', marginBottom: 6 }} />
+                      : <div style={{ fontSize: 22, fontWeight: 800, color: '#1d1d1f', letterSpacing: '-0.3px', marginBottom: 4 }}>{member.name}</div>
+                    }
+                    {editMode
+                      ? <EText value={member.title} onChange={v => updateMember(member.id, 'title', v)} style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6e6e73', marginBottom: 12 }} />
+                      : <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6e6e73', marginBottom: 16 }}>{member.title}</div>
+                    }
+                    {editMode
+                      ? <EArea value={member.bio} onChange={v => updateMember(member.id, 'bio', v)} rows={4} style={{ fontSize: 15, color: '#1d1d1f', lineHeight: 1.75 }} />
+                      : <p style={{ fontSize: 15, color: '#1d1d1f', lineHeight: 1.75, margin: 0 }}>{member.bio}</p>
+                    }
+                    {/* Remove member button — only when >1 member and in edit mode */}
+                    {editMode && (D.team_members || []).length > 1 && (
+                      <button onClick={() => removeMember(member.id)}
+                        style={{ marginTop: 12, fontSize: 12, color: '#ff3b30', background: 'none', border: '1px solid #ffcdd0', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}>
+                        − Remove this person
                       </button>
                     )}
                   </div>
-                )}
-              </div>
-              <div style={{ flex: 1 }}>
-                {editMode
-                  ? <EText value={D.owner_name} onChange={set('owner_name')} style={{ fontSize: 22, fontWeight: 800, color: '#1d1d1f', letterSpacing: '-0.3px', marginBottom: 6 }} />
-                  : <div style={{ fontSize: 22, fontWeight: 800, color: '#1d1d1f', letterSpacing: '-0.3px', marginBottom: 4 }}>{D.owner_name}</div>
-                }
-                {editMode
-                  ? <EText value={D.owner_title} onChange={set('owner_title')} style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6e6e73', marginBottom: 12 }} />
-                  : <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6e6e73', marginBottom: 16 }}>{D.owner_title}</div>
-                }
-                {editMode
-                  ? <EArea value={D.owner_bio} onChange={set('owner_bio')} rows={5} style={{ fontSize: 15, color: '#1d1d1f', lineHeight: 1.75 }} />
-                  : <p style={{ fontSize: 15, color: '#1d1d1f', lineHeight: 1.75, margin: 0 }}>{D.owner_bio}</p>
-                }
-              </div>
+                </div>
+              ))}
             </div>
+
+            {/* Add team member button — only in edit mode */}
+            {editMode && (
+              <button onClick={addMember} style={{ marginTop: 40, display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', border: '1.5px dashed #0071e3', borderRadius: 10, background: '#f0f7ff', color: '#0071e3', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                + Add Team Member
+              </button>
+            )}
           </section>
         );
 
       case 'contact':
         return (
-          <section key="contact" style={{ padding: '64px 64px', background: '#f5f5f7' }}>
+          <section key={sectionKey} style={{ padding: '64px 64px', background: '#f5f5f7' }}>
             <Eyebrow>Contact</Eyebrow>
             <h2 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.6px', color: '#1d1d1f', marginBottom: 32 }}>Get in touch.</h2>
             <div style={{ display: 'flex', gap: 48, flexWrap: 'wrap' }}>
@@ -609,7 +699,7 @@ export default function SchoolAboutPage() {
 
       case 'welcome':
         return (
-          <section key="welcome" style={{ padding: '80px 64px', background: '#fff', textAlign: 'center' }}>
+          <section key={sectionKey} style={{ padding: '80px 64px', background: '#fff', textAlign: 'center' }}>
             <Eyebrow center>New Students</Eyebrow>
             {editMode
               ? <EText value={D.welcome_title} onChange={set('welcome_title')} style={{ fontSize: 34, fontWeight: 900, letterSpacing: '-1px', lineHeight: 1.1, color: '#1d1d1f', textAlign: 'center', maxWidth: 560, margin: '0 auto 16px' }} />
@@ -663,6 +753,7 @@ export default function SchoolAboutPage() {
                 onDragOver={handleDragOver(sectionKey)}
                 onDrop={handleDrop(sectionKey)}
                 onDelete={() => handleRemoveSection(sectionKey)}
+                onDuplicate={() => handleDuplicateSection(sectionKey)}
               >
                 {renderSection(sectionKey)}
               </SectionWrapper>
