@@ -494,16 +494,23 @@ export default function SchedulePage() {
         onClick={e => { e.stopPropagation(); handleEventClick(event); }}
         title={event.title}
         style={{
-          background: color+"22", borderLeft: `3px solid ${color}`,
-          borderRadius: 5, padding: compact ? "10px 5px" : "4px 7px",
-          fontSize: compact ? 10 : 11, fontWeight: 600, color: theme === "dark" ? "#ffffff" : "#1e1228",
+          background: compact ? color : color+"22",
+          borderRadius: compact ? 6 : 8,
+          padding: compact ? "3px 6px" : "5px 8px",
+          fontSize: compact ? 10 : 11, fontWeight: 700,
+          color: compact ? "#fff" : (theme === "dark" ? "#ffffff" : "#1e1228"),
           cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis",
           whiteSpace: "nowrap", marginBottom: 2, lineHeight: 1.4,
           display: "flex", alignItems: "center", gap: 4,
+          boxShadow: compact ? `0 1px 4px ${color}55` : `0 1px 3px ${color}30`,
+          border: compact ? "none" : `1.5px solid ${color}55`,
+          transition: "opacity .15s",
         }}
+        onMouseEnter={e => { e.currentTarget.style.opacity = "0.82"; }}
+        onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
       >
-        {event.requires_studio && <span title="Studio required">🏠</span>}
-        {!event.studio_booked && event.requires_studio && <span title="Not yet booked" style={{color:"#e05c6a"}}>!</span>}
+        {event.requires_studio && !compact && <span title="Studio required">🏠</span>}
+        {!event.studio_booked && event.requires_studio && <span title="Not yet booked" style={{color: compact ? "#fff" : "#e05c6a", fontWeight:800}}>!</span>}
         <span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{compact ? "" : fmtTime(event.start_datetime)+" "}{event.title}</span>
       </div>
     );
@@ -556,10 +563,11 @@ export default function SchedulePage() {
                     <div style={{
                       fontSize: 12, fontWeight: isToday(day) ? 800 : 500,
                       color: isToday(day) ? "#fff" : "var(--text)",
-                      background: isToday(day) ? "var(--accent)" : "transparent",
-                      width: 22, height: 22, borderRadius: "50%",
+                      background: isToday(day) ? "linear-gradient(135deg, var(--accent) 0%, #b47fe8 100%)" : "transparent",
+                      width: 26, height: 26, borderRadius: "50%",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       marginBottom: 4,
+                      boxShadow: isToday(day) ? "0 2px 10px rgba(196,82,122,0.55), 0 0 0 3px rgba(196,82,122,0.15)" : "none",
                     }}>{day}</div>
                     {visible.map(e => <EventPill key={e.id} event={e} compact />)}
                     {overflow > 0 && (
@@ -596,10 +604,12 @@ export default function SchedulePage() {
                 <div style={{fontSize:11,color:"var(--muted)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em"}}>{DAYS[i]}</div>
                 <div style={{
                   width:40,height:40,borderRadius:"50%",margin:"6px auto 0",
-                  background:isToday?"var(--accent)":"transparent",
+                  background:isToday?"linear-gradient(135deg, var(--accent) 0%, #b47fe8 100%)":"transparent",
                   display:"flex",alignItems:"center",justifyContent:"center",
                   fontSize:14,fontWeight:isToday?800:600,color:isToday?"#fff":"var(--text)",
                   border:isToday?"none":"1px solid var(--border)",
+                  boxShadow:isToday?"0 4px 16px rgba(196,82,122,0.5), 0 0 0 4px rgba(196,82,122,0.12)":"none",
+                  transition:"all .2s",
                 }}>{date.getDate()}</div>
               </div>
               <div
@@ -618,14 +628,17 @@ export default function SchedulePage() {
                     <div key={e.id}
                       onClick={ev => { ev.stopPropagation(); handleEventClick(e); }}
                       style={{
-                        background: color+"15", border: `2px solid ${color}`,
+                        background: `linear-gradient(135deg, ${color}20 0%, ${color}0d 100%)`,
+                        border: `1.5px solid ${color}60`,
+                        borderTop: `3px solid ${color}`,
                         borderRadius: 10, padding: "10px 12px",
                         fontSize: 12, fontWeight: 700, color: "var(--text)",
                         cursor: "pointer", transition: "all .15s",
                         display:"flex",alignItems:"flex-start",gap:8,
+                        boxShadow: `0 2px 8px ${color}20`,
                       }}
-                      onMouseEnter={ev => { ev.currentTarget.style.background = color+"28"; ev.currentTarget.style.boxShadow = `0 4px 12px ${color}33`; }}
-                      onMouseLeave={ev => { ev.currentTarget.style.background = color+"15"; ev.currentTarget.style.boxShadow = "none"; }}
+                      onMouseEnter={ev => { ev.currentTarget.style.background = `linear-gradient(135deg, ${color}35 0%, ${color}18 100%)`; ev.currentTarget.style.boxShadow = `0 6px 18px ${color}40`; ev.currentTarget.style.transform = "translateY(-1px)"; }}
+                      onMouseLeave={ev => { ev.currentTarget.style.background = `linear-gradient(135deg, ${color}20 0%, ${color}0d 100%)`; ev.currentTarget.style.boxShadow = `0 2px 8px ${color}20`; ev.currentTarget.style.transform = "none"; }}
                     >
                       <div style={{flexShrink:0,fontSize:20,lineHeight:1,marginTop:2}}>
                         {e.requires_studio ? "🏠" : e.type === "Class" ? "📚" : e.type === "Recital" ? "🎭" : e.type === "Rehearsal" ? "🎵" : "📅"}
