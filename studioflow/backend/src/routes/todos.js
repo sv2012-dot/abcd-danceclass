@@ -23,11 +23,11 @@ router.get('/', async (req, res) => {
 // POST /api/schools/:schoolId/todos
 router.post('/', async (req, res) => {
   try {
-    const { title, notes, event_id, recital_id, due_date } = req.body;
+    const { title, notes, event_id, recital_id, due_date, assigned_to } = req.body;
     if (!title) return res.status(400).json({ error: 'Title required' });
     const [r] = await pool.query(
-      `INSERT INTO todos (school_id, user_id, title, notes, event_id, recital_id, due_date) VALUES (?,?,?,?,?,?,?)`,
-      [req.params.schoolId, req.user.id, title, notes||null, event_id||null, recital_id||null, due_date||null]
+      `INSERT INTO todos (school_id, user_id, title, notes, event_id, recital_id, due_date, assigned_to) VALUES (?,?,?,?,?,?,?,?)`,
+      [req.params.schoolId, req.user.id, title, notes||null, event_id||null, recital_id||null, due_date||null, assigned_to||null]
     );
     const [rows] = await pool.query('SELECT * FROM todos WHERE id = ?', [r.insertId]);
     res.status(201).json({ todo: rows[0] });
@@ -49,10 +49,10 @@ router.put('/:id/toggle', async (req, res) => {
 // PUT /api/schools/:schoolId/todos/:id
 router.put('/:id', async (req, res) => {
   try {
-    const { title, notes, due_date, event_id, recital_id } = req.body;
+    const { title, notes, due_date, event_id, recital_id, assigned_to } = req.body;
     await pool.query(
-      `UPDATE todos SET title=COALESCE(?,title), notes=COALESCE(?,notes), due_date=COALESCE(?,due_date), event_id=?, recital_id=? WHERE id=? AND school_id=?`,
-      [title, notes, due_date, event_id||null, recital_id||null, req.params.id, req.params.schoolId]
+      `UPDATE todos SET title=COALESCE(?,title), notes=COALESCE(?,notes), due_date=COALESCE(?,due_date), event_id=?, recital_id=?, assigned_to=? WHERE id=? AND school_id=?`,
+      [title||null, notes||null, due_date||null, event_id||null, recital_id||null, assigned_to||null, req.params.id, req.params.schoolId]
     );
     const [rows] = await pool.query('SELECT * FROM todos WHERE id = ?', [req.params.id]);
     res.json({ todo: rows[0] });

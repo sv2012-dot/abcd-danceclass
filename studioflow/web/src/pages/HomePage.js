@@ -424,11 +424,16 @@ function SchoolHomePage() {
                     />
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{todo.title}</div>
-                      {(todo.event_title || todo.recital_title) && (
-                        <div style={{fontSize:11,color:"var(--muted)",marginTop:1}}>
-                          {todo.recital_title ? `🌟 ${todo.recital_title}` : `📅 ${todo.event_title}`}
-                        </div>
-                      )}
+                      <div style={{display:"flex",gap:6,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
+                        <span style={{fontSize:11,fontWeight:600,color:todo.assigned_to?"var(--text)":"var(--muted)",background:"var(--surface)",padding:"1px 7px",borderRadius:999}}>
+                          👤 {todo.assigned_to||"Not assigned"}
+                        </span>
+                        {(todo.event_title||todo.recital_title) && (
+                          <span style={{fontSize:11,color:"var(--muted)"}}>
+                            {todo.recital_title?`🌟 ${todo.recital_title}`:`📅 ${todo.event_title}`}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {todo.due_date && (
                       <span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:999,flexShrink:0,color:od?"#ff3b30":"var(--muted)",background:od?"#fff0ee":"var(--surface)"}}>

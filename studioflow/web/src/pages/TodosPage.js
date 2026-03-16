@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { todos as todosApi, events as eventsApi, recitals as recitalsApi } from '../api';
@@ -21,7 +21,7 @@ function isOverdue(dateStr) {
   return due < today;
 }
 
-/* ─── small pure components (defined at module level, never remount) ── */
+/* ─── small pure components ── */
 const CheckCircle = ({ complete, onClick }) => (
   <div
     onClick={onClick}
@@ -58,6 +58,18 @@ const TrashIcon = ({ onClick }) => (
   </button>
 );
 
+const PersonIcon = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+
+const CalSmIcon = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+  </svg>
+);
+
 const TodoRow = ({ todo, onToggle, onDelete }) => {
   const complete = !!todo.is_complete;
   const overdue  = !complete && isOverdue(todo.due_date);
@@ -67,7 +79,7 @@ const TodoRow = ({ todo, onToggle, onDelete }) => {
   return (
     <div style={{
       display: 'flex', alignItems: 'flex-start', gap: 12,
-      padding: '10px 14px',
+      padding: '11px 14px',
       background: 'var(--card)', borderRadius: 10,
       border: '1px solid var(--border)',
       marginBottom: 6,
@@ -87,25 +99,45 @@ const TodoRow = ({ todo, onToggle, onDelete }) => {
         {todo.notes && (
           <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{todo.notes}</div>
         )}
-        <div style={{ display: 'flex', gap: 6, marginTop: (linkedLabel || todo.due_date) ? 5 : 0, flexWrap: 'wrap', alignItems: 'center' }}>
+
+        {/* meta row: assigned + due + badges */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+
+          {/* Assigned to — always shown */}
+          <span style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            fontSize: 11, fontWeight: 600,
+            color: todo.assigned_to ? 'var(--text)' : 'var(--muted)',
+            background: 'var(--surface)',
+            padding: '2px 8px', borderRadius: 999,
+          }}>
+            <PersonIcon />
+            {todo.assigned_to || 'Not assigned'}
+          </span>
+
+          {/* End by date */}
+          {todo.due_date && (
+            <span style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              fontSize: 11, fontWeight: 600,
+              color: overdue ? '#ff3b30' : 'var(--muted)',
+              background: overdue ? '#fff0ee' : 'var(--surface)',
+              padding: '2px 8px', borderRadius: 999,
+            }}>
+              <CalSmIcon />
+              {overdue && '⚠ '}End by {formatDueDate(todo.due_date)}
+            </span>
+          )}
+
+          {/* Source type badge */}
           {todo.recital_id && (
-            <span style={{ fontSize: 11, color: '#c4527a', background: '#c4527a15', border: '1px solid #c4527a30', padding: '2px 8px', borderRadius: 999, fontWeight: 700, letterSpacing: '0.03em' }}>
+            <span style={{ fontSize: 11, color: '#c4527a', background: '#c4527a15', border: '1px solid #c4527a30', padding: '2px 8px', borderRadius: 999, fontWeight: 700 }}>
               Recital
             </span>
           )}
           {linkedLabel && (
             <span style={{ fontSize: 11, color: '#fff', background: linkedColor, padding: '2px 8px', borderRadius: 999, fontWeight: 600 }}>
               {linkedLabel}
-            </span>
-          )}
-          {todo.due_date && (
-            <span style={{
-              fontSize: 11,
-              color: overdue ? '#ff3b30' : 'var(--muted)',
-              background: overdue ? '#fff0ee' : 'var(--surface)',
-              padding: '2px 8px', borderRadius: 999, fontWeight: 600,
-            }}>
-              {overdue && '⚠ '}{formatDueDate(todo.due_date)}
             </span>
           )}
         </div>
@@ -146,19 +178,26 @@ export default function TodosPage() {
   const qc  = useQueryClient();
   const inputRef = useRef(null);
 
-  const [quickTitle,   setQuickTitle]   = useState('');
-  const [showExtra,    setShowExtra]    = useState(false);
-  const [extraDueDate, setExtraDueDate] = useState('');
-  const [extraAssoc,   setExtraAssoc]   = useState('');
-  const [activeTab,    setActiveTab]    = useState('all');
+  const [quickTitle,      setQuickTitle]      = useState('');
+  const [showExtra,       setShowExtra]       = useState(false);
+  const [extraDueDate,    setExtraDueDate]    = useState('');
+  const [extraAssignedTo, setExtraAssignedTo] = useState('');
+  const [extraAssoc,      setExtraAssoc]      = useState('');
+  const [activeTab,       setActiveTab]       = useState('all');
+
+  // Auto-focus the input when the page mounts
+  useEffect(() => {
+    const t = setTimeout(() => inputRef.current?.focus(), 80);
+    return () => clearTimeout(t);
+  }, []);
 
   const { data: todosData,   isLoading } = useQuery({ queryKey: ['todos',   sid], queryFn: () => todosApi.list(sid),    enabled: !!sid });
   const { data: eventsData  }            = useQuery({ queryKey: ['events',  sid], queryFn: () => eventsApi.list(sid),   enabled: !!sid });
   const { data: recitalsData }           = useQuery({ queryKey: ['recitals',sid], queryFn: () => recitalsApi.list(sid), enabled: !!sid });
 
-  const todos       = todosData?.todos     || [];
-  const eventsList  = eventsData?.events   || [];
-  const recitalsList= recitalsData?.recitals || [];
+  const todos        = todosData?.todos     || [];
+  const eventsList   = eventsData?.events   || [];
+  const recitalsList = recitalsData?.recitals || [];
 
   const createMut = useMutation({
     mutationFn: (data) => todosApi.create(sid, data),
@@ -166,10 +205,10 @@ export default function TodosPage() {
       qc.invalidateQueries(['todos', sid]);
       setQuickTitle('');
       setExtraDueDate('');
+      setExtraAssignedTo('');
       setExtraAssoc('');
       setShowExtra(false);
       toast.success('To-do added');
-      // keep focus in bar so user can type the next item immediately
       setTimeout(() => inputRef.current?.focus(), 50);
     },
     onError: (err) => toast.error(err?.error || err?.message || 'Failed to create'),
@@ -198,7 +237,8 @@ export default function TodosPage() {
   const handleAdd = () => {
     if (!quickTitle.trim()) return;
     const payload = { title: quickTitle.trim() };
-    if (extraDueDate) payload.due_date = extraDueDate;
+    if (extraDueDate)    payload.due_date    = extraDueDate;
+    if (extraAssignedTo) payload.assigned_to = extraAssignedTo.trim();
     if (extraAssoc) {
       const [type, id] = extraAssoc.split(':');
       if (type === 'event')   payload.event_id   = Number(id);
@@ -216,7 +256,7 @@ export default function TodosPage() {
     const seen = new Set();
     const tabs = [];
     todos.forEach(t => {
-      if (t.event_id   && t.event_title)   { const k = `event:${t.event_id}`;   if (!seen.has(k)) { seen.add(k); tabs.push({ key: k, label: t.event_title   }); } }
+      if (t.event_id   && t.event_title)   { const k = `event:${t.event_id}`;    if (!seen.has(k)) { seen.add(k); tabs.push({ key: k, label: t.event_title   }); } }
       if (t.recital_id && t.recital_title) { const k = `recital:${t.recital_id}`; if (!seen.has(k)) { seen.add(k); tabs.push({ key: k, label: t.recital_title }); } }
     });
     return tabs;
@@ -249,92 +289,31 @@ export default function TodosPage() {
   return (
     <div>
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 28, margin: 0 }}>To-Dos</h1>
       </div>
 
-      {/* Filter tabs */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
-        {[{ key: 'all', label: 'All' }, { key: 'open', label: 'Open' }, { key: 'completed', label: 'Completed' }, ...linkedTabs].map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={tabStyle(tab.key)}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Todo list */}
-      {isLoading ? (
-        <div style={{ color: 'var(--muted)', textAlign: 'center', marginTop: 60 }}>Loading…</div>
-      ) : todos.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '52px 20px 40px', background: 'var(--card)', borderRadius: 16, border: '1.5px solid var(--border)' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-            <AllClearIllustration />
-          </div>
-          <div style={{ fontFamily: 'var(--font-d)', fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
-            You're all caught up!
-          </div>
-          <div style={{ fontSize: 14, color: 'var(--muted)', maxWidth: 280, margin: '0 auto' }}>
-            No tasks on the list. Use the bar below to add your first to-do.
-          </div>
-        </div>
-      ) : (
-        <>
-          {openTodos.length > 0 && (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>
-                Open · {openTodos.length}
-              </div>
-              {openTodos.map(t => (
-                <TodoRow key={t.id} todo={t}
-                  onToggle={() => toggleMut.mutate(t.id)}
-                  onDelete={() => deleteMut.mutate(t.id)}
-                />
-              ))}
-            </div>
-          )}
-
-          {completedTodos.length > 0 && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>
-                Completed · {completedTodos.length}
-              </div>
-              {completedTodos.map(t => (
-                <TodoRow key={t.id} todo={t}
-                  onToggle={() => toggleMut.mutate(t.id)}
-                  onDelete={() => deleteMut.mutate(t.id)}
-                />
-              ))}
-            </div>
-          )}
-
-          {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 13, padding: '40px 20px' }}>
-              Nothing here yet.
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ── Permanent quick-add bar ── */}
+      {/* ── Quick-add bar — top of page ── */}
       <div style={{
-        marginTop: 24,
+        marginBottom: 28,
         background: 'var(--card)',
-        borderRadius: 14,
+        borderRadius: 16,
         border: '1.5px solid var(--border)',
         overflow: 'hidden',
-        boxShadow: showExtra ? '0 4px 20px rgba(0,0,0,0.08)' : 'none',
+        boxShadow: showExtra
+          ? '0 6px 28px rgba(0,0,0,0.10)'
+          : '0 2px 12px rgba(0,0,0,0.05)',
         transition: 'box-shadow .2s',
       }}>
         {/* single-line row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
-          {/* dashed circle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 18px' }}>
           <div style={{
-            width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+            width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
             border: '2px dashed var(--border)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             pointerEvents: 'none',
           }}>
-            <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
               <line x1="5" y1="1" x2="5" y2="9" stroke="var(--border)" strokeWidth="2" strokeLinecap="round"/>
               <line x1="1" y1="5" x2="9" y2="5" stroke="var(--border)" strokeWidth="2" strokeLinecap="round"/>
             </svg>
@@ -350,7 +329,7 @@ export default function TodosPage() {
             placeholder="What needs to be done? (press Enter to add)"
             style={{
               flex: 1, border: 'none', outline: 'none',
-              background: 'transparent', fontSize: 14,
+              background: 'transparent', fontSize: 15,
               color: 'var(--text)', fontFamily: 'var(--font-sans)',
             }}
           />
@@ -361,9 +340,9 @@ export default function TodosPage() {
               onClick={handleAdd}
               disabled={createMut.isLoading}
               style={{
-                padding: '5px 14px', borderRadius: 8, border: 'none',
+                padding: '6px 16px', borderRadius: 9, border: 'none',
                 background: 'var(--accent)', color: '#fff',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0,
+                fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0,
               }}
             >
               {createMut.isLoading ? '…' : 'Add'}
@@ -375,15 +354,16 @@ export default function TodosPage() {
         {showExtra && (
           <div style={{
             borderTop: '1px solid var(--border)',
-            padding: '10px 14px 12px',
+            padding: '12px 18px 14px',
             display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center',
             background: 'var(--surface)',
           }}>
-            {/* due date */}
+            {/* end by date */}
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
               </svg>
+              <span style={{ fontWeight: 600 }}>End by</span>
               <input
                 type="date"
                 value={extraDueDate}
@@ -392,6 +372,26 @@ export default function TodosPage() {
                   border: 'none', background: 'transparent', outline: 'none',
                   fontSize: 12, color: extraDueDate ? 'var(--text)' : 'var(--muted)',
                   fontFamily: 'var(--font-sans)', cursor: 'pointer',
+                }}
+              />
+            </label>
+
+            {/* assigned to */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+              <span style={{ fontWeight: 600 }}>Assign to</span>
+              <input
+                type="text"
+                value={extraAssignedTo}
+                onChange={e => setExtraAssignedTo(e.target.value)}
+                placeholder="Not assigned"
+                style={{
+                  border: 'none', background: 'transparent', outline: 'none',
+                  fontSize: 12, color: extraAssignedTo ? 'var(--text)' : 'var(--muted)',
+                  fontFamily: 'var(--font-sans)',
+                  width: 110,
                 }}
               />
             </label>
@@ -433,6 +433,68 @@ export default function TodosPage() {
           </div>
         )}
       </div>
+
+      {/* Filter tabs */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+        {[{ key: 'all', label: 'All' }, { key: 'open', label: 'Open' }, { key: 'completed', label: 'Completed' }, ...linkedTabs].map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={tabStyle(tab.key)}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Todo list */}
+      {isLoading ? (
+        <div style={{ color: 'var(--muted)', textAlign: 'center', marginTop: 60 }}>Loading…</div>
+      ) : todos.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '52px 20px 40px', background: 'var(--card)', borderRadius: 16, border: '1.5px solid var(--border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <AllClearIllustration />
+          </div>
+          <div style={{ fontFamily: 'var(--font-d)', fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
+            You're all caught up!
+          </div>
+          <div style={{ fontSize: 14, color: 'var(--muted)', maxWidth: 280, margin: '0 auto' }}>
+            No tasks on the list. Use the bar above to add your first to-do.
+          </div>
+        </div>
+      ) : (
+        <>
+          {openTodos.length > 0 && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>
+                Open · {openTodos.length}
+              </div>
+              {openTodos.map(t => (
+                <TodoRow key={t.id} todo={t}
+                  onToggle={() => toggleMut.mutate(t.id)}
+                  onDelete={() => deleteMut.mutate(t.id)}
+                />
+              ))}
+            </div>
+          )}
+
+          {completedTodos.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>
+                Completed · {completedTodos.length}
+              </div>
+              {completedTodos.map(t => (
+                <TodoRow key={t.id} todo={t}
+                  onToggle={() => toggleMut.mutate(t.id)}
+                  onDelete={() => deleteMut.mutate(t.id)}
+                />
+              ))}
+            </div>
+          )}
+
+          {filtered.length === 0 && (
+            <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 13, padding: '40px 20px' }}>
+              Nothing here yet.
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

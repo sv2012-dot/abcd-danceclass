@@ -67,7 +67,13 @@ async function patchTables() {
         ADD COLUMN IF NOT EXISTS avatar VARCHAR(100) NULL
     `).catch(() => {});
 
-    console.log('✅ patchTables: todos, studios, schools.profile_json, students.avatar ensured');
+    // Add assigned_to column to todos (added for assignee feature)
+    await pool.query(`
+      ALTER TABLE todos
+        ADD COLUMN IF NOT EXISTS assigned_to VARCHAR(100) NULL
+    `).catch(() => {});
+
+    console.log('✅ patchTables: todos, studios, schools.profile_json, students.avatar, todos.assigned_to ensured');
   } catch (err) {
     // Non-fatal — log but don't crash the server
     console.warn('⚠ patchTables warning:', err.message);
