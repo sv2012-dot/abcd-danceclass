@@ -61,7 +61,13 @@ async function patchTables() {
       // ALTER TABLE ... ADD COLUMN IF NOT EXISTS is MySQL 8+ only; silently ignore on older versions
     });
 
-    console.log('✅ patchTables: todos, studios, schools.profile_json ensured');
+    // Add avatar column to students (added for avatar-picker feature)
+    await pool.query(`
+      ALTER TABLE students
+        ADD COLUMN IF NOT EXISTS avatar VARCHAR(100) NULL
+    `).catch(() => {});
+
+    console.log('✅ patchTables: todos, studios, schools.profile_json, students.avatar ensured');
   } catch (err) {
     // Non-fatal — log but don't crash the server
     console.warn('⚠ patchTables warning:', err.message);

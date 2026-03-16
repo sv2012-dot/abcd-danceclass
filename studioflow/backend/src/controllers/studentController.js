@@ -33,12 +33,12 @@ exports.get = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const { school_id, name, age, phone, email, guardian_name, guardian_phone, guardian_email, join_date, notes } = req.body;
+  const { school_id, name, age, phone, email, guardian_name, guardian_phone, guardian_email, join_date, notes, avatar } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
   try {
     const [r] = await pool.query(
-      'INSERT INTO students (school_id,name,age,phone,email,guardian_name,guardian_phone,guardian_email,join_date,notes) VALUES (?,?,?,?,?,?,?,?,?,?)',
-      [school_id || req.params.schoolId, name, age||null, phone||null, email||null, guardian_name||null, guardian_phone||null, guardian_email||null, toDate(join_date), notes||null]
+      'INSERT INTO students (school_id,name,age,phone,email,guardian_name,guardian_phone,guardian_email,join_date,notes,avatar) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+      [school_id || req.params.schoolId, name, age||null, phone||null, email||null, guardian_name||null, guardian_phone||null, guardian_email||null, toDate(join_date), notes||null, avatar||null]
     );
     const [rows] = await pool.query('SELECT * FROM students WHERE id = ?', [r.insertId]);
     res.status(201).json(rows[0]);
@@ -46,11 +46,11 @@ exports.create = async (req, res) => {
 };
 
 exports.update = async (req, res) => {
-  const { name, age, phone, email, guardian_name, guardian_phone, guardian_email, join_date, notes, is_active } = req.body;
+  const { name, age, phone, email, guardian_name, guardian_phone, guardian_email, join_date, notes, is_active, avatar } = req.body;
   try {
     await pool.query(
-      'UPDATE students SET name=?,age=?,phone=?,email=?,guardian_name=?,guardian_phone=?,guardian_email=?,join_date=?,notes=?,is_active=? WHERE id=? AND school_id=?',
-      [name, age||null, phone||null, email||null, guardian_name||null, guardian_phone||null, guardian_email||null, toDate(join_date), notes||null, is_active??1, req.params.id, req.params.schoolId]
+      'UPDATE students SET name=?,age=?,phone=?,email=?,guardian_name=?,guardian_phone=?,guardian_email=?,join_date=?,notes=?,is_active=?,avatar=? WHERE id=? AND school_id=?',
+      [name, age||null, phone||null, email||null, guardian_name||null, guardian_phone||null, guardian_email||null, toDate(join_date), notes||null, is_active??1, avatar||null, req.params.id, req.params.schoolId]
     );
     const [rows] = await pool.query('SELECT * FROM students WHERE id = ?', [req.params.id]);
     res.json(rows[0]);

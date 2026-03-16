@@ -567,7 +567,7 @@ export default function SchedulePage() {
                       width: 26, height: 26, borderRadius: "50%",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       marginBottom: 4,
-                      boxShadow: isToday(day) ? "0 2px 10px rgba(196,82,122,0.55), 0 0 0 3px rgba(196,82,122,0.15)" : "none",
+                      boxShadow: isToday(day) && theme === "dark" ? "0 2px 10px rgba(196,82,122,0.55), 0 0 0 3px rgba(196,82,122,0.15)" : "none",
                     }}>{day}</div>
                     {visible.map(e => <EventPill key={e.id} event={e} compact />)}
                     {overflow > 0 && (
@@ -608,7 +608,7 @@ export default function SchedulePage() {
                   display:"flex",alignItems:"center",justifyContent:"center",
                   fontSize:14,fontWeight:isToday?800:600,color:isToday?"#fff":"var(--text)",
                   border:isToday?"none":"1px solid var(--border)",
-                  boxShadow:isToday?"0 4px 16px rgba(196,82,122,0.5), 0 0 0 4px rgba(196,82,122,0.12)":"none",
+                  boxShadow:isToday && theme==="dark"?"0 4px 16px rgba(196,82,122,0.5), 0 0 0 4px rgba(196,82,122,0.12)":"none",
                   transition:"all .2s",
                 }}>{date.getDate()}</div>
               </div>
@@ -908,6 +908,33 @@ export default function SchedulePage() {
                       </div>
                     </div>
                   )}
+                  {/* ── Colour swatch picker ── */}
+                  {(() => {
+                    const PASTEL = ["#FF9AA2","#FFB7B2","#FFDAC1","#FFF3B0","#E2F0CB","#B5EAD7","#C7CEEA","#A2C4F5","#D4B8E0","#F5B8D4","#B8F0E4","#F5D4A2"];
+                    return (
+                      <div style={{ marginBottom:18 }}>
+                        <div style={{ fontSize:10, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em", marginBottom:10 }}>Event Colour</div>
+                        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                          {PASTEL.map(c => {
+                            const active = (e.color||TYPE_COLORS[e.type]||"#8a7a9a") === c;
+                            return (
+                              <button key={c} title={c} onClick={() => {
+                                api.update(sid, e.id, { ...e, color: c, batch_ids: (e.batches||[]).map(b=>b.id) })
+                                  .then(() => { qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,color:c}); });
+                              }} style={{
+                                width:28, height:28, borderRadius:"50%", background:c, border:"none",
+                                cursor:"pointer", flexShrink:0, transition:"all .15s",
+                                outline: active ? `3px solid ${c}` : "none",
+                                outlineOffset: active ? 2 : 0,
+                                boxShadow: active ? `0 0 0 2px var(--card), 0 0 0 4px ${c}` : "0 1px 3px rgba(0,0,0,.15)",
+                                transform: active ? "scale(1.2)" : "scale(1)",
+                              }} />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {isAdmin && (
                     <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
                       <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600 }}>✏️ Edit Event</button>

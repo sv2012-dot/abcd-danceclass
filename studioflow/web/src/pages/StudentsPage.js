@@ -7,44 +7,172 @@ import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
 import { Field, Input, Textarea } from "../components/shared/Field";
 
-// ─── Avatar helper ──────────────────────────────────────────────────────────
-// Cheerful emoji avatars — no stock photos
-const HAPPY_EMOJIS = ['💃','🌟','🎵','🌺','⭐','🎶','✨','🌸','🦋','🎀','🌻','💫','🎭','🌈','🏵️','🎊','🌼','🎯','🪷','🎤'];
-const AVATAR_COLORS = ['#FFB347','#FF6B9D','#7E57C2','#42A5F5','#26C99E','#FFCA28','#EF5350','#29B6F6','#AB47BC','#66BB6A'];
+// ─── DiceBear avatar config ────────────────────────────────────────────────
+const AVATAR_STYLES = [
+  {
+    key: "micah",
+    label: "Illustrated",
+    seeds: ["Amara","Leila","Sofia","Zoe","Maya","Luna","Aria","Nadia"],
+  },
+  {
+    key: "lorelei",
+    label: "Portrait",
+    seeds: ["Bella","Chloe","Daisy","Eva","Flora","Grace","Hope","Iris"],
+  },
+  {
+    key: "thumbs",
+    label: "Fun",
+    seeds: ["Jasmine","Kira","Lena","Mia","Nina","Olive","Petra","Rosa"],
+  },
+];
 
-function getStudentEmoji(student) {
-  const i = ((student.id || 0) * 7 + (student.name?.charCodeAt(0) || 0)) % HAPPY_EMOJIS.length;
-  return HAPPY_EMOJIS[i];
-}
-function getStudentColor(student) {
-  const i = ((student.id || 0) * 13 + (student.name?.charCodeAt(1) || 0)) % AVATAR_COLORS.length;
-  return AVATAR_COLORS[i];
+function dicebearUrl(avatarVal) {
+  if (!avatarVal) return null;
+  const [style, ...rest] = avatarVal.split(":");
+  const seed = rest.join(":");
+  if (!style || !seed) return null;
+  return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
 }
 
-function StudentAvatar({ student, size = 44, border, active }) {
+// Fallback: cheerful emoji avatars for students without a DiceBear avatar
+const HAPPY_EMOJIS  = ["💃","🌟","🎵","🌺","⭐","🎶","✨","🌸","🦋","🎀","🌻","💫","🎭","🌈","🏵️","🎊","🌼","🎯","🪷","🎤"];
+const AVATAR_COLORS = ["#FFB347","#FF6B9D","#7E57C2","#42A5F5","#26C99E","#FFCA28","#EF5350","#29B6F6","#AB47BC","#66BB6A"];
+function getStudentEmoji(s) { return HAPPY_EMOJIS[((s.id||0)*7+(s.name?.charCodeAt(0)||0))%HAPPY_EMOJIS.length]; }
+function getStudentColor(s) { return AVATAR_COLORS[((s.id||0)*13+(s.name?.charCodeAt(1)||0))%AVATAR_COLORS.length]; }
+
+// ─── StudentAvatar ─────────────────────────────────────────────────────────
+function StudentAvatar({ student, size = 44, border, active, onClick }) {
+  const url = dicebearUrl(student.avatar);
   return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: getStudentColor(student),
-      border: border || `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.46, lineHeight: 1, transition: 'border-color .15s',
-      userSelect: 'none',
-    }}>
-      {getStudentEmoji(student)}
+    <div
+      onClick={onClick}
+      style={{
+        width: size, height: size, borderRadius: "50%", flexShrink: 0,
+        overflow: "hidden",
+        background: url ? "var(--surface)" : getStudentColor(student),
+        border: border || `2px solid ${active ? "var(--accent)" : "var(--border)"}`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: size * 0.46, lineHeight: 1,
+        transition: "border-color .15s, box-shadow .15s",
+        userSelect: "none",
+        cursor: onClick ? "pointer" : "default",
+        boxShadow: onClick ? "0 0 0 0 transparent" : undefined,
+      }}
+      onMouseEnter={onClick ? e => { e.currentTarget.style.boxShadow = "0 0 0 3px rgba(196,82,122,.25)"; } : undefined}
+      onMouseLeave={onClick ? e => { e.currentTarget.style.boxShadow = "0 0 0 0 transparent"; } : undefined}
+    >
+      {url
+        ? <img src={url} alt={student.name} style={{ width: "100%", height: "100%", display: "block" }} />
+        : getStudentEmoji(student)
+      }
     </div>
   );
 }
 
-// ─── Small helpers ───────────────────────────────────────────────────────────
+// ─── AvatarPicker ──────────────────────────────────────────────────────────
+function AvatarPicker({ current, onPick, onClose }) {
+  const [tab, setTab]     = useState(() => {
+    if (!current) return 0;
+    const styleKey = current.split(":")[0];
+    const idx = AVATAR_STYLES.findIndex(s => s.key === styleKey);
+    return idx >= 0 ? idx : 0;
+  });
+  const [picked, setPicked] = useState(current || "");
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,0.55)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{ background: "var(--card)", borderRadius: 20, width: "100%", maxWidth: 380,
+        display: "flex", flexDirection: "column", maxHeight: "85vh",
+        boxShadow: "0 24px 64px rgba(0,0,0,.30)", overflow: "hidden" }}>
+
+        {/* Header */}
+        <div style={{ padding: "18px 20px 0", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+          <div style={{ fontWeight: 800, fontSize: 16 }}>Choose Avatar</div>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--muted)", padding: 4, borderRadius: 6, lineHeight: 1 }}>✕</button>
+        </div>
+
+        {/* Style tabs */}
+        <div style={{ display: "flex", gap: 6, padding: "14px 20px 12px", flexShrink: 0 }}>
+          {AVATAR_STYLES.map((s, i) => (
+            <button key={s.key} onClick={() => setTab(i)} style={{
+              padding: "5px 16px", borderRadius: 20, border: "none", cursor: "pointer",
+              fontSize: 12, fontWeight: 700, transition: "all .15s",
+              background: tab === i ? "var(--accent)" : "var(--surface)",
+              color: tab === i ? "#fff" : "var(--muted)",
+            }}>{s.label}</button>
+          ))}
+        </div>
+
+        {/* Avatar grid */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 8px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+            {AVATAR_STYLES[tab].seeds.map(seed => {
+              const val = `${AVATAR_STYLES[tab].key}:${seed}`;
+              const url = `https://api.dicebear.com/9.x/${AVATAR_STYLES[tab].key}/svg?seed=${encodeURIComponent(seed)}`;
+              const sel = picked === val;
+              return (
+                <div key={seed} onClick={() => setPicked(val)} style={{
+                  borderRadius: "50%", overflow: "hidden", aspectRatio: "1/1",
+                  border: sel ? "3px solid var(--accent)" : "2px solid var(--border)",
+                  cursor: "pointer", position: "relative",
+                  boxShadow: sel ? "0 0 0 4px rgba(196,82,122,.2)" : "0 2px 6px rgba(0,0,0,.08)",
+                  transition: "all .15s",
+                }}>
+                  <img src={url} alt={seed} style={{ width: "100%", height: "100%", display: "block" }} />
+                  {sel && (
+                    <div style={{
+                      position: "absolute", inset: 0, background: "rgba(196,82,122,.12)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 800 }}>✓</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Preview + actions */}
+        <div style={{ padding: "16px 20px 20px", borderTop: "1px solid var(--border)", flexShrink: 0, display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Preview */}
+          <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden", border: "2px solid var(--accent)", flexShrink: 0, background: "var(--surface)" }}>
+            {picked
+              ? <img src={dicebearUrl(picked)} alt="preview" style={{ width: "100%", height: "100%", display: "block" }} />
+              : <div style={{ width: "100%", height: "100%", background: "var(--surface)" }} />
+            }
+          </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+            <button onClick={() => { onPick(picked); onClose(); }} style={{
+              width: "100%", padding: "9px", borderRadius: 10, border: "none",
+              background: "var(--accent)", color: "#fff", cursor: "pointer",
+              fontWeight: 700, fontSize: 13,
+            }}>Use This Avatar</button>
+            <button onClick={() => { onPick(""); onClose(); }} style={{
+              width: "100%", padding: "7px", borderRadius: 10,
+              border: "1.5px solid var(--border)", background: "transparent",
+              color: "var(--muted)", cursor: "pointer", fontWeight: 600, fontSize: 12,
+            }}>Reset to Default</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Small helpers ────────────────────────────────────────────────────────
 function InfoRow({ icon, label, value }) {
   if (!value) return null;
   return (
-    <div style={{ display:"flex", gap:10, marginBottom:10, alignItems:"flex-start" }}>
-      <span style={{ fontSize:14, flexShrink:0, width:20, textAlign:"center", marginTop:1 }}>{icon}</span>
+    <div style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "flex-start" }}>
+      <span style={{ fontSize: 14, flexShrink: 0, width: 20, textAlign: "center", marginTop: 1 }}>{icon}</span>
       <div>
-        <div style={{ fontSize:10, color:"var(--muted)", fontWeight:700, textTransform:"uppercase", letterSpacing:".05em", marginBottom:2 }}>{label}</div>
-        <div style={{ fontSize:13, fontWeight:500, wordBreak:"break-word" }}>{value}</div>
+        <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 2 }}>{label}</div>
+        <div style={{ fontSize: 13, fontWeight: 500, wordBreak: "break-word" }}>{value}</div>
       </div>
     </div>
   );
@@ -52,40 +180,41 @@ function InfoRow({ icon, label, value }) {
 
 function PanelSection({ title, children }) {
   return (
-    <div style={{ marginBottom:20 }}>
-      <div style={{ fontSize:10, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em", marginBottom:10, paddingBottom:6, borderBottom:"1px solid var(--border)" }}>{title}</div>
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 10, paddingBottom: 6, borderBottom: "1px solid var(--border)" }}>{title}</div>
       {children}
     </div>
   );
 }
 
-const EMPTY = { name:"", age:"", phone:"", email:"", guardian_name:"", guardian_phone:"", guardian_email:"", join_date:"", notes:"" };
+const EMPTY = { name: "", age: "", phone: "", email: "", guardian_name: "", guardian_phone: "", guardian_email: "", join_date: "", notes: "", avatar: "" };
 
 export default function StudentsPage() {
   const { user } = useAuth();
   const sid = user?.school_id;
-  const qc = useQueryClient();
+  const qc  = useQueryClient();
 
   const [search, setSearch]       = useState("");
-  const [view, setView]           = useState("grid"); // "grid" | "table"
+  const [view, setView]           = useState("grid");
   const [selected, setSelected]   = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm]   = useState({});
   const [showAdd, setShowAdd]     = useState(false);
   const [addForm, setAddForm]     = useState(EMPTY);
+  const [showPicker, setShowPicker] = useState(false);  // avatar picker overlay
+  const [pickerTarget, setPickerTarget] = useState("add"); // "add" | "edit"
 
   const PANEL_W = 400;
 
-  // ── Responsive panel ─────────────────────────────────────────────────────
   const [windowWidth, setWindowWidth] = useState(() => window.innerWidth);
   useEffect(() => {
     const h = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', h);
-    return () => window.removeEventListener('resize', h);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
   }, []);
-  const isMobile = windowWidth < 768; // matches AppShell mobile breakpoint
+  const isMobile = windowWidth < 768;
 
-  // ── Data ────────────────────────────────────────────────────────────────
+  // ── Data ─────────────────────────────────────────────────────────────────
   const { data: list = [], isLoading } = useQuery({
     queryKey: ["students", sid],
     queryFn: () => api.list(sid),
@@ -121,38 +250,41 @@ export default function StudentsPage() {
     onError: err => toast.error(err?.error || "Failed to remove"),
   });
 
-  // ── Helpers ─────────────────────────────────────────────────────────────
-  const filtered = list.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()));
-  const fmtLong  = d => { if (!d) return null; const [y,m,dy] = (d||'').slice(0,10).split('-').map(Number); return (y&&m&&dy) ? new Date(y,m-1,dy).toLocaleDateString("en",{year:"numeric",month:"long",day:"numeric"}) : null; };
-  const fmtShort = d => { if (!d) return null; const [y,m,dy] = (d||'').slice(0,10).split('-').map(Number); return (y&&m&&dy) ? new Date(y,m-1,dy).toLocaleDateString("en",{month:"short",year:"numeric"}) : null; };
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  const filtered  = list.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()));
+  const fmtLong   = d => { if (!d) return null; const [y,m,dy] = (d||"").slice(0,10).split("-").map(Number); return (y&&m&&dy) ? new Date(y,m-1,dy).toLocaleDateString("en",{year:"numeric",month:"long",day:"numeric"}) : null; };
+  const fmtShort  = d => { if (!d) return null; const [y,m,dy] = (d||"").slice(0,10).split("-").map(Number); return (y&&m&&dy) ? new Date(y,m-1,dy).toLocaleDateString("en",{month:"short",year:"numeric"}) : null; };
+  const ageLabel  = age => { const n = Number(age); if (!age && age !== 0) return null; return n > 18 ? "Adult" : `${n} yrs`; };
+  const ageDot    = age => { const n = Number(age); if (!age && age !== 0) return "#aaa"; if (n <= 8) return "#6a7fdb"; if (n <= 12) return "#f4a041"; if (n <= 18) return "#52c4a0"; return "#52c4a0"; };
 
-  // Age display: ≤8 blue · ≤12 yellow · ≤18 green · 18+ Adult · unset hidden
-  const ageLabel = age => { const n = Number(age); if (!age && age !== 0) return null; return n > 18 ? "Adult" : `${n} yrs`; };
-  const ageDot   = age => { const n = Number(age); if (!age && age !== 0) return "#aaa"; if (n <= 8) return "#6a7fdb"; if (n <= 12) return "#f4a041"; if (n <= 18) return "#52c4a0"; return "#52c4a0"; };
+  const openAdd    = () => { setAddForm({ ...EMPTY, join_date: new Date().toISOString().split("T")[0] }); setSelected(null); setIsEditing(false); setShowAdd(true); };
+  const pick       = s  => { setSelected(s); setIsEditing(false); };
+  const startEdit  = ()  => { setEditForm({ ...selected }); setIsEditing(true); };
 
-  const openAdd  = () => { setAddForm({ ...EMPTY, join_date: new Date().toISOString().split("T")[0] }); setSelected(null); setIsEditing(false); setShowAdd(true); };
-  const pick     = s  => { setSelected(s); setIsEditing(false); };
-  const startEdit = () => { setEditForm({ ...selected }); setIsEditing(true); };
+  const openPickerFor = (target) => { setPickerTarget(target); setShowPicker(true); };
+  const handleAvatarPick = (val) => {
+    if (pickerTarget === "add")  setAddForm(f  => ({ ...f,  avatar: val }));
+    if (pickerTarget === "edit") setEditForm(f => ({ ...f, avatar: val }));
+  };
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ paddingRight: (selected || showAdd) && !isMobile ? PANEL_W + 20 : 0, transition:"padding .25s ease" }}>
+    <div style={{ paddingRight: (selected || showAdd) && !isMobile ? PANEL_W + 20 : 0, transition: "padding .25s ease" }}>
 
       {/* ── Header ── */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:10 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
         <div>
-          <h1 style={{ fontFamily:"var(--font-d)", fontSize:24, marginBottom:2 }}>Students</h1>
-          <p style={{ color:"var(--muted)", fontSize:12 }}>{list.length} enrolled</p>
+          <h1 style={{ fontFamily: "var(--font-d)", fontSize: 24, marginBottom: 2 }}>Students</h1>
+          <p style={{ color: "var(--muted)", fontSize: 12 }}>{list.length} enrolled</p>
         </div>
-        <div style={{ display:"flex", gap:8, alignItems:"center", marginLeft:"auto" }}>
-          {/* View toggle */}
-          <div style={{ display:"flex", border:"1.5px solid var(--border)", borderRadius:9, overflow:"hidden" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto" }}>
+          <div style={{ display: "flex", border: "1.5px solid var(--border)", borderRadius: 9, overflow: "hidden" }}>
             <button onClick={() => setView("grid")} title="Grid view"
-              style={{ padding:"7px 13px", border:"none", cursor:"pointer", fontSize:16, lineHeight:1, transition:"all .15s",
+              style={{ padding: "7px 13px", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, transition: "all .15s",
                 background: view === "grid" ? "var(--accent)" : "transparent",
                 color: view === "grid" ? "#fff" : "var(--muted)" }}>⊞</button>
             <button onClick={() => setView("table")} title="Table view"
-              style={{ padding:"7px 13px", border:"none", borderLeft:"1.5px solid var(--border)", cursor:"pointer", fontSize:16, lineHeight:1, transition:"all .15s",
+              style={{ padding: "7px 13px", border: "none", borderLeft: "1.5px solid var(--border)", cursor: "pointer", fontSize: 16, lineHeight: 1, transition: "all .15s",
                 background: view === "table" ? "var(--accent)" : "transparent",
                 color: view === "table" ? "#fff" : "var(--muted)" }}>☰</button>
           </div>
@@ -161,90 +293,66 @@ export default function StudentsPage() {
       </div>
 
       {/* ── Search ── */}
-      <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search students…" style={{ maxWidth:280, marginBottom:18 }} />
+      <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search students…" style={{ maxWidth: 280, marginBottom: 18 }} />
 
       {/* ── Content ── */}
       {isLoading ? (
-        <p style={{ color:"var(--muted)" }}>Loading…</p>
+        <p style={{ color: "var(--muted)" }}>Loading…</p>
 
       ) : filtered.length === 0 ? (
-        <Card style={{ textAlign:"center", padding:48, border:"1.5px dashed var(--border)" }}>
-          <div style={{ fontSize:40, marginBottom:12 }}>🌟</div>
-          <p style={{ fontWeight:700, marginBottom:4 }}>No students yet</p>
-          <p style={{ color:"var(--muted)", fontSize:13, marginBottom:16 }}>Add your first student to get started.</p>
+        <Card style={{ textAlign: "center", padding: 48, border: "1.5px dashed var(--border)" }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🌟</div>
+          <p style={{ fontWeight: 700, marginBottom: 4 }}>No students yet</p>
+          <p style={{ color: "var(--muted)", fontSize: 13, marginBottom: 16 }}>Add your first student to get started.</p>
           <Button onClick={openAdd}>Add Student</Button>
         </Card>
 
       ) : view === "grid" ? (
-        /* ── Grid cards ── */
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(270px, 1fr))", gap:16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 16 }}>
           {filtered.map(s => {
-            const active    = selected?.id === s.id;
-            const batches   = s.batches ? String(s.batches).split(",").map(b => b.trim()).filter(Boolean) : [];
-            const noEnroll  = batches.length === 0;
-            const label     = ageLabel(s.age);
-            const dotColor  = ageDot(s.age);
-            const joinStr   = fmtShort(s.join_date);
-
+            const active   = selected?.id === s.id;
+            const batches  = s.batches ? String(s.batches).split(",").map(b => b.trim()).filter(Boolean) : [];
+            const noEnroll = batches.length === 0;
+            const label    = ageLabel(s.age);
+            const dotColor = ageDot(s.age);
+            const joinStr  = fmtShort(s.join_date);
             return (
               <div key={s.id} onClick={() => pick(s)} style={{
-                background:"var(--card)", borderRadius:14, cursor:"pointer",
-                border:`1.5px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                background: "var(--card)", borderRadius: 14, cursor: "pointer",
+                border: `1.5px solid ${active ? "var(--accent)" : "var(--border)"}`,
                 boxShadow: active ? "0 0 0 3px rgba(196,82,122,.13)" : "0 2px 8px rgba(0,0,0,.05)",
-                transition:"all .15s", overflow:"hidden",
+                transition: "all .15s", overflow: "hidden",
               }}>
-                {/* ── Card header: avatar + name + age ── */}
-                <div style={{ padding:"18px 18px 14px", display:"flex", alignItems:"center", gap:14 }}>
+                <div style={{ padding: "18px 18px 14px", display: "flex", alignItems: "center", gap: 14 }}>
                   <StudentAvatar student={s} size={52} active={active} />
-                  <div style={{ minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:15, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:"var(--text)" }}>
-                      {s.name}
-                    </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text)" }}>{s.name}</div>
                     {label && (
-                      <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:4 }}>
-                        <div style={{ width:7, height:7, borderRadius:"50%", background:dotColor, flexShrink:0 }} />
-                        <span style={{ fontSize:12, color:"var(--muted)", fontWeight:500 }}>{label}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
+                        <div style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>{label}</span>
                       </div>
                     )}
                   </div>
                 </div>
-
-                {/* ── Divider ── */}
-                <div style={{ height:1, background:"var(--border)", margin:"0 18px" }} />
-
-                {/* ── Join date row ── */}
-                <div style={{ padding:"10px 18px", display:"flex", alignItems:"center", gap:8 }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+                <div style={{ height: 1, background: "var(--border)", margin: "0 18px" }} />
+                <div style={{ padding: "10px 18px", display: "flex", alignItems: "center", gap: 8 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                     <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                   </svg>
-                  <span style={{ fontSize:12, color: joinStr ? "var(--muted)" : "var(--border)", fontStyle: joinStr ? "normal" : "italic" }}>
+                  <span style={{ fontSize: 12, color: joinStr ? "var(--muted)" : "var(--border)", fontStyle: joinStr ? "normal" : "italic" }}>
                     {joinStr ? `Joined ${joinStr}` : "No join date recorded"}
                   </span>
                 </div>
-
-                {/* ── Divider ── */}
-                <div style={{ height:1, background:"var(--border)", margin:"0 18px" }} />
-
-                {/* ── Enrolled batches ── */}
-                <div style={{ padding:"10px 18px 14px" }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".07em", marginBottom:7 }}>
-                    Enrolled Classes
-                  </div>
+                <div style={{ height: 1, background: "var(--border)", margin: "0 18px" }} />
+                <div style={{ padding: "10px 18px 14px" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 7 }}>Enrolled Classes</div>
                   {noEnroll ? (
-                    <span style={{
-                      display:"inline-flex", alignItems:"center", gap:5,
-                      background:"#fff8e6", border:"1.5px dashed #f4a041",
-                      borderRadius:20, padding:"3px 10px",
-                      fontSize:11, color:"#b45309", fontWeight:600,
-                    }}>
-                      ⚠ Not enrolled in any batch
-                    </span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#fff8e6", border: "1.5px dashed #f4a041", borderRadius: 20, padding: "3px 10px", fontSize: 11, color: "#b45309", fontWeight: 600 }}>⚠ Not enrolled in any batch</span>
                   ) : (
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
-                      {batches.map((b,i) => (
-                        <span key={i} style={{ fontSize:11, background:"var(--surface)", color:"var(--text)", borderRadius:20, padding:"3px 10px", border:"1px solid var(--border)", fontWeight:500 }}>
-                          {b}
-                        </span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                      {batches.map((b, i) => (
+                        <span key={i} style={{ fontSize: 11, background: "var(--surface)", color: "var(--text)", borderRadius: 20, padding: "3px 10px", border: "1px solid var(--border)", fontWeight: 500 }}>{b}</span>
                       ))}
                     </div>
                   )}
@@ -255,13 +363,12 @@ export default function StudentsPage() {
         </div>
 
       ) : (
-        /* ── Table view ── */
-        <div style={{ background:"var(--card)", borderRadius:14, border:"1px solid var(--border)", overflow:"hidden" }}>
-          <table style={{ width:"100%", borderCollapse:"collapse" }}>
+        <div style={{ background: "var(--card)", borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background:"var(--surface)" }}>
+              <tr style={{ background: "var(--surface)" }}>
                 {["Student","Age","Contact","Batch","Joined",""].map(h => (
-                  <th key={h} style={{ padding:"11px 14px", textAlign:"left", fontSize:11, fontWeight:700, letterSpacing:".06em", textTransform:"uppercase", color:"var(--muted)" }}>{h}</th>
+                  <th key={h} style={{ padding: "11px 14px", textAlign: "left", fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -269,27 +376,24 @@ export default function StudentsPage() {
               {filtered.map(s => {
                 const active = selected?.id === s.id;
                 return (
-                  <tr key={s.id} onClick={() => pick(s)} style={{
-                    borderTop:"1px solid var(--border)", cursor:"pointer",
-                    background: active ? "rgba(196,82,122,.04)" : "transparent", transition:"background .1s"
-                  }}>
-                    <td style={{ padding:"10px 14px" }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <tr key={s.id} onClick={() => pick(s)} style={{ borderTop: "1px solid var(--border)", cursor: "pointer", background: active ? "rgba(196,82,122,.04)" : "transparent", transition: "background .1s" }}>
+                    <td style={{ padding: "10px 14px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <StudentAvatar student={s} size={34} />
-                        <span style={{ fontWeight:600, fontSize:13 }}>{s.name}</span>
+                        <span style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</span>
                       </div>
                     </td>
-                    <td style={{ padding:"10px 14px", fontSize:13, color:"var(--muted)" }}>{ageLabel(s.age) || "—"}</td>
-                    <td style={{ padding:"10px 14px", fontSize:12, color:"var(--muted)", maxWidth:180, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.email || s.phone || "—"}</td>
-                    <td style={{ padding:"10px 14px" }}>
+                    <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--muted)" }}>{ageLabel(s.age) || "—"}</td>
+                    <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--muted)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.email || s.phone || "—"}</td>
+                    <td style={{ padding: "10px 14px" }}>
                       {s.batches
-                        ? <span style={{ fontSize:11, background:"var(--accent)18", color:"var(--accent)", borderRadius:20, padding:"2px 9px", fontWeight:600 }}>{String(s.batches).split(",")[0].trim()}</span>
-                        : <span style={{ color:"var(--muted)", fontSize:12 }}>—</span>}
+                        ? <span style={{ fontSize: 11, background: "var(--accent)18", color: "var(--accent)", borderRadius: 20, padding: "2px 9px", fontWeight: 600 }}>{String(s.batches).split(",")[0].trim()}</span>
+                        : <span style={{ color: "var(--muted)", fontSize: 12 }}>—</span>}
                     </td>
-                    <td style={{ padding:"10px 14px", fontSize:12, color:"var(--muted)" }}>{fmtShort(s.join_date) || "—"}</td>
-                    <td style={{ padding:"10px 14px" }}>
-                      <button onClick={e => { e.stopPropagation(); if(window.confirm("Remove student?")) deleteMutation.mutate(s.id); }}
-                        style={{ background:"none", border:"none", cursor:"pointer", fontSize:14, color:"var(--muted)", padding:"3px 7px", borderRadius:6, opacity:.6 }}>🗑</button>
+                    <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--muted)" }}>{fmtShort(s.join_date) || "—"}</td>
+                    <td style={{ padding: "10px 14px" }}>
+                      <button onClick={e => { e.stopPropagation(); if (window.confirm("Remove student?")) deleteMutation.mutate(s.id); }}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--muted)", padding: "3px 7px", borderRadius: 6, opacity: .6 }}>🗑</button>
                     </td>
                   </tr>
                 );
@@ -299,55 +403,66 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* ── Right detail / add panel ── */}
+      {/* ── Right side panel ── */}
       {(selected || showAdd) && isMobile && (
-        <div onClick={()=>{ setSelected(null); setIsEditing(false); setShowAdd(false); }}
-          style={{position:"fixed",inset:0,top:56,background:"rgba(0,0,0,0.4)",zIndex:399}} />
+        <div onClick={() => { setSelected(null); setIsEditing(false); setShowAdd(false); }}
+          style={{ position: "fixed", inset: 0, top: 56, background: "rgba(0,0,0,0.4)", zIndex: 399 }} />
       )}
       {(selected || showAdd) && (
         <div style={{
-          position:"fixed", right:0, bottom:0, zIndex:400,
-          top:    isMobile ? 56 : 0,
-          width:  isMobile ? '100vw' : PANEL_W,
-          left:   isMobile ? 0 : 'auto',
-          background:"var(--card)",
-          borderLeft: isMobile ? 'none' : "1.5px solid var(--border)",
-          display:"flex", flexDirection:"column",
+          position: "fixed", right: 0, bottom: 0, zIndex: 400,
+          top: isMobile ? 56 : 0,
+          width: isMobile ? "100vw" : PANEL_W,
+          left: isMobile ? 0 : "auto",
+          background: "var(--card)",
+          borderLeft: isMobile ? "none" : "1.5px solid var(--border)",
+          display: "flex", flexDirection: "column",
           boxShadow: isMobile ? "0 -4px 32px rgba(0,0,0,.14)" : "-6px 0 32px rgba(0,0,0,.09)",
         }}>
           {/* Panel header */}
-          <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
-            <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em" }}>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".08em" }}>
               {showAdd ? "New Student" : isEditing ? "Edit Student" : "Student Profile"}
             </span>
             <button onClick={() => { setSelected(null); setIsEditing(false); setShowAdd(false); }}
-              style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6 }}>✕</button>
+              style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--muted)", lineHeight: 1, padding: 4, borderRadius: 6 }}>✕</button>
           </div>
 
-          {/* ── ADD mode: show add form inline ── */}
+          {/* ── ADD mode ── */}
           {showAdd && (() => {
             const addAge   = Number(addForm.age);
             const ageKnown = String(addForm.age ?? "").trim() !== "" && !isNaN(addAge) && addAge > 0;
             const isMinor  = ageKnown && addAge <= 18;
             const isAdult  = ageKnown && addAge > 18;
             return (
-              <div style={{ flex:1, overflowY:"auto", padding:"22px 24px" }}>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
-                  <Field label="Full Name *"><Input value={addForm.name} onChange={e=>setAddForm({...addForm,name:e.target.value})} placeholder="Student name"/></Field>
-                  <Field label="Age"><Input type="number" value={addForm.age} onChange={e=>setAddForm({...addForm,age:e.target.value})} placeholder="e.g. 12" min="0" max="99"/></Field>
+              <div style={{ flex: 1, overflowY: "auto", padding: "22px 24px" }}>
+                {/* Avatar picker row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, padding: "14px 16px", background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)" }}>
+                  <StudentAvatar student={{ ...addForm, id: 0 }} size={56} onClick={() => openPickerFor("add")} />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 3 }}>Profile Picture</div>
+                    <button onClick={() => openPickerFor("add")} style={{ padding: "5px 14px", borderRadius: 20, border: "1.5px solid var(--accent)", background: "transparent", color: "var(--accent)", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
+                      {addForm.avatar ? "Change Avatar" : "Choose Avatar"}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                  <Field label="Full Name *"><Input value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} placeholder="Student name" /></Field>
+                  <Field label="Age"><Input type="number" value={addForm.age} onChange={e => setAddForm({ ...addForm, age: e.target.value })} placeholder="e.g. 12" min="0" max="99" /></Field>
                   {(!ageKnown || isAdult) && (<>
-                    <Field label="Phone / WhatsApp"><Input value={addForm.phone} onChange={e=>setAddForm({...addForm,phone:e.target.value})} placeholder="+1 555 000 0000"/></Field>
-                    <Field label="Email"><Input value={addForm.email} onChange={e=>setAddForm({...addForm,email:e.target.value})} placeholder="email@example.com"/></Field>
+                    <Field label="Phone / WhatsApp"><Input value={addForm.phone} onChange={e => setAddForm({ ...addForm, phone: e.target.value })} placeholder="+1 555 000 0000" /></Field>
+                    <Field label="Email"><Input value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} placeholder="email@example.com" /></Field>
                   </>)}
                   {isMinor && (<>
-                    <Field label="Guardian Name *"><Input value={addForm.guardian_name} onChange={e=>setAddForm({...addForm,guardian_name:e.target.value})} placeholder="Parent or guardian"/></Field>
-                    <Field label="Guardian Phone"><Input value={addForm.guardian_phone} onChange={e=>setAddForm({...addForm,guardian_phone:e.target.value})} placeholder="+1 555 000 0000"/></Field>
-                    <Field label="Guardian Email"><Input value={addForm.guardian_email} onChange={e=>setAddForm({...addForm,guardian_email:e.target.value})} placeholder="parent@email.com"/></Field>
+                    <Field label="Guardian Name *"><Input value={addForm.guardian_name} onChange={e => setAddForm({ ...addForm, guardian_name: e.target.value })} placeholder="Parent or guardian" /></Field>
+                    <Field label="Guardian Phone"><Input value={addForm.guardian_phone} onChange={e => setAddForm({ ...addForm, guardian_phone: e.target.value })} placeholder="+1 555 000 0000" /></Field>
+                    <Field label="Guardian Email"><Input value={addForm.guardian_email} onChange={e => setAddForm({ ...addForm, guardian_email: e.target.value })} placeholder="parent@email.com" /></Field>
                   </>)}
-                  <Field label="Join Date"><Input type="date" value={addForm.join_date} onChange={e=>setAddForm({...addForm,join_date:e.target.value})}/></Field>
+                  <Field label="Join Date"><Input type="date" value={addForm.join_date} onChange={e => setAddForm({ ...addForm, join_date: e.target.value })} /></Field>
                 </div>
-                <Field label="Notes"><Textarea value={addForm.notes} onChange={e=>setAddForm({...addForm,notes:e.target.value})} placeholder="Any notes…"/></Field>
-                <div style={{ display:"flex", gap:9, marginTop:16 }}>
+                <Field label="Notes"><Textarea value={addForm.notes} onChange={e => setAddForm({ ...addForm, notes: e.target.value })} placeholder="Any notes…" /></Field>
+                <div style={{ display: "flex", gap: 9, marginTop: 16 }}>
                   <Button onClick={() => addMutation.mutate(addForm)} disabled={!addForm.name || addMutation.isPending}>
                     {addMutation.isPending ? "Adding…" : "Add Student"}
                   </Button>
@@ -357,99 +472,112 @@ export default function StudentsPage() {
             );
           })()}
 
-          {/* ── VIEW / EDIT mode: profile hero + body ── */}
+          {/* ── VIEW / EDIT mode ── */}
           {!showAdd && selected && (<>
-          {/* Profile hero */}
-          <div style={{ padding:"28px 24px 20px", textAlign:"center", borderBottom:"1px solid var(--border)", flexShrink:0, background:"var(--surface)" }}>
-            <div style={{ display:"flex", justifyContent:"center", marginBottom:14 }}>
-              <StudentAvatar student={selected} size={80} border="3px solid var(--accent)" />
-            </div>
-            <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, marginBottom:3 }}>{selected.name}</div>
-            {selected.age && <div style={{ fontSize:13, color:"var(--muted)", marginBottom:10 }}>Age {selected.age}</div>}
-            {selected.batches && (
-              <div style={{ display:"flex", gap:5, justifyContent:"center", flexWrap:"wrap" }}>
-                {String(selected.batches).split(",").map((b,i) => (
-                  <span key={i} style={{ fontSize:11, background:"var(--accent)22", color:"var(--accent)", borderRadius:20, padding:"3px 10px", fontWeight:600 }}>{b.trim()}</span>
-                ))}
+            {/* Profile hero */}
+            <div style={{ padding: "28px 24px 20px", textAlign: "center", borderBottom: "1px solid var(--border)", flexShrink: 0, background: "var(--surface)" }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 14, position: "relative", width: "fit-content", margin: "0 auto 14px" }}>
+                <StudentAvatar
+                  student={isEditing ? editForm : selected}
+                  size={80}
+                  border="3px solid var(--accent)"
+                  onClick={isEditing ? () => openPickerFor("edit") : undefined}
+                />
+                {isEditing && (
+                  <button onClick={() => openPickerFor("edit")} style={{
+                    position: "absolute", bottom: -2, right: -2,
+                    width: 24, height: 24, borderRadius: "50%",
+                    background: "var(--accent)", border: "2px solid var(--card)",
+                    color: "#fff", fontSize: 11, cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    lineHeight: 1,
+                  }}>✏</button>
+                )}
               </div>
-            )}
-          </div>
-
-          {/* Scrollable body */}
-          <div style={{ flex:1, overflowY:"auto", padding:"22px 24px" }}>
-            {!isEditing ? (
-              /* View mode */
-              <>
-                <PanelSection title="Contact">
-                  <InfoRow icon="✉️" label="Email" value={selected.email} />
-                  <InfoRow icon="📞" label="Phone" value={selected.phone} />
-                  {!selected.email && !selected.phone && <p style={{ fontSize:12, color:"var(--muted)" }}>No contact info on record</p>}
-                </PanelSection>
-
-                {(selected.guardian_name || selected.guardian_phone || selected.guardian_email) && (
-                  <PanelSection title="Guardian">
-                    <InfoRow icon="🌸" label="Name"  value={selected.guardian_name} />
-                    <InfoRow icon="📞" label="Phone" value={selected.guardian_phone} />
-                    <InfoRow icon="✉️" label="Email" value={selected.guardian_email} />
-                  </PanelSection>
-                )}
-
-                <PanelSection title="Enrollment">
-                  <InfoRow icon="📅" label="Joined" value={fmtLong(selected.join_date)} />
-                </PanelSection>
-
-                {selected.notes && (
-                  <PanelSection title="Notes">
-                    <p style={{ fontSize:13, color:"var(--muted)", lineHeight:1.6, background:"var(--surface)", borderRadius:9, padding:"10px 12px", margin:0 }}>
-                      {selected.notes}
-                    </p>
-                  </PanelSection>
-                )}
-
-                <div style={{ display:"flex", gap:9, marginTop:24 }}>
-                  <button onClick={startEdit} style={{
-                    flex:1, padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)",
-                    background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontFamily:"var(--font-b)", fontWeight:600
-                  }}>✏️ Edit Profile</button>
-                  <button onClick={() => { if(window.confirm("Remove this student?")) deleteMutation.mutate(selected.id); }}
-                    style={{ padding:"9px 14px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontFamily:"var(--font-b)" }}>🗑</button>
+              <div style={{ fontFamily: "var(--font-d)", fontSize: 18, fontWeight: 800, marginBottom: 3 }}>{selected.name}</div>
+              {selected.age && <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 10 }}>Age {selected.age}</div>}
+              {selected.batches && (
+                <div style={{ display: "flex", gap: 5, justifyContent: "center", flexWrap: "wrap" }}>
+                  {String(selected.batches).split(",").map((b, i) => (
+                    <span key={i} style={{ fontSize: 11, background: "var(--accent)22", color: "var(--accent)", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>{b.trim()}</span>
+                  ))}
                 </div>
-              </>
-            ) : (
-              /* Edit mode */
-              <>
-                {(() => {
-                  const ea = Number(editForm.age);
-                  const eKnown = String(editForm.age ?? "").trim() !== "" && !isNaN(ea) && ea > 0;
-                  const eMinor = eKnown && ea <= 18;
-                  const eAdult = eKnown && ea > 18;
-                  return (<>
-                    <Field label="Full Name"><Input value={editForm.name||""} onChange={e=>setEditForm({...editForm,name:e.target.value})} /></Field>
-                    <Field label="Age"><Input type="number" value={editForm.age||""} onChange={e=>setEditForm({...editForm,age:e.target.value})} placeholder="e.g. 12" min="0" max="99"/></Field>
-                    {(!eKnown || eAdult) && (<>
-                      <Field label="Phone / WhatsApp"><Input value={editForm.phone||""} onChange={e=>setEditForm({...editForm,phone:e.target.value})} /></Field>
-                      <Field label="Email"><Input value={editForm.email||""} onChange={e=>setEditForm({...editForm,email:e.target.value})} /></Field>
-                    </>)}
-                    {eMinor && (<>
-                      <Field label="Guardian Name"><Input value={editForm.guardian_name||""} onChange={e=>setEditForm({...editForm,guardian_name:e.target.value})} /></Field>
-                      <Field label="Guardian Phone"><Input value={editForm.guardian_phone||""} onChange={e=>setEditForm({...editForm,guardian_phone:e.target.value})} /></Field>
-                      <Field label="Guardian Email"><Input value={editForm.guardian_email||""} onChange={e=>setEditForm({...editForm,guardian_email:e.target.value})} /></Field>
-                    </>)}
-                    <Field label="Join Date"><Input type="date" value={(editForm.join_date||"").split("T")[0]} onChange={e=>setEditForm({...editForm,join_date:e.target.value})} /></Field>
-                    <Field label="Notes"><Textarea value={editForm.notes||""} onChange={e=>setEditForm({...editForm,notes:e.target.value})} placeholder="Any notes…"/></Field>
-                  </>);
-                })()}
-                <div style={{ display:"flex", gap:9, marginTop:14 }}>
-                  <Button onClick={() => editMutation.mutate(editForm)} disabled={!editForm.name || editMutation.isPending}>
-                    {editMutation.isPending ? "Saving…" : "Save Changes"}
-                  </Button>
-                  <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
-                </div>
-              </>
-            )}
-          </div>
+              )}
+            </div>
+
+            {/* Scrollable body */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "22px 24px" }}>
+              {!isEditing ? (
+                <>
+                  <PanelSection title="Contact">
+                    <InfoRow icon="✉️" label="Email" value={selected.email} />
+                    <InfoRow icon="📞" label="Phone" value={selected.phone} />
+                    {!selected.email && !selected.phone && <p style={{ fontSize: 12, color: "var(--muted)" }}>No contact info on record</p>}
+                  </PanelSection>
+                  {(selected.guardian_name || selected.guardian_phone || selected.guardian_email) && (
+                    <PanelSection title="Guardian">
+                      <InfoRow icon="🌸" label="Name"  value={selected.guardian_name} />
+                      <InfoRow icon="📞" label="Phone" value={selected.guardian_phone} />
+                      <InfoRow icon="✉️" label="Email" value={selected.guardian_email} />
+                    </PanelSection>
+                  )}
+                  <PanelSection title="Enrollment">
+                    <InfoRow icon="📅" label="Joined" value={fmtLong(selected.join_date)} />
+                  </PanelSection>
+                  {selected.notes && (
+                    <PanelSection title="Notes">
+                      <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, background: "var(--surface)", borderRadius: 9, padding: "10px 12px", margin: 0 }}>{selected.notes}</p>
+                    </PanelSection>
+                  )}
+                  <div style={{ display: "flex", gap: 9, marginTop: 24 }}>
+                    <button onClick={startEdit} style={{ flex: 1, padding: "9px 16px", borderRadius: 9, border: "1.5px solid var(--accent)", background: "var(--accent)", color: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "var(--font-b)", fontWeight: 600 }}>✏️ Edit Profile</button>
+                    <button onClick={() => { if (window.confirm("Remove this student?")) deleteMutation.mutate(selected.id); }}
+                      style={{ padding: "9px 14px", borderRadius: 9, border: "1.5px solid #e05c6a", background: "transparent", color: "#e05c6a", cursor: "pointer", fontSize: 13, fontFamily: "var(--font-b)" }}>🗑</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {(() => {
+                    const ea = Number(editForm.age);
+                    const eKnown = String(editForm.age ?? "").trim() !== "" && !isNaN(ea) && ea > 0;
+                    const eMinor = eKnown && ea <= 18;
+                    const eAdult = eKnown && ea > 18;
+                    return (<>
+                      <Field label="Full Name"><Input value={editForm.name || ""} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /></Field>
+                      <Field label="Age"><Input type="number" value={editForm.age || ""} onChange={e => setEditForm({ ...editForm, age: e.target.value })} placeholder="e.g. 12" min="0" max="99" /></Field>
+                      {(!eKnown || eAdult) && (<>
+                        <Field label="Phone / WhatsApp"><Input value={editForm.phone || ""} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} /></Field>
+                        <Field label="Email"><Input value={editForm.email || ""} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /></Field>
+                      </>)}
+                      {eMinor && (<>
+                        <Field label="Guardian Name"><Input value={editForm.guardian_name || ""} onChange={e => setEditForm({ ...editForm, guardian_name: e.target.value })} /></Field>
+                        <Field label="Guardian Phone"><Input value={editForm.guardian_phone || ""} onChange={e => setEditForm({ ...editForm, guardian_phone: e.target.value })} /></Field>
+                        <Field label="Guardian Email"><Input value={editForm.guardian_email || ""} onChange={e => setEditForm({ ...editForm, guardian_email: e.target.value })} /></Field>
+                      </>)}
+                      <Field label="Join Date"><Input type="date" value={(editForm.join_date || "").split("T")[0]} onChange={e => setEditForm({ ...editForm, join_date: e.target.value })} /></Field>
+                      <Field label="Notes"><Textarea value={editForm.notes || ""} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Any notes…" /></Field>
+                    </>);
+                  })()}
+                  <div style={{ display: "flex", gap: 9, marginTop: 14 }}>
+                    <Button onClick={() => editMutation.mutate(editForm)} disabled={!editForm.name || editMutation.isPending}>
+                      {editMutation.isPending ? "Saving…" : "Save Changes"}
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+                  </div>
+                </>
+              )}
+            </div>
           </>)}
         </div>
+      )}
+
+      {/* ── Avatar Picker Overlay ── */}
+      {showPicker && (
+        <AvatarPicker
+          current={pickerTarget === "add" ? addForm.avatar : editForm.avatar}
+          onPick={handleAvatarPick}
+          onClose={() => setShowPicker(false)}
+        />
       )}
     </div>
   );
