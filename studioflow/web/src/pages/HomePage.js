@@ -273,44 +273,52 @@ function SchoolHomePage() {
   const todayStr = new Date().toLocaleDateString([],{weekday:"long",month:"long",day:"numeric",year:"numeric"});
 
   // ── render ────────────────────────────────────────────────────────────────
+  const allTodos  = todosData?.todos || [];
+  const openTodos = allTodos.filter(t => !t.is_complete).sort((a,b) => new Date(b.created_at)-new Date(a.created_at)).slice(0,5);
+  const fmtDue    = str => { if (!str) return null; const d = parseLocalDate(str); return isNaN(d) ? null : d.toLocaleDateString([],{month:"short",day:"numeric"}); };
+  const isOverdue = str => { if (!str) return false; const due = parseLocalDate(str); const now = new Date(); now.setHours(0,0,0,0); return !isNaN(due) && due < now; };
+
   return (
     <div>
 
-      {/* ── Greeting ────────────────────────────────────────────────────── */}
-      <div style={{marginBottom:24}}>
-        <h1 style={{fontFamily:"var(--font-d)",fontSize:26,marginBottom:3}}>
-          {greeting}, {user?.name?.split(" ")[0]}! 👋
-        </h1>
-        <p style={{color:"var(--muted)",fontSize:13}}>{school?.name} · {todayStr}</p>
+      {/* ── Top row: greeting (left) + stat cards (right) ── */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,gap:20,flexWrap:"wrap"}}>
+        <div>
+          <h1 style={{fontFamily:"var(--font-d)",fontSize:26,marginBottom:3,lineHeight:1.15}}>
+            {greeting}, {user?.name?.split(" ")[0]}! 👋
+          </h1>
+          <p style={{color:"var(--muted)",fontSize:13}}>{school?.name} · {todayStr}</p>
+        </div>
+        {stats && (
+          <div style={{display:"flex",gap:10,flexShrink:0,flexWrap:"wrap"}}>
+            {[
+              { label:"Students", value:stats.students??stats.student_count, color:"#c4527a", path:"/students",
+                icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+              { label:"Batches",  value:stats.batches??stats.batch_count,    color:"#6a7fdb", path:"/batches",
+                icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> },
+              { label:"Recitals", value:stats.upcoming_recitals,             color:"#f4a041", path:"/schedule",
+                icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+            ].map(({label,value,color,path,icon}) => (
+              <div key={label} onClick={()=>navigate(path)} style={{
+                background:"var(--card)",borderRadius:14,padding:"14px 18px",
+                border:"1.5px solid var(--border)",textAlign:"center",minWidth:90,
+                cursor:"pointer",transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+              }}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor=color+"55";e.currentTarget.style.boxShadow=`0 4px 14px ${color}18`;e.currentTarget.style.transform="translateY(-1px)";}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none";}}
+              >
+                <div style={{color:"var(--muted)"}}>{icon}</div>
+                <div style={{fontSize:24,fontWeight:800,color,fontFamily:"var(--font-d)",lineHeight:1}}>{value||0}</div>
+                <div style={{fontSize:10,color:"var(--muted)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>{label}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* ── Stats row ───────────────────────────────────────────────────── */}
-      {stats && (
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:10,marginBottom:28}}>
-          {[
-            { label:"Students",  value:stats.students ?? stats.student_count,     color:"#c4527a", icon:"👤", path:"/students" },
-            { label:"Batches",   value:stats.batches  ?? stats.batch_count,       color:"#6a7fdb", icon:"📚", path:"/batches"  },
-            { label:"Recitals",  value:stats.upcoming_recitals,                   color:"#f4a041", icon:"🌟", path:"/schedule" },
-          ].map(({label,value,color,icon,path}) => (
-            <div key={label} onClick={()=>navigate(path)} style={{
-              background:"var(--card)",borderRadius:14,padding:"16px 14px",
-              border:"1.5px solid var(--border)",textAlign:"center",
-              cursor:"pointer",transition:"all .15s",
-            }}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor=color+"55";e.currentTarget.style.boxShadow=`0 4px 14px ${color}18`;e.currentTarget.style.transform="translateY(-1px)";}}
-              onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none";}}
-            >
-              <div style={{fontSize:22,marginBottom:6}}>{icon}</div>
-              <div style={{fontSize:24,fontWeight:800,color,fontFamily:"var(--font-d)",lineHeight:1}}>{value||0}</div>
-              <div style={{fontSize:10,color:"var(--muted)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em",marginTop:4}}>{label}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Quick actions ───────────────────────────────────────────────── */}
+      {/* ── Quick actions ── */}
       {isAdmin && (
-        <div style={{display:"flex",gap:10,marginBottom:32,flexWrap:"wrap"}}>
+        <div style={{display:"flex",gap:10,marginBottom:28,flexWrap:"wrap"}}>
           {[
             { label:"+ Add Student",   color:"#c4527a", bg:"#c4527a12", border:"#c4527a33", action:()=>setShowAddStudent(true) },
             { label:"+ Create Batch",  color:"#6a7fdb", bg:"#6a7fdb12", border:"#6a7fdb33", action:()=>setShowAddBatch(true)   },
@@ -318,7 +326,7 @@ function SchoolHomePage() {
             { label:"View Schedule →", color:"#8a7a9a", bg:"#8a7a9a12", border:"#8a7a9a33", action:()=>navigate("/schedule")   },
           ].map(({label,color,bg,border,action}) => (
             <button key={label} onClick={action} style={{
-              padding:"10px 18px",borderRadius:12,border:`1.5px solid ${border}`,
+              padding:"9px 18px",borderRadius:22,border:`1.5px solid ${border}`,
               background:bg,color,fontWeight:700,fontSize:13,cursor:"pointer",transition:"all .15s",
             }}
               onMouseEnter={e=>{e.currentTarget.style.background=color+"22";e.currentTarget.style.boxShadow=`0 4px 12px ${color}33`;}}
@@ -328,167 +336,116 @@ function SchoolHomePage() {
         </div>
       )}
 
-      {/* ── Upcoming Recitals ────────────────────────────────────────────── */}
-      {upcoming.length > 0 && (
-        <div style={{marginBottom:28}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-            <div style={{fontSize:12,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em"}}>🌟 Upcoming Recitals</div>
-            <button onClick={()=>navigate("/schedule")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600}}>View all →</button>
-          </div>
-          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-            {upcoming.map(r => {
-              const d = parseLocalDate(r.event_date);
-              return (
-                <div key={r.id} onClick={()=>navigate("/schedule",{state:{recitalId:r.id}})} style={{
-                  display:"flex",alignItems:"center",gap:12,padding:"10px 16px",
-                  background:"var(--card)",borderRadius:12,border:"1.5px solid var(--border)",
-                  cursor:"pointer",minWidth:200,flex:"1 1 200px",maxWidth:340,transition:"all .15s",
-                }}
-                  onMouseEnter={e=>{e.currentTarget.style.borderColor="#c4527a55";e.currentTarget.style.boxShadow="0 4px 12px #c4527a15";}}
-                  onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.boxShadow="none";}}
-                >
-                  <div style={{textAlign:"center",minWidth:44,background:"#c4527a15",borderRadius:10,padding:"6px 8px",flexShrink:0}}>
-                    <div style={{fontSize:20,fontWeight:800,color:"#c4527a",fontFamily:"var(--font-d)",lineHeight:1}}>{isNaN(d)?"—":d.getDate()}</div>
-                    <div style={{fontSize:9,color:"var(--muted)",textTransform:"uppercase",fontWeight:700,marginTop:2}}>{isNaN(d)?"":d.toLocaleString("default",{month:"short"})}</div>
-                  </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:700,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.title}</div>
-                    <div style={{color:"var(--muted)",fontSize:11,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.venue||"—"}</div>
-                  </div>
-                  <Badge>{r.status}</Badge>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* ── 3-column widget grid ── */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:20}}>
 
-      {/* ── Upcoming Classes ─────────────────────────────────────────────── */}
-      {upcomingClasses.length > 0 && (
-        <div style={{marginBottom:28}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-            <div style={{fontSize:12,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em"}}>📅 Upcoming Classes</div>
-            <button onClick={()=>navigate("/schedule")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600}}>View all →</button>
+        {/* Upcoming Recitals */}
+        <div style={{background:"var(--card)",borderRadius:14,border:"1.5px solid var(--border)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px 11px",borderBottom:"1px solid var(--border)"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".1em"}}>🌟 Upcoming Recitals</div>
+            <button onClick={()=>navigate("/schedule")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600,padding:0}}>View all →</button>
           </div>
-          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-            {upcomingClasses.map(e => {
-              const color  = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
-              const d      = parseLocalDate((e.start_datetime||"").slice(0,10));
-              return (
-                <div key={e.id} onClick={()=>navigate("/schedule")} style={{
-                  display:"flex",alignItems:"center",gap:12,padding:"10px 16px",
-                  background:"var(--card)",borderRadius:12,border:"1.5px solid var(--border)",
-                  cursor:"pointer",minWidth:200,flex:"1 1 200px",maxWidth:340,transition:"all .15s",
-                }}
-                  onMouseEnter={ev=>{ev.currentTarget.style.borderColor=color+"55";ev.currentTarget.style.boxShadow=`0 4px 12px ${color}15`;}}
-                  onMouseLeave={ev=>{ev.currentTarget.style.borderColor="var(--border)";ev.currentTarget.style.boxShadow="none";}}
-                >
-                  <div style={{textAlign:"center",minWidth:44,background:color+"18",borderRadius:10,padding:"6px 8px",flexShrink:0}}>
-                    <div style={{fontSize:20,fontWeight:800,color,fontFamily:"var(--font-d)",lineHeight:1}}>{isNaN(d)?"—":d.getDate()}</div>
-                    <div style={{fontSize:9,color:"var(--muted)",textTransform:"uppercase",fontWeight:700,marginTop:2}}>{isNaN(d)?"":d.toLocaleString("default",{month:"short"})}</div>
-                  </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:700,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title}</div>
-                    <div style={{color:"var(--muted)",fontSize:11,marginTop:2}}>
-                      {fmtTime(e.start_datetime)}{e.location ? " · "+e.location : ""}
+          {upcoming.length === 0
+            ? <div style={{padding:"28px 18px",color:"var(--muted)",fontSize:13,textAlign:"center"}}>No upcoming recitals</div>
+            : upcoming.map(r => {
+                const d = parseLocalDate(r.event_date);
+                return (
+                  <div key={r.id} onClick={()=>navigate("/schedule",{state:{recitalId:r.id}})}
+                    style={{display:"flex",alignItems:"center",gap:12,padding:"11px 18px",borderBottom:"1px solid var(--border)",cursor:"pointer",transition:"background .1s"}}
+                    onMouseEnter={e=>{e.currentTarget.style.background="var(--surface)";}}
+                    onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}
+                  >
+                    <div style={{textAlign:"center",minWidth:44,background:"#c4527a15",borderRadius:10,padding:"6px 5px",flexShrink:0}}>
+                      <div style={{fontSize:18,fontWeight:800,color:"#c4527a",fontFamily:"var(--font-d)",lineHeight:1}}>{isNaN(d)?"—":d.getDate()}</div>
+                      <div style={{fontSize:9,color:"#c4527a",textTransform:"uppercase",fontWeight:700,marginTop:1}}>{isNaN(d)?"":d.toLocaleString("default",{month:"short"})}</div>
                     </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:700,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.title}</div>
+                      <div style={{color:"var(--muted)",fontSize:11,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.venue||"—"}</div>
+                    </div>
+                    <Badge>{r.status}</Badge>
                   </div>
-                  <Badge color={color}>{e.type}</Badge>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })
+          }
         </div>
-      )}
 
-      {/* ── To-Do widget ─────────────────────────────────────────────────── */}
-      {(() => {
-        const allTodos  = todosData?.todos || [];
-        const openTodos = allTodos
-          .filter(t => !t.is_complete)
-          .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
-          .slice(0,5);
-        if (!openTodos.length) return null;
+        {/* Upcoming Classes */}
+        <div style={{background:"var(--card)",borderRadius:14,border:"1.5px solid var(--border)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px 11px",borderBottom:"1px solid var(--border)"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".1em"}}>📅 Upcoming Classes</div>
+            <button onClick={()=>navigate("/schedule")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600,padding:0}}>View all →</button>
+          </div>
+          {upcomingClasses.length === 0
+            ? <div style={{padding:"28px 18px",color:"var(--muted)",fontSize:13,textAlign:"center"}}>No upcoming events</div>
+            : upcomingClasses.map(e => {
+                const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
+                const d     = parseLocalDate((e.start_datetime||"").slice(0,10));
+                return (
+                  <div key={e.id} onClick={()=>navigate("/schedule")}
+                    style={{display:"flex",alignItems:"center",gap:12,padding:"11px 18px",borderBottom:"1px solid var(--border)",cursor:"pointer",transition:"background .1s"}}
+                    onMouseEnter={ev=>{ev.currentTarget.style.background="var(--surface)";}}
+                    onMouseLeave={ev=>{ev.currentTarget.style.background="transparent";}}
+                  >
+                    <div style={{textAlign:"center",minWidth:44,background:color+"18",borderRadius:10,padding:"6px 5px",flexShrink:0}}>
+                      <div style={{fontSize:18,fontWeight:800,color,fontFamily:"var(--font-d)",lineHeight:1}}>{isNaN(d)?"—":d.getDate()}</div>
+                      <div style={{fontSize:9,color,textTransform:"uppercase",fontWeight:700,marginTop:1}}>{isNaN(d)?"":d.toLocaleString("default",{month:"short"})}</div>
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:700,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title}</div>
+                      <div style={{color:"var(--muted)",fontSize:11,marginTop:1}}>{fmtTime(e.start_datetime)}{e.location?" · "+e.location:""}</div>
+                    </div>
+                    <Badge color={color}>{e.type}</Badge>
+                  </div>
+                );
+              })
+          }
+        </div>
 
-        const fmtDue = str => {
-          if (!str) return null;
-          const d = parseLocalDate(str);
-          return isNaN(d) ? null : d.toLocaleDateString([],{month:"short",day:"numeric"});
-        };
-        const isOverdue = str => {
-          if (!str) return false;
-          const due = parseLocalDate(str);
-          const now = new Date(); now.setHours(0,0,0,0);
-          return !isNaN(due) && due < now;
-        };
-
-        return (
-          <div style={{marginBottom:28}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-              <div style={{fontSize:12,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em"}}>
-                ✅ Open To-Dos
-              </div>
-              <button onClick={()=>navigate("/todos")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600}}>
-                View all →
-              </button>
-            </div>
-            <div style={{background:"var(--card)",borderRadius:14,border:"1.5px solid var(--border)",overflow:"hidden"}}>
-              {openTodos.map((todo, idx) => {
+        {/* Open To-Dos */}
+        <div style={{background:"var(--card)",borderRadius:14,border:"1.5px solid var(--border)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px 11px",borderBottom:"1px solid var(--border)"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".1em"}}>✅ Open To-Dos</div>
+            <button onClick={()=>navigate("/todos")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600,padding:0}}>View all →</button>
+          </div>
+          {openTodos.length === 0
+            ? <div style={{padding:"20px 18px",color:"var(--muted)",fontSize:13,textAlign:"center"}}>All caught up! 🎉</div>
+            : openTodos.map((todo,idx) => {
                 const od = isOverdue(todo.due_date);
                 return (
-                  <div key={todo.id} style={{
-                    display:"flex",alignItems:"center",gap:12,padding:"11px 16px",
-                    borderBottom: idx < openTodos.length-1 ? "1px solid var(--border)" : "none",
-                  }}>
-                    <div
-                      onClick={() => {
-                        qc.setQueryData(["todos",sid], old => {
-                          if (!old?.todos) return old;
-                          return {...old, todos: old.todos.map(t => t.id===todo.id ? {...t,is_complete:1} : t)};
-                        });
+                  <div key={todo.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid var(--border)"}}>
+                    <div onClick={()=>{
+                        qc.setQueryData(["todos",sid], old => { if (!old?.todos) return old; return {...old,todos:old.todos.map(t=>t.id===todo.id?{...t,is_complete:1}:t)}; });
                         todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid]));
                       }}
-                      title="Mark complete"
-                      style={{width:20,height:20,borderRadius:"50%",border:"2px solid var(--border)",background:"var(--card)",cursor:"pointer",flexShrink:0,transition:"all .15s"}}
+                      style={{width:18,height:18,borderRadius:"50%",border:"2px solid var(--border)",background:"transparent",cursor:"pointer",flexShrink:0,transition:"all .15s"}}
                       onMouseEnter={e=>{e.currentTarget.style.borderColor="#52c4a0";e.currentTarget.style.background="#52c4a015";}}
-                      onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.background="var(--card)";}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.background="transparent";}}
                     />
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,color:"var(--text)",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{todo.title}</div>
-                      {todo.event_title && (
-                        <div style={{fontSize:11,color:"var(--muted)",marginTop:1}}>📅 {todo.event_title}</div>
-                      )}
+                      <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{todo.title}</div>
+                      {todo.event_title && <div style={{fontSize:11,color:"var(--muted)",marginTop:1}}>📅 {todo.event_title}</div>}
                     </div>
                     {todo.due_date && (
-                      <span style={{
-                        fontSize:11,fontWeight:600,padding:"2px 9px",borderRadius:999,flexShrink:0,
-                        color:od?"#ff3b30":"var(--muted)",background:od?"#fff0ee":"var(--surface)",
-                      }}>
-                        {od && "⚠ "}{fmtDue(todo.due_date)}
+                      <span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:999,flexShrink:0,color:od?"#ff3b30":"var(--muted)",background:od?"#fff0ee":"var(--surface)"}}>
+                        {od&&"⚠ "}{fmtDue(todo.due_date)}
                       </span>
                     )}
-                    <button
-                      onClick={()=>todosApi.remove(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid]))}
+                    <button onClick={()=>todosApi.remove(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid]))}
                       style={{background:"none",border:"none",cursor:"pointer",color:"#c7c7cc",padding:4,display:"flex",alignItems:"center",flexShrink:0,transition:"color .15s"}}
-                      onMouseEnter={e=>{e.currentTarget.style.color="#ff3b30";}}
-                      onMouseLeave={e=>{e.currentTarget.style.color="#c7c7cc";}}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2"/>
-                      </svg>
+                      onMouseEnter={e=>{e.currentTarget.style.color="#ff3b30";}} onMouseLeave={e=>{e.currentTarget.style.color="#c7c7cc";}}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2"/></svg>
                     </button>
                   </div>
                 );
-              })}
-              <div style={{padding:"10px 16px",borderTop:"1px solid var(--border)",display:"flex",justifyContent:"center"}}>
-                <button onClick={()=>navigate("/todos")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
-                  + Add to-do
-                </button>
-              </div>
-            </div>
+              })
+          }
+          <div style={{padding:"10px 16px",borderTop:"1px solid var(--border)"}}>
+            <button onClick={()=>navigate("/todos")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600,padding:0}}>+ Add to-do</button>
           </div>
-        );
-      })()}
+        </div>
+
+      </div>
 
       {/* ── Add Student Modal ────────────────────────────────────────────── */}
       {showAddStudent && (
