@@ -3,6 +3,30 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
+// ── Classical Dance Icon ───────────────────────────────────────────────────────
+// Bharatanatyam dancer: aramandi stance, hasta mudra arm, crown ornament, stage
+const ClassicalDanceIcon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* Crown ornament */}
+    <path d="M10.8 1.4 L12 0.2 L13.2 1.4" stroke={color} strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round"/>
+    {/* Head */}
+    <circle cx="12" cy="3.4" r="2.1" fill={color}/>
+    {/* Torso */}
+    <path d="M12 5.5 L12 12.5" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    {/* Right arm raised — hasta mudra */}
+    <path d="M12 8 L17.2 4.8 L18.8 3.4" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+    {/* Left arm extended with wrist gesture */}
+    <path d="M12 8 L6.8 11.2 L5.2 12.8" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+    {/* Right leg — aramandi (bent knee out to side) */}
+    <path d="M12 12.5 L16.5 16.5 L16.5 21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    {/* Left leg — mirror */}
+    <path d="M12 12.5 L7.5 16.5 L7.5 21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    {/* Stage platform */}
+    <path d="M5 22 L19 22" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
+    <path d="M7 23.5 L17 23.5" stroke={color} strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
+  </svg>
+);
+
 // ── SVG Icons ─────────────────────────────────────────────────────────────────
 const Icons = {
   dashboard: (
@@ -224,7 +248,7 @@ export default function AppShell() {
 
       {/* Platform brand */}
       <div style={{ padding:'10px 16px 14px', borderTop:'1px solid var(--sidebar-border)', display:'flex', alignItems:'center', gap:9, opacity:0.5 }}>
-        <span style={{ fontSize:18 }}>🩰</span>
+        <ClassicalDanceIcon size={20} color="var(--sidebar-foreground)" />
         <div>
           <div style={{ fontSize:11, fontWeight:700, color:'var(--sidebar-foreground)', letterSpacing:'-0.2px' }}>ManchQ</div>
           <div style={{ fontSize:9, color:'var(--sidebar-muted)', letterSpacing:'0.07em', textTransform:'uppercase', marginTop:1 }}>Dance studio platform</div>
@@ -256,7 +280,7 @@ export default function AppShell() {
       {/* Top bar */}
       <header style={{ height:56, background:'var(--sidebar)', borderBottom:'1px solid var(--sidebar-border)', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 16px', flexShrink:0, zIndex:200 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <span style={{ fontSize:20 }}>🩰</span>
+          <ClassicalDanceIcon size={22} color="var(--sidebar-foreground)" />
           <span style={{ fontSize:15, fontWeight:700, color:'var(--sidebar-foreground)', letterSpacing:'-0.3px' }}>{schoolName}</span>
         </div>
         <button
