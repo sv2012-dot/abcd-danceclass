@@ -37,7 +37,7 @@ export default function BatchesPage() {
 
   const [activeId,       setActiveId]       = useState(null);
   const [view,           setView]           = useState("grid");
-  const [modal,          setModal]          = useState(null);
+  const [panelMode,      setPanelMode]      = useState("view"); // "view" | "edit" | "add"
   const [form,           setForm]           = useState(EMPTY);
   const [enrollModal,    setEnrollModal]    = useState(null);
   const [enrollSel,      setEnrollSel]      = useState([]);
@@ -51,19 +51,19 @@ export default function BatchesPage() {
   const [windowWidth, setWindowWidth] = useState(() => window.innerWidth);
   useEffect(() => {
     const h = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', h);
-    return () => window.removeEventListener('resize', h);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
   }, []);
-  const isMobile = windowWidth < 768; // matches AppShell mobile breakpoint
+  const isMobile = windowWidth < 768;
 
   const { data: list=[], isLoading } = useQuery({ queryKey:["batches",sid], queryFn:()=>api.list(sid), enabled:!!sid });
   const { data: allStudents=[]     } = useQuery({ queryKey:["students",sid], queryFn:()=>studentsApi.list(sid), enabled:!!sid });
   const { data: allSchedules=[]   } = useQuery({ queryKey:["schedules",sid], queryFn:()=>schedulesApi.list(sid), enabled:!!sid });
   const { data: allRecitals=[]    } = useQuery({ queryKey:["recitals",sid],  queryFn:()=>recitalsApi.list(sid), enabled:!!sid });
 
-  const activeBatch   = list.find(b => b.id === activeId) || null;
-  const colorIndex    = activeBatch ? list.indexOf(activeBatch) : 0;
-  const activeColor   = BATCH_COLORS[colorIndex % BATCH_COLORS.length];
+  const activeBatch    = list.find(b => b.id === activeId) || null;
+  const colorIndex     = activeBatch ? list.indexOf(activeBatch) : 0;
+  const activeColor    = BATCH_COLORS[colorIndex % BATCH_COLORS.length];
   const batchSchedules = allSchedules.filter(s => s.batch_id === activeId);
   const sortedSchedules = [...batchSchedules].sort((a,b) => DAY_ORDER.indexOf(a.day_of_week) - DAY_ORDER.indexOf(b.day_of_week));
   const upcomingRecitals = allRecitals
@@ -78,6 +78,7 @@ export default function BatchesPage() {
     [...new Set(allSchedules.filter(s => s.batch_id === id).map(s => s.day_of_week))]
       .sort((a,b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
 
+  // Load students for active batch
   useEffect(() => {
     if (!activeId || !sid) { setDetailStudents([]); return; }
     setLoadingDetail(true);
@@ -92,14 +93,14 @@ export default function BatchesPage() {
     api.get(sid, activeId).then(res => setDetailStudents(res.students || [])).catch(() => {});
   };
 
-  // ── Save batch + schedules ──
+  // ── Save batch + schedules ──────────────────────────────────────────────
   const handleSave = async () => {
     if (!form.name) return;
     setSaving(true);
     try {
-      let batchId = modal?.id;
+      let batchId = panelMode === "edit" ? activeId : null;
       if (batchId) { await api.update(sid, batchId, form); }
-      else          { const c = await api.create(sid, form); batchId = c.id; }
+      else         { const c = await api.create(sid, form); batchId = c.id; }
 
       const existingIds = batchSchedules.map(s => s.id);
       const keptIds     = formSchedules.filter(s => s.id).map(s => s.id);
@@ -111,15 +112,16 @@ export default function BatchesPage() {
       }
       qc.invalidateQueries(["batches",sid]);
       qc.invalidateQueries(["schedules",sid]);
-      toast.success(modal?.id ? "Batch updated" : "Batch created");
-      setModal(null);
+      toast.success(panelMode === "edit" ? "Batch updated" : "Batch created");
+      setActiveId(batchId);
+      setPanelMode("view");
     } catch (err) { toast.error(err.error || "Failed to save"); }
     finally       { setSaving(false); }
   };
 
   const deleteMutation = useMutation({
     mutationFn: id => api.remove(sid, id),
-    onSuccess: (_,id) => { qc.invalidateQueries(["batches",sid]); toast.success("Batch deleted"); if (activeId===id) setActiveId(null); },
+    onSuccess: (_,id) => { qc.invalidateQueries(["batches",sid]); toast.success("Batch deleted"); if (activeId===id) { setActiveId(null); setPanelMode("view"); } },
     onError: err => toast.error(err.error || "Failed"),
   });
 
@@ -129,7 +131,13 @@ export default function BatchesPage() {
     onError: err => toast.error(err.error || "Failed"),
   });
 
-  const openAdd = () => { setForm(EMPTY); setFormSchedules([]); setModal({}); };
+  const openAdd = () => {
+    setForm(EMPTY);
+    setFormSchedules([]);
+    setActiveId(null);
+    setPanelMode("add");
+  };
+
   const openEdit = (batch) => {
     const target = batch || activeBatch;
     if (!target) return;
@@ -137,14 +145,18 @@ export default function BatchesPage() {
     setForm({ name:target.name||"", dance_style:target.dance_style||"", level:target.level||"Beginner", teacher_name:target.teacher_name||"", max_size:target.max_size||"", notes:target.notes||"" });
     setFormSchedules(targetSchedules.map(s => ({ id:s.id, day_of_week:s.day_of_week, start_time:s.start_time?.slice(0,5)||"09:00", end_time:s.end_time?.slice(0,5)||"10:00", room:s.room||"" })));
     setActiveId(target.id);
-    setModal(target);
+    setPanelMode("edit");
   };
+
+  const closePanel = () => { setActiveId(null); setPanelMode("view"); };
   const openEnroll = () => { if (!activeBatch) return; setEnrollSel(detailStudents.map(s=>s.id)); setEnrollModal(activeBatch); };
   const toggleEnroll = id => setEnrollSel(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev,id]);
 
+  const panelOpen = !!activeId || panelMode === "add";
+
   // ── Render ──────────────────────────────────────────────────────────────
   return (
-    <div style={{ paddingRight: activeBatch && !isMobile ? PANEL_W+20 : 0, transition:"padding .25s ease" }}>
+    <div style={{ paddingRight: panelOpen && !isMobile ? PANEL_W+20 : 0, transition:"padding .25s ease" }}>
 
       {/* ── Header ── */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:10 }}>
@@ -188,7 +200,7 @@ export default function BatchesPage() {
             const schedules = allSchedules.filter(s => s.batch_id === b.id);
             const firstSch  = schedules[0];
             return (
-              <div key={b.id} onClick={() => setActiveId(active ? null : b.id)} style={{
+              <div key={b.id} onClick={() => { setActiveId(active ? null : b.id); if (!active) setPanelMode("view"); }} style={{
                 background:"var(--card)", borderRadius:14, overflow:"hidden",
                 border:`1.5px solid ${active ? color : "var(--border)"}`,
                 boxShadow: active ? `0 0 0 3px ${color}22` : "0 2px 8px rgba(0,0,0,.06)",
@@ -196,19 +208,15 @@ export default function BatchesPage() {
                 cursor:"pointer",
               }}>
                 <div style={{ padding:"18px 18px 14px" }}>
-                  {/* Name + color dot */}
                   <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8, marginBottom:4 }}>
                     <div style={{ fontWeight:700, fontSize:15, lineHeight:1.3, color:"var(--foreground)" }}>{b.name}</div>
                     <div style={{ width:10, height:10, borderRadius:"50%", background:color, flexShrink:0, marginTop:4 }} />
                   </div>
-                  {/* Instructor */}
                   {b.teacher_name && <div style={{ fontSize:13, color:"var(--muted)", marginBottom:12 }}>Instructor: {b.teacher_name}</div>}
-                  {/* Badges */}
                   <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:14 }}>
                     {b.dance_style && <span style={{ fontSize:11, fontWeight:600, background:color+"18", color, borderRadius:20, padding:"3px 10px", border:`1px solid ${color}30` }}>{b.dance_style}</span>}
                     <span style={{ fontSize:11, fontWeight:600, background:"var(--surface)", color:"var(--muted)", borderRadius:20, padding:"3px 10px", border:"1px solid var(--border)" }}>{b.level}</span>
                   </div>
-                  {/* Schedule row */}
                   {firstSch && (
                     <div style={{ display:"flex", gap:16, marginBottom:10 }}>
                       <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:"var(--muted)" }}>
@@ -221,7 +229,6 @@ export default function BatchesPage() {
                       </div>
                     </div>
                   )}
-                  {/* Enrollment row */}
                   <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color:"var(--muted)",flexShrink:0}}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     <span style={{ fontSize:12, color:"var(--muted)", flex:1 }}>Enrollment</span>
@@ -257,7 +264,7 @@ export default function BatchesPage() {
                 const active = b.id === activeId;
                 const days   = getBatchDays(b.id);
                 return (
-                  <tr key={b.id} onClick={() => setActiveId(b.id)} style={{
+                  <tr key={b.id} onClick={() => { setActiveId(b.id); setPanelMode("view"); }} style={{
                     borderTop:"1px solid var(--border)", cursor:"pointer",
                     background: active ? color+"08" : "transparent", transition:"background .1s"
                   }}>
@@ -291,221 +298,227 @@ export default function BatchesPage() {
         </div>
       )}
 
-      {/* ── Right Detail Panel ── */}
-      {activeBatch && isMobile && (
-        <div onClick={()=>setActiveId(null)}
+      {/* ── Right Side Panel (view / edit / add) ── */}
+      {panelOpen && isMobile && (
+        <div onClick={closePanel}
           style={{position:"fixed",inset:0,top:56,background:"rgba(0,0,0,0.4)",zIndex:399}} />
       )}
-      {activeBatch && (
+      {panelOpen && (
         <div style={{
           position:"fixed", right:0, bottom:0, zIndex:400,
           top:    isMobile ? 56 : 0,
-          width:  isMobile ? '100vw' : PANEL_W,
-          left:   isMobile ? 0 : 'auto',
+          width:  isMobile ? "100vw" : PANEL_W,
+          left:   isMobile ? 0 : "auto",
           background:"var(--card)",
-          borderLeft: isMobile ? 'none' : "1.5px solid var(--border)",
+          borderLeft: isMobile ? "none" : "1.5px solid var(--border)",
           display:"flex", flexDirection:"column",
           boxShadow: isMobile ? "0 -4px 32px rgba(0,0,0,.14)" : "-6px 0 32px rgba(0,0,0,.09)",
         }}>
           {/* Panel header */}
           <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
-            <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em" }}>Batch Details</span>
-            <button onClick={() => setActiveId(null)}
+            <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em" }}>
+              {panelMode === "add" ? "New Batch" : panelMode === "edit" ? "Edit Batch" : "Batch Details"}
+            </span>
+            <button onClick={closePanel}
               style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6 }}>✕</button>
           </div>
 
-          {/* Batch hero */}
-          <div style={{ padding:"20px 22px 16px", borderBottom:"1px solid var(--border)", flexShrink:0, background:"var(--surface)" }}>
-            <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:6 }}>
-              <div style={{ width:6, height:42, borderRadius:3, background:activeColor, flexShrink:0, marginTop:2 }} />
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, marginBottom:6 }}>{activeBatch.name}</div>
-                <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
-                  <span style={{ fontSize:11, background:activeColor+"22", color:activeColor, borderRadius:20, padding:"2px 8px", fontWeight:700 }}>{activeBatch.level}</span>
-                  {activeBatch.dance_style && <span style={{ fontSize:12, color:"var(--muted)" }}>{activeBatch.dance_style}</span>}
-                </div>
-              </div>
-            </div>
-            {activeBatch.teacher_name && <div style={{ fontSize:12, color:"var(--muted)", marginBottom:8, marginLeft:16 }}>👩‍🏫 {activeBatch.teacher_name}</div>}
-            <div style={{ marginLeft:16, display:"flex", alignItems:"center", gap:8 }}>
-              <span style={{ fontSize:13, fontWeight:700, color:activeColor }}>{activeBatch.student_count||0}{activeBatch.max_size ? `/${activeBatch.max_size}` : ""}</span>
-              <span style={{ fontSize:12, color:"var(--muted)" }}>students enrolled</span>
-              {pct !== null && (
-                <div style={{ flex:1, height:5, borderRadius:3, background:"var(--border)", overflow:"hidden" }}>
-                  <div style={{ height:"100%", width:pct+"%", background:pct>=90 ? "var(--danger)" : activeColor, borderRadius:3, transition:"width .3s" }} />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Scrollable body */}
-          <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
-
-            {/* Class Schedule */}
-            <PSection title="Class Schedule">
-              <div style={{ display:"flex", gap:3, marginBottom:12 }}>
-                {DAY_ORDER.map(d => {
-                  const has = batchSchedules.some(s => s.day_of_week === d);
-                  return <div key={d} style={{ width:36, height:26, borderRadius:6, fontSize:9, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center",
-                    background:has ? activeColor : "var(--surface)", color:has ? "#fff" : "var(--muted)", transition:"all .15s" }}>{d}</div>;
-                })}
-              </div>
-              {sortedSchedules.length === 0 ? (
-                <p style={{ fontSize:12, color:"var(--muted)", margin:0 }}>No classes scheduled.</p>
-              ) : (
-                <div style={{ display:"grid", gap:6 }}>
-                  {sortedSchedules.map(s => (
-                    <div key={s.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderRadius:9, background:activeColor+"12", border:`1px solid ${activeColor}25` }}>
-                      <div style={{ fontWeight:800, fontSize:12, color:activeColor, minWidth:30 }}>{s.day_of_week}</div>
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontSize:12, fontWeight:600 }}>{s.start_time?.slice(0,5)} – {s.end_time?.slice(0,5)}</div>
-                        {s.room && <div style={{ fontSize:10, color:"var(--muted)" }}>📍 {s.room}</div>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </PSection>
-
-            {/* Students */}
-            <PSection title={`Students · ${detailStudents.length}`}>
-              {loadingDetail ? <p style={{ fontSize:12, color:"var(--muted)" }}>Loading…</p> :
-                detailStudents.length === 0 ? (
-                  <div style={{ textAlign:"center", padding:"12px 0" }}>
-                    <p style={{ fontSize:12, color:"var(--muted)", marginBottom:8 }}>No students enrolled yet.</p>
-                    <Button size="sm" variant="outline" onClick={openEnroll}>Enrol Students</Button>
+          {/* ── VIEW mode: batch hero ── */}
+          {panelMode === "view" && activeBatch && (
+            <div style={{ padding:"20px 22px 16px", borderBottom:"1px solid var(--border)", flexShrink:0, background:"var(--surface)" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:6 }}>
+                <div style={{ width:6, height:42, borderRadius:3, background:activeColor, flexShrink:0, marginTop:2 }} />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, marginBottom:6 }}>{activeBatch.name}</div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
+                    <span style={{ fontSize:11, background:activeColor+"22", color:activeColor, borderRadius:20, padding:"2px 8px", fontWeight:700 }}>{activeBatch.level}</span>
+                    {activeBatch.dance_style && <span style={{ fontSize:12, color:"var(--muted)" }}>{activeBatch.dance_style}</span>}
                   </div>
-                ) : (
-                  <>
-                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:10 }}>
-                      {detailStudents.map(s => (
-                        <div key={s.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 9px", borderRadius:8, background:"var(--surface)" }}>
-                          <div style={{ width:28, height:28, borderRadius:"50%", background:`hsl(${s.name.charCodeAt(0)*7%360},55%,68%)`, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, color:"#fff", fontSize:12, flexShrink:0 }}>{s.name[0]}</div>
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontWeight:600, fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name}</div>
-                            {s.age && <div style={{ fontSize:10, color:"var(--muted)" }}>Age {s.age}</div>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <Button size="sm" variant="ghost" onClick={openEnroll}>👥 Manage Students</Button>
-                  </>
-                )
-              }
-            </PSection>
+                </div>
+              </div>
+              {activeBatch.teacher_name && <div style={{ fontSize:12, color:"var(--muted)", marginBottom:8, marginLeft:16 }}>👩‍🏫 {activeBatch.teacher_name}</div>}
+              <div style={{ marginLeft:16, display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ fontSize:13, fontWeight:700, color:activeColor }}>{activeBatch.student_count||0}{activeBatch.max_size ? `/${activeBatch.max_size}` : ""}</span>
+                <span style={{ fontSize:12, color:"var(--muted)" }}>students enrolled</span>
+                {pct !== null && (
+                  <div style={{ flex:1, height:5, borderRadius:3, background:"var(--border)", overflow:"hidden" }}>
+                    <div style={{ height:"100%", width:pct+"%", background:pct>=90 ? "var(--danger)" : activeColor, borderRadius:3, transition:"width .3s" }} />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
-            {/* Upcoming Events */}
-            <PSection title="Upcoming Events">
-              {upcomingRecitals.length === 0 ? (
-                <p style={{ fontSize:12, color:"var(--muted)", margin:0 }}>No upcoming events.</p>
-              ) : (
-                <div style={{ display:"grid", gap:7 }}>
-                  {upcomingRecitals.map(r => {
-                    const d  = new Date(r.event_date);
-                    const sc = { Planning:"#6a7fdb", Confirmed:"#52c4a0", Rehearsals:"#f4a041", Completed:"#8ab4c0" }[r.status] || "#888";
-                    return (
-                      <div key={r.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:8, background:"var(--surface)" }}>
-                        <div style={{ textAlign:"center", minWidth:36, background:sc+"20", borderRadius:7, padding:"4px 3px", flexShrink:0 }}>
-                          <div style={{ fontSize:13, fontWeight:800, color:sc, lineHeight:1 }}>{d.getDate()}</div>
-                          <div style={{ fontSize:8, color:"var(--muted)", textTransform:"uppercase" }}>{d.toLocaleString("default",{month:"short"})}</div>
-                        </div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontWeight:600, fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.title}</div>
-                          {r.venue && <div style={{ fontSize:10, color:"var(--muted)" }}>📍 {r.venue}</div>}
-                        </div>
-                        <Badge>{r.status}</Badge>
-                      </div>
-                    );
+          {/* ── VIEW mode: scrollable body ── */}
+          {panelMode === "view" && activeBatch && (
+            <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
+              {/* Class Schedule */}
+              <PSection title="Class Schedule">
+                <div style={{ display:"flex", gap:3, marginBottom:12 }}>
+                  {DAY_ORDER.map(d => {
+                    const has = batchSchedules.some(s => s.day_of_week === d);
+                    return <div key={d} style={{ width:36, height:26, borderRadius:6, fontSize:9, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center",
+                      background:has ? activeColor : "var(--surface)", color:has ? "#fff" : "var(--muted)", transition:"all .15s" }}>{d}</div>;
                   })}
                 </div>
-              )}
-            </PSection>
-
-            {/* Notes */}
-            {activeBatch.notes && (
-              <PSection title="Notes">
-                <p style={{ fontSize:13, color:"var(--muted)", lineHeight:1.6, background:"var(--surface)", borderRadius:9, padding:"10px 12px", margin:0 }}>{activeBatch.notes}</p>
-              </PSection>
-            )}
-
-            {/* Actions */}
-            <div style={{ display:"flex", gap:9, marginTop:24 }}>
-              <button onClick={() => openEdit()}
-                style={{ flex:1, padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontFamily:"var(--font-b)", fontWeight:600 }}>
-                ✏️ Edit Batch
-              </button>
-              <button onClick={() => { if(window.confirm(`Delete "${activeBatch.name}"?`)) deleteMutation.mutate(activeBatch.id); }}
-                style={{ padding:"9px 14px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontFamily:"var(--font-b)", flexShrink:0 }}>🗑</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Create / Edit Modal ── */}
-      {modal !== null && (
-        <Modal title={modal.id ? "Edit Batch" : "New Batch"} onClose={() => setModal(null)} wide>
-          {/* Batch Details section */}
-          <div style={{ marginBottom:18 }}>
-            <div style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".06em", marginBottom:12 }}>Batch Details</div>
-            <Field label="Batch Name *">
-              <Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="e.g. Junior Ballet" />
-            </Field>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
-              <Field label="Dance Style"><Input value={form.dance_style} onChange={e=>setForm({...form,dance_style:e.target.value})} placeholder="e.g. Ballet" /></Field>
-              <Field label="Level"><Select value={form.level} onChange={e=>setForm({...form,level:e.target.value})}>{LEVELS.map(l=><option key={l}>{l}</option>)}</Select></Field>
-              <Field label="Instructor Name"><Input value={form.teacher_name} onChange={e=>setForm({...form,teacher_name:e.target.value})} placeholder="e.g. Swapna Varma" /></Field>
-              <Field label="Max Capacity"><Input type="number" value={form.max_size} onChange={e=>setForm({...form,max_size:e.target.value})} placeholder="e.g. 12" /></Field>
-            </div>
-          </div>
-
-          {/* Class Schedule section */}
-          <div style={{ marginBottom:18 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
-              <div style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".06em" }}>Class Schedule</div>
-              <Button size="sm" variant="ghost" onClick={() => setFormSchedules([...formSchedules,{...EMPTY_SCH}])}>+ Add Class</Button>
-            </div>
-            {formSchedules.length === 0 ? (
-              <p style={{ fontSize:13, color:"var(--muted)", margin:0 }}>No classes added yet. Click "+ Add Class" to schedule days.</p>
-            ) : (
-              <div style={{ display:"grid", gap:10 }}>
-                {formSchedules.map((sch,idx) => (
-                  <div key={idx} style={{ padding:"14px 16px", borderRadius:10, background:"var(--surface)", border:"1px solid var(--border)" }}>
-                    <div style={{ display:"flex", gap:10, alignItems:"flex-end" }}>
-                      <Field label="Day" style={{ flex:"0 0 140px", marginBottom:0 }}>
-                        <Select value={sch.day_of_week} onChange={e=>{const u=[...formSchedules];u[idx]={...u[idx],day_of_week:e.target.value};setFormSchedules(u);}}>
-                          {DAY_ORDER.map(d=><option key={d} value={d}>{DAY_FULL[d]}</option>)}
-                        </Select>
-                      </Field>
-                      <Field label="Start" style={{ flex:"0 0 120px", marginBottom:0 }}>
-                        <Select value={sch.start_time} onChange={e=>{const u=[...formSchedules];u[idx]={...u[idx],start_time:e.target.value};setFormSchedules(u);}}>
-                          {TIME_SLOTS.map(t=><option key={t} value={t}>{t}</option>)}
-                        </Select>
-                      </Field>
-                      <Field label="End" style={{ flex:"0 0 120px", marginBottom:0 }}>
-                        <Select value={sch.end_time} onChange={e=>{const u=[...formSchedules];u[idx]={...u[idx],end_time:e.target.value};setFormSchedules(u);}}>
-                          {TIME_SLOTS.map(t=><option key={t} value={t}>{t}</option>)}
-                        </Select>
-                      </Field>
-                      <button onClick={()=>setFormSchedules(formSchedules.filter((_,i)=>i!==idx))}
-                        style={{ background:"none", border:"none", color:"var(--danger)", cursor:"pointer", fontSize:16, padding:"4px 8px", borderRadius:6, flexShrink:0, marginBottom:2 }}>✕</button>
-                    </div>
-                    <div style={{ marginTop:10 }}>
-                      <Field label="Studio / Location" style={{ marginBottom:0 }}>
-                        <Input value={sch.room} onChange={e=>{const u=[...formSchedules];u[idx]={...u[idx],room:e.target.value};setFormSchedules(u);}} placeholder="e.g. Studio A, Hall 2" />
-                      </Field>
-                    </div>
+                {sortedSchedules.length === 0 ? (
+                  <p style={{ fontSize:12, color:"var(--muted)", margin:0 }}>No classes scheduled.</p>
+                ) : (
+                  <div style={{ display:"grid", gap:6 }}>
+                    {sortedSchedules.map(s => (
+                      <div key={s.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderRadius:9, background:activeColor+"12", border:`1px solid ${activeColor}25` }}>
+                        <div style={{ fontWeight:800, fontSize:12, color:activeColor, minWidth:30 }}>{s.day_of_week}</div>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontSize:12, fontWeight:600 }}>{s.start_time?.slice(0,5)} – {s.end_time?.slice(0,5)}</div>
+                          {s.room && <div style={{ fontSize:10, color:"var(--muted)" }}>📍 {s.room}</div>}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                )}
+              </PSection>
 
-          <Field label="Notes"><Textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Any additional notes about this batch…" /></Field>
-          <div style={{ display:"flex", gap:9, marginTop:8 }}>
-            <Button onClick={handleSave} disabled={!form.name||saving}>{saving ? "Saving…" : modal.id ? "Save Changes" : "Create Batch"}</Button>
-            <Button variant="outline" onClick={()=>setModal(null)}>Cancel</Button>
-          </div>
-        </Modal>
+              {/* Students */}
+              <PSection title={`Students · ${detailStudents.length}`}>
+                {loadingDetail ? <p style={{ fontSize:12, color:"var(--muted)" }}>Loading…</p> :
+                  detailStudents.length === 0 ? (
+                    <div style={{ textAlign:"center", padding:"12px 0" }}>
+                      <p style={{ fontSize:12, color:"var(--muted)", marginBottom:8 }}>No students enrolled yet.</p>
+                      <Button size="sm" variant="outline" onClick={openEnroll}>Enrol Students</Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:10 }}>
+                        {detailStudents.map(s => (
+                          <div key={s.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 9px", borderRadius:8, background:"var(--surface)" }}>
+                            <div style={{ width:28, height:28, borderRadius:"50%", background:`hsl(${s.name.charCodeAt(0)*7%360},55%,68%)`, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, color:"#fff", fontSize:12, flexShrink:0 }}>{s.name[0]}</div>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ fontWeight:600, fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name}</div>
+                              {s.age && <div style={{ fontSize:10, color:"var(--muted)" }}>Age {s.age}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={openEnroll}>👥 Manage Students</Button>
+                    </>
+                  )
+                }
+              </PSection>
+
+              {/* Upcoming Events */}
+              <PSection title="Upcoming Events">
+                {upcomingRecitals.length === 0 ? (
+                  <p style={{ fontSize:12, color:"var(--muted)", margin:0 }}>No upcoming events.</p>
+                ) : (
+                  <div style={{ display:"grid", gap:7 }}>
+                    {upcomingRecitals.map(r => {
+                      const d  = new Date(r.event_date);
+                      const sc = { Planning:"#6a7fdb", Confirmed:"#52c4a0", Rehearsals:"#f4a041", Completed:"#8ab4c0" }[r.status] || "#888";
+                      return (
+                        <div key={r.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:8, background:"var(--surface)" }}>
+                          <div style={{ textAlign:"center", minWidth:36, background:sc+"20", borderRadius:7, padding:"4px 3px", flexShrink:0 }}>
+                            <div style={{ fontSize:13, fontWeight:800, color:sc, lineHeight:1 }}>{d.getDate()}</div>
+                            <div style={{ fontSize:8, color:"var(--muted)", textTransform:"uppercase" }}>{d.toLocaleString("default",{month:"short"})}</div>
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontWeight:600, fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.title}</div>
+                            {r.venue && <div style={{ fontSize:10, color:"var(--muted)" }}>📍 {r.venue}</div>}
+                          </div>
+                          <Badge>{r.status}</Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </PSection>
+
+              {/* Notes */}
+              {activeBatch.notes && (
+                <PSection title="Notes">
+                  <p style={{ fontSize:13, color:"var(--muted)", lineHeight:1.6, background:"var(--surface)", borderRadius:9, padding:"10px 12px", margin:0 }}>{activeBatch.notes}</p>
+                </PSection>
+              )}
+
+              {/* Actions */}
+              <div style={{ display:"flex", gap:9, marginTop:24 }}>
+                <button onClick={() => openEdit()}
+                  style={{ flex:1, padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontFamily:"var(--font-b)", fontWeight:600 }}>
+                  ✏️ Edit Batch
+                </button>
+                <button onClick={() => { if(window.confirm(`Delete "${activeBatch.name}"?`)) deleteMutation.mutate(activeBatch.id); }}
+                  style={{ padding:"9px 14px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontFamily:"var(--font-b)", flexShrink:0 }}>🗑</button>
+              </div>
+            </div>
+          )}
+
+          {/* ── EDIT / ADD mode: form ── */}
+          {(panelMode === "edit" || panelMode === "add") && (
+            <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
+              {/* Batch Details */}
+              <div style={{ marginBottom:18 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".06em", marginBottom:12 }}>Batch Details</div>
+                <Field label="Batch Name *">
+                  <Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="e.g. Junior Ballet" />
+                </Field>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
+                  <Field label="Dance Style"><Input value={form.dance_style} onChange={e=>setForm({...form,dance_style:e.target.value})} placeholder="e.g. Ballet" /></Field>
+                  <Field label="Level"><Select value={form.level} onChange={e=>setForm({...form,level:e.target.value})}>{LEVELS.map(l=><option key={l}>{l}</option>)}</Select></Field>
+                  <Field label="Instructor Name"><Input value={form.teacher_name} onChange={e=>setForm({...form,teacher_name:e.target.value})} placeholder="e.g. Swapna Varma" /></Field>
+                  <Field label="Max Capacity"><Input type="number" value={form.max_size} onChange={e=>setForm({...form,max_size:e.target.value})} placeholder="e.g. 12" /></Field>
+                </div>
+              </div>
+
+              {/* Class Schedule */}
+              <div style={{ marginBottom:18 }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".06em" }}>Class Schedule</div>
+                  <Button size="sm" variant="ghost" onClick={() => setFormSchedules([...formSchedules,{...EMPTY_SCH}])}>+ Add Class</Button>
+                </div>
+                {formSchedules.length === 0 ? (
+                  <p style={{ fontSize:13, color:"var(--muted)", margin:0 }}>No classes added yet. Click "+ Add Class" to schedule days.</p>
+                ) : (
+                  <div style={{ display:"grid", gap:10 }}>
+                    {formSchedules.map((sch,idx) => (
+                      <div key={idx} style={{ padding:"14px 16px", borderRadius:10, background:"var(--surface)", border:"1px solid var(--border)" }}>
+                        <div style={{ display:"flex", gap:8, alignItems:"flex-end", flexWrap:"wrap" }}>
+                          <Field label="Day" style={{ flex:"0 0 130px", marginBottom:0 }}>
+                            <Select value={sch.day_of_week} onChange={e=>{const u=[...formSchedules];u[idx]={...u[idx],day_of_week:e.target.value};setFormSchedules(u);}}>
+                              {DAY_ORDER.map(d=><option key={d} value={d}>{DAY_FULL[d]}</option>)}
+                            </Select>
+                          </Field>
+                          <Field label="Start" style={{ flex:"0 0 100px", marginBottom:0 }}>
+                            <Select value={sch.start_time} onChange={e=>{const u=[...formSchedules];u[idx]={...u[idx],start_time:e.target.value};setFormSchedules(u);}}>
+                              {TIME_SLOTS.map(t=><option key={t} value={t}>{t}</option>)}
+                            </Select>
+                          </Field>
+                          <Field label="End" style={{ flex:"0 0 100px", marginBottom:0 }}>
+                            <Select value={sch.end_time} onChange={e=>{const u=[...formSchedules];u[idx]={...u[idx],end_time:e.target.value};setFormSchedules(u);}}>
+                              {TIME_SLOTS.map(t=><option key={t} value={t}>{t}</option>)}
+                            </Select>
+                          </Field>
+                          <button onClick={()=>setFormSchedules(formSchedules.filter((_,i)=>i!==idx))}
+                            style={{ background:"none", border:"none", color:"var(--danger)", cursor:"pointer", fontSize:16, padding:"4px 8px", borderRadius:6, flexShrink:0, marginBottom:2 }}>✕</button>
+                        </div>
+                        <div style={{ marginTop:10 }}>
+                          <Field label="Studio / Location" style={{ marginBottom:0 }}>
+                            <Input value={sch.room} onChange={e=>{const u=[...formSchedules];u[idx]={...u[idx],room:e.target.value};setFormSchedules(u);}} placeholder="e.g. Studio A, Hall 2" />
+                          </Field>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <Field label="Notes"><Textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Any additional notes about this batch…" /></Field>
+
+              <div style={{ display:"flex", gap:9, marginTop:16 }}>
+                <Button onClick={handleSave} disabled={!form.name||saving}>{saving ? "Saving…" : panelMode === "edit" ? "Save Changes" : "Create Batch"}</Button>
+                <Button variant="outline" onClick={() => { if (panelMode === "add") setActiveId(null); setPanelMode("view"); }}>Cancel</Button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* ── Enrol Students Modal ── */}

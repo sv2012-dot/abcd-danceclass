@@ -5,7 +5,6 @@ import { studios as api } from "../api";
 import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
-import Modal from "../components/shared/Modal";
 import { Field, Input, Textarea } from "../components/shared/Field";
 
 const EMPTY = {
@@ -134,8 +133,8 @@ function PlaceTile({ place, onSelect, disabled }) {
   );
 }
 
-/* ─── Add-studio modal: search-first ────────────────────────────────── */
-function AddStudioModal({ onClose, onSave, saving }) {
+/* ─── Add-studio panel form (internal — rendered inside side panel) ─── */
+function _unused_AddStudioModal({ onClose, onSave, saving }) {
   const [phase,       setPhase]       = useState("search");
   const [query,       setQuery]       = useState("");
   const [results,     setResults]     = useState([]);
@@ -322,8 +321,8 @@ function AddStudioModal({ onClose, onSave, saving }) {
   );
 }
 
-/* ─── Edit modal ─────────────────────────────────────────────────────── */
-function EditStudioModal({ studio, onClose, onSave, saving }) {
+/* ─── Edit studio panel form (internal — rendered inside side panel) ── */
+function _unused_EditStudioModal({ studio, onClose, onSave, saving }) {
   const [form, setForm] = useState({
     ...studio, is_favorite: !!studio.is_favorite,
     capacity: studio.capacity ?? "", hourly_rate: studio.hourly_rate ?? "",
@@ -432,9 +431,17 @@ export default function StudiosPage() {
   const { user } = useAuth();
   const sid = user?.school_id;
   const qc  = useQueryClient();
-  const [modal,    setModal]    = useState(null);
-  const [saving,   setSaving]   = useState(false);
-  const [selected, setSelected] = useState(null);
+  const [saving,     setSaving]     = useState(false);
+  const [selected,   setSelected]   = useState(null);
+  const [panelMode,  setPanelMode]  = useState(null); // null | 'view' | 'edit' | 'add'
+  const [addPhase,   setAddPhase]   = useState('search'); // 'search' | 'confirm'
+  const [addQuery,   setAddQuery]   = useState('');
+  const [addResults, setAddResults] = useState([]);
+  const [addSearching, setAddSearching] = useState(false);
+  const [addSearchErr, setAddSearchErr] = useState(null);
+  const [addForm,  setAddForm]  = useState({ ...EMPTY });
+  const [editForm, setEditForm] = useState({ ...EMPTY });
+  const addDebounceRef = useRef(null);
 
   const [windowWidth, setWindowWidth] = useState(() => window.innerWidth);
   useEffect(() => {
@@ -461,14 +468,24 @@ export default function StudiosPage() {
     onError: err => toast.error(err?.error || "Failed to remove"),
   });
 
-  const handleSave = async (form) => {
+  const handleSave = async () => {
+    const form = panelMode === 'edit' ? editForm : addForm;
+    if (!form?.name) return;
     setSaving(true);
     try {
       const payload = { ...form, capacity: form.capacity ? Number(form.capacity) : null, hourly_rate: form.hourly_rate ? Number(form.hourly_rate) : null, is_favorite: form.is_favorite ? 1 : 0 };
-      if (modal?.id) { await api.update(sid, modal.id, payload); toast.success("Studio updated"); }
-      else            { await api.create(sid, payload);           toast.success("Studio added");   }
+      if (panelMode === 'edit' && selected?.id) {
+        await api.update(sid, selected.id, payload);
+        toast.success("Studio updated");
+        setSelected(s => ({ ...s, ...payload }));
+        setPanelMode('view');
+      } else {
+        await api.create(sid, payload);
+        toast.success("Studio added");
+        setPanelMode(null);
+        setSelected(null);
+      }
       qc.invalidateQueries(["studios", sid]);
-      setModal(null);
     } catch (err) { toast.error(err?.error || "Failed to save"); }
     finally       { setSaving(false); }
   };
@@ -487,13 +504,13 @@ export default function StudiosPage() {
   };
 
   return (
-    <div style={{ paddingRight: selected && !isMobile ? PANEL_W + 20 : 0, transition: "padding .25s ease" }}>
+    <div style={{ paddingRight: (selected || panelMode === 'add') && !isMobile ? PANEL_W + 20 : 0, transition: "padding .25s ease" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ fontFamily: "var(--font-d)", fontSize: 26, marginBottom: 4 }}>Studio Bookings</h1>
           <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>Manage venues used for classes, rehearsals, and performances</p>
         </div>
-        <Button onClick={() => setModal("add")} icon="➕">Add Studio</Button>
+        <Button onClick={() => { setSelected(null); setPanelMode('add'); setAddPhase('search'); setAddQuery(''); setAddResults([]); setAddSearchErr(null); }} icon="➕">Add Studio</Button>
       </div>
 
       {isLoading ? (
@@ -503,7 +520,7 @@ export default function StudiosPage() {
           <div style={{ fontSize: 48, marginBottom: 14 }}>🏛️</div>
           <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>No studios yet</p>
           <p style={{ color: "var(--muted)", fontSize: 13, marginBottom: 20 }}>Search for a venue or add one manually.</p>
-          <Button onClick={() => setModal("add")}>Add Studio</Button>
+          <Button onClick={() => { setSelected(null); setPanelMode('add'); setAddPhase('search'); setAddQuery(''); setAddResults([]); setAddSearchErr(null); }}>Add Studio</Button>
         </Card>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 18 }}>
@@ -511,8 +528,8 @@ export default function StudiosPage() {
             <StudioCard
               key={s.id} studio={s}
               active={selected?.id === s.id}
-              onSelect={s => setSelected(s)}
-              onEdit={s => setModal(s)}
+              onSelect={st => { setSelected(st); setPanelMode('view'); }}
+              onEdit={st => { setSelected(st); setPanelMode('edit'); setEditForm({ ...st, is_favorite: !!st.is_favorite, capacity: st.capacity ?? "", hourly_rate: st.hourly_rate ?? "" }); }}
               onRemove={id => removeMutation.mutate(id)}
               onToggleFav={handleToggleFav}
             />
@@ -521,149 +538,276 @@ export default function StudiosPage() {
       )}
 
       {/* ── Mobile backdrop ── */}
-      {selected && isMobile && (
-        <div onClick={() => setSelected(null)}
+      {(selected || panelMode === 'add') && isMobile && (
+        <div onClick={() => { setSelected(null); setPanelMode(null); }}
           style={{ position: "fixed", inset: 0, top: 56, background: "rgba(0,0,0,0.4)", zIndex: 399 }} />
       )}
 
-      {/* ── Detail side panel ── */}
-      {selected && (() => {
-        const s = list.find(x => x.id === selected.id) || selected;
-        const fullAddress = [s.address, s.city, s.state, s.zip].filter(Boolean).join(", ");
-        const websiteDisplay = s.website?.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "") || null;
-        return (
-          <div style={{
-            position: "fixed", right: 0, bottom: 0, zIndex: 400,
-            top:   isMobile ? 56 : 0,
-            width: isMobile ? "100vw" : PANEL_W,
-            left:  isMobile ? 0 : "auto",
-            background: "var(--card)",
-            borderLeft: isMobile ? "none" : "1.5px solid var(--border)",
-            display: "flex", flexDirection: "column",
-            boxShadow: isMobile ? "0 -4px 32px rgba(0,0,0,.14)" : "-6px 0 32px rgba(0,0,0,.09)",
-          }}>
-            {/* Header */}
-            <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".08em" }}>Studio Details</span>
-              <button onClick={() => setSelected(null)}
-                style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--muted)", lineHeight: 1, padding: 4, borderRadius: 6 }}>✕</button>
-            </div>
-
-            {/* Hero */}
-            <div style={{ padding: "20px 22px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0, background: "var(--surface)" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                <div>
-                  <div style={{ fontFamily: "var(--font-d)", fontSize: 18, fontWeight: 800, marginBottom: 4, color: "var(--text)" }}>{s.name}</div>
-                  {s.is_favorite && (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: "#e0607e", background: "#fce7f3", borderRadius: 20, padding: "2px 8px" }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="#e0607e" stroke="#e0607e" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                      Favourite venue
-                    </span>
-                  )}
-                </div>
-                <button onClick={() => handleToggleFav(s)} title={s.is_favorite ? "Remove favourite" : "Mark favourite"}
-                  style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", color: s.is_favorite ? "#e0607e" : "#d1d5db", transition: "transform .15s, color .15s", flexShrink: 0 }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.2)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}>
-                  {s.is_favorite
-                    ? <svg width="20" height="20" viewBox="0 0 24 24" fill="#e0607e" stroke="#e0607e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                    : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                  }
-                </button>
-              </div>
-            </div>
-
-            {/* Scrollable body */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}>
-
-              {/* Address */}
-              {fullAddress && (
-                <div style={{ marginBottom: 18 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 8 }}>Location</div>
-                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
-                      <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-                    </svg>
-                    <span style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5 }}>{fullAddress}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Contact */}
-              {(s.phone || s.email || s.website) && (
-                <div style={{ marginBottom: 18 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 8 }}>Contact</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                    {s.phone && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.61 4.86 2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.88 17z"/></svg>
-                        <a href={`tel:${s.phone}`} style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none" }}>{s.phone}</a>
-                      </div>
-                    )}
-                    {s.email && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                        <a href={`mailto:${s.email}`} style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none" }}>{s.email}</a>
-                      </div>
-                    )}
-                    {websiteDisplay && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                        <a href={s.website} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{websiteDisplay}</a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Capacity / Rate */}
-              {(s.capacity || s.hourly_rate) && (
-                <div style={{ marginBottom: 18 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 8 }}>Venue Info</div>
-                  <div style={{ display: "flex", gap: 12 }}>
-                    {s.capacity && (
-                      <div style={{ flex: 1, background: "var(--surface)", borderRadius: 10, padding: "10px 14px", border: "1px solid var(--border)" }}>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>{s.capacity}</div>
-                        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Max capacity</div>
-                      </div>
-                    )}
-                    {s.hourly_rate && (
-                      <div style={{ flex: 1, background: "var(--surface)", borderRadius: 10, padding: "10px 14px", border: "1px solid var(--border)" }}>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>${Number(s.hourly_rate).toFixed(0)}</div>
-                        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Per hour</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Notes */}
-              {s.notes && (
-                <div style={{ marginBottom: 18 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 8 }}>Notes</div>
-                  <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, background: "var(--surface)", borderRadius: 9, padding: "10px 12px", margin: 0, border: "1px solid var(--border)" }}>
-                    {s.notes}
-                  </p>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div style={{ display: "flex", gap: 9, marginTop: 8 }}>
-                <button onClick={() => setModal(s)} style={{
-                  flex: 1, padding: "9px 16px", borderRadius: 9,
-                  border: "1.5px solid var(--accent)", background: "var(--accent)",
-                  color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600,
-                }}>✏️ Edit Studio</button>
-                <button onClick={() => { if (window.confirm(`Remove "${s.name}"?`)) removeMutation.mutate(s.id); }}
-                  style={{ padding: "9px 14px", borderRadius: 9, border: "1.5px solid #e05c6a", background: "transparent", color: "#e05c6a", cursor: "pointer", fontSize: 13 }}>🗑</button>
-              </div>
-            </div>
+      {/* ── Side Panel (view / edit / add) ── */}
+      {(selected || panelMode === 'add') && (
+        <div style={{
+          position: "fixed", right: 0, bottom: 0, zIndex: 400,
+          top:   isMobile ? 56 : 0,
+          width: isMobile ? "100vw" : PANEL_W,
+          left:  isMobile ? 0 : "auto",
+          background: "var(--card)",
+          borderLeft: isMobile ? "none" : "1.5px solid var(--border)",
+          display: "flex", flexDirection: "column",
+          boxShadow: isMobile ? "0 -4px 32px rgba(0,0,0,.14)" : "-6px 0 32px rgba(0,0,0,.09)",
+        }}>
+          {/* Panel header */}
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".08em" }}>
+              {panelMode === 'add' ? "Add Studio" : panelMode === 'edit' ? "Edit Studio" : "Studio Details"}
+            </span>
+            <button onClick={() => { setSelected(null); setPanelMode(null); }}
+              style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--muted)", lineHeight: 1, padding: 4, borderRadius: 6 }}>✕</button>
           </div>
-        );
-      })()}
 
-      {modal === "add" && <AddStudioModal onClose={() => setModal(null)} onSave={handleSave} saving={saving} />}
-      {modal && modal !== "add" && <EditStudioModal studio={modal} onClose={() => setModal(null)} onSave={(form) => { handleSave(form); setSelected(s => s?.id === modal.id ? { ...s, ...form } : s); }} saving={saving} />}
+          {/* ── VIEW mode ── */}
+          {panelMode === 'view' && selected && (() => {
+            const s = list.find(x => x.id === selected.id) || selected;
+            const fullAddress = [s.address, s.city, s.state, s.zip].filter(Boolean).join(", ");
+            const websiteDisplay = s.website?.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "") || null;
+            return (
+              <>
+                {/* Hero */}
+                <div style={{ padding: "20px 22px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0, background: "var(--surface)" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                    <div>
+                      <div style={{ fontFamily: "var(--font-d)", fontSize: 18, fontWeight: 800, marginBottom: 4, color: "var(--text)" }}>{s.name}</div>
+                      {s.is_favorite && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: "#e0607e", background: "#fce7f3", borderRadius: 20, padding: "2px 8px" }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="#e0607e" stroke="#e0607e" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                          Favourite venue
+                        </span>
+                      )}
+                    </div>
+                    <button onClick={() => handleToggleFav(s)} title={s.is_favorite ? "Remove favourite" : "Mark favourite"}
+                      style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", color: s.is_favorite ? "#e0607e" : "#d1d5db", transition: "transform .15s, color .15s", flexShrink: 0 }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.2)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}>
+                      {s.is_favorite
+                        ? <svg width="20" height="20" viewBox="0 0 24 24" fill="#e0607e" stroke="#e0607e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      }
+                    </button>
+                  </div>
+                </div>
+                {/* Scrollable body */}
+                <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}>
+                  {fullAddress && (
+                    <div style={{ marginBottom: 18 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 8 }}>Location</div>
+                      <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+                          <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                        </svg>
+                        <span style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5 }}>{fullAddress}</span>
+                      </div>
+                    </div>
+                  )}
+                  {(s.phone || s.email || s.website) && (
+                    <div style={{ marginBottom: 18 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 8 }}>Contact</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                        {s.phone && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.61 4.86 2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.88 17z"/></svg>
+                            <a href={`tel:${s.phone}`} style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none" }}>{s.phone}</a>
+                          </div>
+                        )}
+                        {s.email && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                            <a href={`mailto:${s.email}`} style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none" }}>{s.email}</a>
+                          </div>
+                        )}
+                        {websiteDisplay && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                            <a href={s.website} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{websiteDisplay}</a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {(s.capacity || s.hourly_rate) && (
+                    <div style={{ marginBottom: 18 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 8 }}>Venue Info</div>
+                      <div style={{ display: "flex", gap: 12 }}>
+                        {s.capacity && (
+                          <div style={{ flex: 1, background: "var(--surface)", borderRadius: 10, padding: "10px 14px", border: "1px solid var(--border)" }}>
+                            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>{s.capacity}</div>
+                            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Max capacity</div>
+                          </div>
+                        )}
+                        {s.hourly_rate && (
+                          <div style={{ flex: 1, background: "var(--surface)", borderRadius: 10, padding: "10px 14px", border: "1px solid var(--border)" }}>
+                            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>${Number(s.hourly_rate).toFixed(0)}</div>
+                            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Per hour</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {s.notes && (
+                    <div style={{ marginBottom: 18 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 8 }}>Notes</div>
+                      <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, background: "var(--surface)", borderRadius: 9, padding: "10px 12px", margin: 0, border: "1px solid var(--border)" }}>
+                        {s.notes}
+                      </p>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 9, marginTop: 8 }}>
+                    <button onClick={() => { setPanelMode('edit'); setEditForm({ ...s, is_favorite: !!s.is_favorite, capacity: s.capacity ?? "", hourly_rate: s.hourly_rate ?? "" }); }} style={{
+                      flex: 1, padding: "9px 16px", borderRadius: 9,
+                      border: "1.5px solid var(--accent)", background: "var(--accent)",
+                      color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600,
+                    }}>✏️ Edit Studio</button>
+                    <button onClick={() => { if (window.confirm(`Remove "${s.name}"?`)) removeMutation.mutate(s.id); }}
+                      style={{ padding: "9px 14px", borderRadius: 9, border: "1.5px solid #e05c6a", background: "transparent", color: "#e05c6a", cursor: "pointer", fontSize: 13 }}>🗑</button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+
+          {/* ── EDIT mode ── */}
+          {panelMode === 'edit' && (
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                <Field label="Studio Name *" style={{ gridColumn: "1 / -1" }}><Input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} /></Field>
+                <Field label="Address" style={{ gridColumn: "1 / -1" }}><Input value={editForm.address} onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))} /></Field>
+                <Field label="City"><Input value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))} /></Field>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 10px" }}>
+                  <Field label="State"><Input value={editForm.state} onChange={e => setEditForm(f => ({ ...f, state: e.target.value }))} /></Field>
+                  <Field label="ZIP"><Input value={editForm.zip} onChange={e => setEditForm(f => ({ ...f, zip: e.target.value }))} /></Field>
+                </div>
+                <Field label="Phone"><Input value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} /></Field>
+                <Field label="Email"><Input type="email" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} /></Field>
+                <Field label="Website" style={{ gridColumn: "1 / -1" }}><Input value={editForm.website} onChange={e => setEditForm(f => ({ ...f, website: e.target.value }))} /></Field>
+                <Field label="Capacity (people)"><Input type="number" value={editForm.capacity} onChange={e => setEditForm(f => ({ ...f, capacity: e.target.value }))} min="0" /></Field>
+                <Field label="Hourly Rate ($)"><Input type="number" value={editForm.hourly_rate} onChange={e => setEditForm(f => ({ ...f, hourly_rate: e.target.value }))} min="0" step="0.01" /></Field>
+                <Field label="Notes" style={{ gridColumn: "1 / -1" }}><Textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></Field>
+              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, cursor: "pointer", userSelect: "none" }}>
+                <input type="checkbox" checked={editForm.is_favorite} onChange={e => setEditForm(f => ({ ...f, is_favorite: e.target.checked }))} style={{ width: 16, height: 16 }} />
+                <span style={{ fontSize: 14, fontWeight: 500 }}>Mark as favourite venue ♥</span>
+              </label>
+              <div style={{ display: "flex", gap: 9, marginTop: 20 }}>
+                <Button onClick={handleSave} disabled={!editForm.name || saving}>{saving ? "Saving…" : "Save Changes"}</Button>
+                <Button variant="outline" onClick={() => setPanelMode('view')}>Cancel</Button>
+              </div>
+            </div>
+          )}
+
+          {/* ── ADD mode ── */}
+          {panelMode === 'add' && (
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}>
+              {addPhase === 'search' ? (
+                <>
+                  {/* Nominatim search bar */}
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    background: "var(--surface)", border: "1.5px solid var(--border)",
+                    borderRadius: 12, padding: "10px 14px", marginBottom: 4, transition: "border-color .15s",
+                  }}
+                    onFocusCapture={e => e.currentTarget.style.borderColor = "var(--accent)"}
+                    onBlurCapture={e => e.currentTarget.style.borderColor = "var(--border)"}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input
+                      autoFocus
+                      type="text"
+                      value={addQuery}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setAddQuery(val);
+                        setAddSearchErr(null);
+                        clearTimeout(addDebounceRef.current);
+                        if (!val.trim()) { setAddResults([]); return; }
+                        setAddSearching(true);
+                        addDebounceRef.current = setTimeout(async () => {
+                          try { const data = await searchPlaces(val); setAddResults(data); }
+                          catch { setAddSearchErr("Search failed — check your connection."); setAddResults([]); }
+                          finally { setAddSearching(false); }
+                        }, 380);
+                      }}
+                      placeholder="Search by venue name or address…"
+                      style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 14, color: "var(--text)", fontFamily: "var(--font-sans)" }}
+                    />
+                    {addSearching && (
+                      <div style={{ width: 14, height: 14, flexShrink: 0, border: "2px solid var(--border)", borderTopColor: "var(--accent)", borderRadius: "50%", animation: "spin .6s linear infinite" }} />
+                    )}
+                  </div>
+                  <div style={{ textAlign: "right", fontSize: 10, color: "var(--muted)", marginBottom: 10 }}>© OpenStreetMap contributors</div>
+                  {addResults.length > 0 && (
+                    <div style={{ borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden", marginBottom: 16 }}>
+                      {addResults.map((p, i) => (
+                        <PlaceTile key={p.place_id || i} place={p} onSelect={place => { setAddForm(parseNominatim(place)); setAddPhase('confirm'); }} disabled={false} />
+                      ))}
+                    </div>
+                  )}
+                  {addQuery.length > 2 && !addSearching && addResults.length === 0 && !addSearchErr && (
+                    <div style={{ textAlign: "center", padding: "18px 0 4px", color: "var(--muted)", fontSize: 13 }}>
+                      No results for "{addQuery}" — try a different name or postcode.
+                    </div>
+                  )}
+                  {addSearchErr && <div style={{ textAlign: "center", padding: "14px 0 4px", color: "#dc2626", fontSize: 13 }}>{addSearchErr}</div>}
+                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    <span style={{ fontSize: 13, color: "var(--muted)" }}>Can't find it in the results?</span>
+                    <button type="button" onClick={() => { setAddForm({ ...EMPTY }); setAddPhase('confirm'); }} style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                      Enter details manually →
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button type="button" onClick={() => setAddPhase('search')} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 18, background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 13, padding: 0 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                    Back to search
+                  </button>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                    <Field label="Studio Name *" style={{ gridColumn: "1 / -1" }}>
+                      <Input value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} placeholder="Venue name" autoFocus />
+                    </Field>
+                    <Field label="Address" style={{ gridColumn: "1 / -1" }}>
+                      <Input value={addForm.address} onChange={e => setAddForm(f => ({ ...f, address: e.target.value }))} placeholder="Street address" />
+                    </Field>
+                    <Field label="City"><Input value={addForm.city} onChange={e => setAddForm(f => ({ ...f, city: e.target.value }))} placeholder="City" /></Field>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 10px" }}>
+                      <Field label="State"><Input value={addForm.state} onChange={e => setAddForm(f => ({ ...f, state: e.target.value }))} placeholder="State" /></Field>
+                      <Field label="ZIP"><Input value={addForm.zip} onChange={e => setAddForm(f => ({ ...f, zip: e.target.value }))} placeholder="ZIP" /></Field>
+                    </div>
+                    <Field label="Phone"><Input value={addForm.phone} onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))} placeholder="Phone number" /></Field>
+                    <Field label="Email"><Input type="email" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} placeholder="venue@example.com" /></Field>
+                    <Field label="Website" style={{ gridColumn: "1 / -1" }}>
+                      <Input value={addForm.website} onChange={e => setAddForm(f => ({ ...f, website: e.target.value }))} placeholder="https://example.com" />
+                    </Field>
+                    <Field label="Capacity (people)"><Input type="number" value={addForm.capacity} onChange={e => setAddForm(f => ({ ...f, capacity: e.target.value }))} placeholder="e.g. 200" min="0" /></Field>
+                    <Field label="Hourly Rate ($)"><Input type="number" value={addForm.hourly_rate} onChange={e => setAddForm(f => ({ ...f, hourly_rate: e.target.value }))} placeholder="e.g. 75" min="0" step="0.01" /></Field>
+                    <Field label="Notes" style={{ gridColumn: "1 / -1" }}>
+                      <Textarea value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))} placeholder="Parking, equipment, access notes…" rows={3} />
+                    </Field>
+                  </div>
+                  <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, cursor: "pointer", userSelect: "none" }}>
+                    <input type="checkbox" checked={addForm.is_favorite} onChange={e => setAddForm(f => ({ ...f, is_favorite: e.target.checked }))} style={{ width: 16, height: 16, cursor: "pointer" }} />
+                    <span style={{ fontSize: 14, fontWeight: 500 }}>Mark as favourite venue ♥</span>
+                  </label>
+                  <div style={{ display: "flex", gap: 9, marginTop: 20 }}>
+                    <Button onClick={handleSave} disabled={!addForm.name || saving}>{saving ? "Saving…" : "Add Studio"}</Button>
+                    <Button variant="outline" onClick={() => { setSelected(null); setPanelMode(null); }}>Cancel</Button>
+                  </div>
+                </>
+              )}
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -6,7 +6,6 @@ import { events as api, batches as batchesApi, recitals as recitalApi } from "..
 import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
-import Modal from "../components/shared/Modal";
 import Badge from "../components/shared/Badge";
 import { Field, Input, Select, Textarea } from "../components/shared/Field";
 import { RecitalDetail } from "./RecitalsPage";
@@ -326,6 +325,7 @@ export default function SchedulePage() {
       }
     }
     setDetailEvent(ev);
+    setPanelMode('view');
   };
 
   // Calendar state
@@ -333,9 +333,9 @@ export default function SchedulePage() {
   const [today]               = useState(new Date());
   const [cursor, setCursor]   = useState(new Date());
 
-  // Modal state
-  const [modal, setModal]     = useState(null);  // null | {} | event obj
-  const [form, setForm]       = useState(EMPTY_FORM);
+  // Panel state
+  const [panelMode, setPanelMode] = useState('view'); // 'view' | 'edit' | 'add'
+  const [form, setForm]           = useState(EMPTY_FORM);
   const [detailEvent, setDetailEvent] = useState(null);
 
   // Filters
@@ -408,14 +408,16 @@ export default function SchedulePage() {
 
   // ── Mutations ────────────────────────────────────────────────────────────
   const saveMutation = useMutation({
-    mutationFn: data => modal?.id ? api.update(sid, modal.id, data) : api.create(sid, data),
+    mutationFn: data => (panelMode === 'edit' && detailEvent?.id) ? api.update(sid, detailEvent.id, data) : api.create(sid, data),
     onSuccess: async (savedEvent, submittedData) => {
       qc.invalidateQueries({ queryKey: ["events"], exact: false });
-      toast.success(modal?.id ? "Event updated" : "Event(s) created");
-      setModal(null);
+      const wasEdit = panelMode === 'edit' && !!detailEvent?.id;
+      toast.success(wasEdit ? "Event updated" : "Event(s) created");
+      setPanelMode('view');
+      if (!wasEdit) setDetailEvent(null);
       // When a NEW Recital event is created, also create the recital record immediately
       // so the calendar always opens the full-page detail on first click
-      if (!modal?.id && submittedData?.type === "Recital") {
+      if (!wasEdit && submittedData?.type === "Recital") {
         try {
           const date = submittedData.start_datetime || submittedData.event_date;
           await recitalApi.create(sid, {
@@ -438,17 +440,19 @@ export default function SchedulePage() {
       qc.invalidateQueries({ queryKey: ["events"], exact: false });
       toast.success("Event deleted");
       setDetailEvent(null);
+      setPanelMode('view');
     },
     onError: err => toast.error(err.error || "Failed"),
   });
 
-  // ── Open modals ──────────────────────────────────────────────────────────
+  // ── Open panel modes ──────────────────────────────────────────────────────
   const openAdd = (prefillDate) => {
     const base = prefillDate ? new Date(prefillDate) : new Date();
     base.setMinutes(0, 0, 0);
     const end = new Date(base); end.setHours(base.getHours() + 1);
     setForm({ ...EMPTY_FORM, start_datetime: toLocalInput(base), end_datetime: toLocalInput(end) });
-    setModal({});
+    setDetailEvent(null);
+    setPanelMode('add');
   };
 
   const openEdit = e => {
@@ -459,8 +463,8 @@ export default function SchedulePage() {
       studio_booked: !!e.studio_booked, recurrence:"none", recurrence_end:"",
       color: e.color||"", notes: e.notes||"",
     });
-    setModal(e);
-    setDetailEvent(null);
+    setDetailEvent(e);
+    setPanelMode('edit');
   };
 
   // ── Navigation ───────────────────────────────────────────────────────────
@@ -709,7 +713,7 @@ export default function SchedulePage() {
   }
 
   return (
-    <div style={{ paddingRight: detailEvent && !isMobile ? PANEL_W + 20 : 0, transition:"padding .25s ease" }}>
+    <div style={{ paddingRight: (detailEvent || panelMode === 'add') && !isMobile ? PANEL_W + 20 : 0, transition:"padding .25s ease" }}>
       {/* Main calendar */}
         {/* Header */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,flexWrap:"wrap",gap:10}}>
@@ -809,199 +813,180 @@ export default function SchedulePage() {
         </div>
       )}
 
-      {/* ── Add/Edit Modal ── */}
-      {modal !== null && (
-        <Modal title={modal.id ? "Edit Event" : "New Event"} onClose={()=>setModal(null)} wide>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
-            <Field label="Title *" style={{gridColumn:"1/-1"}}>
-              <Input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="e.g. Junior Ballet Class" style={{width:"100%"}} />
-            </Field>
-            <Field label="Event Type">
-              <Select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
-                {EVENT_TYPES.map(t=><option key={t}>{t}</option>)}
-              </Select>
-            </Field>
-            <div style={{gridColumn:"1/-1"}}>
-              <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Batches (optional)</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
-                {batches.map(b => {
-                  const checked = form.batch_ids.includes(b.id) || form.batch_ids.includes(String(b.id));
-                  return (
-                    <button key={b.id} type="button" onClick={()=>{
-                      const id = b.id;
-                      setForm(f => ({
-                        ...f,
-                        batch_ids: checked
-                          ? f.batch_ids.filter(x => x !== id && x !== String(id))
-                          : [...f.batch_ids, id]
-                      }));
-                    }} style={{
-                      display:"inline-flex",alignItems:"center",gap:6,
-                      padding:"5px 13px",borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:700,
-                      border:`1.5px solid ${checked?"#6a7fdb":"var(--border)"}`,
-                      background:checked?"#6a7fdb22":"transparent",
-                      color:checked?"#6a7fdb":"var(--muted)",transition:"all .12s",
-                    }}>
-                      {checked && <span>✓</span>}
-                      {b.name}
-                    </button>
-                  );
-                })}
-                {batches.length === 0 && <span style={{fontSize:12,color:"var(--muted)"}}>No batches yet</span>}
-              </div>
-            </div>
-            <DateTimePicker label="Start *" value={form.start_datetime} onChange={v=>setForm({...form,start_datetime:v})} />
-            <DateTimePicker label="End *"   value={form.end_datetime}   onChange={v=>setForm({...form,end_datetime:v})} />
-            <Field label="Location / Room">
-              <Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder="e.g. Studio A" />
-            </Field>
-            <Field label="Repeat">
-              <Select value={form.recurrence} onChange={e=>setForm({...form,recurrence:e.target.value})} disabled={!!modal.id}>
-                <option value="none">No repeat</option>
-                <option value="weekly">Weekly</option>
-                <option value="biweekly">Every 2 weeks</option>
-              </Select>
-            </Field>
-            {form.recurrence !== "none" && !modal.id && (
-              <DateTimePicker label="Repeat Until" value={form.recurrence_end ? form.recurrence_end+"T00:00" : ""} onChange={v=>setForm({...form,recurrence_end:v.slice(0,10)})} />
-            )}
-          </div>
-
-          {/* Studio booking */}
-          <div style={{display:"flex",gap:16,margin:"10px 0",padding:12,background:"var(--surface)",borderRadius:10}}>
-            <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
-              <input type="checkbox" checked={form.requires_studio} onChange={e=>setForm({...form,requires_studio:e.target.checked})}
-                style={{width:16,height:16,accentColor:"var(--accent)"}} />
-              <span>🏠 Requires studio booking</span>
-            </label>
-            {form.requires_studio && (
-              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
-                <input type="checkbox" checked={form.studio_booked} onChange={e=>setForm({...form,studio_booked:e.target.checked})}
-                  style={{width:16,height:16,accentColor:"#52c4a0"}} />
-                <span style={{color:"#52c4a0",fontWeight:600}}>✓ Studio confirmed</span>
-              </label>
-            )}
-          </div>
-
-          <Field label="Notes">
-            <Textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} />
-          </Field>
-
-          <div style={{display:"flex",gap:9,marginTop:8}}>
-            <Button onClick={()=>saveMutation.mutate(form)} disabled={!form.title||!form.start_datetime||!form.end_datetime||saveMutation.isPending}>
-              {saveMutation.isPending ? "Saving…" : modal.id ? "Save Changes" : form.recurrence!=="none" ? "Create Recurring Events" : "Create Event"}
-            </Button>
-            <Button variant="outline" onClick={()=>setModal(null)}>Cancel</Button>
-          </div>
-        </Modal>
-      )}
-
-      {/* ── Event Detail Panel ── */}
-      {detailEvent && isMobile && (
-        <div onClick={()=>setDetailEvent(null)}
+      {/* ── Event Panel (view / edit / add) ── */}
+      {(detailEvent || panelMode === 'add') && isMobile && (
+        <div onClick={() => { setDetailEvent(null); setPanelMode('view'); }}
           style={{position:"fixed",inset:0,top:56,background:"rgba(0,0,0,0.4)",zIndex:399}} />
       )}
-      {detailEvent && (() => {
-        const e = detailEvent;
-        const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
-        return (
-          <div style={{
-            position:"fixed", right:0, bottom:0, zIndex:400,
-            top:    isMobile ? 56 : 0,
-            width:  isMobile ? '100vw' : PANEL_W,
-            left:   isMobile ? 0 : 'auto',
-            background:"var(--card)",
-            borderLeft: isMobile ? 'none' : "1.5px solid var(--border)",
-            display:"flex", flexDirection:"column",
-            boxShadow: isMobile ? "0 -4px 32px rgba(0,0,0,.14)" : "-6px 0 32px rgba(0,0,0,.09)",
-          }}>
-            {/* Panel header */}
-            <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
-              <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em" }}>Event Details</span>
-              <button onClick={()=>setDetailEvent(null)}
-                style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6 }}>✕</button>
-            </div>
-
-            {/* Event hero */}
-            <div style={{ padding:"22px 22px 18px", borderBottom:"1px solid var(--border)", flexShrink:0, background:"var(--surface)" }}>
-              <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:12 }}>
-                <div style={{ width:6, height:48, borderRadius:3, background:color, flexShrink:0, marginTop:2 }} />
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, marginBottom:8, lineHeight:1.2 }}>{e.title}</div>
-                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                    <Badge color={color}>{e.type}</Badge>
-                    {e.requires_studio && <Badge color={e.studio_booked?"#52c4a0":"#e05c6a"}>{e.studio_booked?"Studio ✓":"Studio ⚠"}</Badge>}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Scrollable body */}
-            <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
-
-              <div style={{ display:"grid", gap:14, marginBottom:20 }}>
-                <PDetailRow icon="📅" label="Date">{fmtDate(e.start_datetime)}</PDetailRow>
-                <PDetailRow icon="⏰" label="Time">{fmtTime(e.start_datetime)} – {fmtTime(e.end_datetime)}</PDetailRow>
-                {e.location && <PDetailRow icon="📍" label="Location">{e.location}</PDetailRow>}
-                {(e.batches?.length > 0 || e.batch_name) && (
-                  <PDetailRow icon="📚" label={`Batch${(e.batches?.length||0) > 1 ? "es" : ""}`}>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:4}}>
-                      {(e.batches?.length ? e.batches : [{id:e.batch_id, name:e.batch_name}]).map(b => {
-                        const full = batches.find(x => x.id===b.id || String(x.id)===String(b.id));
-                        return (
-                          <button key={b.id} type="button"
-                            onClick={()=>{ setDetailEvent(null); navigate("/batches"); }}
-                            style={{
-                              display:"inline-flex",alignItems:"center",gap:5,
-                              background:"#6a7fdb15",border:"1.5px solid #6a7fdb44",
-                              borderRadius:20,padding:"4px 13px",cursor:"pointer",
-                              fontSize:12,fontWeight:700,color:"#6a7fdb",transition:"all .15s",
-                            }}
-                            onMouseEnter={ev=>{ev.currentTarget.style.background="#6a7fdb28";ev.currentTarget.style.borderColor="#6a7fdb99";}}
-                            onMouseLeave={ev=>{ev.currentTarget.style.background="#6a7fdb15";ev.currentTarget.style.borderColor="#6a7fdb44";}}
-                          >
-                            {b.name}
-                            {full && <span style={{fontSize:10,fontWeight:400,color:"#6a7fdb99"}}>· {full.student_count} students</span>}
-                            <span style={{fontSize:10,opacity:0.5}}>→</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </PDetailRow>
-                )}
-                {e.notes && <PDetailRow icon="📝" label="Notes">{e.notes}</PDetailRow>}
-              </div>
-
-              {e.requires_studio && (
-                <div style={{ padding:"12px 14px", borderRadius:10, background:e.studio_booked?"#52c4a008":"#e05c6a08", border:`1.5px solid ${e.studio_booked?"#52c4a033":"#e05c6a33"}`, marginBottom:20 }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:e.studio_booked?"#52c4a0":"#e05c6a" }}>
-                    {e.studio_booked ? "✓ Studio booking confirmed" : "⚠ Studio booking needed"}
-                  </div>
-                </div>
-              )}
-
-              {isAdmin && (
-                <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
-                  <button onClick={()=>openEdit(e)} style={{
-                    padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)",
-                    background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600,
-                  }}>✏️ Edit Event</button>
-                  {e.requires_studio && !e.studio_booked && (
-                    <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{
-                      padding:"9px 16px", borderRadius:9, border:"1.5px solid #52c4a0",
-                      background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:13, fontWeight:600,
-                    }}>✓ Mark Studio Booked</button>
-                  )}
-                  <button onClick={()=>{ if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} style={{
-                    padding:"9px 16px", borderRadius:9, border:"1.5px solid #e05c6a",
-                    background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontWeight:600,
-                  }}>🗑 Delete Event</button>
-                </div>
-              )}
-            </div>
+      {(detailEvent || panelMode === 'add') && (
+        <div style={{
+          position:"fixed", right:0, bottom:0, zIndex:400,
+          top:    isMobile ? 56 : 0,
+          width:  isMobile ? '100vw' : PANEL_W,
+          left:   isMobile ? 0 : 'auto',
+          background:"var(--card)",
+          borderLeft: isMobile ? 'none' : "1.5px solid var(--border)",
+          display:"flex", flexDirection:"column",
+          boxShadow: isMobile ? "0 -4px 32px rgba(0,0,0,.14)" : "-6px 0 32px rgba(0,0,0,.09)",
+        }}>
+          {/* Panel header */}
+          <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+            <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em" }}>
+              {panelMode === 'add' ? "New Event" : panelMode === 'edit' ? "Edit Event" : "Event Details"}
+            </span>
+            <button onClick={() => { setDetailEvent(null); setPanelMode('view'); }}
+              style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6 }}>✕</button>
           </div>
-        );
-      })()}
+
+          {/* ── VIEW mode: event hero + details ── */}
+          {panelMode === 'view' && detailEvent && (() => {
+            const e = detailEvent;
+            const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
+            return (
+              <>
+                {/* Event hero */}
+                <div style={{ padding:"22px 22px 18px", borderBottom:"1px solid var(--border)", flexShrink:0, background:"var(--surface)" }}>
+                  <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:12 }}>
+                    <div style={{ width:6, height:48, borderRadius:3, background:color, flexShrink:0, marginTop:2 }} />
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, marginBottom:8, lineHeight:1.2 }}>{e.title}</div>
+                      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                        <Badge color={color}>{e.type}</Badge>
+                        {e.requires_studio && <Badge color={e.studio_booked?"#52c4a0":"#e05c6a"}>{e.studio_booked?"Studio ✓":"Studio ⚠"}</Badge>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* Scrollable body */}
+                <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
+                  <div style={{ display:"grid", gap:14, marginBottom:20 }}>
+                    <PDetailRow icon="📅" label="Date">{fmtDate(e.start_datetime)}</PDetailRow>
+                    <PDetailRow icon="⏰" label="Time">{fmtTime(e.start_datetime)} – {fmtTime(e.end_datetime)}</PDetailRow>
+                    {e.location && <PDetailRow icon="📍" label="Location">{e.location}</PDetailRow>}
+                    {(e.batches?.length > 0 || e.batch_name) && (
+                      <PDetailRow icon="📚" label={`Batch${(e.batches?.length||0) > 1 ? "es" : ""}`}>
+                        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:4}}>
+                          {(e.batches?.length ? e.batches : [{id:e.batch_id, name:e.batch_name}]).map(b => {
+                            const full = batches.find(x => x.id===b.id || String(x.id)===String(b.id));
+                            return (
+                              <button key={b.id} type="button"
+                                onClick={()=>{ setDetailEvent(null); setPanelMode('view'); navigate("/batches"); }}
+                                style={{ display:"inline-flex",alignItems:"center",gap:5, background:"#6a7fdb15",border:"1.5px solid #6a7fdb44", borderRadius:20,padding:"4px 13px",cursor:"pointer", fontSize:12,fontWeight:700,color:"#6a7fdb",transition:"all .15s" }}
+                                onMouseEnter={ev=>{ev.currentTarget.style.background="#6a7fdb28";ev.currentTarget.style.borderColor="#6a7fdb99";}}
+                                onMouseLeave={ev=>{ev.currentTarget.style.background="#6a7fdb15";ev.currentTarget.style.borderColor="#6a7fdb44";}}
+                              >
+                                {b.name}
+                                {full && <span style={{fontSize:10,fontWeight:400,color:"#6a7fdb99"}}>· {full.student_count} students</span>}
+                                <span style={{fontSize:10,opacity:0.5}}>→</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </PDetailRow>
+                    )}
+                    {e.notes && <PDetailRow icon="📝" label="Notes">{e.notes}</PDetailRow>}
+                  </div>
+                  {e.requires_studio && (
+                    <div style={{ padding:"12px 14px", borderRadius:10, background:e.studio_booked?"#52c4a008":"#e05c6a08", border:`1.5px solid ${e.studio_booked?"#52c4a033":"#e05c6a33"}`, marginBottom:20 }}>
+                      <div style={{ fontSize:12, fontWeight:700, color:e.studio_booked?"#52c4a0":"#e05c6a" }}>
+                        {e.studio_booked ? "✓ Studio booking confirmed" : "⚠ Studio booking needed"}
+                      </div>
+                    </div>
+                  )}
+                  {isAdmin && (
+                    <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
+                      <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600 }}>✏️ Edit Event</button>
+                      {e.requires_studio && !e.studio_booked && (
+                        <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #52c4a0", background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:13, fontWeight:600 }}>✓ Mark Studio Booked</button>
+                      )}
+                      <button onClick={()=>{ if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontWeight:600 }}>🗑 Delete Event</button>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+
+          {/* ── EDIT / ADD mode: event form ── */}
+          {(panelMode === 'edit' || panelMode === 'add') && (
+            <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
+                <Field label="Title *" style={{gridColumn:"1/-1"}}>
+                  <Input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="e.g. Junior Ballet Class" />
+                </Field>
+                <Field label="Event Type">
+                  <Select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
+                    {EVENT_TYPES.map(t=><option key={t}>{t}</option>)}
+                  </Select>
+                </Field>
+                <div style={{gridColumn:"1/-1"}}>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Batches (optional)</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
+                    {batches.map(b => {
+                      const checked = form.batch_ids.includes(b.id) || form.batch_ids.includes(String(b.id));
+                      return (
+                        <button key={b.id} type="button" onClick={()=>{
+                          const id = b.id;
+                          setForm(f => ({ ...f, batch_ids: checked ? f.batch_ids.filter(x => x !== id && x !== String(id)) : [...f.batch_ids, id] }));
+                        }} style={{
+                          display:"inline-flex",alignItems:"center",gap:6,
+                          padding:"5px 13px",borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:700,
+                          border:`1.5px solid ${checked?"#6a7fdb":"var(--border)"}`,
+                          background:checked?"#6a7fdb22":"transparent",
+                          color:checked?"#6a7fdb":"var(--muted)",transition:"all .12s",
+                        }}>
+                          {checked && <span>✓</span>}
+                          {b.name}
+                        </button>
+                      );
+                    })}
+                    {batches.length === 0 && <span style={{fontSize:12,color:"var(--muted)"}}>No batches yet</span>}
+                  </div>
+                </div>
+                <DateTimePicker label="Start *" value={form.start_datetime} onChange={v=>setForm({...form,start_datetime:v})} />
+                <DateTimePicker label="End *"   value={form.end_datetime}   onChange={v=>setForm({...form,end_datetime:v})} />
+                <Field label="Location / Room">
+                  <Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder="e.g. Studio A" />
+                </Field>
+                <Field label="Repeat">
+                  <Select value={form.recurrence} onChange={e=>setForm({...form,recurrence:e.target.value})} disabled={panelMode === 'edit'}>
+                    <option value="none">No repeat</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="biweekly">Every 2 weeks</option>
+                  </Select>
+                </Field>
+                {form.recurrence !== "none" && panelMode === 'add' && (
+                  <DateTimePicker label="Repeat Until" value={form.recurrence_end ? form.recurrence_end+"T00:00" : ""} onChange={v=>setForm({...form,recurrence_end:v.slice(0,10)})} />
+                )}
+              </div>
+              {/* Studio booking */}
+              <div style={{display:"flex",gap:16,margin:"10px 0",padding:12,background:"var(--surface)",borderRadius:10}}>
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
+                  <input type="checkbox" checked={form.requires_studio} onChange={e=>setForm({...form,requires_studio:e.target.checked})}
+                    style={{width:16,height:16,accentColor:"var(--accent)"}} />
+                  <span>🏠 Requires studio booking</span>
+                </label>
+                {form.requires_studio && (
+                  <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
+                    <input type="checkbox" checked={form.studio_booked} onChange={e=>setForm({...form,studio_booked:e.target.checked})}
+                      style={{width:16,height:16,accentColor:"#52c4a0"}} />
+                    <span style={{color:"#52c4a0",fontWeight:600}}>✓ Studio confirmed</span>
+                  </label>
+                )}
+              </div>
+              <Field label="Notes">
+                <Textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} />
+              </Field>
+              <div style={{display:"flex",gap:9,marginTop:16}}>
+                <Button onClick={()=>saveMutation.mutate(form)} disabled={!form.title||!form.start_datetime||!form.end_datetime||saveMutation.isPending}>
+                  {saveMutation.isPending ? "Saving…" : panelMode === 'edit' ? "Save Changes" : form.recurrence!=="none" ? "Create Recurring Events" : "Create Event"}
+                </Button>
+                <Button variant="outline" onClick={() => { if (panelMode === 'add') setDetailEvent(null); setPanelMode('view'); }}>Cancel</Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

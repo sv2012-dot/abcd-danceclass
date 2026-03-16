@@ -5,7 +5,6 @@ import { students as api } from "../api";
 import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
-import Modal from "../components/shared/Modal";
 import { Field, Input, Textarea } from "../components/shared/Field";
 
 // ─── Avatar helper ──────────────────────────────────────────────────────────
@@ -131,13 +130,13 @@ export default function StudentsPage() {
   const ageLabel = age => { const n = Number(age); if (!age && age !== 0) return null; return n > 18 ? "Adult" : `${n} yrs`; };
   const ageDot   = age => { const n = Number(age); if (!age && age !== 0) return "#aaa"; if (n <= 8) return "#6a7fdb"; if (n <= 12) return "#f4a041"; if (n <= 18) return "#52c4a0"; return "#52c4a0"; };
 
-  const openAdd  = () => { setAddForm({ ...EMPTY, join_date: new Date().toISOString().split("T")[0] }); setShowAdd(true); };
+  const openAdd  = () => { setAddForm({ ...EMPTY, join_date: new Date().toISOString().split("T")[0] }); setSelected(null); setIsEditing(false); setShowAdd(true); };
   const pick     = s  => { setSelected(s); setIsEditing(false); };
   const startEdit = () => { setEditForm({ ...selected }); setIsEditing(true); };
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ paddingRight: selected && !isMobile ? PANEL_W + 20 : 0, transition:"padding .25s ease" }}>
+    <div style={{ paddingRight: (selected || showAdd) && !isMobile ? PANEL_W + 20 : 0, transition:"padding .25s ease" }}>
 
       {/* ── Header ── */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:10 }}>
@@ -300,12 +299,12 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* ── Right detail panel ── */}
-      {selected && isMobile && (
-        <div onClick={()=>{setSelected(null);setIsEditing(false);}}
+      {/* ── Right detail / add panel ── */}
+      {(selected || showAdd) && isMobile && (
+        <div onClick={()=>{ setSelected(null); setIsEditing(false); setShowAdd(false); }}
           style={{position:"fixed",inset:0,top:56,background:"rgba(0,0,0,0.4)",zIndex:399}} />
       )}
-      {selected && (
+      {(selected || showAdd) && (
         <div style={{
           position:"fixed", right:0, bottom:0, zIndex:400,
           top:    isMobile ? 56 : 0,
@@ -318,11 +317,48 @@ export default function StudentsPage() {
         }}>
           {/* Panel header */}
           <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
-            <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em" }}>Student Profile</span>
-            <button onClick={() => { setSelected(null); setIsEditing(false); }}
+            <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em" }}>
+              {showAdd ? "New Student" : isEditing ? "Edit Student" : "Student Profile"}
+            </span>
+            <button onClick={() => { setSelected(null); setIsEditing(false); setShowAdd(false); }}
               style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6 }}>✕</button>
           </div>
 
+          {/* ── ADD mode: show add form inline ── */}
+          {showAdd && (() => {
+            const addAge   = Number(addForm.age);
+            const ageKnown = String(addForm.age ?? "").trim() !== "" && !isNaN(addAge) && addAge > 0;
+            const isMinor  = ageKnown && addAge <= 18;
+            const isAdult  = ageKnown && addAge > 18;
+            return (
+              <div style={{ flex:1, overflowY:"auto", padding:"22px 24px" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
+                  <Field label="Full Name *"><Input value={addForm.name} onChange={e=>setAddForm({...addForm,name:e.target.value})} placeholder="Student name"/></Field>
+                  <Field label="Age"><Input type="number" value={addForm.age} onChange={e=>setAddForm({...addForm,age:e.target.value})} placeholder="e.g. 12" min="0" max="99"/></Field>
+                  {(!ageKnown || isAdult) && (<>
+                    <Field label="Phone / WhatsApp"><Input value={addForm.phone} onChange={e=>setAddForm({...addForm,phone:e.target.value})} placeholder="+1 555 000 0000"/></Field>
+                    <Field label="Email"><Input value={addForm.email} onChange={e=>setAddForm({...addForm,email:e.target.value})} placeholder="email@example.com"/></Field>
+                  </>)}
+                  {isMinor && (<>
+                    <Field label="Guardian Name *"><Input value={addForm.guardian_name} onChange={e=>setAddForm({...addForm,guardian_name:e.target.value})} placeholder="Parent or guardian"/></Field>
+                    <Field label="Guardian Phone"><Input value={addForm.guardian_phone} onChange={e=>setAddForm({...addForm,guardian_phone:e.target.value})} placeholder="+1 555 000 0000"/></Field>
+                    <Field label="Guardian Email"><Input value={addForm.guardian_email} onChange={e=>setAddForm({...addForm,guardian_email:e.target.value})} placeholder="parent@email.com"/></Field>
+                  </>)}
+                  <Field label="Join Date"><Input type="date" value={addForm.join_date} onChange={e=>setAddForm({...addForm,join_date:e.target.value})}/></Field>
+                </div>
+                <Field label="Notes"><Textarea value={addForm.notes} onChange={e=>setAddForm({...addForm,notes:e.target.value})} placeholder="Any notes…"/></Field>
+                <div style={{ display:"flex", gap:9, marginTop:16 }}>
+                  <Button onClick={() => addMutation.mutate(addForm)} disabled={!addForm.name || addMutation.isPending}>
+                    {addMutation.isPending ? "Adding…" : "Add Student"}
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── VIEW / EDIT mode: profile hero + body ── */}
+          {!showAdd && selected && (<>
           {/* Profile hero */}
           <div style={{ padding:"28px 24px 20px", textAlign:"center", borderBottom:"1px solid var(--border)", flexShrink:0, background:"var(--surface)" }}>
             <div style={{ display:"flex", justifyContent:"center", marginBottom:14 }}>
@@ -412,50 +448,9 @@ export default function StudentsPage() {
               </>
             )}
           </div>
+          </>)}
         </div>
       )}
-
-      {/* ── Add Student Modal ── */}
-      {showAdd && (() => {
-        const addAge     = Number(addForm.age);
-        const ageKnown   = String(addForm.age ?? "").trim() !== "" && !isNaN(addAge) && addAge > 0;
-        const isMinor    = ageKnown && addAge <= 18;
-        const isAdult    = ageKnown && addAge > 18;
-        return (
-        <Modal title="Add Student" onClose={() => setShowAdd(false)} wide>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
-            <Field label="Full Name *"><Input value={addForm.name} onChange={e=>setAddForm({...addForm,name:e.target.value})} placeholder="Student name"/></Field>
-            <Field label="Age"><Input type="number" value={addForm.age} onChange={e=>setAddForm({...addForm,age:e.target.value})} placeholder="e.g. 12" min="0" max="99"/></Field>
-
-            {/* ── Contact: age unknown or adult → own phone/email ── */}
-            {(!ageKnown || isAdult) && (
-              <>
-                <Field label="Phone / WhatsApp"><Input value={addForm.phone} onChange={e=>setAddForm({...addForm,phone:e.target.value})} placeholder="+1 555 000 0000"/></Field>
-                <Field label="Email"><Input value={addForm.email} onChange={e=>setAddForm({...addForm,email:e.target.value})} placeholder="email@example.com"/></Field>
-              </>
-            )}
-
-            {/* ── Guardian: only when age is known and ≤ 18 ── */}
-            {isMinor && (
-              <>
-                <Field label="Guardian Name *"><Input value={addForm.guardian_name} onChange={e=>setAddForm({...addForm,guardian_name:e.target.value})} placeholder="Parent or guardian"/></Field>
-                <Field label="Guardian Phone"><Input value={addForm.guardian_phone} onChange={e=>setAddForm({...addForm,guardian_phone:e.target.value})} placeholder="+1 555 000 0000"/></Field>
-                <Field label="Guardian Email"><Input value={addForm.guardian_email} onChange={e=>setAddForm({...addForm,guardian_email:e.target.value})} placeholder="parent@email.com"/></Field>
-              </>
-            )}
-
-            <Field label="Join Date"><Input type="date" value={addForm.join_date} onChange={e=>setAddForm({...addForm,join_date:e.target.value})}/></Field>
-          </div>
-          <Field label="Notes"><Textarea value={addForm.notes} onChange={e=>setAddForm({...addForm,notes:e.target.value})} placeholder="Any notes…"/></Field>
-          <div style={{ display:"flex", gap:9, marginTop:8 }}>
-            <Button onClick={() => addMutation.mutate(addForm)} disabled={!addForm.name || addMutation.isPending}>
-              {addMutation.isPending ? "Adding…" : "Add Student"}
-            </Button>
-            <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
-          </div>
-        </Modal>
-        );
-      })()}
     </div>
   );
 }
