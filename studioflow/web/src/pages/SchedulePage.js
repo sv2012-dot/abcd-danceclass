@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { events as api, batches as batchesApi, recitals as recitalApi } from "../api";
 import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
@@ -271,6 +272,7 @@ function useWindowWidth() {
 // ── Main Component ───────────────────────────────────────────────────────────
 export default function SchedulePage() {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const sid = user?.school_id;
   const qc  = useQueryClient();
   const navigate = useNavigate();
@@ -494,7 +496,7 @@ export default function SchedulePage() {
         style={{
           background: color+"22", borderLeft: `3px solid ${color}`,
           borderRadius: 5, padding: compact ? "10px 5px" : "4px 7px",
-          fontSize: compact ? 10 : 11, fontWeight: 600, color: "#1e1228",
+          fontSize: compact ? 10 : 11, fontWeight: 600, color: theme === "dark" ? "#ffffff" : "#1e1228",
           cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis",
           whiteSpace: "nowrap", marginBottom: 2, lineHeight: 1.4,
           display: "flex", alignItems: "center", gap: 4,
