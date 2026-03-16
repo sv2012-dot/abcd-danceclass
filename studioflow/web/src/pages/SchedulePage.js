@@ -28,10 +28,23 @@ const MONTHS = ["January","February","March","April","May","June",
                 "July","August","September","October","November","December"];
 
 const EMPTY_FORM = {
-  title:"", type:"Class", batch_ids:[], start_datetime:"", end_datetime:"",
+  title:"", type:"Class", batch_ids:[], start_datetime:"", end_datetime:"", duration:60,
   location:"", requires_studio:false, studio_booked:false,
   recurrence:"none", recurrence_end:"", color:"", notes:"",
 };
+
+const DURATION_OPTIONS = [
+  { value:15,  label:"15 min" },
+  { value:30,  label:"30 min" },
+  { value:45,  label:"45 min" },
+  { value:60,  label:"1 hr" },
+  { value:75,  label:"1 hr 15 min" },
+  { value:90,  label:"1 hr 30 min" },
+  { value:120, label:"2 hr" },
+  { value:150, label:"2 hr 30 min" },
+  { value:180, label:"3 hr" },
+  { value:240, label:"4 hr" },
+];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function fmtTime(dt) {
@@ -48,6 +61,12 @@ function toLocalInput(dt) {
   const d = new Date(dt);
   const pad = n => String(n).padStart(2,"0");
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function computeEndFromDuration(startStr, durationMins) {
+  if (!startStr || !durationMins) return "";
+  const s = new Date(startStr);
+  if (isNaN(s)) return "";
+  return toLocalInput(new Date(s.getTime() + Number(durationMins) * 60000));
 }
 
 // ── DateTimePicker component ─────────────────────────────────────────────────
@@ -452,7 +471,7 @@ export default function SchedulePage() {
     const base = prefillDate ? new Date(prefillDate) : new Date();
     base.setMinutes(0, 0, 0);
     const end = new Date(base); end.setHours(base.getHours() + 1);
-    setForm({ ...EMPTY_FORM, start_datetime: toLocalInput(base), end_datetime: toLocalInput(end) });
+    setForm({ ...EMPTY_FORM, start_datetime: toLocalInput(base), end_datetime: toLocalInput(end), duration: 60 });
     setDetailEvent(null);
     setPanelMode('add');
   };
@@ -461,6 +480,9 @@ export default function SchedulePage() {
     setForm({
       title: e.title||"", type: e.type||"Class", batch_ids: (e.batches||[]).map(b=>b.id),
       start_datetime: toLocalInput(e.start_datetime), end_datetime: toLocalInput(e.end_datetime),
+      duration: (e.start_datetime && e.end_datetime)
+        ? Math.max(15, Math.round((new Date(e.end_datetime) - new Date(e.start_datetime)) / 60000))
+        : 60,
       location: e.location||"", requires_studio: !!e.requires_studio,
       studio_booked: !!e.studio_booked, recurrence:"none", recurrence_end:"",
       color: e.color||"", notes: e.notes||"",
@@ -985,9 +1007,13 @@ export default function SchedulePage() {
                     {batches.length === 0 && <span style={{fontSize:12,color:"var(--muted)"}}>No batches yet</span>}
                   </div>
                 </div>
-                <DateTimePicker label="Start *" value={form.start_datetime} onChange={v=>setForm({...form,start_datetime:v})} />
-                <DateTimePicker label="End *"   value={form.end_datetime}   onChange={v=>setForm({...form,end_datetime:v})} />
-                <Field label="Location / Room">
+                <DateTimePicker label="Start *" value={form.start_datetime} onChange={v=>setForm(f=>({...f,start_datetime:v,end_datetime:computeEndFromDuration(v,f.duration)}))} />
+                <Field label="Duration">
+                  <Select value={form.duration} onChange={e=>{ const d=Number(e.target.value); setForm(f=>({...f,duration:d,end_datetime:computeEndFromDuration(f.start_datetime,d)})); }}>
+                    {DURATION_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+                  </Select>
+                </Field>
+                <Field label="Location / Room" style={{gridColumn:"1/-1"}}>
                   <Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder="e.g. Studio A" />
                 </Field>
                 <Field label="Repeat">
@@ -1002,25 +1028,21 @@ export default function SchedulePage() {
                 )}
               </div>
               {/* Studio booking */}
-              <div style={{display:"flex",gap:16,margin:"10px 0",padding:12,background:"var(--surface)",borderRadius:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,margin:"10px 0",padding:12,background:"var(--surface)",borderRadius:10}}>
                 <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
                   <input type="checkbox" checked={form.requires_studio} onChange={e=>setForm({...form,requires_studio:e.target.checked})}
                     style={{width:16,height:16,accentColor:"var(--accent)"}} />
-                  <span>🏠 Requires studio booking</span>
+                  <span>🏠 Studio required</span>
                 </label>
                 {form.requires_studio && (
-                  <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
-                    <input type="checkbox" checked={form.studio_booked} onChange={e=>setForm({...form,studio_booked:e.target.checked})}
-                      style={{width:16,height:16,accentColor:"#52c4a0"}} />
-                    <span style={{color:"#52c4a0",fontWeight:600}}>✓ Studio confirmed</span>
-                  </label>
+                  <span style={{fontSize:12,color:"var(--muted)"}}>Studio booking status can be updated after saving.</span>
                 )}
               </div>
               <Field label="Notes">
                 <Textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} />
               </Field>
               <div style={{display:"flex",gap:9,marginTop:16}}>
-                <Button onClick={()=>saveMutation.mutate(form)} disabled={!form.title||!form.start_datetime||!form.end_datetime||saveMutation.isPending}>
+                <Button onClick={()=>saveMutation.mutate(form)} disabled={!form.title||!form.start_datetime||saveMutation.isPending}>
                   {saveMutation.isPending ? "Saving…" : panelMode === 'edit' ? "Save Changes" : form.recurrence!=="none" ? "Create Recurring Events" : "Create Event"}
                 </Button>
                 <Button variant="outline" onClick={() => { if (panelMode === 'add') setDetailEvent(null); setPanelMode('view'); }}>Cancel</Button>
