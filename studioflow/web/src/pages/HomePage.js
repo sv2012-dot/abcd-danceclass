@@ -424,7 +424,11 @@ function SchoolHomePage() {
                     />
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{todo.title}</div>
-                      {todo.event_title && <div style={{fontSize:11,color:"var(--muted)",marginTop:1}}>📅 {todo.event_title}</div>}
+                      {(todo.event_title || todo.recital_title) && (
+                        <div style={{fontSize:11,color:"var(--muted)",marginTop:1}}>
+                          {todo.recital_title ? `🌟 ${todo.recital_title}` : `📅 ${todo.event_title}`}
+                        </div>
+                      )}
                     </div>
                     {todo.due_date && (
                       <span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:999,flexShrink:0,color:od?"#ff3b30":"var(--muted)",background:od?"#fff0ee":"var(--surface)"}}>

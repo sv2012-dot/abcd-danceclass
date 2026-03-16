@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
-import { recitals as api } from "../api";
+import { recitals as api, todos as todosApi } from "../api";
 import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
@@ -47,7 +47,6 @@ function SectionHead({ title, sub }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const [tab,         setTab]         = useState("overview");
-  const [tasks,       setTasks]       = useState([]);
   const [newTask,     setNewTask]     = useState("");
   const [sugUrl,      setSugUrl]      = useState("");
   const [sugInput,    setSugInput]    = useState("");
@@ -357,29 +356,48 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
     queryKey: ["recital-detail", sid, id],
     queryFn: async () => {
       const res = await api.get(sid, id);
-      const { tasks: t, ...r } = res;
-      setTasks(t || []);
-      return r;
+      return res;
     },
     enabled: !!sid && !!id,
   });
 
-  const toggleTask = async (taskId, done) => {
-    try {
-      await api.toggleTask(sid, id, taskId);
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, is_done: !done } : t));
-      qc.invalidateQueries(["recitals", sid]);
-    } catch { toast.error("Failed to update task"); }
-  };
+  // ── Unified todos for this recital ───────────────────────────────────────
+  const { data: todosData } = useQuery({
+    queryKey: ["todos", sid],
+    queryFn: () => todosApi.list(sid),
+    enabled: !!sid,
+  });
+  const recitalTodos = (todosData?.todos || []).filter(t => t.recital_id === Number(id));
 
-  const addTask = async () => {
+  const createTodoMut = useMutation({
+    mutationFn: (title) => todosApi.create(sid, { title, recital_id: Number(id) }),
+    onSuccess: () => { qc.invalidateQueries(["todos", sid]); setNewTask(""); toast.success("To-do added"); },
+    onError: () => toast.error("Failed to add to-do"),
+  });
+
+  const toggleTodoMut = useMutation({
+    mutationFn: (taskId) => todosApi.toggle(sid, taskId),
+    onMutate: async (taskId) => {
+      await qc.cancelQueries(["todos", sid]);
+      const prev = qc.getQueryData(["todos", sid]);
+      qc.setQueryData(["todos", sid], old => old?.todos
+        ? { ...old, todos: old.todos.map(t => t.id === taskId ? { ...t, is_complete: t.is_complete ? 0 : 1 } : t) }
+        : old);
+      return { prev };
+    },
+    onError: (_e, _id, ctx) => qc.setQueryData(["todos", sid], ctx.prev),
+    onSettled: () => qc.invalidateQueries(["todos", sid]),
+  });
+
+  const deleteTodoMut = useMutation({
+    mutationFn: (taskId) => todosApi.remove(sid, taskId),
+    onSuccess: () => { qc.invalidateQueries(["todos", sid]); toast.success("To-do removed"); },
+    onError: () => toast.error("Failed to delete"),
+  });
+
+  const addTask = () => {
     if (!newTask.trim()) return;
-    try {
-      const task = await api.addTask(sid, id, newTask);
-      setTasks(prev => [...prev, task]);
-      setNewTask("");
-      qc.invalidateQueries(["recitals", sid]);
-    } catch { toast.error("Failed to add task"); }
+    createTodoMut.mutate(newTask.trim());
   };
 
   if (isLoading || !recital) {
@@ -395,15 +413,15 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const [_yr, _mo, _dy] = (recital.event_date||'').slice(0,10).split('-').map(Number);
   const d       = (_yr && _mo && _dy) ? new Date(_yr, _mo - 1, _dy) : new Date(NaN);
   const fmtDate = isNaN(d) ? "—" : d.toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" });
-  const done    = tasks.filter(t => t.is_done).length;
-  const pct     = tasks.length ? Math.round(done / tasks.length * 100) : 0;
+  const done    = recitalTodos.filter(t => t.is_complete).length;
+  const pct     = recitalTodos.length ? Math.round(done / recitalTodos.length * 100) : 0;
 
   const TABS = [
     { id:"overview",   label:"Overview" },
     { id:"program",    label:"Program Schedule" },
     { id:"volunteers", label:"Parent Volunteers" },
     { id:"vendors",    label:"Vendors" },
-    { id:"tasks",      label:`Tasks${tasks.length ? ` (${done}/${tasks.length})` : ""}` },
+    { id:"tasks",      label:`To-Dos${recitalTodos.length ? ` (${done}/${recitalTodos.length})` : ""}` },
   ];
 
   const META = [
@@ -1296,66 +1314,83 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
           </div>
         )}
 
-        {/* ── TASKS ── */}
+        {/* ── TO-DOS ── */}
         {tab === "tasks" && (
           <div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <SectionHead title="Tasks & Checklist" sub="Event preparation tasks and deadlines" />
-              {tasks.length > 0 && (
+              <SectionHead title="To-Dos" sub="Tasks linked to this recital — they also appear on the main To-Dos page" />
+              {recitalTodos.length > 0 && (
                 <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                   <div style={{ width:80, height:6, borderRadius:3, background:"var(--border)", overflow:"hidden" }}>
                     <div style={{ height:"100%", width:pct+"%", background:color, borderRadius:3, transition:"width .3s" }} />
                   </div>
-                  <span style={{ fontSize:12, color:"var(--muted)", fontWeight:600 }}>{done}/{tasks.length} done</span>
+                  <span style={{ fontSize:12, color:"var(--muted)", fontWeight:600 }}>{done}/{recitalTodos.length} done</span>
                 </div>
               )}
             </div>
 
-            {tasks.length === 0 ? (
-              <p style={{ fontSize:13, color:"var(--muted)", marginBottom:20 }}>No tasks yet. Add the first one below.</p>
+            {recitalTodos.length === 0 ? (
+              <p style={{ fontSize:13, color:"var(--muted)", marginBottom:20 }}>No to-dos yet. Add the first one below.</p>
             ) : (
               <div style={{ borderRadius:12, overflow:"hidden", border:"1px solid var(--border)", marginBottom:16 }}>
-                {tasks.map((t, i) => (
+                {recitalTodos.map((t, i) => (
                   <div key={t.id}
-                    onClick={() => toggleTask(t.id, t.is_done)}
                     style={{
                       display:"flex", alignItems:"center", padding:"14px 20px", gap:14,
-                      background: t.is_done ? "var(--surface)" : "var(--card)",
-                      borderBottom: i < tasks.length - 1 ? "1px solid var(--border)" : "none",
-                      cursor:"pointer", transition:"background .1s",
+                      background: t.is_complete ? "var(--surface)" : "var(--card)",
+                      borderBottom: i < recitalTodos.length - 1 ? "1px solid var(--border)" : "none",
+                      transition:"background .1s",
                     }}>
                     {/* Checkbox */}
-                    <div style={{
-                      width:22, height:22, borderRadius:"50%", flexShrink:0,
-                      border: t.is_done ? "none" : "2px solid var(--border)",
-                      background: t.is_done ? color : "transparent",
-                      display:"flex", alignItems:"center", justifyContent:"center",
-                      transition:"all .15s",
-                    }}>
-                      {t.is_done && <CheckIcon />}
+                    <div
+                      onClick={() => toggleTodoMut.mutate(t.id)}
+                      style={{
+                        width:22, height:22, borderRadius:"50%", flexShrink:0, cursor:"pointer",
+                        border: t.is_complete ? "none" : "2px solid var(--border)",
+                        background: t.is_complete ? color : "transparent",
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        transition:"all .15s",
+                      }}>
+                      {t.is_complete && <CheckIcon />}
                     </div>
                     <span style={{
                       fontSize:14, flex:1,
-                      textDecoration: t.is_done ? "line-through" : "none",
-                      color: t.is_done ? "var(--muted)" : "var(--text)",
-                    }}>{t.task_text || t.task || t.title || ""}</span>
+                      textDecoration: t.is_complete ? "line-through" : "none",
+                      color: t.is_complete ? "var(--muted)" : "var(--text)",
+                    }}>{t.title}</span>
+                    {t.due_date && (
+                      <span style={{ fontSize:11, color:"var(--muted)", background:"var(--surface)", padding:"3px 9px", borderRadius:20, fontWeight:600, flexShrink:0 }}>
+                        {t.due_date.slice(0,10)}
+                      </span>
+                    )}
                     <span style={{
                       fontSize:11, padding:"4px 12px", borderRadius:20, fontWeight:700, flexShrink:0,
-                      background: t.is_done ? "#52c4a020" : "var(--border)",
-                      color:      t.is_done ? "#52c4a0"   : "var(--muted)",
-                    }}>{t.is_done ? "Completed" : "Pending"}</span>
+                      background: t.is_complete ? "#52c4a020" : "var(--border)",
+                      color:      t.is_complete ? "#52c4a0"   : "var(--muted)",
+                    }}>{t.is_complete ? "Done" : "Open"}</span>
+                    <button
+                      onClick={() => deleteTodoMut.mutate(t.id)}
+                      title="Delete"
+                      style={{ background:"none", border:"none", cursor:"pointer", color:"#c7c7cc", padding:"2px 4px", display:"flex", alignItems:"center", flexShrink:0 }}
+                      onMouseEnter={e => { e.currentTarget.style.color = "#ff3b30"; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = "#c7c7cc"; }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2"/>
+                      </svg>
+                    </button>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Add task input */}
+            {/* Add to-do input */}
             <div style={{ display:"flex", gap:8 }}>
               <input
                 value={newTask}
                 onChange={e => setNewTask(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && addTask()}
-                placeholder="Add a new task… (press Enter)"
+                placeholder="Add a new to-do… (press Enter)"
                 style={{
                   flex:1, padding:"10px 16px",
                   border:"1.5px solid var(--border)", borderRadius:10,
@@ -1364,7 +1399,9 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                   fontFamily:"inherit",
                 }}
               />
-              <Button onClick={addTask} icon="➕">Add Task</Button>
+              <Button onClick={addTask} disabled={createTodoMut.isPending} icon="➕">
+                {createTodoMut.isPending ? "Adding…" : "Add To-Do"}
+              </Button>
             </div>
           </div>
         )}

@@ -88,6 +88,11 @@ const TodoRow = ({ todo, onToggle, onDelete }) => {
           <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{todo.notes}</div>
         )}
         <div style={{ display: 'flex', gap: 6, marginTop: (linkedLabel || todo.due_date) ? 5 : 0, flexWrap: 'wrap', alignItems: 'center' }}>
+          {todo.recital_id && (
+            <span style={{ fontSize: 11, color: '#c4527a', background: '#c4527a15', border: '1px solid #c4527a30', padding: '2px 8px', borderRadius: 999, fontWeight: 700, letterSpacing: '0.03em' }}>
+              Recital
+            </span>
+          )}
           {linkedLabel && (
             <span style={{ fontSize: 11, color: '#fff', background: linkedColor, padding: '2px 8px', borderRadius: 999, fontWeight: 600 }}>
               {linkedLabel}
