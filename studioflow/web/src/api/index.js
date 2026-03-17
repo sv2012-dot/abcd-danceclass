@@ -94,3 +94,10 @@ export const studios = {
   update: (schoolId, id, d) => api.put(`/schools/${schoolId}/studios/${id}`, d),
   remove: (schoolId, id)    => api.delete(`/schools/${schoolId}/studios/${id}`),
 };
+
+export const vendors = {
+  list: (schoolId, category) => api.get(`/schools/${schoolId}/vendors${category ? `?category=${encodeURIComponent(category)}` : ''}`),
+  create: (schoolId, data)   => api.post(`/schools/${schoolId}/vendors`, data),
+  update: (schoolId, id, data) => api.put(`/schools/${schoolId}/vendors/${id}`, data),
+  remove: (schoolId, id)     => api.delete(`/schools/${schoolId}/vendors/${id}`),
+};

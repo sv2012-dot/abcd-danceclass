@@ -75,6 +75,45 @@ async function patchTables() {
     await addColumnIfMissing('students', 'avatar',       'VARCHAR(100) NULL');
     await addColumnIfMissing('todos',    'assigned_to',  'VARCHAR(100) NULL');
 
+    // Vendors table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS vendors (
+        id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        school_id    INT UNSIGNED NOT NULL,
+        name         VARCHAR(200) NOT NULL,
+        category     VARCHAR(80)  NOT NULL DEFAULT 'Other',
+        contact_name VARCHAR(140) NULL,
+        phone        VARCHAR(40)  NULL,
+        email        VARCHAR(180) NULL,
+        website      VARCHAR(255) NULL,
+        instagram    VARCHAR(120) NULL,
+        price_range  VARCHAR(80)  NULL,
+        notes        TEXT         NULL,
+        is_favorite  TINYINT(1)   NOT NULL DEFAULT 0,
+        is_active    TINYINT(1)   NOT NULL DEFAULT 1,
+        created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_school (school_id),
+        FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // Seed vendors for school 1 (only if table is empty for that school)
+    const [[vCount]] = await pool.query('SELECT COUNT(*) as n FROM vendors WHERE school_id = 1');
+    if (vCount.n === 0) {
+      await pool.query(`
+        INSERT INTO vendors (school_id, name, category, contact_name, phone, email, website, instagram, price_range, notes, is_favorite) VALUES
+        (1,'Priya Lens Studio','Photographer','Priya Nair','+1 206 555 0101','priya@priyalens.com','https://priyalens.com','@priyalens','$400–$800','Specialises in Bharatanatyam recital photography. Brings extra lighting rigs.',1),
+        (1,'Reel Motion Films','Videographer','Arjun Menon','+1 206 555 0102','arjun@reelmotion.com','https://reelmotion.com','@reelmotionfilms','$600–$1200','Full recital packages with multi-camera setup. Drone available at extra cost.',1),
+        (1,'Kalai Costumes','Costume Provider','Lakshmi Iyer','+1 425 555 0103','lakshmi@kalaicostumes.com','https://kalaicostumes.com','@kalaicostumes','Custom pricing','Classical Bharatanatyam and folk costume rentals and tailoring. 3-week lead time.',0),
+        (1,'Glam by Divya','Makeup Artist','Divya Sharma','+1 206 555 0104','divya@glambydivya.com',NULL,'@glambydivya','$80/artist','Stage makeup specialist for classical dance. Group rates available.',0),
+        (1,'Blooms & Petals','Florist','Meena Raj','+1 425 555 0105','meena@bloomsandpetals.com','https://bloomsandpetals.com',NULL,'$150–$500','Stage flower arrangements and garlands for recitals.',0),
+        (1,'SoundWave AV','Sound & Music','Kevin Thomas','+1 206 555 0106','kevin@soundwaveav.com','https://soundwaveav.com',NULL,'$300/event','Full PA system, wireless mics, mixing. Free setup consultation.',0),
+        (1,'Pixel Perfect Events','Photographer','Rahul Gupta','+1 206 555 0107','rahul@pixelperfect.com',NULL,'@pixelperfectevents','$300–$600','Action shots during performances. Candid and posed portfolios.',0),
+        (1,'Stage Light Co','Lighting','Amanda Cross','+1 253 555 0108','amanda@stagelightco.com','https://stagelightco.com',NULL,'$250–$700','Theatre-grade LED rigs with colour profiles for Indian classical performances.',0)
+      `);
+    }
+
     console.log('✅ patchTables complete');
   } catch (err) {
     // Non-fatal — log but don't crash the server
