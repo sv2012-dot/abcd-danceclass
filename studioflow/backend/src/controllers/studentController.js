@@ -8,7 +8,8 @@ exports.list = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT s.*,
-        GROUP_CONCAT(b.name ORDER BY b.name SEPARATOR ", ") as batches
+        GROUP_CONCAT(b.name ORDER BY b.name SEPARATOR ", ") as batches,
+        GROUP_CONCAT(b.id   ORDER BY b.name SEPARATOR ",")  as batch_ids
       FROM students s
       LEFT JOIN batch_students bs ON bs.student_id = s.id
       LEFT JOIN batches b ON b.id = bs.batch_id
@@ -54,6 +55,27 @@ exports.update = async (req, res) => {
     );
     const [rows] = await pool.query('SELECT * FROM students WHERE id = ?', [req.params.id]);
     res.json(rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.setBatches = async (req, res) => {
+  const { batch_ids = [] } = req.body;
+  const studentId = Number(req.params.id);
+  const schoolId  = Number(req.params.schoolId);
+  try {
+    // Remove student from every batch belonging to this school
+    await pool.query(
+      `DELETE bs FROM batch_students bs
+       JOIN batches b ON b.id = bs.batch_id
+       WHERE bs.student_id = ? AND b.school_id = ?`,
+      [studentId, schoolId]
+    );
+    // Re-enroll in selected batches
+    if (batch_ids.length > 0) {
+      const vals = batch_ids.map(bid => [Number(bid), studentId]);
+      await pool.query('INSERT IGNORE INTO batch_students (batch_id, student_id) VALUES ?', [vals]);
+    }
+    res.json({ message: 'Enrollment updated' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 

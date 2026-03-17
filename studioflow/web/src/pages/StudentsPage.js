@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
-import { students as api } from "../api";
+import { students as api, batches as batchApi } from "../api";
 import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
@@ -221,6 +221,15 @@ export default function StudentsPage() {
     enabled: !!sid,
   });
 
+  const { data: batchList = [] } = useQuery({
+    queryKey: ["batches", sid],
+    queryFn: async () => { const d = await batchApi.list(sid); return d?.batches || d || []; },
+    enabled: !!sid,
+  });
+
+  // Parse comma-separated batch ID string from list query into number array
+  const parseBatchIds = (str) => str ? String(str).split(",").map(Number).filter(Boolean) : [];
+
   const invalidate = () => { qc.invalidateQueries(["students", sid]); qc.invalidateQueries(["stats", sid]); };
 
   const addMutation = useMutation({
@@ -230,11 +239,18 @@ export default function StudentsPage() {
   });
 
   const editMutation = useMutation({
-    mutationFn: data => api.update(sid, selected.id, data),
-    onSuccess: (_, vars) => {
+    mutationFn: async ({ batch_ids, ...data }) => {
+      await api.update(sid, selected.id, data);
+      await api.setBatches(sid, selected.id, batch_ids || []);
+      return { batch_ids, ...data };
+    },
+    onSuccess: (vars) => {
       invalidate();
       toast.success("Student updated");
-      setSelected({ ...selected, ...vars });
+      const batchNames = (vars.batch_ids || [])
+        .map(id => batchList.find(b => b.id === Number(id))?.name)
+        .filter(Boolean).join(", ");
+      setSelected(s => ({ ...s, ...vars, batches: batchNames, batch_ids: (vars.batch_ids || []).join(",") }));
       setIsEditing(false);
     },
     onError: err => toast.error(err?.error || "Failed to save"),
@@ -259,7 +275,7 @@ export default function StudentsPage() {
 
   const openAdd    = () => { setAddForm({ ...EMPTY, join_date: new Date().toISOString().split("T")[0] }); setSelected(null); setIsEditing(false); setShowAdd(true); };
   const pick       = s  => { setSelected(s); setIsEditing(false); };
-  const startEdit  = ()  => { setEditForm({ ...selected }); setIsEditing(true); };
+  const startEdit  = ()  => { setEditForm({ ...selected, batch_ids: parseBatchIds(selected.batch_ids) }); setIsEditing(true); };
 
   const openPickerFor = (target) => { setPickerTarget(target); setShowPicker(true); };
   const handleAvatarPick = (val) => {
@@ -558,6 +574,76 @@ export default function StudentsPage() {
                       <Field label="Notes"><Textarea value={editForm.notes || ""} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Any notes…" /></Field>
                     </>);
                   })()}
+
+                  {/* ── Batch Enrollment Picker ── */}
+                  <div style={{ marginTop: 14 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 8 }}>
+                      Enrolled Batches
+                    </div>
+                    {batchList.length === 0 && (
+                      <span style={{ fontSize: 12, color: "var(--muted)" }}>No batches yet — create one in Batches.</span>
+                    )}
+                    {batchList.length > 0 && batchList.length < 5 ? (
+                      /* Badge pill selector */
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                        {batchList.map(b => {
+                          const on = (editForm.batch_ids || []).includes(b.id);
+                          return (
+                            <button key={b.id} type="button"
+                              onClick={() => setEditForm(f => ({
+                                ...f,
+                                batch_ids: on
+                                  ? (f.batch_ids || []).filter(x => x !== b.id)
+                                  : [...(f.batch_ids || []), b.id],
+                              }))}
+                              style={{
+                                padding: "6px 15px", borderRadius: 20, cursor: "pointer",
+                                fontSize: 12, fontWeight: 700, transition: "all .12s",
+                                border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`,
+                                background: on ? "var(--accent)" : "transparent",
+                                color: on ? "#fff" : "var(--muted)",
+                              }}
+                            >
+                              {on && "✓ "}{b.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : batchList.length >= 5 ? (
+                      /* Checkbox list in scrollable container */
+                      <div style={{ maxHeight: 168, overflowY: "auto", borderRadius: 9, border: "1.5px solid var(--border)", background: "var(--surface)" }}>
+                        {batchList.map(b => {
+                          const on = (editForm.batch_ids || []).includes(b.id);
+                          return (
+                            <label key={b.id} style={{
+                              display: "flex", alignItems: "center", gap: 10,
+                              padding: "8px 13px", cursor: "pointer",
+                              background: on ? "var(--accent)14" : "transparent",
+                              borderBottom: "1px solid var(--border)",
+                              transition: "background .1s",
+                            }}>
+                              <input type="checkbox" checked={on}
+                                onChange={() => setEditForm(f => ({
+                                  ...f,
+                                  batch_ids: on
+                                    ? (f.batch_ids || []).filter(x => x !== b.id)
+                                    : [...(f.batch_ids || []), b.id],
+                                }))}
+                                style={{ accentColor: "var(--accent)", width: 15, height: 15, flexShrink: 0 }}
+                              />
+                              <span style={{ fontSize: 13, fontWeight: on ? 600 : 400, color: on ? "var(--accent)" : "var(--text)" }}>
+                                {b.name}
+                              </span>
+                              {b.dance_style && (
+                                <span style={{ fontSize: 10, color: "var(--muted)", marginLeft: "auto" }}>{b.dance_style}</span>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+
                   <div style={{ display: "flex", gap: 9, marginTop: 14 }}>
                     <Button onClick={() => editMutation.mutate(editForm)} disabled={!editForm.name || editMutation.isPending}>
                       {editMutation.isPending ? "Saving…" : "Save Changes"}
