@@ -1,9 +1,26 @@
 /**
  * patchTables.js
- * Adds tables that were introduced after the initial migration.
- * Uses CREATE TABLE IF NOT EXISTS — safe to run on every startup.
+ * Adds tables / columns introduced after the initial migration.
+ * Uses CREATE TABLE IF NOT EXISTS + INFORMATION_SCHEMA checks for ALTER TABLE
+ * so it is safe to run on every startup across all MySQL versions (5.7+).
  */
 const { pool } = require('../database');
+
+/** Add a column only if it doesn't already exist — works on MySQL 5.7+ */
+async function addColumnIfMissing(table, column, definition) {
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS cnt
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME   = ?
+       AND COLUMN_NAME  = ?`,
+    [table, column]
+  );
+  if (rows[0].cnt === 0) {
+    await pool.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
+    console.log(`  ➕ Added ${table}.${column}`);
+  }
+}
 
 async function patchTables() {
   try {
@@ -53,27 +70,12 @@ async function patchTables() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // Add profile_json column to schools if missing (added in a later release)
-    await pool.query(`
-      ALTER TABLE schools
-        ADD COLUMN IF NOT EXISTS profile_json LONGTEXT NULL
-    `).catch(() => {
-      // ALTER TABLE ... ADD COLUMN IF NOT EXISTS is MySQL 8+ only; silently ignore on older versions
-    });
+    // Column patches — uses INFORMATION_SCHEMA so they work on MySQL 5.7+
+    await addColumnIfMissing('schools',  'profile_json', 'LONGTEXT NULL');
+    await addColumnIfMissing('students', 'avatar',       'VARCHAR(100) NULL');
+    await addColumnIfMissing('todos',    'assigned_to',  'VARCHAR(100) NULL');
 
-    // Add avatar column to students (added for avatar-picker feature)
-    await pool.query(`
-      ALTER TABLE students
-        ADD COLUMN IF NOT EXISTS avatar VARCHAR(100) NULL
-    `).catch(() => {});
-
-    // Add assigned_to column to todos (added for assignee feature)
-    await pool.query(`
-      ALTER TABLE todos
-        ADD COLUMN IF NOT EXISTS assigned_to VARCHAR(100) NULL
-    `).catch(() => {});
-
-    console.log('✅ patchTables: todos, studios, schools.profile_json, students.avatar, todos.assigned_to ensured');
+    console.log('✅ patchTables complete');
   } catch (err) {
     // Non-fatal — log but don't crash the server
     console.warn('⚠ patchTables warning:', err.message);
