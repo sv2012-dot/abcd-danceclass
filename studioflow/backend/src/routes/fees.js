@@ -8,5 +8,6 @@ router.get('/summary',        auth('superadmin','school_admin'), c.summary);
 router.get('/',               auth('superadmin','school_admin'), c.listFees);
 router.post('/',              auth('superadmin','school_admin'), c.createFee);
 router.put('/:feeId/status',  auth('superadmin','school_admin'), c.updateFeeStatus);
+router.post('/toggle-current/:studentId', auth('superadmin','school_admin'), c.toggleCurrentFee);
 
 module.exports = router;

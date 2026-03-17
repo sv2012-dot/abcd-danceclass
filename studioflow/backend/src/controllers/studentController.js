@@ -9,12 +9,19 @@ exports.list = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT s.*,
         GROUP_CONCAT(b.name ORDER BY b.name SEPARATOR ", ") as batches,
-        GROUP_CONCAT(b.id   ORDER BY b.name SEPARATOR ",")  as batch_ids
+        GROUP_CONCAT(b.id   ORDER BY b.name SEPARATOR ",")  as batch_ids,
+        sf_cur.status   as current_fee_status,
+        sf_cur.id       as current_fee_id,
+        sf_cur.due_date as current_fee_due
       FROM students s
       LEFT JOIN batch_students bs ON bs.student_id = s.id
       LEFT JOIN batches b ON b.id = bs.batch_id
+      LEFT JOIN student_fees sf_cur
+             ON sf_cur.student_id = s.id
+            AND sf_cur.school_id  = s.school_id
+            AND DATE_FORMAT(sf_cur.due_date,'%Y-%m') = DATE_FORMAT(CURDATE(),'%Y-%m')
       WHERE s.school_id = ? AND s.is_active = 1
-      GROUP BY s.id ORDER BY s.name
+      GROUP BY s.id, sf_cur.status, sf_cur.id, sf_cur.due_date ORDER BY s.name
     `, [schoolId]);
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }

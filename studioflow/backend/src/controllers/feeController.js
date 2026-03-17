@@ -73,3 +73,43 @@ exports.summary = async (req, res) => {
     res.json(rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
+
+exports.toggleCurrentFee = async (req, res) => {
+  const studentId = Number(req.params.studentId);
+  const schoolId  = Number(req.params.schoolId);
+  const dueDay    = Math.min(28, Math.max(1, Number(req.body.due_day) || 1));
+  const now       = new Date();
+  const yyyy      = now.getFullYear();
+  const mm        = String(now.getMonth() + 1).padStart(2, '0');
+  const yearMonth = `${yyyy}-${mm}`;
+  const dueDate   = `${yearMonth}-${String(dueDay).padStart(2, '0')}`;
+
+  try {
+    const [existing] = await pool.query(
+      `SELECT * FROM student_fees WHERE student_id = ? AND school_id = ? AND DATE_FORMAT(due_date,'%Y-%m') = ?`,
+      [studentId, schoolId, yearMonth]
+    );
+    if (existing.length === 0) {
+      // No record yet → create as Paid
+      await pool.query(
+        `INSERT INTO student_fees (school_id, student_id, amount, currency, due_date, status, paid_date, description)
+         VALUES (?, ?, 0, 'USD', ?, 'Paid', ?, 'Monthly fee')`,
+        [schoolId, studentId, dueDate, now.toISOString().slice(0, 10)]
+      );
+    } else {
+      const rec = existing[0];
+      const newStatus  = rec.status === 'Paid' ? 'Pending' : 'Paid';
+      const paidDate   = newStatus === 'Paid' ? now.toISOString().slice(0, 10) : null;
+      await pool.query(
+        `UPDATE student_fees SET status = ?, paid_date = ? WHERE id = ?`,
+        [newStatus, paidDate, rec.id]
+      );
+    }
+    // Return updated record
+    const [rows] = await pool.query(
+      `SELECT * FROM student_fees WHERE student_id = ? AND school_id = ? AND DATE_FORMAT(due_date,'%Y-%m') = ?`,
+      [studentId, schoolId, yearMonth]
+    );
+    res.json({ fee: rows[0] || null });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};

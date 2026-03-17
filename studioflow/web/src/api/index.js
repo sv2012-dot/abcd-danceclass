@@ -21,6 +21,7 @@ export const students = {
   update: (schoolId, id, data) => api.put(`/schools/${schoolId}/students/${id}`, data),
   remove: (schoolId, id) => api.delete(`/schools/${schoolId}/students/${id}`),
   setBatches: (schoolId, id, batch_ids) => api.put(`/schools/${schoolId}/students/${id}/batches`, { batch_ids }),
+  toggleFee: (schoolId, studentId, due_day) => api.post(`/schools/${schoolId}/fees/toggle-current/${studentId}`, { due_day }),
 };
 
 export const batches = {

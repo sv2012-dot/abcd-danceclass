@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
-import { students as api, batches as batchApi } from "../api";
+import { students as api, batches as batchApi, schools as schoolApi } from "../api";
 import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
@@ -194,6 +194,21 @@ export default function StudentsPage() {
   const sid = user?.school_id;
   const qc  = useQueryClient();
 
+  // ── Fee tracking settings (persisted per school in localStorage) ──────────
+  const FEE_KEY = `fee_settings_${sid}`;
+  const loadFeeSettings = useCallback(() => {
+    try { return JSON.parse(localStorage.getItem(FEE_KEY) || '{}'); } catch { return {}; }
+  }, [FEE_KEY]);
+  const [feeSettings, setFeeSettingsState] = useState(() => {
+    const s = (() => { try { return JSON.parse(localStorage.getItem(`fee_settings_${sid}`) || '{}'); } catch { return {}; } })();
+    return { enabled: !!s.enabled, dueDay: s.dueDay || 1 };
+  });
+  const [feeSettingsOpen, setFeeSettingsOpen] = useState(false);
+  const saveFeeSettings = (next) => {
+    setFeeSettingsState(next);
+    localStorage.setItem(FEE_KEY, JSON.stringify(next));
+  };
+
   const [search, setSearch]       = useState("");
   const [view, setView]           = useState("grid");
   const [selected, setSelected]   = useState(null);
@@ -266,12 +281,46 @@ export default function StudentsPage() {
     onError: err => toast.error(err?.error || "Failed to remove"),
   });
 
+  // ── Fee toggle mutation ───────────────────────────────────────────────────
+  const feeToggleMutation = useMutation({
+    mutationFn: ({ studentId }) => api.toggleFee(sid, studentId, feeSettings.dueDay),
+    onSuccess: ({ fee }, { studentId }) => {
+      // Optimistically update the list cache
+      qc.setQueryData(["students", sid], old =>
+        (old || []).map(s => s.id === studentId
+          ? { ...s, current_fee_status: fee?.status || null, current_fee_id: fee?.id || null }
+          : s
+        )
+      );
+      // Also update selected if it's the same student
+      setSelected(sel => sel?.id === studentId
+        ? { ...sel, current_fee_status: fee?.status || null }
+        : sel
+      );
+    },
+    onError: () => toast.error("Could not update fee status"),
+  });
+
   // ── Helpers ──────────────────────────────────────────────────────────────
   const filtered  = list.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()));
   const fmtLong   = d => { if (!d) return null; const [y,m,dy] = (d||"").slice(0,10).split("-").map(Number); return (y&&m&&dy) ? new Date(y,m-1,dy).toLocaleDateString("en",{year:"numeric",month:"long",day:"numeric"}) : null; };
   const fmtShort  = d => { if (!d) return null; const [y,m,dy] = (d||"").slice(0,10).split("-").map(Number); return (y&&m&&dy) ? new Date(y,m-1,dy).toLocaleDateString("en",{month:"short",year:"numeric"}) : null; };
   const ageLabel  = age => { const n = Number(age); if (!age && age !== 0) return null; return n > 18 ? "Adult" : `${n} yrs`; };
   const ageDot    = age => { const n = Number(age); if (!age && age !== 0) return "#aaa"; if (n <= 8) return "#6a7fdb"; if (n <= 12) return "#f4a041"; if (n <= 18) return "#52c4a0"; return "#52c4a0"; };
+
+  // Fee status helpers
+  const feeBadgeProps = (status, dueDay) => {
+    const today = new Date().getDate();
+    if (status === 'Paid')    return { label: "✓ Paid",    bg: "#52c4a014", border: "#52c4a0", color: "#52c4a0" };
+    if (status === 'Overdue') return { label: "⚠ Overdue", bg: "#e05c6a14", border: "#e05c6a", color: "#e05c6a" };
+    if (status === 'Pending') return today > dueDay
+      ? { label: "⚠ Overdue", bg: "#e05c6a14", border: "#e05c6a", color: "#e05c6a" }
+      : { label: "Due",        bg: "#f4a04114", border: "#f4a041", color: "#b45309" };
+    // No record — show based on whether due day has passed
+    return today > dueDay
+      ? { label: "⚠ Overdue", bg: "#e05c6a14", border: "#e05c6a", color: "#e05c6a" }
+      : { label: "Fee due",   bg: "var(--surface)", border: "var(--border)", color: "var(--muted)" };
+  };
 
   const openAdd    = () => { setAddForm({ ...EMPTY, join_date: new Date().toISOString().split("T")[0] }); setSelected(null); setIsEditing(false); setShowAdd(true); };
   const pick       = s  => { setSelected(s); setIsEditing(false); };
@@ -308,8 +357,78 @@ export default function StudentsPage() {
         </div>
       </div>
 
-      {/* ── Search ── */}
-      <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search students…" style={{ maxWidth: 280, marginBottom: 18 }} />
+      {/* ── Search + Fee Settings row ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: feeSettingsOpen ? 0 : 18, flexWrap: "wrap" }}>
+        <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search students…" style={{ maxWidth: 280 }} />
+        <button
+          onClick={() => setFeeSettingsOpen(o => !o)}
+          title="Fee tracking settings"
+          style={{
+            display: "flex", alignItems: "center", gap: 6, padding: "7px 13px",
+            borderRadius: 9, border: `1.5px solid ${feeSettings.enabled ? "var(--accent)" : "var(--border)"}`,
+            background: feeSettings.enabled ? "var(--accent)18" : "transparent",
+            color: feeSettings.enabled ? "var(--accent)" : "var(--muted)",
+            cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+          }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+            <path d="M12 2v2m0 16v2M2 12h2m16 0h2"/>
+          </svg>
+          Fee Tracking {feeSettings.enabled ? "On" : "Off"}
+        </button>
+      </div>
+
+      {/* ── Fee Settings Banner ── */}
+      {feeSettingsOpen && (
+        <div style={{
+          margin: "10px 0 18px", padding: "14px 18px", borderRadius: 11,
+          background: "var(--card)", border: "1.5px solid var(--border)",
+          display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+        }}>
+          {/* Toggle */}
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Track monthly fees</span>
+            <button
+              type="button"
+              onClick={() => saveFeeSettings({ ...feeSettings, enabled: !feeSettings.enabled })}
+              style={{
+                width: 44, height: 24, borderRadius: 999, border: "none",
+                background: feeSettings.enabled ? "var(--accent)" : "var(--border)",
+                position: "relative", cursor: "pointer", transition: "background .2s", flexShrink: 0,
+              }}>
+              <span style={{
+                display: "block", width: 18, height: 18, borderRadius: "50%", background: "#fff",
+                boxShadow: "0 1px 4px rgba(0,0,0,.25)", position: "absolute", top: 3,
+                left: feeSettings.enabled ? "calc(100% - 21px)" : "3px",
+                transition: "left .2s cubic-bezier(0.4,0,0.2,1)",
+              }} />
+            </button>
+          </label>
+
+          {feeSettings.enabled && (
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text)" }}>
+              <span>Due on</span>
+              <select
+                value={feeSettings.dueDay}
+                onChange={e => saveFeeSettings({ ...feeSettings, dueDay: Number(e.target.value) })}
+                style={{ padding: "4px 8px", borderRadius: 7, border: "1.5px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13, fontWeight: 600 }}
+              >
+                {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                  <option key={d} value={d}>{d === 1 ? "1st" : d === 2 ? "2nd" : d === 3 ? "3rd" : `${d}th`} of month</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {feeSettings.enabled && (
+            <span style={{ fontSize: 11, color: "var(--muted)", flex: 1 }}>
+              Fee badges appear on all student cards. Click a badge to mark Paid or Unpaid.
+            </span>
+          )}
+
+          <button onClick={() => setFeeSettingsOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 18, lineHeight: 1, marginLeft: "auto" }}>×</button>
+        </div>
+      )}
 
       {/* ── Content ── */}
       {isLoading ? (
@@ -373,6 +492,27 @@ export default function StudentsPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Fee badge — only when tracking is on */}
+                {feeSettings.enabled && (() => {
+                  const bp = feeBadgeProps(s.current_fee_status, feeSettings.dueDay);
+                  return (
+                    <div style={{ padding: "0 18px 14px" }}>
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); feeToggleMutation.mutate({ studentId: s.id }); }}
+                        title="Click to toggle Paid / Unpaid"
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 5,
+                          padding: "4px 12px", borderRadius: 20, cursor: "pointer",
+                          fontSize: 11, fontWeight: 700, border: `1.5px solid ${bp.border}`,
+                          background: bp.bg, color: bp.color, transition: "all .15s",
+                        }}>
+                        {bp.label}
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
@@ -539,6 +679,25 @@ export default function StudentsPage() {
                   )}
                   <PanelSection title="Enrollment">
                     <InfoRow icon="📅" label="Joined" value={fmtLong(selected.join_date)} />
+                    {feeSettings.enabled && (() => {
+                      const bp = feeBadgeProps(selected.current_fee_status, feeSettings.dueDay);
+                      return (
+                        <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>Monthly Fee</span>
+                          <button
+                            type="button"
+                            onClick={() => feeToggleMutation.mutate({ studentId: selected.id })}
+                            title="Click to toggle Paid / Unpaid"
+                            style={{
+                              padding: "4px 14px", borderRadius: 20, cursor: "pointer",
+                              fontSize: 12, fontWeight: 700, border: `1.5px solid ${bp.border}`,
+                              background: bp.bg, color: bp.color, transition: "all .15s",
+                            }}>
+                            {bp.label}
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </PanelSection>
                   {selected.notes && (
                     <PanelSection title="Notes">
