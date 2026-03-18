@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -21,22 +21,35 @@ function fmtTime(dt) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function useWindowWidth() {
+  const [w, setW] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1024);
+  useEffect(() => {
+    const h = () => setW(window.innerWidth);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return w;
+}
+
 // ── Stat card ─────────────────────────────────────────────────────────────────
-function StatCard({ label, value, color, icon }) {
+function StatCard({ label, value, color, icon, isMobile }) {
   return (
     <div style={{
       background: 'var(--card)', borderRadius: 14, border: '1.5px solid var(--border)',
-      padding: '16px 22px', minWidth: 100, textAlign: 'center',
+      padding: isMobile ? '12px 16px' : '16px 22px',
+      minWidth: isMobile ? 0 : 100,
+      flex: isMobile ? 1 : 'none',
+      textAlign: 'center',
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
     }}>
       <div style={{ color: 'var(--muted)', marginBottom: 2 }}>{icon}</div>
-      <div style={{ fontSize: 28, fontWeight: 800, color, fontFamily: 'var(--font-d)', lineHeight: 1 }}>{value ?? '—'}</div>
+      <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, color, fontFamily: 'var(--font-d)', lineHeight: 1 }}>{value ?? '—'}</div>
       <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em' }}>{label}</div>
     </div>
   );
 }
 
-// ── Action button ─────────────────────────────────────────────────────────────
+// ── Action button (desktop) ───────────────────────────────────────────────────
 function ActionBtn({ children, color, onClick, outline }) {
   const [hov, setHov] = useState(false);
   const base = {
@@ -166,8 +179,25 @@ export default function DashboardPage() {
   const sid = user?.school_id;
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
   const [newTodo, setNewTodo] = useState('');
   const [addingTodo, setAddingTodo] = useState(false);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const createMenuRef = useRef(null);
+
+  // Close create menu when clicking outside
+  useEffect(() => {
+    if (!createMenuOpen) return;
+    const handler = (e) => {
+      if (createMenuRef.current && !createMenuRef.current.contains(e.target)) {
+        setCreateMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => { document.removeEventListener('mousedown', handler); document.removeEventListener('touchstart', handler); };
+  }, [createMenuOpen]);
 
   if (user?.role === 'superadmin') return <SuperAdminDash />;
 
@@ -215,9 +245,170 @@ export default function DashboardPage() {
   const dateStr = now.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   const firstName = user?.name?.split(' ')[0] || user?.name || '';
 
+  // ── Create menu options ───────────────────────────────────────────────────────
+  const CREATE_OPTIONS = [
+    { label: 'Create Event',   color: '#52c4a0', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, onClick: () => { navigate('/schedule'); setCreateMenuOpen(false); } },
+    { label: 'Create Recital', color: '#c4527a', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, onClick: () => { navigate('/recitals?new=1'); setCreateMenuOpen(false); } },
+    { label: 'Add Student',    color: '#6a7fdb', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>, onClick: () => { navigate('/students'); setCreateMenuOpen(false); } },
+  ];
+
+  // ── Widgets shared block ──────────────────────────────────────────────────────
+  const widgetsBlock = (
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+      <Widget emoji="🌟" title="Upcoming Recitals" onViewAll={() => navigate('/recitals')}>
+        {upcomingRecitals.length === 0
+          ? <div style={{ padding: '24px 18px', color: 'var(--muted)', fontSize: 13, textAlign: 'center' }}>No upcoming recitals</div>
+          : upcomingRecitals.slice(0, 4).map(r => <RecitalRow key={r.id} r={r} />)
+        }
+      </Widget>
+      <Widget emoji="📅" title="Upcoming Classes" onViewAll={() => navigate('/schedule')}>
+        {upcomingEvents.length === 0
+          ? <div style={{ padding: '24px 18px', color: 'var(--muted)', fontSize: 13, textAlign: 'center' }}>No upcoming events</div>
+          : upcomingEvents.slice(0, 4).map(e => <EventRow key={e.id} e={e} />)
+        }
+      </Widget>
+      <Widget emoji="✅" title="Open To-Dos" onViewAll={() => navigate('/todos')}>
+        {openTodos.length === 0 && !addingTodo
+          ? <div style={{ padding: '24px 18px', color: 'var(--muted)', fontSize: 13, textAlign: 'center' }}>All caught up!</div>
+          : openTodos.slice(0, 4).map(t => (
+              <TodoRow key={t.id} t={t}
+                onToggle={id => toggleTodo.mutate(id)}
+                onDelete={id => deleteTodo.mutate(id)}
+              />
+            ))
+        }
+        <div style={{ padding: '10px 18px', marginTop: 'auto' }}>
+          {addingTodo ? (
+            <form onSubmit={e => { e.preventDefault(); if (newTodo.trim()) addTodo.mutate(newTodo.trim()); }}
+              style={{ display: 'flex', gap: 8 }}>
+              <input
+                autoFocus
+                value={newTodo}
+                onChange={e => setNewTodo(e.target.value)}
+                placeholder="What needs doing?"
+                style={{
+                  flex: 1, padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--accent)',
+                  background: 'var(--surface)', color: 'var(--text)', fontSize: 13, outline: 'none',
+                }}
+                onKeyDown={e => { if (e.key === 'Escape') { setAddingTodo(false); setNewTodo(''); } }}
+              />
+              <button type="submit" style={{
+                padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--accent)',
+                color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+              }}>Add</button>
+              <button type="button" onClick={() => { setAddingTodo(false); setNewTodo(''); }} style={{
+                padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--border)',
+                background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: 12,
+              }}>✕</button>
+            </form>
+          ) : (
+            <button onClick={() => setAddingTodo(true)} style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--accent)', fontSize: 13, fontWeight: 600, padding: 0,
+            }}>+ Add to-do</button>
+          )}
+        </div>
+      </Widget>
+    </div>
+  );
+
+  // ── Stat cards block ──────────────────────────────────────────────────────────
+  const statsBlock = (
+    <div style={{ display: 'flex', gap: 12, flexShrink: 0, flexWrap: isMobile ? 'nowrap' : 'wrap' }}>
+      <StatCard label="Students" value={studentList.length}  color="#c4527a" icon={<IconStudents />} isMobile={isMobile} />
+      <StatCard label="Batches"  value={batchList.length}    color="#6a7fdb" icon={<IconBatches  />} isMobile={isMobile} />
+      <StatCard label="Recitals" value={upcomingRecitals.length} color="#f4a041" icon={<IconRecitals />} isMobile={isMobile} />
+    </div>
+  );
+
+  // ── MOBILE LAYOUT ─────────────────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div style={{ paddingBottom: 24 }}>
+        {/* Greeting */}
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 22, fontWeight: 800, marginBottom: 4, lineHeight: 1.2 }}>
+            {getGreeting()}, {firstName}! 👋
+          </h1>
+          <p style={{ color: 'var(--muted)', fontSize: 12 }}>{school?.name} · {now.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+        </div>
+
+        {/* Consolidated create button */}
+        <div style={{ position: 'relative', marginBottom: 24 }} ref={createMenuRef}>
+          <button
+            onClick={() => setCreateMenuOpen(o => !o)}
+            style={{
+              width: '100%', padding: '13px 20px',
+              borderRadius: 14, border: 'none',
+              background: 'var(--accent)', color: '#fff',
+              fontSize: 15, fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              boxShadow: '0 4px 16px rgba(var(--accent-rgb, 106,127,219),.35)',
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Create New
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ marginLeft: 'auto', transition: 'transform .2s', transform: createMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+
+          {/* Dropdown options */}
+          {createMenuOpen && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, zIndex: 200,
+              background: 'var(--card)', borderRadius: 14,
+              border: '1.5px solid var(--border)',
+              boxShadow: '0 8px 32px rgba(0,0,0,.16)',
+              overflow: 'hidden',
+            }}>
+              {CREATE_OPTIONS.map((opt, i) => (
+                <button key={i} onClick={opt.onClick} style={{
+                  width: '100%', padding: '15px 20px',
+                  background: 'none', border: 'none',
+                  borderBottom: i < CREATE_OPTIONS.length - 1 ? '1px solid var(--border)' : 'none',
+                  cursor: 'pointer', textAlign: 'left',
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  color: 'var(--text)', fontSize: 14, fontWeight: 600,
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                >
+                  <span style={{
+                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                    background: opt.color + '18', color: opt.color,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {opt.icon}
+                  </span>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Widgets */}
+        {widgetsBlock}
+
+        {/* Stats — at the very end */}
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 10 }}>
+            Studio Overview
+          </div>
+          {statsBlock}
+        </div>
+      </div>
+    );
+  }
+
+  // ── DESKTOP LAYOUT (unchanged) ────────────────────────────────────────────────
   return (
     <div>
-      {/* ── Top row: greeting + stat cards ── */}
+      {/* Top row: greeting + stat cards */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 20, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 28, fontWeight: 800, marginBottom: 6, lineHeight: 1.1 }}>
@@ -225,14 +416,10 @@ export default function DashboardPage() {
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: 13 }}>{school?.name} · {dateStr}</p>
         </div>
-        <div style={{ display: 'flex', gap: 12, flexShrink: 0, flexWrap: 'wrap' }}>
-          <StatCard label="Students" value={studentList.length}  color="#c4527a" icon={<IconStudents />} />
-          <StatCard label="Batches"  value={batchList.length}    color="#6a7fdb" icon={<IconBatches  />} />
-          <StatCard label="Recitals" value={upcomingRecitals.length} color="#f4a041" icon={<IconRecitals />} />
-        </div>
+        {statsBlock}
       </div>
 
-      {/* ── Quick action buttons ── */}
+      {/* Quick action buttons */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 28 }}>
         <ActionBtn color="#c4527a" onClick={() => navigate('/students')}>+ Add Student</ActionBtn>
         <ActionBtn color="#6a7fdb" onClick={() => navigate('/batches')}>+ Create Batch</ActionBtn>
@@ -241,70 +428,8 @@ export default function DashboardPage() {
         <ActionBtn outline color="var(--border)" onClick={() => navigate('/schedule')}>View Schedule →</ActionBtn>
       </div>
 
-      {/* ── 3-column widget grid ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
-
-        {/* Upcoming Recitals */}
-        <Widget emoji="🌟" title="Upcoming Recitals" onViewAll={() => navigate('/recitals')}>
-          {upcomingRecitals.length === 0
-            ? <div style={{ padding: '24px 18px', color: 'var(--muted)', fontSize: 13, textAlign: 'center' }}>No upcoming recitals</div>
-            : upcomingRecitals.slice(0, 4).map(r => <RecitalRow key={r.id} r={r} />)
-          }
-        </Widget>
-
-        {/* Upcoming Classes / Events */}
-        <Widget emoji="📅" title="Upcoming Classes" onViewAll={() => navigate('/schedule')}>
-          {upcomingEvents.length === 0
-            ? <div style={{ padding: '24px 18px', color: 'var(--muted)', fontSize: 13, textAlign: 'center' }}>No upcoming events</div>
-            : upcomingEvents.slice(0, 4).map(e => <EventRow key={e.id} e={e} />)
-          }
-        </Widget>
-
-        {/* Open To-Dos */}
-        <Widget emoji="✅" title="Open To-Dos" onViewAll={() => navigate('/todos')}>
-          {openTodos.length === 0 && !addingTodo
-            ? <div style={{ padding: '24px 18px', color: 'var(--muted)', fontSize: 13, textAlign: 'center' }}>All caught up!</div>
-            : openTodos.slice(0, 4).map(t => (
-                <TodoRow key={t.id} t={t}
-                  onToggle={id => toggleTodo.mutate(id)}
-                  onDelete={id => deleteTodo.mutate(id)}
-                />
-              ))
-          }
-          {/* Inline quick-add */}
-          <div style={{ padding: '10px 18px', marginTop: 'auto' }}>
-            {addingTodo ? (
-              <form onSubmit={e => { e.preventDefault(); if (newTodo.trim()) addTodo.mutate(newTodo.trim()); }}
-                style={{ display: 'flex', gap: 8 }}>
-                <input
-                  autoFocus
-                  value={newTodo}
-                  onChange={e => setNewTodo(e.target.value)}
-                  placeholder="What needs doing?"
-                  style={{
-                    flex: 1, padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--accent)',
-                    background: 'var(--surface)', color: 'var(--text)', fontSize: 13, outline: 'none',
-                  }}
-                  onKeyDown={e => { if (e.key === 'Escape') { setAddingTodo(false); setNewTodo(''); } }}
-                />
-                <button type="submit" style={{
-                  padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--accent)',
-                  color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                }}>Add</button>
-                <button type="button" onClick={() => { setAddingTodo(false); setNewTodo(''); }} style={{
-                  padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--border)',
-                  background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: 12,
-                }}>✕</button>
-              </form>
-            ) : (
-              <button onClick={() => setAddingTodo(true)} style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--accent)', fontSize: 13, fontWeight: 600, padding: 0,
-              }}>+ Add to-do</button>
-            )}
-          </div>
-        </Widget>
-      </div>
+      {/* 3-column widget grid */}
+      {widgetsBlock}
     </div>
   );
 }
