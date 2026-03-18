@@ -572,11 +572,11 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
             whiteSpace:"nowrap",
             display:"flex", flexDirection: isMobile ? "column" : "row",
             alignItems:"center", justifyContent:"center",
-            gap: isMobile ? 4 : 0,
+            gap: isMobile ? 4 : 6,
             lineHeight: 1.2,
           }}>
-            {isMobile && <SvgIcon name={t.icon} size={15} color={tab === t.id ? "var(--accent)" : "var(--muted)"} />}
-            <span style={{ color: tab === t.id ? (isMobile ? "var(--accent)" : "var(--text)") : "var(--muted)" }}>{isMobile ? t.shortLabel : t.label}</span>
+            <SvgIcon name={t.icon} size={15} color={tab === t.id ? "var(--accent)" : "var(--muted)"} />
+            <span style={{ color: tab === t.id ? "var(--accent)" : "var(--muted)" }}>{isMobile ? t.shortLabel : t.label}</span>
           </button>
         ))}
       </div>
