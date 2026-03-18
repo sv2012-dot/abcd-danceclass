@@ -453,10 +453,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const TABS = [
     { id:"overview",   label:"Overview",          shortLabel:"Overview",  icon:"home"        },
     { id:"program",    label:"Program Schedule",  shortLabel:"Program",   icon:"list"        },
+    { id:"venue",      label:"Venue",             shortLabel:"Venue",     icon:"map-pin"     },
     { id:"volunteers", label:"Parent Volunteers", shortLabel:"Helpers",   icon:"users"       },
     { id:"vendors",    label:"Vendors",           shortLabel:"Vendors",   icon:"package"     },
     { id:"tasks",      label:`To-Dos${recitalTodos.length ? ` (${done}/${recitalTodos.length})` : ""}`, shortLabel:`To-Dos${recitalTodos.length ? ` ${done}/${recitalTodos.length}` : ""}`, icon:"check-circle" },
-    { id:"venue",      label:"Venue",               shortLabel:"Venue",    icon:"map-pin"    },
   ];
 
   const META = [
@@ -543,20 +543,25 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
 
       {/* ── Tab bar ───────────────────────────────────────────────────── */}
       <div style={{
-        display:"flex", gap:2,
         background:"var(--surface)", borderRadius:12,
         padding:4, marginBottom:22,
         border:"1px solid var(--border)",
         width: isMobile ? "100%" : "fit-content",
+        boxSizing:"border-box",
+      }}>
+      <div style={{
+        display:"flex", gap:2,
         overflowX: isMobile ? "auto" : "visible",
         WebkitOverflowScrolling: "touch",
         scrollbarWidth: "none",
+        msOverflowStyle: "none",
+        paddingBottom: 1, /* prevents scrollbar from showing on some browsers */
       }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             padding: isMobile ? "8px 6px" : "8px 18px",
             flex: isMobile ? "0 0 auto" : "none",
-            minWidth: isMobile ? 56 : "auto",
+            minWidth: isMobile ? 54 : "auto",
             border:"none", cursor:"pointer",
             background: tab === t.id ? "var(--card)" : "transparent",
             color: tab === t.id ? "var(--accent)" : "var(--muted)",
@@ -574,6 +579,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
             <span style={{ color: tab === t.id ? (isMobile ? "var(--accent)" : "var(--text)") : "var(--muted)" }}>{isMobile ? t.shortLabel : t.label}</span>
           </button>
         ))}
+      </div>
       </div>
 
       {/* ── Tab content ───────────────────────────────────────────────── */}
