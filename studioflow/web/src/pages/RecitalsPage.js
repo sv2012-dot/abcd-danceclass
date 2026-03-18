@@ -99,6 +99,14 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const [instaInput,    setInstaInput]    = useState("");    // live input
   const [showInstaForm, setShowInstaForm] = useState(false); // show URL form
 
+  // Venue state
+  const EMPTY_VENUE = { name:"", address:"", contact:"", phone:"", email:"", website:"", capacity:"", notes:"" };
+  const [venueDetails,   setVenueDetails]   = useState(EMPTY_VENUE);
+  const [venueConvo,     setVenueConvo]     = useState("");
+  const [venueConfirmed, setVenueConfirmed] = useState(false);
+  const [venueEditing,   setVenueEditing]   = useState(false);
+  const [venueForm,      setVenueForm]      = useState(EMPTY_VENUE);
+
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768;
   const qc = useQueryClient();
@@ -111,6 +119,9 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const INFO_KEY       = `info_items_${id}`;
   const POSTER_KEY     = `poster_${id}`;
   const INSTA_KEY      = `insta_${id}`;
+  const VENUE_KEY      = `venue_${id}`;
+  const VENUE_CONVO_KEY = `venue_convo_${id}`;
+  const VENUE_CONFIRMED_KEY = `venue_confirmed_${id}`;
 
   useEffect(() => {
     const saved = localStorage.getItem(SUG_KEY);
@@ -145,7 +156,16 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
 
     const savedInsta = localStorage.getItem(INSTA_KEY);
     if (savedInsta) { setInstaUrl(savedInsta); setInstaInput(savedInsta); }
-  }, [SUG_KEY, VENDORS_KEY, PROGRAM_KEY, INFO_KEY, POSTER_KEY, INSTA_KEY]);
+
+    const savedVenue = localStorage.getItem(VENUE_KEY);
+    if (savedVenue) { try { const v = JSON.parse(savedVenue); setVenueDetails(v); setVenueForm(v); } catch {} }
+
+    const savedVenueConvo = localStorage.getItem(VENUE_CONVO_KEY);
+    if (savedVenueConvo) setVenueConvo(savedVenueConvo);
+
+    const savedVenueConfirmed = localStorage.getItem(VENUE_CONFIRMED_KEY);
+    if (savedVenueConfirmed) setVenueConfirmed(savedVenueConfirmed === "true");
+  }, [SUG_KEY, VENDORS_KEY, PROGRAM_KEY, INFO_KEY, POSTER_KEY, INSTA_KEY, VENUE_KEY, VENUE_CONVO_KEY, VENUE_CONFIRMED_KEY]);
 
   const persistVendors = (list) => {
     setVendors(list);
@@ -436,6 +456,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
     { id:"volunteers", label:"Parent Volunteers", shortLabel:"Helpers",   icon:"users"       },
     { id:"vendors",    label:"Vendors",           shortLabel:"Vendors",   icon:"package"     },
     { id:"tasks",      label:`To-Dos${recitalTodos.length ? ` (${done}/${recitalTodos.length})` : ""}`, shortLabel:`To-Dos${recitalTodos.length ? ` ${done}/${recitalTodos.length}` : ""}`, icon:"check-circle" },
+    { id:"venue",      label:"Venue",               shortLabel:"Venue",    icon:"map-pin"    },
   ];
 
   const META = [
@@ -527,14 +548,18 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
         padding:4, marginBottom:22,
         border:"1px solid var(--border)",
         width: isMobile ? "100%" : "fit-content",
+        overflowX: isMobile ? "auto" : "visible",
+        WebkitOverflowScrolling: "touch",
+        scrollbarWidth: "none",
       }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
-            padding: isMobile ? "8px 4px" : "8px 18px",
-            flex: isMobile ? 1 : "none",
+            padding: isMobile ? "8px 6px" : "8px 18px",
+            flex: isMobile ? "0 0 auto" : "none",
+            minWidth: isMobile ? 56 : "auto",
             border:"none", cursor:"pointer",
             background: tab === t.id ? "var(--card)" : "transparent",
-            color: tab === t.id ? (isMobile ? "var(--accent)" : "var(--text)") : "var(--muted)",
+            color: tab === t.id ? "var(--accent)" : "var(--muted)",
             fontWeight: tab === t.id ? 700 : 500,
             fontSize: isMobile ? 9 : 13,
             borderRadius:9, transition:"all .15s",
@@ -546,7 +571,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
             lineHeight: 1.2,
           }}>
             {isMobile && <SvgIcon name={t.icon} size={15} color={tab === t.id ? "var(--accent)" : "var(--muted)"} />}
-            <span>{isMobile ? t.shortLabel : t.label}</span>
+            <span style={{ color: tab === t.id ? (isMobile ? "var(--accent)" : "var(--text)") : "var(--muted)" }}>{isMobile ? t.shortLabel : t.label}</span>
           </button>
         ))}
       </div>
@@ -1557,6 +1582,212 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                   }}
                 />
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── VENUE ── */}
+        {tab === "venue" && (
+          <div>
+            {/* ── Uber-style confirmation status banner ── */}
+            <div style={{
+              display:"flex", alignItems:"center", justifyContent:"space-between",
+              padding: isMobile ? "16px 18px" : "18px 24px",
+              borderRadius:14, marginBottom:24,
+              background: venueConfirmed ? "linear-gradient(135deg,#52c4a015,#52c4a008)" : "linear-gradient(135deg,#f4a04115,#f4a04108)",
+              border: `1.5px solid ${venueConfirmed ? "#52c4a040" : "#f4a04140"}`,
+              transition:"all .3s",
+            }}>
+              <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+                <div style={{
+                  width: isMobile ? 44 : 52, height: isMobile ? 44 : 52, borderRadius:"50%",
+                  background: venueConfirmed ? "#52c4a0" : "#f4a041",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  transition:"background .3s", flexShrink:0,
+                  boxShadow: `0 4px 16px ${venueConfirmed ? "#52c4a040" : "#f4a04140"}`,
+                }}>
+                  <SvgIcon name={venueConfirmed ? "check-circle" : "clock"} size={isMobile ? 22 : 26} color="#fff" />
+                </div>
+                <div>
+                  <div style={{ fontSize: isMobile ? 15 : 17, fontWeight:800, color:"var(--text)", marginBottom:3 }}>
+                    {venueConfirmed ? "Venue Confirmed" : "Venue Not Confirmed"}
+                  </div>
+                  <div style={{ fontSize:12, color:"var(--muted)", fontWeight:500 }}>
+                    {venueConfirmed
+                      ? "The venue has been confirmed and booked for this event."
+                      : "Tap to mark the venue as confirmed once booking is finalized."}
+                  </div>
+                </div>
+              </div>
+              {/* Toggle button */}
+              <button
+                onClick={() => {
+                  const next = !venueConfirmed;
+                  setVenueConfirmed(next);
+                  localStorage.setItem(VENUE_CONFIRMED_KEY, String(next));
+                  toast.success(next ? "Venue marked as confirmed!" : "Venue marked as unconfirmed");
+                }}
+                style={{
+                  padding: isMobile ? "8px 14px" : "10px 20px",
+                  borderRadius:10, border:"none", cursor:"pointer",
+                  background: venueConfirmed ? "#52c4a0" : "#f4a041",
+                  color:"#fff", fontWeight:700,
+                  fontSize: isMobile ? 12 : 13,
+                  transition:"all .2s", flexShrink:0, marginLeft:12,
+                  boxShadow: `0 2px 10px ${venueConfirmed ? "#52c4a050" : "#f4a04150"}`,
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = ".88"}
+                onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+              >
+                {venueConfirmed ? "Mark Unconfirmed" : "Mark Confirmed"}
+              </button>
+            </div>
+
+            {/* ── Venue Details Card ── */}
+            <div style={{ marginBottom:24 }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+                <SectionHead title="Venue Details" sub="Address, contact, and booking information" />
+                {!venueEditing ? (
+                  <button
+                    onClick={() => { setVenueForm({ ...venueDetails }); setVenueEditing(true); }}
+                    style={{
+                      display:"flex", alignItems:"center", gap:6,
+                      padding:"8px 14px", borderRadius:9,
+                      border:"1.5px solid var(--border)",
+                      background:"var(--surface)", cursor:"pointer",
+                      fontSize:12, fontWeight:600, color:"var(--text)",
+                    }}
+                  >
+                    <SvgIcon name="pencil" size={13} color="var(--muted)" />
+                    Edit
+                  </button>
+                ) : (
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button
+                      onClick={() => setVenueEditing(false)}
+                      style={{ padding:"8px 14px", borderRadius:9, border:"1.5px solid var(--border)", background:"var(--surface)", cursor:"pointer", fontSize:12, fontWeight:600, color:"var(--muted)" }}
+                    >Cancel</button>
+                    <button
+                      onClick={() => {
+                        setVenueDetails({ ...venueForm });
+                        localStorage.setItem(VENUE_KEY, JSON.stringify(venueForm));
+                        setVenueEditing(false);
+                        toast.success("Venue details saved");
+                      }}
+                      style={{ padding:"8px 16px", borderRadius:9, border:"none", background:"var(--accent)", cursor:"pointer", fontSize:12, fontWeight:700, color:"#fff" }}
+                    >Save</button>
+                  </div>
+                )}
+              </div>
+
+              <div style={{
+                display:"grid",
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                gap: 14,
+                background:"var(--surface)", borderRadius:14,
+                border:"1px solid var(--border)", padding: isMobile ? "18px 16px" : "22px 24px",
+              }}>
+                {[
+                  { label:"Venue Name",  key:"name",     placeholder:"e.g. Grand Theater", icon:"map-pin" },
+                  { label:"Address",     key:"address",  placeholder:"123 Main St, City, ST 00000", icon:"map-pin" },
+                  { label:"Contact Person", key:"contact", placeholder:"e.g. Sarah Williams", icon:"users" },
+                  { label:"Phone",       key:"phone",    placeholder:"(555) 000-0000", icon:"phone" },
+                  { label:"Email",       key:"email",    placeholder:"venue@example.com", icon:"mail" },
+                  { label:"Website",     key:"website",  placeholder:"https://venue.com", icon:"globe" },
+                  { label:"Capacity",    key:"capacity", placeholder:"e.g. 500 seats", icon:"users" },
+                ].map(({ label, key, placeholder, icon }) => (
+                  <div key={key} style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, color:"var(--muted)" }}>
+                      <SvgIcon name={icon} size={12} color="var(--muted)" />
+                      <span style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".06em" }}>{label}</span>
+                    </div>
+                    {venueEditing ? (
+                      <input
+                        value={venueForm[key] || ""}
+                        onChange={e => setVenueForm(p => ({ ...p, [key]: e.target.value }))}
+                        placeholder={placeholder}
+                        style={{
+                          padding:"9px 12px", border:"1.5px solid var(--border)",
+                          borderRadius:8, fontSize:13, background:"var(--card)",
+                          color:"var(--text)", outline:"none", fontFamily:"inherit",
+                          width:"100%", boxSizing:"border-box",
+                        }}
+                        onFocus={e => e.target.style.borderColor = "var(--accent)"}
+                        onBlur={e => e.target.style.borderColor = "var(--border)"}
+                      />
+                    ) : (
+                      <div style={{ fontSize:13, fontWeight:600, color: venueDetails[key] ? "var(--text)" : "var(--muted)", padding:"9px 0", borderBottom:"1px solid var(--border)" }}>
+                        {venueDetails[key] || <span style={{ fontStyle:"italic", fontWeight:400 }}>Not set</span>}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Notes — full width */}
+                <div style={{ gridColumn: isMobile ? "1" : "1 / -1", display:"flex", flexDirection:"column", gap:6 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, color:"var(--muted)" }}>
+                    <SvgIcon name="file-text" size={12} color="var(--muted)" />
+                    <span style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".06em" }}>Notes</span>
+                  </div>
+                  {venueEditing ? (
+                    <textarea
+                      value={venueForm.notes || ""}
+                      onChange={e => setVenueForm(p => ({ ...p, notes: e.target.value }))}
+                      placeholder="Parking info, loading dock access, setup requirements, etc."
+                      rows={3}
+                      style={{
+                        padding:"9px 12px", border:"1.5px solid var(--border)",
+                        borderRadius:8, fontSize:13, background:"var(--card)",
+                        color:"var(--text)", outline:"none", fontFamily:"inherit",
+                        width:"100%", boxSizing:"border-box", resize:"vertical",
+                      }}
+                      onFocus={e => e.target.style.borderColor = "var(--accent)"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
+                    />
+                  ) : (
+                    <div style={{ fontSize:13, fontWeight:600, color: venueDetails.notes ? "var(--text)" : "var(--muted)", padding:"9px 0", borderBottom:"1px solid var(--border)", lineHeight:1.6, whiteSpace:"pre-wrap" }}>
+                      {venueDetails.notes || <span style={{ fontStyle:"italic", fontWeight:400 }}>No notes</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Confirmation Log ── */}
+            <div>
+              <div style={{ marginBottom:14 }}>
+                <h2 style={{ fontSize:16, fontWeight:800, margin:"0 0 4px" }}>Confirmation Log</h2>
+                <p style={{ fontSize:12, color:"var(--muted)", margin:0 }}>Paste emails, messages, or any communication confirming the venue booking here.</p>
+              </div>
+              <textarea
+                value={venueConvo}
+                onChange={e => {
+                  setVenueConvo(e.target.value);
+                  localStorage.setItem(VENUE_CONVO_KEY, e.target.value);
+                }}
+                placeholder={"Paste your confirmation email, text messages, or any communication here…\n\nExample:\nFrom: bookings@grandtheater.com\nDate: March 10, 2026\n\nDear Studio Owner,\nWe are pleased to confirm your booking for June 15th, 2026…"}
+                style={{
+                  width:"100%", boxSizing:"border-box",
+                  minHeight: isMobile ? 200 : 280,
+                  padding: isMobile ? "14px 14px" : "16px 18px",
+                  border:"1.5px solid var(--border)", borderRadius:12,
+                  fontSize:13, lineHeight:1.7,
+                  background:"var(--surface)", color:"var(--text)",
+                  outline:"none", fontFamily:"ui-monospace, 'Cascadia Code', monospace",
+                  resize:"vertical",
+                  transition:"border-color .15s",
+                }}
+                onFocus={e => e.target.style.borderColor = "var(--accent)"}
+                onBlur={e => e.target.style.borderColor = "var(--border)"}
+              />
+              {venueConvo && (
+                <div style={{ display:"flex", justifyContent:"flex-end", marginTop:8 }}>
+                  <span style={{ fontSize:11, color:"var(--muted)", display:"flex", alignItems:"center", gap:5 }}>
+                    <SvgIcon name="check-circle" size={12} color="#52c4a0" />
+                    Auto-saved
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}
