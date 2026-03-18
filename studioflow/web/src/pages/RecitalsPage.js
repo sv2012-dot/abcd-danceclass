@@ -8,10 +8,11 @@ import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
 import Modal from "../components/shared/Modal";
 import { Field, Input, Select, Textarea } from "../components/shared/Field";
+import SvgIcon from "../components/shared/SvgIcon";
 
 const STATUS_OPTIONS = ["Planning","Confirmed","Rehearsals","Completed","Cancelled"];
 const STATUS_COLORS  = { Planning:"#6a7fdb", Confirmed:"#52c4a0", Rehearsals:"#f4a041", Completed:"#8ab4c0", Cancelled:"#e05c6a" };
-const STATUS_ICONS   = { Planning:"📋", Confirmed:"✅", Rehearsals:"🎵", Completed:"🏆", Cancelled:"❌" };
+const STATUS_ICONS   = { Planning:"file-text", Confirmed:"check-circle", Rehearsals:"music", Completed:"trophy", Cancelled:"x" };
 const EMPTY = { title:"", event_date:"", venue:"", status:"Planning", description:"" };
 
 // ── Demo data for tabs that don't yet have a backend ─────────────────────────
@@ -461,8 +462,8 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
               <span style={{ fontSize:12, background:"#6a7fdb22", color:"#6a7fdb", borderRadius:20, padding:"4px 12px", fontWeight:700 }}>
                 Performance
               </span>
-              <span style={{ fontSize:12, background:color+"22", color, borderRadius:20, padding:"4px 12px", fontWeight:700 }}>
-                {STATUS_ICONS[recital.status]} {recital.status}
+              <span style={{ fontSize:12, background:color+"22", color, borderRadius:20, padding:"4px 12px", fontWeight:700, display:"inline-flex", alignItems:"center", gap:5 }}>
+                <SvgIcon name={STATUS_ICONS[recital.status] || "file-text"} size={14} color={color} /> {recital.status}
               </span>
             </div>
           </div>
@@ -773,7 +774,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
           <div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
               <SectionHead title="Program Schedule" sub="Performance timeline and running order" />
-              <Button icon="➕" size="sm" onClick={openAddProg}>Add Number</Button>
+              <Button size="sm" onClick={openAddProg}>Add Number</Button>
             </div>
 
             {/* Scrollable table */}
@@ -865,7 +866,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                           {hasMusic ? (
                             <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
                               <div style={{ fontSize:11, fontWeight:700, color:"#333", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:128 }}>
-                                🎵 {p.music_name || "Track"}
+                                <SvgIcon name="music" size={11} color="#333" style={{marginRight:4}} />{p.music_name || "Track"}
                               </div>
                               {p.music_data && (
                                 <audio controls src={p.music_data} style={{ width:"100%", maxWidth:128, height:26 }} />
@@ -971,7 +972,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                     <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                       {progForm.music_data ? (
                         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderRadius:8, background:"var(--surface)", border:"1px solid var(--border)" }}>
-                          <span style={{ fontSize:12, flex:1, fontWeight:600, color:"#333" }}>🎵 {progForm.music_name}</span>
+                          <span style={{ fontSize:12, flex:1, fontWeight:600, color:"#333", display:"inline-flex", alignItems:"center" }}><SvgIcon name="music" size={11} color="#333" style={{marginRight:4}} />{progForm.music_name}</span>
                           <button onClick={() => setProgForm(p=>({...p,music_data:"",music_name:""}))} style={{
                             fontSize:11, color:"#e05c6a", background:"none", border:"1px solid #fecaca",
                             borderRadius:6, padding:"3px 8px", cursor:"pointer",
@@ -1021,7 +1022,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
           <div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
               <SectionHead title="Parent Volunteers" sub="Volunteer coordinators and helpers for the event" />
-              <Button icon="➕" size="sm" onClick={openAddVolunteer}>Add Volunteer</Button>
+              <Button size="sm" onClick={openAddVolunteer}>Add Volunteer</Button>
             </div>
 
             {/* ── Sign Up Genius integration banner ── */}
@@ -1121,7 +1122,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                 <div style={{ fontSize:28, marginBottom:10 }}>🙋</div>
                 <p style={{ fontWeight:700, marginBottom:4, fontSize:14 }}>No volunteers yet</p>
                 <p style={{ color:"var(--muted)", fontSize:12, marginBottom:16 }}>Add parent volunteers who will help coordinate and assist at the event.</p>
-                <Button icon="➕" size="sm" onClick={openAddVolunteer}>Add First Volunteer</Button>
+                <Button size="sm" onClick={openAddVolunteer}>Add First Volunteer</Button>
               </div>
             ) : (
               <div style={{ borderRadius:12, overflow:"hidden", border:"1px solid var(--border)" }}>
@@ -1223,7 +1224,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
           <div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
               <SectionHead title="Vendors" sub="Service providers and contractors for the event" />
-              <Button icon="➕" size="sm" onClick={openAddVendor}>Add Vendor</Button>
+              <Button size="sm" onClick={openAddVendor}>Add Vendor</Button>
             </div>
 
             {vendors.length === 0 ? (
@@ -1231,7 +1232,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                 <div style={{ fontSize:28, marginBottom:10 }}>🏢</div>
                 <p style={{ fontWeight:700, marginBottom:4, fontSize:14 }}>No vendors yet</p>
                 <p style={{ color:"var(--muted)", fontSize:12, marginBottom:16 }}>Add photographers, costume rental, lighting & sound vendors.</p>
-                <Button icon="➕" size="sm" onClick={openAddVendor}>Add First Vendor</Button>
+                <Button size="sm" onClick={openAddVendor}>Add First Vendor</Button>
               </div>
             ) : (
               <div style={{ borderRadius:12, overflow:"hidden", border:"1px solid var(--border)" }}>
@@ -1410,7 +1411,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                     fontFamily:"inherit",
                   }}
                 />
-                <Button onClick={addTask} disabled={createTodoMut.isPending} icon="➕">
+                <Button onClick={addTask} disabled={createTodoMut.isPending}>
                   {createTodoMut.isPending ? "Adding…" : "Add To-Do"}
                 </Button>
               </div>
@@ -1524,17 +1525,17 @@ export default function RecitalsPage() {
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <div style={{ display:"flex", border:"1.5px solid var(--border)", borderRadius:9, overflow:"hidden" }}>
             <button onClick={() => setView("grid")} style={{
-              padding:"7px 13px", border:"none", cursor:"pointer", fontSize:16, lineHeight:1, transition:"all .15s",
+              padding:"7px 13px", border:"none", cursor:"pointer", transition:"all .15s", display:"flex", alignItems:"center", justifyContent:"center",
               background:view==="grid" ? "var(--accent)" : "transparent",
               color:view==="grid" ? "#fff" : "var(--muted)",
-            }}>⊞</button>
+            }}><SvgIcon name="grid" size={16} /></button>
             <button onClick={() => setView("table")} style={{
-              padding:"7px 13px", border:"none", borderLeft:"1.5px solid var(--border)", cursor:"pointer", fontSize:16, lineHeight:1, transition:"all .15s",
+              padding:"7px 13px", border:"none", borderLeft:"1.5px solid var(--border)", cursor:"pointer", transition:"all .15s", display:"flex", alignItems:"center", justifyContent:"center",
               background:view==="table" ? "var(--accent)" : "transparent",
               color:view==="table" ? "#fff" : "var(--muted)",
-            }}>☰</button>
+            }}><SvgIcon name="list" size={16} /></button>
           </div>
-          <Button onClick={openAdd} icon="➕">New Event</Button>
+          <Button onClick={openAdd}>New Event</Button>
         </div>
       </div>
 
@@ -1544,7 +1545,7 @@ export default function RecitalsPage() {
 
       ) : sorted.length === 0 ? (
         <div style={{ textAlign:"center", padding:48, background:"var(--card)", borderRadius:16, border:"1.5px dashed var(--border)" }}>
-          <div style={{ fontSize:34, marginBottom:12 }}>🌟</div>
+          <div style={{ marginBottom:12 }}><SvgIcon name="star" size={34} color="var(--muted)" /></div>
           <p style={{ fontWeight:700, marginBottom:4 }}>No events yet</p>
           <p style={{ color:"var(--muted)", fontSize:13, marginBottom:16 }}>Plan your first recital or performance!</p>
           <Button onClick={openAdd}>New Event</Button>
@@ -1581,7 +1582,7 @@ export default function RecitalsPage() {
                     </div>
                   </div>
                   {r.venue && (
-                    <div style={{ fontSize:11, color:"var(--muted)", marginBottom:8, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>📍 {r.venue}</div>
+                    <div style={{ fontSize:11, color:"var(--muted)", marginBottom:8, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"flex", alignItems:"center" }}><SvgIcon name="map-pin" size={10} color="var(--muted)" style={{marginRight:4,flexShrink:0}} />{r.venue}</div>
                   )}
                   {r.task_count > 0 && (
                     <div>

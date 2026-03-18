@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import SvgIcon from './SvgIcon';
 
 // ── Classical Dance Icon ───────────────────────────────────────────────────────
 // Bharatanatyam dancer: aramandi stance, hasta mudra arm, crown ornament, stage
@@ -241,8 +242,8 @@ export default function AppShell() {
           }}
         >
           {/* Track icons */}
-          <span style={{ position:'absolute', left:5, fontSize:11, lineHeight:1, opacity: theme === 'dark' ? 0.3 : 1, transition:'opacity .2s' }}>☀️</span>
-          <span style={{ position:'absolute', right:5, fontSize:11, lineHeight:1, opacity: theme === 'dark' ? 1 : 0.3, transition:'opacity .2s' }}>🌙</span>
+          <span style={{ position:'absolute', left:5, lineHeight:1, opacity: theme === 'dark' ? 0.3 : 1, transition:'opacity .2s', display:'flex' }}><SvgIcon name="sun" size={11} color="currentColor" /></span>
+          <span style={{ position:'absolute', right:5, lineHeight:1, opacity: theme === 'dark' ? 1 : 0.3, transition:'opacity .2s', display:'flex' }}><SvgIcon name="moon" size={11} color="currentColor" /></span>
           {/* Knob */}
           <span style={{
             display:'block', width:18, height:18, borderRadius:'50%',

@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
 import { Field, Input, Textarea } from "../components/shared/Field";
+import SvgIcon from "../components/shared/SvgIcon";
 
 const EMPTY = {
   name: "", address: "", city: "", state: "", zip: "",
@@ -384,13 +385,13 @@ function StudioCard({ studio, active, onSelect, onEdit, onRemove, onToggleFav })
         <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
           {fullAddress && (
             <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-              <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>📍</span>
+              <SvgIcon name="map-pin" size={14} color="var(--muted)" style={{ flexShrink: 0, marginTop: 1 }} />
               <span style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.4 }}>{fullAddress}</span>
             </div>
           )}
           {studio.phone && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 14, flexShrink: 0 }}>📞</span>
+              <SvgIcon name="phone" size={14} color="var(--muted)" style={{ flexShrink: 0 }} />
               <a href={`tel:${studio.phone}`} style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none" }}
                 onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
                 onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}>{studio.phone}</a>
@@ -398,7 +399,7 @@ function StudioCard({ studio, active, onSelect, onEdit, onRemove, onToggleFav })
           )}
           {websiteDisplay && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 14, flexShrink: 0 }}>🌐</span>
+              <SvgIcon name="globe" size={14} color="var(--muted)" style={{ flexShrink: 0 }} />
               <a href={studio.website} target="_blank" rel="noopener noreferrer"
                 style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                 onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
@@ -406,8 +407,8 @@ function StudioCard({ studio, active, onSelect, onEdit, onRemove, onToggleFav })
             </div>
           )}
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 2 }}>
-            {studio.capacity && <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 13 }}>👥</span><span style={{ fontSize: 13, color: "var(--muted)" }}>{studio.capacity} people</span></div>}
-            {studio.hourly_rate && <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 13 }}>💰</span><span style={{ fontSize: 13, color: "var(--muted)" }}>${Number(studio.hourly_rate).toFixed(0)}/hr</span></div>}
+            {studio.capacity && <div style={{ display: "flex", alignItems: "center", gap: 6 }}><SvgIcon name="users" size={13} color="var(--muted)" /><span style={{ fontSize: 13, color: "var(--muted)" }}>{studio.capacity} people</span></div>}
+            {studio.hourly_rate && <div style={{ display: "flex", alignItems: "center", gap: 6 }}><SvgIcon name="dollar-sign" size={13} color="var(--muted)" /><span style={{ fontSize: 13, color: "var(--muted)" }}>${Number(studio.hourly_rate).toFixed(0)}/hr</span></div>}
           </div>
           {studio.notes && (
             <p style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic", margin: "4px 0 0", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
@@ -510,14 +511,14 @@ export default function StudiosPage() {
           <h1 style={{ fontFamily: "var(--font-d)", fontSize: 26, marginBottom: 4 }}>Studio Bookings</h1>
           <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>Manage venues used for classes, rehearsals, and performances</p>
         </div>
-        <Button onClick={() => { setSelected(null); setPanelMode('add'); setAddPhase('search'); setAddQuery(''); setAddResults([]); setAddSearchErr(null); }} icon="➕">Add Studio</Button>
+        <Button onClick={() => { setSelected(null); setPanelMode('add'); setAddPhase('search'); setAddQuery(''); setAddResults([]); setAddSearchErr(null); }}>Add Studio</Button>
       </div>
 
       {isLoading ? (
         <p style={{ color: "var(--muted)" }}>Loading…</p>
       ) : list.length === 0 ? (
         <Card style={{ textAlign: "center", padding: 56, border: "1.5px dashed var(--border)" }}>
-          <div style={{ fontSize: 48, marginBottom: 14 }}>🏛️</div>
+          <div style={{ marginBottom: 14 }}><SvgIcon name="building" size={48} color="var(--muted)" /></div>
           <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>No studios yet</p>
           <p style={{ color: "var(--muted)", fontSize: 13, marginBottom: 20 }}>Search for a venue or add one manually.</p>
           <Button onClick={() => { setSelected(null); setPanelMode('add'); setAddPhase('search'); setAddQuery(''); setAddResults([]); setAddSearchErr(null); }}>Add Studio</Button>
@@ -561,7 +562,7 @@ export default function StudiosPage() {
               {panelMode === 'add' ? "Add Studio" : panelMode === 'edit' ? "Edit Studio" : "Studio Details"}
             </span>
             <button onClick={() => { setSelected(null); setPanelMode(null); }}
-              style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--muted)", lineHeight: 1, padding: 4, borderRadius: 6 }}>✕</button>
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", lineHeight: 1, padding: 4, borderRadius: 6, display:"flex", alignItems:"center" }}><SvgIcon name="x" size={18} /></button>
           </div>
 
           {/* ── VIEW mode ── */}
@@ -664,9 +665,10 @@ export default function StudiosPage() {
                       flex: 1, padding: "9px 16px", borderRadius: 9,
                       border: "1.5px solid var(--accent)", background: "var(--accent)",
                       color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600,
-                    }}>✏️ Edit Studio</button>
+                    display:"inline-flex", alignItems:"center", gap:7,
+                    }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Studio</button>
                     <button onClick={() => { if (window.confirm(`Remove "${s.name}"?`)) removeMutation.mutate(s.id); }}
-                      style={{ padding: "9px 14px", borderRadius: 9, border: "1.5px solid #e05c6a", background: "transparent", color: "#e05c6a", cursor: "pointer", fontSize: 13 }}>🗑</button>
+                      style={{ padding: "9px 14px", borderRadius: 9, border: "1.5px solid #e05c6a", background: "transparent", color: "#e05c6a", cursor: "pointer", fontSize: 13, display:"inline-flex", alignItems:"center", justifyContent:"center" }}><SvgIcon name="trash" size={14} color="#e05c6a" /></button>
                   </div>
                 </div>
               </>

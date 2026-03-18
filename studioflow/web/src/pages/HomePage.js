@@ -8,6 +8,7 @@ import Button from "../components/shared/Button";
 import Modal from "../components/shared/Modal";
 import Badge from "../components/shared/Badge";
 import { Field, Input, Select, Textarea } from "../components/shared/Field";
+import SvgIcon from "../components/shared/SvgIcon";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const EVENT_TYPES = ["Class", "Recital", "Rehearsal", "Workshop", "Other"];
@@ -128,7 +129,7 @@ function DateTimePicker({ label, value, onChange }) {
             </div>
           : <span style={{fontSize:13,color:"var(--muted)"}}>Pick date & time…</span>
         }
-        <span style={{fontSize:14,color:"var(--muted)",flexShrink:0}}>📅</span>
+        <SvgIcon name="calendar" size={14} color="var(--muted)" style={{flexShrink:0}} />
       </button>
       {open && (
         <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,zIndex:400,background:"var(--card)",borderRadius:16,boxShadow:"0 12px 40px rgba(0,0,0,0.16)",border:"1px solid var(--border)",width:300,overflow:"hidden"}}>
@@ -138,7 +139,7 @@ function DateTimePicker({ label, value, onChange }) {
                 flex:1,padding:"11px 0",fontSize:12,fontWeight:700,border:"none",cursor:"pointer",
                 background:tab===t?"var(--card)":"var(--surface)",color:tab===t?"var(--accent)":"var(--muted)",
                 borderBottom:tab===t?"2px solid var(--accent)":"2px solid transparent",
-              }}>{t==="date"?"📅 Date":"⏰ Time"}</button>
+              }}>{t==="date"?"Date":"Time"}</button>
             ))}
           </div>
           {tab==="date" && (
@@ -307,7 +308,7 @@ function SchoolHomePage() {
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,gap:20,flexWrap:"wrap"}}>
         <div>
           <h1 style={{fontFamily:"var(--font-d)",fontSize:26,marginBottom:3,lineHeight:1.15}}>
-            {greeting}, {user?.name?.split(" ")[0]}! 👋
+            {greeting}, {user?.name?.split(" ")[0]}!
           </h1>
           <p style={{color:"var(--muted)",fontSize:13}}>{school?.name} · {todayStr}</p>
         </div>
@@ -364,7 +365,7 @@ function SchoolHomePage() {
         {/* Upcoming Recitals */}
         <div style={{background:"var(--card)",borderRadius:14,border:"1.5px solid var(--border)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px 11px",borderBottom:"1px solid var(--border)"}}>
-            <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".1em"}}>🌟 Upcoming Recitals</div>
+            <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".1em",display:"flex",alignItems:"center"}}><SvgIcon name="star" size={13} color="var(--muted)" style={{marginRight:5}} /> Upcoming Recitals</div>
             <button onClick={()=>navigate("/schedule")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600,padding:0}}>View all →</button>
           </div>
           {upcoming.length === 0
@@ -395,7 +396,7 @@ function SchoolHomePage() {
         {/* Upcoming Classes */}
         <div style={{background:"var(--card)",borderRadius:14,border:"1.5px solid var(--border)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px 11px",borderBottom:"1px solid var(--border)"}}>
-            <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".1em"}}>📅 Upcoming Classes</div>
+            <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".1em",display:"flex",alignItems:"center"}}><SvgIcon name="calendar" size={13} color="var(--muted)" style={{marginRight:5}} /> Upcoming Classes</div>
             <button onClick={()=>navigate("/schedule")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600,padding:0}}>View all →</button>
           </div>
           {upcomingClasses.length === 0
@@ -427,11 +428,11 @@ function SchoolHomePage() {
         {/* Open To-Dos */}
         <div style={{background:"var(--card)",borderRadius:14,border:"1.5px solid var(--border)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px 11px",borderBottom:"1px solid var(--border)"}}>
-            <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".1em"}}>✅ Open To-Dos</div>
+            <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".1em",display:"flex",alignItems:"center"}}><SvgIcon name="check-circle" size={13} color="var(--muted)" style={{marginRight:5}} /> Open To-Dos</div>
             <button onClick={()=>navigate("/todos")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600,padding:0}}>View all →</button>
           </div>
           {openTodos.length === 0
-            ? <div style={{padding:"20px 18px",color:"var(--muted)",fontSize:13,textAlign:"center"}}>All caught up! 🎉</div>
+            ? <div style={{padding:"20px 18px",color:"var(--muted)",fontSize:13,textAlign:"center"}}>All caught up!</div>
             : openTodos.map((todo,idx) => {
                 const od = isOverdue(todo.due_date);
                 return (
@@ -447,19 +448,19 @@ function SchoolHomePage() {
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{todo.title}</div>
                       <div style={{display:"flex",gap:6,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
-                        <span style={{fontSize:11,fontWeight:600,color:todo.assigned_to?"var(--text)":"var(--muted)",background:"var(--surface)",padding:"1px 7px",borderRadius:999}}>
-                          👤 {todo.assigned_to||"Not assigned"}
+                        <span style={{fontSize:11,fontWeight:600,color:todo.assigned_to?"var(--text)":"var(--muted)",background:"var(--surface)",padding:"1px 7px",borderRadius:999,display:"inline-flex",alignItems:"center"}}>
+                          <SvgIcon name="user" size={11} style={{marginRight:3}} /> {todo.assigned_to||"Not assigned"}
                         </span>
                         {(todo.event_title||todo.recital_title) && (
                           <span style={{fontSize:11,color:"var(--muted)"}}>
-                            {todo.recital_title?`🌟 ${todo.recital_title}`:`📅 ${todo.event_title}`}
+                            {todo.recital_title?todo.recital_title:todo.event_title}
                           </span>
                         )}
                       </div>
                     </div>
                     {todo.due_date && (
-                      <span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:999,flexShrink:0,color:od?"#ff3b30":"var(--muted)",background:od?"#fff0ee":"var(--surface)"}}>
-                        {od&&"⚠ "}{fmtDue(todo.due_date)}
+                      <span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:999,flexShrink:0,color:od?"#ff3b30":"var(--muted)",background:od?"#fff0ee":"var(--surface)",display:"inline-flex",alignItems:"center"}}>
+                        {od && <SvgIcon name="alert-triangle" size={11} color="#ff3b30" style={{marginRight:3}} />}{fmtDue(todo.due_date)}
                       </span>
                     )}
                     <button onClick={()=>todosApi.remove(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid]))}
@@ -562,7 +563,7 @@ function SchoolHomePage() {
           <div style={{display:"flex",alignItems:"center",gap:12,margin:"10px 0",padding:12,background:"var(--surface)",borderRadius:10}}>
             <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
               <input type="checkbox" checked={form.requires_studio} onChange={e=>setForm({...form,requires_studio:e.target.checked})} style={{width:16,height:16,accentColor:"var(--accent)"}} />
-              <span>🏠 Studio required</span>
+              <span style={{display:"inline-flex",alignItems:"center",gap:6}}><SvgIcon name="home" size={14} style={{marginRight:6}} /> Studio required</span>
             </label>
             {form.requires_studio && (
               <span style={{fontSize:12,color:"var(--muted)"}}>Studio booking status can be updated after saving.</span>

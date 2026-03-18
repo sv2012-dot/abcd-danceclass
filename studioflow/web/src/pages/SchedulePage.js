@@ -10,6 +10,7 @@ import Button from "../components/shared/Button";
 import Badge from "../components/shared/Badge";
 import { Field, Input, Select, Textarea } from "../components/shared/Field";
 import { RecitalDetail } from "./RecitalsPage";
+import SvgIcon from "../components/shared/SvgIcon";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const EVENT_TYPES = ["Class", "Recital", "Rehearsal", "Workshop", "Other"];
@@ -167,7 +168,7 @@ function DateTimePicker({ label, value, onChange, minDate }) {
         ) : (
           <span style={{fontSize:13,color:"var(--muted)"}}>Pick date & time…</span>
         )}
-        <span style={{fontSize:14,color:"var(--muted)",flexShrink:0}}>📅</span>
+        <SvgIcon name="calendar" size={14} color="var(--muted)" style={{flexShrink:0}} />
       </button>
 
       {/* Popover */}
@@ -186,7 +187,7 @@ function DateTimePicker({ label, value, onChange, minDate }) {
                 background:tab===t?"var(--card)":"var(--surface)",
                 color:tab===t?"var(--accent)":"var(--muted)",
                 borderBottom:tab===t?"2px solid var(--accent)":"2px solid transparent",
-              }}>{t==="date"?"📅 Date":"⏰ Time"}</button>
+              }}>{t==="date"?"Date":"Time"}</button>
             ))}
           </div>
 
@@ -531,7 +532,7 @@ export default function SchedulePage() {
         onMouseEnter={e => { e.currentTarget.style.opacity = "0.82"; }}
         onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
       >
-        {event.requires_studio && !compact && <span title="Studio required">🏠</span>}
+        {event.requires_studio && !compact && <span title="Studio required"><SvgIcon name="home" size={11} /></span>}
         {!event.studio_booked && event.requires_studio && <span title="Not yet booked" style={{color: compact ? "#fff" : "#e05c6a", fontWeight:800}}>!</span>}
         <span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{compact ? "" : fmtTime(event.start_datetime)+" "}{event.title}</span>
       </div>
@@ -662,8 +663,8 @@ export default function SchedulePage() {
                       onMouseEnter={ev => { ev.currentTarget.style.background = `linear-gradient(135deg, ${color}35 0%, ${color}18 100%)`; ev.currentTarget.style.boxShadow = `0 6px 18px ${color}40`; ev.currentTarget.style.transform = "translateY(-1px)"; }}
                       onMouseLeave={ev => { ev.currentTarget.style.background = `linear-gradient(135deg, ${color}20 0%, ${color}0d 100%)`; ev.currentTarget.style.boxShadow = `0 2px 8px ${color}20`; ev.currentTarget.style.transform = "none"; }}
                     >
-                      <div style={{flexShrink:0,fontSize:20,lineHeight:1,marginTop:2}}>
-                        {e.requires_studio ? "🏠" : e.type === "Class" ? "📚" : e.type === "Recital" ? "🎭" : e.type === "Rehearsal" ? "🎵" : "📅"}
+                      <div style={{flexShrink:0,lineHeight:1,marginTop:2,display:"flex",alignItems:"flex-start"}}>
+                        <SvgIcon name={e.requires_studio ? "home" : e.type === "Class" ? "book-open" : e.type === "Recital" ? "theater" : e.type === "Rehearsal" ? "music" : "calendar"} size={18} color={color} />
                         {noStudio && <div style={{fontSize:12,color:"#e05c6a",position:"relative",top:-8,left:-6}}>!</div>}
                       </div>
                       <div style={{flex:1,minWidth:0}}>
@@ -711,8 +712,8 @@ export default function SchedulePage() {
                     <div style={{flex:1}}>
                       <div style={{fontWeight:700,fontSize:13}}>{e.title}</div>
                       <div style={{fontSize:11,color:"var(--muted)",display:"flex",gap:8,flexWrap:"wrap",marginTop:2}}>
-                        {(e.batches?.length ? e.batches.map(b=>b.name).join(', ') : e.batch_name) && <span>📚 {e.batches?.length ? e.batches.map(b=>b.name).join(', ') : e.batch_name}</span>}
-                        {e.location   && <span>📍 {e.location}</span>}
+                        {(e.batches?.length ? e.batches.map(b=>b.name).join(', ') : e.batch_name) && <span style={{display:"inline-flex",alignItems:"center",gap:4}}><SvgIcon name="book-open" size={11} color="var(--muted)" />{e.batches?.length ? e.batches.map(b=>b.name).join(', ') : e.batch_name}</span>}
+                        {e.location   && <span style={{display:"inline-flex",alignItems:"center",gap:4}}><SvgIcon name="map-pin" size={11} color="var(--muted)" />{e.location}</span>}
                       </div>
                     </div>
                     <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
@@ -766,7 +767,7 @@ export default function SchedulePage() {
                 background:view===v?"var(--accent)":"var(--card)",color:view===v?"#fff":"var(--text)",
               }}>{v.charAt(0).toUpperCase()+v.slice(1)}</button>
             ))}
-            {isAdmin && <Button onClick={()=>openAdd()} icon="➕" size="sm">Add Event</Button>}
+            {isAdmin && <Button onClick={()=>openAdd()} size="sm">Add Event</Button>}
           </div>
         </div>
 
@@ -787,7 +788,7 @@ export default function SchedulePage() {
             padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",
             border:`1.5px solid ${studioOnly?"#e05c6a":"var(--border)"}`,
             background:studioOnly?"#e05c6a22":"transparent",color:studioOnly?"#e05c6a":"var(--muted)",
-          }}>🏠 Studio needed</button>
+          }}><SvgIcon name="home" size={11} style={{marginRight:5}} /> Studio needed</button>
 
           {/* Legend link */}
           <div style={{position:"relative",marginLeft:4}}>
@@ -812,8 +813,8 @@ export default function SchedulePage() {
                     </div>
                   ))}
                   <div style={{borderTop:"1px solid var(--border)",marginTop:9,paddingTop:9}}>
-                    <div style={{fontSize:11,color:"var(--muted)",marginBottom:3}}>🏠 = Studio required</div>
-                    <div style={{fontSize:11,color:"#e05c6a"}}>🏠! = Not yet booked</div>
+                    <div style={{fontSize:11,color:"var(--muted)",marginBottom:3,display:"flex",alignItems:"center",gap:4}}><SvgIcon name="home" size={11} color="var(--muted)" /> = Studio required</div>
+                    <div style={{fontSize:11,color:"#e05c6a",display:"flex",alignItems:"center",gap:4}}><SvgIcon name="home" size={11} color="#e05c6a" />! = Not yet booked</div>
                   </div>
                 </div>
               </>
@@ -872,7 +873,7 @@ export default function SchedulePage() {
               {panelMode === 'add' ? "New Event" : panelMode === 'edit' ? "Edit Event" : "Event Details"}
             </span>
             <button onClick={() => { setDetailEvent(null); setPanelMode('view'); }}
-              style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6 }}>✕</button>
+              style={{ background:"none", border:"none", cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6, display:"flex", alignItems:"center" }}><SvgIcon name="x" size={18} /></button>
           </div>
 
           {/* ── VIEW mode: event hero + details ── */}
@@ -897,11 +898,11 @@ export default function SchedulePage() {
                 {/* Scrollable body */}
                 <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
                   <div style={{ display:"grid", gap:14, marginBottom:20 }}>
-                    <PDetailRow icon="📅" label="Date">{fmtDate(e.start_datetime)}</PDetailRow>
-                    <PDetailRow icon="⏰" label="Time">{fmtTime(e.start_datetime)} – {fmtTime(e.end_datetime)}</PDetailRow>
-                    {e.location && <PDetailRow icon="📍" label="Location">{e.location}</PDetailRow>}
+                    <PDetailRow icon="calendar" label="Date">{fmtDate(e.start_datetime)}</PDetailRow>
+                    <PDetailRow icon="clock" label="Time">{fmtTime(e.start_datetime)} – {fmtTime(e.end_datetime)}</PDetailRow>
+                    {e.location && <PDetailRow icon="map-pin" label="Location">{e.location}</PDetailRow>}
                     {(e.batches?.length > 0 || e.batch_name) && (
-                      <PDetailRow icon="📚" label={`Batch${(e.batches?.length||0) > 1 ? "es" : ""}`}>
+                      <PDetailRow icon="book-open" label={`Batch${(e.batches?.length||0) > 1 ? "es" : ""}`}>
                         <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:4}}>
                           {(e.batches?.length ? e.batches : [{id:e.batch_id, name:e.batch_name}]).map(b => {
                             const full = batches.find(x => x.id===b.id || String(x.id)===String(b.id));
@@ -921,7 +922,7 @@ export default function SchedulePage() {
                         </div>
                       </PDetailRow>
                     )}
-                    {e.notes && <PDetailRow icon="📝" label="Notes">{e.notes}</PDetailRow>}
+                    {e.notes && <PDetailRow icon="file-text" label="Notes">{e.notes}</PDetailRow>}
                   </div>
                   {e.requires_studio && (
                     <div style={{ padding:"12px 14px", borderRadius:10, background:e.studio_booked?"#52c4a008":"#e05c6a08", border:`1.5px solid ${e.studio_booked?"#52c4a033":"#e05c6a33"}`, marginBottom:20 }}>
@@ -959,11 +960,11 @@ export default function SchedulePage() {
                   })()}
                   {isAdmin && (
                     <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
-                      <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600 }}>✏️ Edit Event</button>
+                      <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Event</button>
                       {e.requires_studio && !e.studio_booked && (
                         <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #52c4a0", background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:13, fontWeight:600 }}>✓ Mark Studio Booked</button>
                       )}
-                      <button onClick={()=>{ if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontWeight:600 }}>🗑 Delete Event</button>
+                      <button onClick={()=>{ if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="trash" size={14} color="#e05c6a" /> Delete Event</button>
                     </div>
                   )}
                 </div>
@@ -1032,7 +1033,7 @@ export default function SchedulePage() {
                 <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
                   <input type="checkbox" checked={form.requires_studio} onChange={e=>setForm({...form,requires_studio:e.target.checked})}
                     style={{width:16,height:16,accentColor:"var(--accent)"}} />
-                  <span>🏠 Studio required</span>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:6}}><SvgIcon name="home" size={14} /> Studio required</span>
                 </label>
                 {form.requires_studio && (
                   <span style={{fontSize:12,color:"var(--muted)"}}>Studio booking status can be updated after saving.</span>
@@ -1058,7 +1059,7 @@ export default function SchedulePage() {
 function PDetailRow({ icon, label, children }) {
   return (
     <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
-      <span style={{ fontSize:16, flexShrink:0, width:22, textAlign:"center", marginTop:1 }}>{icon}</span>
+      <span style={{ flexShrink:0, width:22, display:"flex", alignItems:"center", justifyContent:"center", marginTop:2 }}><SvgIcon name={icon} size={15} color="var(--muted)" /></span>
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontSize:10, color:"var(--muted)", fontWeight:700, textTransform:"uppercase", letterSpacing:".05em", marginBottom:3 }}>{label}</div>
         <div style={{ fontSize:13, fontWeight:500, color:"var(--text)" }}>{children}</div>

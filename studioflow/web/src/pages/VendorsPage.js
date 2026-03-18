@@ -6,22 +6,23 @@ import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
 import { Field, Input, Textarea } from "../components/shared/Field";
+import SvgIcon from "../components/shared/SvgIcon";
 
 /* ─── Category config ───────────────────────────────────────────────── */
 const CATEGORIES = [
-  { key: "Photographer",     color: "#c4527a", icon: "📷" },
-  { key: "Videographer",     color: "#8b5cf6", icon: "🎬" },
-  { key: "Costume Provider", color: "#f4a041", icon: "👗" },
-  { key: "Makeup Artist",    color: "#e0607e", icon: "💄" },
-  { key: "Florist",          color: "#52c4a0", icon: "💐" },
-  { key: "Sound & Music",    color: "#6a7fdb", icon: "🎵" },
-  { key: "Catering",         color: "#10b981", icon: "🍽️" },
-  { key: "Set Design",       color: "#f59e0b", icon: "🎨" },
-  { key: "Lighting",         color: "#3b82f6", icon: "💡" },
-  { key: "Other",            color: "#94a3b8", icon: "📦" },
+  { key: "Photographer",     color: "#c4527a", iconName: "camera" },
+  { key: "Videographer",     color: "#8b5cf6", iconName: "video" },
+  { key: "Costume Provider", color: "#f4a041", iconName: "scissors" },
+  { key: "Makeup Artist",    color: "#e0607e", iconName: "sparkles" },
+  { key: "Florist",          color: "#52c4a0", iconName: "flower" },
+  { key: "Sound & Music",    color: "#6a7fdb", iconName: "music" },
+  { key: "Catering",         color: "#10b981", iconName: "utensils" },
+  { key: "Set Design",       color: "#f59e0b", iconName: "palette" },
+  { key: "Lighting",         color: "#3b82f6", iconName: "zap" },
+  { key: "Other",            color: "#94a3b8", iconName: "package" },
 ];
 const catMap = Object.fromEntries(CATEGORIES.map(c => [c.key, c]));
-const catInfo = (key) => catMap[key] || { color: "#94a3b8", icon: "📦" };
+const catInfo = (key) => catMap[key] || { color: "#94a3b8", iconName: "package" };
 
 const EMPTY = {
   name: "", category: "Photographer", contact_name: "", phone: "",
@@ -44,8 +45,8 @@ function VendorCard({ vendor: v, active, onSelect, onEdit, onRemove, onToggleFav
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
             {/* Category icon circle */}
-            <div style={{ width: 38, height: 38, borderRadius: 11, background: cat.color + "18", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
-              {cat.icon}
+            <div style={{ width: 38, height: 38, borderRadius: 11, background: cat.color + "18", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <SvgIcon name={cat.iconName || "package"} size={18} color={cat.color} />
             </div>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.name}</div>
@@ -129,7 +130,7 @@ function VendorFormFields({ form, set }) {
         <select value={form.category} onChange={e => set("category", e.target.value)}
           style={{ width: "100%", padding: "9px 12px", borderRadius: 9, border: "1.5px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13, fontFamily: "var(--font-sans)" }}>
           {CATEGORIES.map(c => (
-            <option key={c.key} value={c.key}>{c.icon} {c.key}</option>
+            <option key={c.key} value={c.key}>{c.key}</option>
           ))}
         </select>
       </Field>
@@ -255,14 +256,14 @@ export default function VendorsPage() {
             {allVendors.length} vendor{allVendors.length !== 1 ? "s" : ""} · photographers, videographers, costumes & more
           </p>
         </div>
-        <Button onClick={openAdd} icon="➕">Add Vendor</Button>
+        <Button onClick={openAdd}>Add Vendor</Button>
       </div>
 
       {/* ── Category filter tabs ── */}
       {allVendors.length > 0 && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
           {activeCats.map(cat => {
-            const info = cat === "All" ? { color: "var(--accent)", icon: "🗂️" } : catInfo(cat);
+            const info = cat === "All" ? { color: "var(--accent)", iconName: "grid" } : catInfo(cat);
             const active = filterCat === cat;
             const count = cat === "All" ? allVendors.length : allVendors.filter(v => v.category === cat).length;
             return (
@@ -274,7 +275,7 @@ export default function VendorsPage() {
                 background: active ? info.color + "18" : "transparent",
                 color: active ? info.color : "var(--muted)",
               }}>
-                {cat !== "All" && <span>{info.icon}</span>}
+                <SvgIcon name={info.iconName || "grid"} size={14} color={info.color} />
                 {cat} <span style={{ opacity: 0.7, fontSize: 11 }}>({count})</span>
               </button>
             );
@@ -287,7 +288,7 @@ export default function VendorsPage() {
         <p style={{ color: "var(--muted)" }}>Loading…</p>
       ) : allVendors.length === 0 ? (
         <Card style={{ textAlign: "center", padding: 56, border: "1.5px dashed var(--border)" }}>
-          <div style={{ fontSize: 48, marginBottom: 14 }}>🤝</div>
+          <div style={{ marginBottom: 14 }}><SvgIcon name="handshake" size={48} color="var(--muted)" /></div>
           <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>No vendors yet</p>
           <p style={{ color: "var(--muted)", fontSize: 13, marginBottom: 20 }}>Add photographers, videographers, costume providers and more.</p>
           <Button onClick={openAdd}>Add Vendor</Button>
@@ -336,7 +337,7 @@ export default function VendorsPage() {
               {panelMode === "add" ? "Add Vendor" : panelMode === "edit" ? "Edit Vendor" : "Vendor Details"}
             </span>
             <button onClick={() => { setSelected(null); setPanelMode(null); }}
-              style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--muted)", lineHeight: 1, padding: 4, borderRadius: 6 }}>✕</button>
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", lineHeight: 1, padding: 4, borderRadius: 6, display:"flex", alignItems:"center" }}><SvgIcon name="x" size={18} /></button>
           </div>
 
           {/* ── VIEW mode ── */}
@@ -349,15 +350,15 @@ export default function VendorsPage() {
                 {/* Hero */}
                 <div style={{ padding: "20px 22px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0, background: "var(--surface)" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 13, background: cat.color + "20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>
-                      {cat.icon}
+                    <div style={{ width: 48, height: 48, borderRadius: 13, background: cat.color + "20", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <SvgIcon name={cat.iconName || "package"} size={24} color={cat.color} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontFamily: "var(--font-d)", fontSize: 18, fontWeight: 800, marginBottom: 4, color: "var(--text)" }}>{v.name}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: cat.color, background: cat.color + "18", borderRadius: 20, padding: "2px 10px" }}>{v.category}</span>
                         {v.is_favorite && (
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#f59e0b", background: "#fef3c7", borderRadius: 20, padding: "2px 8px" }}>⭐ Favourite</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#f59e0b", background: "#fef3c7", borderRadius: 20, padding: "2px 8px", display:"inline-flex", alignItems:"center", gap:3 }}><SvgIcon name="star" size={11} color="#f59e0b" style={{marginRight:3}} /> Favourite</span>
                         )}
                       </div>
                     </div>
@@ -440,9 +441,10 @@ export default function VendorsPage() {
                       flex: 1, padding: "9px 16px", borderRadius: 9,
                       border: "1.5px solid var(--accent)", background: "var(--accent)",
                       color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600,
-                    }}>✏️ Edit Vendor</button>
+                      display:"inline-flex", alignItems:"center", justifyContent:"center", gap:7,
+                    }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Vendor</button>
                     <button onClick={() => { if (window.confirm(`Remove "${v.name}"?`)) removeMutation.mutate(v.id); }}
-                      style={{ padding: "9px 14px", borderRadius: 9, border: "1.5px solid #e05c6a", background: "transparent", color: "#e05c6a", cursor: "pointer", fontSize: 13 }}>🗑</button>
+                      style={{ padding: "9px 14px", borderRadius: 9, border: "1.5px solid #e05c6a", background: "transparent", color: "#e05c6a", cursor: "pointer", fontSize: 13, display:"inline-flex", alignItems:"center", justifyContent:"center" }}><SvgIcon name="trash" size={14} color="#e05c6a" /></button>
                   </div>
                 </div>
               </>
@@ -455,7 +457,7 @@ export default function VendorsPage() {
               <VendorFormFields form={editForm} set={(k, v) => setEditForm(f => ({ ...f, [k]: v }))} />
               <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, cursor: "pointer", userSelect: "none" }}>
                 <input type="checkbox" checked={editForm.is_favorite} onChange={e => setEditForm(f => ({ ...f, is_favorite: e.target.checked }))} style={{ width: 16, height: 16, cursor: "pointer" }} />
-                <span style={{ fontSize: 14, fontWeight: 500 }}>Mark as favourite ⭐</span>
+                <span style={{ fontSize: 14, fontWeight: 500, display:"inline-flex", alignItems:"center", gap:6 }}>Mark as favourite <SvgIcon name="star" size={14} color="#f59e0b" /></span>
               </label>
               <div style={{ display: "flex", gap: 9, marginTop: 20 }}>
                 <Button onClick={handleSave} disabled={!editForm.name || saving}>{saving ? "Saving…" : "Save Changes"}</Button>
@@ -470,7 +472,7 @@ export default function VendorsPage() {
               <VendorFormFields form={addForm} set={(k, v) => setAddForm(f => ({ ...f, [k]: v }))} />
               <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, cursor: "pointer", userSelect: "none" }}>
                 <input type="checkbox" checked={addForm.is_favorite} onChange={e => setAddForm(f => ({ ...f, is_favorite: e.target.checked }))} style={{ width: 16, height: 16, cursor: "pointer" }} />
-                <span style={{ fontSize: 14, fontWeight: 500 }}>Mark as favourite ⭐</span>
+                <span style={{ fontSize: 14, fontWeight: 500, display:"inline-flex", alignItems:"center", gap:6 }}>Mark as favourite <SvgIcon name="star" size={14} color="#f59e0b" /></span>
               </label>
               <div style={{ display: "flex", gap: 9, marginTop: 20 }}>
                 <Button onClick={handleSave} disabled={!addForm.name || saving}>{saving ? "Saving…" : "Add Vendor"}</Button>

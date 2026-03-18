@@ -8,6 +8,7 @@ import Button from "../components/shared/Button";
 import Badge from "../components/shared/Badge";
 import Modal from "../components/shared/Modal";
 import { Field, Input, Select, Textarea } from "../components/shared/Field";
+import SvgIcon from "../components/shared/SvgIcon";
 
 const LEVELS = ["Beginner","Intermediate","Advanced","Mixed"];
 const BATCH_COLORS = ["#e8607a","#6a7fdb","#f4a041","#52c4a0","#b47fe8","#e87a52"];
@@ -167,13 +168,13 @@ export default function BatchesPage() {
         <div style={{ display:"flex", gap:8, alignItems:"center", marginLeft:"auto" }}>
           <div style={{ display:"flex", border:"1.5px solid var(--border)", borderRadius:9, overflow:"hidden" }}>
             <button onClick={() => setView("grid")}
-              style={{ padding:"7px 13px", border:"none", cursor:"pointer", fontSize:16, lineHeight:1, transition:"all .15s",
-                background:view==="grid" ? "var(--accent)" : "transparent", color:view==="grid" ? "#fff" : "var(--muted)" }}>⊞</button>
+              style={{ padding:"7px 13px", border:"none", cursor:"pointer", transition:"all .15s", display:"flex", alignItems:"center", justifyContent:"center",
+                background:view==="grid" ? "var(--accent)" : "transparent", color:view==="grid" ? "#fff" : "var(--muted)" }}><SvgIcon name="grid" size={16} /></button>
             <button onClick={() => setView("table")}
-              style={{ padding:"7px 13px", border:"none", borderLeft:"1.5px solid var(--border)", cursor:"pointer", fontSize:16, lineHeight:1, transition:"all .15s",
-                background:view==="table" ? "var(--accent)" : "transparent", color:view==="table" ? "#fff" : "var(--muted)" }}>☰</button>
+              style={{ padding:"7px 13px", border:"none", borderLeft:"1.5px solid var(--border)", cursor:"pointer", transition:"all .15s", display:"flex", alignItems:"center", justifyContent:"center",
+                background:view==="table" ? "var(--accent)" : "transparent", color:view==="table" ? "#fff" : "var(--muted)" }}><SvgIcon name="list" size={16} /></button>
           </div>
-          <Button onClick={openAdd} icon="➕">New Batch</Button>
+          <Button onClick={openAdd}>New Batch</Button>
         </div>
       </div>
 
@@ -183,7 +184,7 @@ export default function BatchesPage() {
 
       ) : list.length === 0 ? (
         <Card style={{ textAlign:"center", padding:48, border:"1.5px dashed var(--border)" }}>
-          <div style={{ fontSize:32, marginBottom:12 }}>📚</div>
+          <div style={{ marginBottom:12 }}><SvgIcon name="book-open" size={40} color="var(--muted)" /></div>
           <p style={{ fontWeight:700, marginBottom:4 }}>No batches yet</p>
           <p style={{ color:"var(--muted)", fontSize:13, marginBottom:16 }}>Create your first batch to group students by level or style.</p>
           <Button onClick={openAdd}>New Batch</Button>
@@ -288,7 +289,7 @@ export default function BatchesPage() {
                     </td>
                     <td style={{ padding:"10px 14px" }}>
                       <button onClick={e => { e.stopPropagation(); if(window.confirm(`Delete "${b.name}"?`)) deleteMutation.mutate(b.id); }}
-                        style={{ background:"none", border:"none", cursor:"pointer", fontSize:14, color:"var(--muted)", padding:"3px 7px", borderRadius:6, opacity:.6 }}>🗑</button>
+                        style={{ background:"none", border:"none", cursor:"pointer", color:"var(--muted)", padding:"3px 7px", borderRadius:6, opacity:.6, display:"flex", alignItems:"center" }}><SvgIcon name="trash" size={14} /></button>
                     </td>
                   </tr>
                 );
@@ -320,7 +321,7 @@ export default function BatchesPage() {
               {panelMode === "add" ? "New Batch" : panelMode === "edit" ? "Edit Batch" : "Batch Details"}
             </span>
             <button onClick={closePanel}
-              style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6 }}>✕</button>
+              style={{ background:"none", border:"none", cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6, display:"flex", alignItems:"center" }}><SvgIcon name="x" size={18} /></button>
           </div>
 
           {/* ── VIEW mode: batch hero ── */}
@@ -336,7 +337,7 @@ export default function BatchesPage() {
                   </div>
                 </div>
               </div>
-              {activeBatch.teacher_name && <div style={{ fontSize:12, color:"var(--muted)", marginBottom:8, marginLeft:16 }}>👩‍🏫 {activeBatch.teacher_name}</div>}
+              {activeBatch.teacher_name && <div style={{ fontSize:12, color:"var(--muted)", marginBottom:8, marginLeft:16, display:"flex", alignItems:"center" }}><SvgIcon name="user" size={12} color="var(--muted)" style={{marginRight:6}} />{activeBatch.teacher_name}</div>}
               <div style={{ marginLeft:16, display:"flex", alignItems:"center", gap:8 }}>
                 <span style={{ fontSize:13, fontWeight:700, color:activeColor }}>{activeBatch.student_count||0}{activeBatch.max_size ? `/${activeBatch.max_size}` : ""}</span>
                 <span style={{ fontSize:12, color:"var(--muted)" }}>students enrolled</span>
@@ -370,7 +371,7 @@ export default function BatchesPage() {
                         <div style={{ fontWeight:800, fontSize:12, color:activeColor, minWidth:30 }}>{s.day_of_week}</div>
                         <div style={{ flex:1 }}>
                           <div style={{ fontSize:12, fontWeight:600 }}>{s.start_time?.slice(0,5)} – {s.end_time?.slice(0,5)}</div>
-                          {s.room && <div style={{ fontSize:10, color:"var(--muted)" }}>📍 {s.room}</div>}
+                          {s.room && <div style={{ fontSize:10, color:"var(--muted)", display:"flex", alignItems:"center" }}><SvgIcon name="map-pin" size={10} color="var(--muted)" style={{marginRight:4}} />{s.room}</div>}
                         </div>
                       </div>
                     ))}
@@ -399,7 +400,7 @@ export default function BatchesPage() {
                           </div>
                         ))}
                       </div>
-                      <Button size="sm" variant="ghost" onClick={openEnroll}>👥 Manage Students</Button>
+                      <Button size="sm" variant="ghost" onClick={openEnroll}><SvgIcon name="users" size={14} style={{marginRight:6}} /> Manage Students</Button>
                     </>
                   )
                 }
@@ -422,7 +423,7 @@ export default function BatchesPage() {
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ fontWeight:600, fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.title}</div>
-                            {r.venue && <div style={{ fontSize:10, color:"var(--muted)" }}>📍 {r.venue}</div>}
+                            {r.venue && <div style={{ fontSize:10, color:"var(--muted)", display:"flex", alignItems:"center" }}><SvgIcon name="map-pin" size={10} color="var(--muted)" style={{marginRight:4}} />{r.venue}</div>}
                           </div>
                           <Badge>{r.status}</Badge>
                         </div>
@@ -442,11 +443,11 @@ export default function BatchesPage() {
               {/* Actions */}
               <div style={{ display:"flex", gap:9, marginTop:24 }}>
                 <button onClick={() => openEdit()}
-                  style={{ flex:1, padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontFamily:"var(--font-b)", fontWeight:600 }}>
-                  ✏️ Edit Batch
+                  style={{ flex:1, padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontFamily:"var(--font-b)", fontWeight:600, display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
+                  <SvgIcon name="pencil" size={14} color="#fff" style={{marginRight:6}} /> Edit Batch
                 </button>
                 <button onClick={() => { if(window.confirm(`Delete "${activeBatch.name}"?`)) deleteMutation.mutate(activeBatch.id); }}
-                  style={{ padding:"9px 14px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontFamily:"var(--font-b)", flexShrink:0 }}>🗑</button>
+                  style={{ padding:"9px 14px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontFamily:"var(--font-b)", flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }}><SvgIcon name="trash" size={14} color="#e05c6a" /></button>
               </div>
             </div>
           )}
