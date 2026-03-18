@@ -43,6 +43,16 @@ function SectionHead({ title, sub }) {
   );
 }
 
+function useWindowWidth() {
+  const [w, setW] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth : 1024);
+  React.useEffect(() => {
+    const h = () => setW(window.innerWidth);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return w;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Full-page Detail View
 // ─────────────────────────────────────────────────────────────────────────────
@@ -89,6 +99,8 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const [instaInput,    setInstaInput]    = useState("");    // live input
   const [showInstaForm, setShowInstaForm] = useState(false); // show URL form
 
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
   const qc = useQueryClient();
 
   // Persist Sign Up Genius URL in localStorage per recital
@@ -419,11 +431,11 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const pct     = recitalTodos.length ? Math.round(done / recitalTodos.length * 100) : 0;
 
   const TABS = [
-    { id:"overview",   label:"Overview" },
-    { id:"program",    label:"Program Schedule" },
-    { id:"volunteers", label:"Parent Volunteers" },
-    { id:"vendors",    label:"Vendors" },
-    { id:"tasks",      label:`To-Dos${recitalTodos.length ? ` (${done}/${recitalTodos.length})` : ""}` },
+    { id:"overview",   label:"Overview",          shortLabel:"Overview",  icon:"home"        },
+    { id:"program",    label:"Program Schedule",  shortLabel:"Program",   icon:"list"        },
+    { id:"volunteers", label:"Parent Volunteers", shortLabel:"Helpers",   icon:"users"       },
+    { id:"vendors",    label:"Vendors",           shortLabel:"Vendors",   icon:"package"     },
+    { id:"tasks",      label:`To-Dos${recitalTodos.length ? ` (${done}/${recitalTodos.length})` : ""}`, shortLabel:`To-Dos${recitalTodos.length ? ` ${done}/${recitalTodos.length}` : ""}`, icon:"check-circle" },
   ];
 
   const META = [
@@ -453,9 +465,9 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
 
       {/* ── Event header (full-width) ──────────────────────────────────── */}
       <div style={{ marginBottom:26 }}>
-        <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:16, flexWrap:"wrap", marginBottom:22 }}>
-          <div>
-            <h1 style={{ fontFamily:"var(--font-d)", fontSize:30, fontWeight:900, margin:0, marginBottom:10, lineHeight:1.2 }}>
+        <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap", marginBottom:isMobile ? 16 : 22 }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <h1 style={{ fontFamily:"var(--font-d)", fontSize: isMobile ? 22 : 30, fontWeight:900, margin:0, marginBottom:10, lineHeight:1.2 }}>
               {recital.title}
             </h1>
             <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
@@ -469,8 +481,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
           </div>
           <button onClick={openInlineEdit} style={{
             display:"inline-flex", alignItems:"center", gap:6,
-            padding:"9px 18px", borderRadius:10, border:"1.5px solid var(--border)",
-            background:"var(--card)", cursor:"pointer", fontSize:13, fontWeight:600,
+            padding: isMobile ? "8px 12px" : "9px 18px",
+            borderRadius:10, border:"1.5px solid var(--border)",
+            background:"var(--card)", cursor:"pointer",
+            fontSize: isMobile ? 12 : 13, fontWeight:600,
             color:"var(--text)", transition:"all .15s", flexShrink:0,
           }}
             onMouseEnter={e => e.currentTarget.style.background = "var(--surface)"}
@@ -480,20 +494,21 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
-            Edit Event
+            {isMobile ? "Edit" : "Edit Event"}
           </button>
         </div>
 
         {/* Metadata strip — full width */}
         <div style={{
-          display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:0,
+          display:"grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap:0,
           background:"var(--border)", borderRadius:14, overflow:"hidden",
           border:"1px solid var(--border)",
         }}>
           {META.map((m, i) => (
             <div key={m.label} style={{
-              background:"var(--card)", padding:"16px 22px",
-              borderRight: i < META.length-1 ? "1px solid var(--border)" : "none",
+              background:"var(--card)", padding: isMobile ? "14px 16px" : "16px 22px",
+              borderRight: isMobile ? (i % 2 === 0 ? "1px solid var(--border)" : "none") : (i < META.length-1 ? "1px solid var(--border)" : "none"),
+              borderBottom: isMobile && i < 2 ? "1px solid var(--border)" : "none",
             }}>
               <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7, color:"var(--muted)" }}>
                 {m.icon}
@@ -511,23 +526,33 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
         background:"var(--surface)", borderRadius:12,
         padding:4, marginBottom:22,
         border:"1px solid var(--border)",
-        width:"fit-content",
+        width: isMobile ? "100%" : "fit-content",
       }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
-            padding:"8px 18px", border:"none", cursor:"pointer",
+            padding: isMobile ? "8px 4px" : "8px 18px",
+            flex: isMobile ? 1 : "none",
+            border:"none", cursor:"pointer",
             background: tab === t.id ? "var(--card)" : "transparent",
-            color: tab === t.id ? "var(--text)" : "var(--muted)",
+            color: tab === t.id ? (isMobile ? "var(--accent)" : "var(--text)") : "var(--muted)",
             fontWeight: tab === t.id ? 700 : 500,
-            fontSize:13, borderRadius:9, transition:"all .15s",
+            fontSize: isMobile ? 9 : 13,
+            borderRadius:9, transition:"all .15s",
             boxShadow: tab === t.id ? "0 1px 6px rgba(0,0,0,.1)" : "none",
             whiteSpace:"nowrap",
-          }}>{t.label}</button>
+            display:"flex", flexDirection: isMobile ? "column" : "row",
+            alignItems:"center", justifyContent:"center",
+            gap: isMobile ? 4 : 0,
+            lineHeight: 1.2,
+          }}>
+            {isMobile && <SvgIcon name={t.icon} size={15} color={tab === t.id ? "var(--accent)" : "var(--muted)"} />}
+            <span>{isMobile ? t.shortLabel : t.label}</span>
+          </button>
         ))}
       </div>
 
       {/* ── Tab content ───────────────────────────────────────────────── */}
-      <div style={{ background:"var(--card)", borderRadius:16, border:"1px solid var(--border)", padding:"28px 32px" }}>
+      <div style={{ background:"var(--card)", borderRadius:16, border:"1px solid var(--border)", padding: isMobile ? "18px 16px" : "28px 32px" }}>
 
         {/* ── OVERVIEW ── */}
         {tab === "overview" && (
@@ -536,12 +561,13 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
              borderRadius clips everything to the card's rounded corners.      */
           <div style={{
             display:"flex", alignItems:"stretch",
-            margin:"-28px -32px -28px -32px",
+            flexDirection: isMobile ? "column" : "row",
+            margin: isMobile ? "-18px -16px -18px -16px" : "-28px -32px -28px -32px",
             overflow:"hidden", borderRadius:16,
           }}>
 
             {/* Left: description + important info — re-apply the original padding */}
-            <div style={{ flex:1, minWidth:0, padding:"28px 32px" }}>
+            <div style={{ flex:1, minWidth:0, padding: isMobile ? "18px 16px" : "28px 32px" }}>
               <SectionHead title="Event Overview" sub="General information and description" />
 
               {recital.description && (
@@ -568,10 +594,13 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
               onMouseEnter={() => setPosterHover(true)}
               onMouseLeave={() => setPosterHover(false)}
               style={{
-                flexShrink:0, width:260, position:"relative", overflow:"hidden",
-                borderLeft:"1px solid var(--border)",
+                flexShrink:0,
+                width: isMobile ? "100%" : 260,
+                position:"relative", overflow:"hidden",
+                borderLeft: isMobile ? "none" : "1px solid var(--border)",
+                borderTop: isMobile ? "1px solid var(--border)" : "none",
                 background: (poster || instaUrl) ? "#000" : "var(--surface)",
-                minHeight:320,
+                minHeight: isMobile ? 200 : 320,
               }}
             >
               {/* ── Uploaded image ── */}
@@ -777,184 +806,258 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
               <Button size="sm" onClick={openAddProg}>Add Number</Button>
             </div>
 
-            {/* Scrollable table */}
-            <div style={{ overflowX:"auto", borderRadius:12, border:"1px solid var(--border)", position:"relative" }}>
-              <table style={{ width:"100%", borderCollapse:"collapse", minWidth:1020, tableLayout:"fixed", fontSize:13 }}>
-                <colgroup>
-                  <col style={{width:36}}/>  {/* drag handle */}
-                  <col style={{width:42}}/>  {/* # */}
-                  <col style={{width:84}}/>  {/* time */}
-                  <col style={{width:66}}/>  {/* duration */}
-                  <col style={{width:172}}/> {/* title */}
-                  <col style={{width:135}}/> {/* performers */}
-                  <col style={{width:152}}/> {/* music */}
-                  <col style={{width:178}}/> {/* mc notes */}
-                  <col style={{width:162}}/> {/* lighting */}
-                  <col style={{width:68}}/>  {/* actions – sticky */}
-                </colgroup>
-                <thead>
-                  <tr style={{ background:"var(--surface)", borderBottom:"1.5px solid var(--border)" }}>
-                    {/* drag handle header */}
-                    <th style={{ padding:"10px 0 10px 10px", borderRight:"1px solid var(--border)" }}/>
-                    {["#","Time","Duration","Title","Performers","Music","MC Notes","Lighting Notes"].map((h,i) => (
-                      <th key={h} style={{
-                        padding:"10px 12px", textAlign:"left", fontSize:11, fontWeight:700,
-                        color:"var(--muted)", textTransform:"uppercase", letterSpacing:.5,
-                        borderRight:"1px solid var(--border)",
-                      }}>{h}</th>
-                    ))}
-                    {/* sticky actions header */}
-                    <th style={{
-                      padding:"10px 12px", fontSize:11, fontWeight:700, color:"var(--muted)",
-                      textTransform:"uppercase", letterSpacing:.5,
-                      position:"sticky", right:0, background:"var(--surface)",
-                      boxShadow:"-2px 0 6px rgba(0,0,0,.06)", zIndex:3,
-                    }}/>
-                  </tr>
-                </thead>
-                <tbody>
-                  {programItems.length === 0 && (
-                    <tr><td colSpan={10} style={{ padding:"32px 20px", textAlign:"center", color:"var(--muted)", fontSize:13 }}>
-                      No numbers yet — click <strong>Add Number</strong> to get started.
-                    </td></tr>
-                  )}
-                  {programItems.map((p, i) => {
-                    const hasMusic   = p.music_data || p.music_url;
-                    const mcExpanded = expandedNotes.has(p.id);
-                    const ltExpanded = expandedLight.has(p.id);
-                    const rowBg = i % 2 === 0 ? "var(--card)" : "var(--surface)";
-                    return (
-                      <tr key={p.id}
-                        draggable
-                        onDragStart={() => { dragItem.current = i; }}
-                        onDragEnter={() => { dragOverItem.current = i; }}
-                        onDragOver={e => e.preventDefault()}
-                        onDragEnd={handleDragSort}
-                        style={{
-                          background: rowBg,
-                          borderBottom: i < programItems.length - 1 ? "1px solid var(--border)" : "none",
-                          verticalAlign:"top", cursor:"grab",
-                        }}>
-                        {/* Drag handle */}
-                        <td style={{ padding:"14px 0 14px 10px", borderRight:"1px solid var(--border)", color:"var(--muted)", userSelect:"none" }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                            <line x1="4" y1="7"  x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>
-                          </svg>
-                        </td>
-                        {/* # */}
-                        <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)", color:"var(--muted)", fontWeight:700, fontSize:12, textAlign:"center" }}>
-                          {i + 1}
-                        </td>
-                        {/* Time */}
-                        <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)" }}>
-                          <div style={{ fontWeight:800, color:"#6a7fdb", fontSize:13 }}>{p.time||"—"}</div>
-                        </td>
-                        {/* Duration */}
-                        <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)", color:"var(--muted)" }}>
-                          {p.duration||"—"}
-                        </td>
-                        {/* Title */}
-                        <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)" }}>
-                          <div style={{ fontWeight:700 }}>{p.title}</div>
-                        </td>
-                        {/* Performers */}
-                        <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)", color:"var(--muted)" }}>
-                          {p.performers || p.group || "—"}
-                        </td>
-                        {/* Music */}
-                        <td style={{ padding:"12px 12px", borderRight:"1px solid var(--border)" }}>
-                          {hasMusic ? (
-                            <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
-                              <div style={{ fontSize:11, fontWeight:700, color:"#333", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:128 }}>
-                                <SvgIcon name="music" size={11} color="#333" style={{marginRight:4}} />{p.music_name || "Track"}
-                              </div>
-                              {p.music_data && (
-                                <audio controls src={p.music_data} style={{ width:"100%", maxWidth:128, height:26 }} />
-                              )}
-                              {p.music_url && !p.music_data && (
-                                <a href={p.music_url} target="_blank" rel="noopener noreferrer"
-                                  style={{ fontSize:11, color:"#6a7fdb", textDecoration:"none", fontWeight:600 }}>▶ Open / Play</a>
-                              )}
-                              {p.music_data && (
-                                <a href={p.music_data} download={p.music_name||"music"}
-                                  style={{ fontSize:11, color:"var(--muted)", textDecoration:"none" }}>⬇ Download</a>
-                              )}
-                            </div>
-                          ) : <span style={{ fontSize:11, color:"var(--border)" }}>—</span>}
-                        </td>
-                        {/* MC Notes */}
-                        <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)" }}>
-                          {p.mc_notes ? (
-                            <div>
-                              <div style={{
-                                fontSize:12, lineHeight:1.5,
-                                overflow: mcExpanded ? "visible" : "hidden",
-                                display: mcExpanded ? "block" : "-webkit-box",
-                                WebkitLineClamp: mcExpanded ? "unset" : 2,
-                                WebkitBoxOrient:"vertical",
-                              }}>{p.mc_notes}</div>
-                              {p.mc_notes.length > 80 && (
-                                <button onClick={() => toggleNote(p.id)} style={{ fontSize:11, color:"#6a7fdb", background:"none", border:"none", cursor:"pointer", padding:"2px 0", fontWeight:600 }}>
-                                  {mcExpanded ? "Show less ▲" : "View more ▼"}
-                                </button>
-                              )}
-                            </div>
-                          ) : <span style={{ fontSize:11, color:"var(--border)" }}>—</span>}
-                        </td>
-                        {/* Lighting Notes */}
-                        <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)" }}>
-                          {p.lighting_notes ? (
-                            <div>
-                              <div style={{
-                                fontSize:12, lineHeight:1.5,
-                                overflow: ltExpanded ? "visible" : "hidden",
-                                display: ltExpanded ? "block" : "-webkit-box",
-                                WebkitLineClamp: ltExpanded ? "unset" : 2,
-                                WebkitBoxOrient:"vertical",
-                              }}>{p.lighting_notes}</div>
-                              {p.lighting_notes.length > 80 && (
-                                <button onClick={() => toggleLight(p.id)} style={{ fontSize:11, color:"#6a7fdb", background:"none", border:"none", cursor:"pointer", padding:"2px 0", fontWeight:600 }}>
-                                  {ltExpanded ? "Show less ▲" : "View more ▼"}
-                                </button>
-                              )}
-                            </div>
-                          ) : <span style={{ fontSize:11, color:"var(--border)" }}>—</span>}
-                        </td>
-                        {/* Sticky actions */}
-                        <td style={{
-                          padding:"10px 8px", position:"sticky", right:0, background: rowBg,
-                          boxShadow:"-2px 0 6px rgba(0,0,0,.06)", zIndex:2,
-                        }}>
-                          <div style={{ display:"flex", gap:4, alignItems:"center", justifyContent:"center" }}>
-                            {/* Edit icon */}
-                            <button onClick={() => openEditProg(p)} title="Edit" style={{
-                              width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center",
-                              border:"1px solid var(--border)", background:"none", cursor:"pointer", color:"var(--muted)",
-                            }}>
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                              </svg>
-                            </button>
-                            {/* Delete icon */}
-                            <button onClick={() => { if(window.confirm("Remove this number?")) deleteProg(p.id); }} title="Remove" style={{
-                              width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center",
-                              border:"1px solid #fecaca", background:"none", cursor:"pointer", color:"#e05c6a",
-                            }}>
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                <path d="M10 11v6"/><path d="M14 11v6"/>
-                                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                              </svg>
-                            </button>
+            {/* ── MOBILE: card-per-row ── */}
+            {isMobile ? (
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {programItems.length === 0 && (
+                  <div style={{ textAlign:"center", padding:"32px 16px", color:"var(--muted)", fontSize:13, border:"1.5px dashed var(--border)", borderRadius:12 }}>
+                    No numbers yet — tap <strong>Add Number</strong> to get started.
+                  </div>
+                )}
+                {programItems.map((p, i) => {
+                  const hasMusic   = p.music_data || p.music_url;
+                  const mcExpanded = expandedNotes.has(p.id);
+                  const ltExpanded = expandedLight.has(p.id);
+                  return (
+                    <div key={p.id} style={{ background:"var(--card)", borderRadius:12, border:"1px solid var(--border)", overflow:"hidden" }}>
+                      {/* Card header */}
+                      <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", background:"var(--surface)", borderBottom:"1px solid var(--border)" }}>
+                        <div style={{ width:28, height:28, borderRadius:"50%", background:"var(--accent)", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#fff" }}>{i+1}</div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.title}</div>
+                          {(p.performers || p.group) && <div style={{ fontSize:12, color:"var(--muted)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.performers || p.group}</div>}
+                        </div>
+                        <div style={{ display:"flex", gap:5, flexShrink:0 }}>
+                          <button onClick={() => openEditProg(p)} title="Edit" style={{ width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid var(--border)", background:"none", cursor:"pointer", color:"var(--muted)" }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
+                          <button onClick={() => { if(window.confirm("Remove this number?")) deleteProg(p.id); }} title="Remove" style={{ width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid #fecaca", background:"none", cursor:"pointer", color:"#e05c6a" }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                      {/* Card body */}
+                      <div style={{ padding:"12px 14px", display:"flex", flexDirection:"column", gap:10 }}>
+                        {(p.time || p.duration) && (
+                          <div style={{ display:"flex", gap:14, alignItems:"center" }}>
+                            {p.time && <span style={{ fontSize:13, fontWeight:800, color:"#6a7fdb", display:"inline-flex", alignItems:"center", gap:5 }}><SvgIcon name="clock" size={12} color="#6a7fdb" />{p.time}</span>}
+                            {p.duration && <span style={{ fontSize:12, color:"var(--muted)", display:"inline-flex", alignItems:"center", gap:5 }}><SvgIcon name="timer" size={12} color="var(--muted)" />{p.duration}</span>}
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        )}
+                        {hasMusic && (
+                          <div style={{ padding:"10px 12px", borderRadius:8, background:"var(--surface)", border:"1px solid var(--border)" }}>
+                            <div style={{ fontSize:11, fontWeight:700, color:"var(--text)", marginBottom:6, display:"flex", alignItems:"center", gap:5 }}>
+                              <SvgIcon name="music" size={11} color="#6a7fdb" />{p.music_name || "Music Track"}
+                            </div>
+                            {p.music_data && <audio controls src={p.music_data} style={{ width:"100%", height:32 }} />}
+                            {p.music_url && !p.music_data && (
+                              <a href={p.music_url} target="_blank" rel="noopener noreferrer" style={{ fontSize:12, color:"#6a7fdb", textDecoration:"none", fontWeight:600 }}>▶ Open / Play</a>
+                            )}
+                          </div>
+                        )}
+                        {p.mc_notes && (
+                          <div>
+                            <div style={{ fontSize:10, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".06em", marginBottom:4 }}>MC Notes</div>
+                            <div style={{ fontSize:13, lineHeight:1.55, overflow: mcExpanded ? "visible" : "hidden", display: mcExpanded ? "block" : "-webkit-box", WebkitLineClamp: mcExpanded ? "unset" : 3, WebkitBoxOrient:"vertical" }}>{p.mc_notes}</div>
+                            {p.mc_notes.length > 100 && (
+                              <button onClick={() => toggleNote(p.id)} style={{ fontSize:11, color:"#6a7fdb", background:"none", border:"none", cursor:"pointer", padding:"3px 0", fontWeight:600 }}>{mcExpanded ? "Show less ▲" : "View more ▼"}</button>
+                            )}
+                          </div>
+                        )}
+                        {p.lighting_notes && (
+                          <div>
+                            <div style={{ fontSize:10, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".06em", marginBottom:4 }}>Lighting Notes</div>
+                            <div style={{ fontSize:13, lineHeight:1.55, overflow: ltExpanded ? "visible" : "hidden", display: ltExpanded ? "block" : "-webkit-box", WebkitLineClamp: ltExpanded ? "unset" : 3, WebkitBoxOrient:"vertical" }}>{p.lighting_notes}</div>
+                            {p.lighting_notes.length > 100 && (
+                              <button onClick={() => toggleLight(p.id)} style={{ fontSize:11, color:"#6a7fdb", background:"none", border:"none", cursor:"pointer", padding:"3px 0", fontWeight:600 }}>{ltExpanded ? "Show less ▲" : "View more ▼"}</button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* ── DESKTOP: scrollable table ── */
+              <div style={{ overflowX:"auto", borderRadius:12, border:"1px solid var(--border)", position:"relative" }}>
+                <table style={{ width:"100%", borderCollapse:"collapse", minWidth:1020, tableLayout:"fixed", fontSize:13 }}>
+                  <colgroup>
+                    <col style={{width:36}}/>  {/* drag handle */}
+                    <col style={{width:42}}/>  {/* # */}
+                    <col style={{width:84}}/>  {/* time */}
+                    <col style={{width:66}}/>  {/* duration */}
+                    <col style={{width:172}}/> {/* title */}
+                    <col style={{width:135}}/> {/* performers */}
+                    <col style={{width:152}}/> {/* music */}
+                    <col style={{width:178}}/> {/* mc notes */}
+                    <col style={{width:162}}/> {/* lighting */}
+                    <col style={{width:68}}/>  {/* actions – sticky */}
+                  </colgroup>
+                  <thead>
+                    <tr style={{ background:"var(--surface)", borderBottom:"1.5px solid var(--border)" }}>
+                      {/* drag handle header */}
+                      <th style={{ padding:"10px 0 10px 10px", borderRight:"1px solid var(--border)" }}/>
+                      {["#","Time","Duration","Title","Performers","Music","MC Notes","Lighting Notes"].map((h,i) => (
+                        <th key={h} style={{
+                          padding:"10px 12px", textAlign:"left", fontSize:11, fontWeight:700,
+                          color:"var(--muted)", textTransform:"uppercase", letterSpacing:.5,
+                          borderRight:"1px solid var(--border)",
+                        }}>{h}</th>
+                      ))}
+                      {/* sticky actions header */}
+                      <th style={{
+                        padding:"10px 12px", fontSize:11, fontWeight:700, color:"var(--muted)",
+                        textTransform:"uppercase", letterSpacing:.5,
+                        position:"sticky", right:0, background:"var(--surface)",
+                        boxShadow:"-2px 0 6px rgba(0,0,0,.06)", zIndex:3,
+                      }}/>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {programItems.length === 0 && (
+                      <tr><td colSpan={10} style={{ padding:"32px 20px", textAlign:"center", color:"var(--muted)", fontSize:13 }}>
+                        No numbers yet — click <strong>Add Number</strong> to get started.
+                      </td></tr>
+                    )}
+                    {programItems.map((p, i) => {
+                      const hasMusic   = p.music_data || p.music_url;
+                      const mcExpanded = expandedNotes.has(p.id);
+                      const ltExpanded = expandedLight.has(p.id);
+                      const rowBg = i % 2 === 0 ? "var(--card)" : "var(--surface)";
+                      return (
+                        <tr key={p.id}
+                          draggable
+                          onDragStart={() => { dragItem.current = i; }}
+                          onDragEnter={() => { dragOverItem.current = i; }}
+                          onDragOver={e => e.preventDefault()}
+                          onDragEnd={handleDragSort}
+                          style={{
+                            background: rowBg,
+                            borderBottom: i < programItems.length - 1 ? "1px solid var(--border)" : "none",
+                            verticalAlign:"top", cursor:"grab",
+                          }}>
+                          {/* Drag handle */}
+                          <td style={{ padding:"14px 0 14px 10px", borderRight:"1px solid var(--border)", color:"var(--muted)", userSelect:"none" }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <line x1="4" y1="7"  x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>
+                            </svg>
+                          </td>
+                          {/* # */}
+                          <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)", color:"var(--muted)", fontWeight:700, fontSize:12, textAlign:"center" }}>
+                            {i + 1}
+                          </td>
+                          {/* Time */}
+                          <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)" }}>
+                            <div style={{ fontWeight:800, color:"#6a7fdb", fontSize:13 }}>{p.time||"—"}</div>
+                          </td>
+                          {/* Duration */}
+                          <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)", color:"var(--muted)" }}>
+                            {p.duration||"—"}
+                          </td>
+                          {/* Title */}
+                          <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)" }}>
+                            <div style={{ fontWeight:700 }}>{p.title}</div>
+                          </td>
+                          {/* Performers */}
+                          <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)", color:"var(--muted)" }}>
+                            {p.performers || p.group || "—"}
+                          </td>
+                          {/* Music */}
+                          <td style={{ padding:"12px 12px", borderRight:"1px solid var(--border)" }}>
+                            {hasMusic ? (
+                              <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+                                <div style={{ fontSize:11, fontWeight:700, color:"#333", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:128 }}>
+                                  <SvgIcon name="music" size={11} color="#333" style={{marginRight:4}} />{p.music_name || "Track"}
+                                </div>
+                                {p.music_data && (
+                                  <audio controls src={p.music_data} style={{ width:"100%", maxWidth:128, height:26 }} />
+                                )}
+                                {p.music_url && !p.music_data && (
+                                  <a href={p.music_url} target="_blank" rel="noopener noreferrer"
+                                    style={{ fontSize:11, color:"#6a7fdb", textDecoration:"none", fontWeight:600 }}>▶ Open / Play</a>
+                                )}
+                                {p.music_data && (
+                                  <a href={p.music_data} download={p.music_name||"music"}
+                                    style={{ fontSize:11, color:"var(--muted)", textDecoration:"none" }}>⬇ Download</a>
+                                )}
+                              </div>
+                            ) : <span style={{ fontSize:11, color:"var(--border)" }}>—</span>}
+                          </td>
+                          {/* MC Notes */}
+                          <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)" }}>
+                            {p.mc_notes ? (
+                              <div>
+                                <div style={{
+                                  fontSize:12, lineHeight:1.5,
+                                  overflow: mcExpanded ? "visible" : "hidden",
+                                  display: mcExpanded ? "block" : "-webkit-box",
+                                  WebkitLineClamp: mcExpanded ? "unset" : 2,
+                                  WebkitBoxOrient:"vertical",
+                                }}>{p.mc_notes}</div>
+                                {p.mc_notes.length > 80 && (
+                                  <button onClick={() => toggleNote(p.id)} style={{ fontSize:11, color:"#6a7fdb", background:"none", border:"none", cursor:"pointer", padding:"2px 0", fontWeight:600 }}>
+                                    {mcExpanded ? "Show less ▲" : "View more ▼"}
+                                  </button>
+                                )}
+                              </div>
+                            ) : <span style={{ fontSize:11, color:"var(--border)" }}>—</span>}
+                          </td>
+                          {/* Lighting Notes */}
+                          <td style={{ padding:"14px 12px", borderRight:"1px solid var(--border)" }}>
+                            {p.lighting_notes ? (
+                              <div>
+                                <div style={{
+                                  fontSize:12, lineHeight:1.5,
+                                  overflow: ltExpanded ? "visible" : "hidden",
+                                  display: ltExpanded ? "block" : "-webkit-box",
+                                  WebkitLineClamp: ltExpanded ? "unset" : 2,
+                                  WebkitBoxOrient:"vertical",
+                                }}>{p.lighting_notes}</div>
+                                {p.lighting_notes.length > 80 && (
+                                  <button onClick={() => toggleLight(p.id)} style={{ fontSize:11, color:"#6a7fdb", background:"none", border:"none", cursor:"pointer", padding:"2px 0", fontWeight:600 }}>
+                                    {ltExpanded ? "Show less ▲" : "View more ▼"}
+                                  </button>
+                                )}
+                              </div>
+                            ) : <span style={{ fontSize:11, color:"var(--border)" }}>—</span>}
+                          </td>
+                          {/* Sticky actions */}
+                          <td style={{
+                            padding:"10px 8px", position:"sticky", right:0, background: rowBg,
+                            boxShadow:"-2px 0 6px rgba(0,0,0,.06)", zIndex:2,
+                          }}>
+                            <div style={{ display:"flex", gap:4, alignItems:"center", justifyContent:"center" }}>
+                              {/* Edit icon */}
+                              <button onClick={() => openEditProg(p)} title="Edit" style={{
+                                width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center",
+                                border:"1px solid var(--border)", background:"none", cursor:"pointer", color:"var(--muted)",
+                              }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                              </button>
+                              {/* Delete icon */}
+                              <button onClick={() => { if(window.confirm("Remove this number?")) deleteProg(p.id); }} title="Remove" style={{
+                                width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center",
+                                border:"1px solid #fecaca", background:"none", cursor:"pointer", color:"#e05c6a",
+                              }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                  <path d="M10 11v6"/><path d="M14 11v6"/>
+                                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* Add / Edit program number modal */}
             {progModal !== null && (
@@ -1155,14 +1258,26 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                     </span>
                     {/* Row actions */}
                     <div style={{ display:"flex", gap:6, flexShrink:0 }}>
-                      <button onClick={() => openEditVolunteer(v)} style={{
-                        padding:"5px 10px", fontSize:11, border:"1px solid var(--border)",
+                      <button onClick={() => openEditVolunteer(v)} title="Edit" style={{
+                        width: isMobile ? 30 : "auto",
+                        height: isMobile ? 30 : "auto",
+                        padding: isMobile ? 0 : "5px 10px",
+                        fontSize:11, border:"1px solid var(--border)",
                         borderRadius:7, background:"none", cursor:"pointer", color:"var(--muted)", fontWeight:600,
-                      }}>Edit</button>
-                      <button onClick={() => { if (window.confirm(`Remove ${v.name}?`)) deleteVolunteer(v.id); }} style={{
-                        padding:"5px 10px", fontSize:11, border:"1px solid #fecaca",
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                      }}>
+                        {isMobile ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> : "Edit"}
+                      </button>
+                      <button onClick={() => { if (window.confirm(`Remove ${v.name}?`)) deleteVolunteer(v.id); }} title="Remove" style={{
+                        width: isMobile ? 30 : "auto",
+                        height: isMobile ? 30 : "auto",
+                        padding: isMobile ? 0 : "5px 10px",
+                        fontSize:11, border:"1px solid #fecaca",
                         borderRadius:7, background:"none", cursor:"pointer", color:"#e05c6a", fontWeight:600,
-                      }}>Remove</button>
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                      }}>
+                        {isMobile ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> : "Remove"}
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1270,14 +1385,26 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                     </span>
                     {/* Row actions */}
                     <div style={{ display:"flex", gap:6, flexShrink:0 }}>
-                      <button onClick={() => openEditVendor(v)} style={{
-                        padding:"5px 10px", fontSize:11, border:"1px solid var(--border)",
+                      <button onClick={() => openEditVendor(v)} title="Edit" style={{
+                        width: isMobile ? 30 : "auto",
+                        height: isMobile ? 30 : "auto",
+                        padding: isMobile ? 0 : "5px 10px",
+                        fontSize:11, border:"1px solid var(--border)",
                         borderRadius:7, background:"none", cursor:"pointer", color:"var(--muted)", fontWeight:600,
-                      }}>Edit</button>
-                      <button onClick={() => { if (window.confirm(`Remove ${v.name}?`)) deleteVendor(v.id); }} style={{
-                        padding:"5px 10px", fontSize:11, border:"1px solid #fecaca",
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                      }}>
+                        {isMobile ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> : "Edit"}
+                      </button>
+                      <button onClick={() => { if (window.confirm(`Remove ${v.name}?`)) deleteVendor(v.id); }} title="Remove" style={{
+                        width: isMobile ? 30 : "auto",
+                        height: isMobile ? 30 : "auto",
+                        padding: isMobile ? 0 : "5px 10px",
+                        fontSize:11, border:"1px solid #fecaca",
                         borderRadius:7, background:"none", cursor:"pointer", color:"#e05c6a", fontWeight:600,
-                      }}>Remove</button>
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                      }}>
+                        {isMobile ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> : "Remove"}
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1397,7 +1524,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
 
             {/* Add to-do inputs */}
             <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              <div style={{ display:"flex", gap:8 }}>
+              <div style={{ display:"flex", gap:8, flexWrap: isMobile ? "wrap" : "nowrap" }}>
                 <input
                   value={newTask}
                   onChange={e => setNewTask(e.target.value)}
