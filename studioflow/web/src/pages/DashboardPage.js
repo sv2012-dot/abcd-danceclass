@@ -85,9 +85,12 @@ function DateBadge({ dateStr, color }) {
 }
 
 // ── Recital row ───────────────────────────────────────────────────────────────
-const STATUS_COLOR = { Planning: '#6a7fdb', Confirmed: '#52c4a0', Rehearsals: '#f4a041', Completed: '#8ab4c0' };
 function RecitalRow({ r }) {
-  const c = STATUS_COLOR[r.status] || '#8a7a9a';
+  const eventDate = new Date(r.event_date);
+  const tod = new Date(); tod.setHours(0,0,0,0); eventDate.setHours(0,0,0,0);
+  const diff = Math.round((eventDate - tod) / 86400000);
+  const daysLabel = diff === 0 ? 'Today!' : diff === 1 ? 'Tomorrow' : diff > 0 ? `${diff}d to go` : `${Math.abs(diff)}d ago`;
+  const daysColor = diff <= 7 ? '#e05c6a' : diff <= 30 ? '#f4a041' : '#52c4a0';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 18px', borderBottom: '1px solid var(--border)' }}>
       <DateBadge dateStr={r.event_date} color="#c4527a" />
@@ -95,7 +98,7 @@ function RecitalRow({ r }) {
         <div style={{ fontWeight: 700, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
         <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{r.venue || '—'}</div>
       </div>
-      <Badge color={c}>{r.status}</Badge>
+      <span style={{ fontSize: 11, fontWeight: 700, color: daysColor, background: daysColor + '18', borderRadius: 20, padding: '3px 9px', whiteSpace: 'nowrap', flexShrink: 0 }}>{daysLabel}</span>
     </div>
   );
 }
@@ -201,7 +204,7 @@ export default function DashboardPage() {
   const now             = new Date();
   const upcomingRecitals = recitalList.filter(r => new Date(r.event_date) >= now && r.status !== 'Cancelled')
                             .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
-  const upcomingEvents   = (eventList || []).filter(e => new Date(e.start_datetime) >= now)
+  const upcomingEvents   = (eventList || []).filter(e => new Date(e.start_datetime) >= now && e.type !== 'Recital')
                             .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
   const openTodos        = todoList.filter(t => !t.is_complete);
 
@@ -230,7 +233,7 @@ export default function DashboardPage() {
         <ActionBtn color="#c4527a" onClick={() => navigate('/students')}>+ Add Student</ActionBtn>
         <ActionBtn color="#6a7fdb" onClick={() => navigate('/batches')}>+ Create Batch</ActionBtn>
         <ActionBtn color="#52c4a0" onClick={() => navigate('/schedule')}>+ Create Event</ActionBtn>
-        <ActionBtn color="#f4a041" onClick={() => navigate('/recitals')}>+ Create Recital</ActionBtn>
+        <ActionBtn color="#f4a041" onClick={() => navigate('/recitals', { state: { openAdd: true } })}>+ Create Recital</ActionBtn>
         <ActionBtn outline color="var(--border)" onClick={() => navigate('/schedule')}>View Schedule →</ActionBtn>
       </div>
 

@@ -13,15 +13,16 @@ import { RecitalDetail } from "./RecitalsPage";
 import SvgIcon from "../components/shared/SvgIcon";
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const EVENT_TYPES = ["Class", "Recital", "Rehearsal", "Workshop", "Other"];
+const EVENT_TYPES = ["Class", "Rehearsal", "Workshop", "Other"];
 const RECURRENCE  = ["none", "weekly", "biweekly"];
 
 const TYPE_COLORS = {
   Class:     "#6a7fdb",
-  Recital:   "#c4527a",
   Rehearsal: "#f4a041",
   Workshop:  "#52c4a0",
   Other:     "#8a7a9a",
+  // Recital events sourced from the recitals table keep their own colour
+  Recital:   "#c4527a",
 };
 
 const DAYS  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -941,7 +942,7 @@ export default function SchedulePage() {
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginLeft:"auto"}}>
               {isAdmin && <Button onClick={()=>openAdd()} size="sm">Add Event</Button>}
-              {isAdmin && <Button variant="outline" onClick={()=>navigate("/recitals")} size="sm">Add Recital</Button>}
+              {isAdmin && <Button variant="outline" onClick={()=>navigate("/recitals", { state: { openAdd: true } })} size="sm">Add Recital</Button>}
             </div>
           </div>
 

@@ -1853,6 +1853,15 @@ export default function RecitalsPage() {
     if (match) setDetailId(match.id);
   }, [recitals, location.state?.openTitle]); // eslint-disable-line
 
+  // Auto-open the create modal when navigated with { state: { openAdd: true } }
+  useEffect(() => {
+    if (location.state?.openAdd && modal === null) {
+      openAdd();
+      // Clear the flag so back-navigation doesn't re-open
+      window.history.replaceState({}, '');
+    }
+  }, [location.state?.openAdd]); // eslint-disable-line
+
   // ── Show full-page detail when detailId is set ─────────────────────────────
   if (detailId) {
     return (
