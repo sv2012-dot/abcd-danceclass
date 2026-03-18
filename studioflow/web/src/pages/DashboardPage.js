@@ -202,9 +202,13 @@ export default function DashboardPage() {
 
   // ── Derived data ─────────────────────────────────────────────────────────────
   const now             = new Date();
-  const upcomingRecitals = recitalList.filter(r => new Date(r.event_date) >= now && r.status !== 'Cancelled')
+  const upcomingRecitals = recitalList
+                            .filter(r => {
+                              const [yr, mo, dy] = (r.event_date||'').slice(0,10).split('-').map(Number);
+                              return yr && new Date(yr, mo-1, dy) >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                            })
                             .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
-  const upcomingEvents   = (eventList || []).filter(e => new Date(e.start_datetime) >= now && e.type !== 'Recital')
+  const upcomingEvents   = (eventList || []).filter(e => new Date(e.start_datetime) >= now)
                             .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
   const openTodos        = todoList.filter(t => !t.is_complete);
 
