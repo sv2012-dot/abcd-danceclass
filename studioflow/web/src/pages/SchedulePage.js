@@ -364,6 +364,7 @@ export default function SchedulePage() {
   const [filterType, setFilterType] = useState("All");
   const [studioOnly, setStudioOnly] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(today);
 
   // Date range to fetch
   const { from, to } = useMemo(() => {
@@ -734,6 +735,129 @@ export default function SchedulePage() {
     );
   };
 
+  // ── Mobile Month View ────────────────────────────────────────────────────
+  const MobileMonthView = () => {
+    const y = cursor.getFullYear(), m = cursor.getMonth();
+    const firstDay = startOfMonth(y, m).getDay();
+    const totalDays = daysInMonth(y, m);
+    const cells = [];
+    for (let i = 0; i < firstDay; i++) cells.push(null);
+    for (let d = 1; d <= totalDays; d++) cells.push(d);
+    while (cells.length % 7 !== 0) cells.push(null);
+
+    const eventsOnDay = (day) => {
+      if (!day) return [];
+      const dateStr = `${y}-${String(m+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+      return events.filter(e => e.start_datetime?.slice(0,10) === dateStr);
+    };
+
+    const isTodayCell = d => d && y === today.getFullYear() && m === today.getMonth() && d === today.getDate();
+    const isSelectedCell = d => d && selectedDay && y === selectedDay.getFullYear() && m === selectedDay.getMonth() && d === selectedDay.getDate();
+
+    return (
+      <div>
+        {/* Day-of-week headers */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:6}}>
+          {["S","M","T","W","T","F","S"].map((d,i) => (
+            <div key={i} style={{textAlign:"center",fontSize:12,fontWeight:600,color:"var(--muted)",padding:"4px 0"}}>{d}</div>
+          ))}
+        </div>
+        {/* Day cells */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
+          {cells.map((day, i) => {
+            const dayEvs = eventsOnDay(day);
+            const sel = isSelectedCell(day);
+            const tod = isTodayCell(day);
+            return (
+              <div key={i}
+                onClick={() => { if (day) setSelectedDay(new Date(y, m, day)); }}
+                style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"3px 0 6px",cursor:day?"pointer":"default"}}
+              >
+                <div style={{
+                  width:34,height:34,borderRadius:"50%",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  fontSize:14,fontWeight:sel||tod?700:400,
+                  background:sel?"var(--accent)":tod?"transparent":"transparent",
+                  color:sel?"#fff":tod?"var(--accent)":day?"var(--text)":"transparent",
+                  border:tod&&!sel?"1.5px solid var(--accent)":"1.5px solid transparent",
+                  marginBottom:3,transition:"all .15s",
+                }}>{day||""}</div>
+                <div style={{display:"flex",gap:3,height:6,alignItems:"center",justifyContent:"center"}}>
+                  {dayEvs.slice(0,3).map((e,j) => (
+                    <div key={j} style={{
+                      width:5,height:5,borderRadius:"50%",
+                      background:e.color||TYPE_COLORS[e.type]||"#8a7a9a",
+                      flexShrink:0,
+                    }} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // ── Mobile Events List ───────────────────────────────────────────────────
+  const MobileEventsList = () => {
+    const dateStr = selectedDay ? selectedDay.toISOString().slice(0,10) : today.toISOString().slice(0,10);
+    const dayEvents = events
+      .filter(e => e.start_datetime?.slice(0,10) === dateStr)
+      .sort((a,b) => a.start_datetime.localeCompare(b.start_datetime));
+    const dateLabel = (selectedDay||today).toLocaleDateString([], {weekday:"long",month:"long",day:"numeric"});
+    return (
+      <div>
+        <div style={{fontSize:12,fontWeight:700,color:"var(--muted)",marginBottom:0,textTransform:"uppercase",letterSpacing:"0.06em",padding:"0 4px 12px"}}>{dateLabel}</div>
+        {dayEvents.length === 0 ? (
+          <div style={{textAlign:"center",padding:"32px 0",color:"var(--muted)",fontSize:13}}>No events scheduled</div>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column"}}>
+            {dayEvents.map((e,idx) => {
+              const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
+              const hasTime = e.start_datetime && e.start_datetime.length > 10;
+              return (
+                <div key={e.id} onClick={() => handleEventClick(e)} style={{
+                  display:"flex",background:"var(--card)",cursor:"pointer",
+                  borderBottom:"1px solid var(--border)",
+                  borderRadius: idx===0 ? "12px 12px 0 0" : idx===dayEvents.length-1 ? "0 0 12px 12px" : 0,
+                  overflow:"hidden",transition:"opacity .15s",
+                }}
+                  onMouseEnter={ev=>{ev.currentTarget.style.opacity="0.82";}}
+                  onMouseLeave={ev=>{ev.currentTarget.style.opacity="1";}}
+                >
+                  {/* Time column */}
+                  <div style={{minWidth:68,maxWidth:68,padding:"14px 10px",textAlign:"center",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",gap:1,borderRight:"1px solid var(--border)"}}>
+                    {hasTime ? (
+                      <>
+                        <span style={{fontSize:11,fontWeight:700,color:"var(--text)"}}>{fmtTime(e.start_datetime)}</span>
+                        <span style={{fontSize:10,color:"var(--muted)"}}>{fmtTime(e.end_datetime)}</span>
+                      </>
+                    ) : (
+                      <span style={{fontSize:10,color:"var(--muted)",fontWeight:600}}>All day</span>
+                    )}
+                  </div>
+                  {/* Color bar */}
+                  <div style={{width:4,background:color,flexShrink:0}} />
+                  {/* Content */}
+                  <div style={{flex:1,padding:"14px 14px",minWidth:0}}>
+                    <div style={{fontSize:14,fontWeight:700,color:"var(--text)",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title}</div>
+                    {e.location && <div style={{fontSize:12,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.location}</div>}
+                    {!e.location && (e.batches?.length > 0 || e.batch_name) && (
+                      <div style={{fontSize:12,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        {e.batches?.length ? e.batches.map(b=>b.name).join(", ") : e.batch_name}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // ── Studio sidebar ───────────────────────────────────────────────────────
   const unbookedStudio = events.filter(e => e.requires_studio && !e.studio_booked);
 
@@ -752,102 +876,159 @@ export default function SchedulePage() {
 
   return (
     <div style={{ paddingRight: (detailEvent || panelMode === 'add') && !isMobile ? PANEL_W + 20 : 0, transition:"padding .25s ease" }}>
-      {/* Main calendar */}
-        {/* Header */}
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,flexWrap:"wrap",gap:10}}>
-          <div>
-            <h1 style={{fontFamily:"var(--font-d)",fontSize:24,marginBottom:2}}>My Events</h1>
-            <p style={{color:"var(--muted)",fontSize:12}}>Click any day to add an event</p>
-          </div>
-          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginLeft:"auto"}}>
-            {/* View toggle */}
-            {["month","week","list"].map(v => (
-              <button key={v} onClick={()=>setView(v)} style={{
-                padding:"6px 14px",borderRadius:8,border:"1.5px solid var(--border)",fontSize:12,fontWeight:600,cursor:"pointer",
-                background:view===v?"var(--accent)":"var(--card)",color:view===v?"#fff":"var(--text)",
-              }}>{v.charAt(0).toUpperCase()+v.slice(1)}</button>
-            ))}
-            {isAdmin && <Button onClick={()=>openAdd()} size="sm">Add Event</Button>}
-          </div>
-        </div>
 
-        {/* Filters */}
-        <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center",flexWrap:"wrap"}}>
-          {["All",...EVENT_TYPES].map(t => {
-            const color = TYPE_COLORS[t] || "var(--muted)";
-            const active = filterType===t;
-            return (
-              <button key={t} onClick={()=>setFilterType(t)} style={{
-                padding:"4px 12px",borderRadius:20,border:`1.5px solid ${active?color:"var(--border)"}`,
-                fontSize:11,fontWeight:700,cursor:"pointer",
-                background:active?color+"22":"transparent",color:active?color:"var(--muted)",
-              }}>{t}</button>
-            );
-          })}
-          <button onClick={()=>setStudioOnly(!studioOnly)} style={{
-            padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",
-            border:`1.5px solid ${studioOnly?"#e05c6a":"var(--border)"}`,
-            background:studioOnly?"#e05c6a22":"transparent",color:studioOnly?"#e05c6a":"var(--muted)",
-          }}><SvgIcon name="home" size={11} style={{marginRight:5}} /> Studio needed</button>
+      {isMobile ? (
+        /* ── MOBILE LAYOUT ──────────────────────────────────────────────── */
+        <div>
+          {/* Mobile header: prev / MONTH YEAR / next */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
+            <button onClick={()=>navCalendar(-1)} style={{background:"none",border:"none",cursor:"pointer",padding:"6px 10px",color:"var(--accent)",fontSize:24,lineHeight:1,fontWeight:300}}>‹</button>
+            <span style={{fontFamily:"var(--font-d)",fontSize:17,fontWeight:700,color:"var(--accent)",textTransform:"uppercase",letterSpacing:"0.06em"}}>
+              {MONTHS[cursor.getMonth()]} {cursor.getFullYear()}
+            </span>
+            <button onClick={()=>navCalendar(1)} style={{background:"none",border:"none",cursor:"pointer",padding:"6px 10px",color:"var(--accent)",fontSize:24,lineHeight:1,fontWeight:300}}>›</button>
+          </div>
 
-          {/* Legend link */}
-          <div style={{position:"relative",marginLeft:4}}>
-            <button onClick={()=>setShowLegend(p=>!p)} style={{
-              background:"none",border:"none",fontSize:11,fontWeight:600,
-              color:"var(--muted)",cursor:"pointer",textDecoration:"underline",
-              textDecorationStyle:"dotted",padding:"4px 2px",
-            }}>colour guide</button>
-            {showLegend && (
-              <>
-                <div onClick={()=>setShowLegend(false)} style={{position:"fixed",inset:0,zIndex:99}} />
-                <div style={{
-                  position:"absolute",top:"calc(100% + 8px)",left:0,zIndex:100,
-                  background:"var(--card)",borderRadius:12,padding:14,width:200,
-                  boxShadow:"0 8px 32px rgba(0,0,0,0.14)",border:"1px solid var(--border)",
-                }}>
-                  <div style={{fontWeight:700,fontSize:11,marginBottom:9,color:"var(--text)"}}>Event Types</div>
-                  {EVENT_TYPES.map(t => (
-                    <div key={t} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                      <div style={{width:10,height:10,borderRadius:3,background:TYPE_COLORS[t],flexShrink:0}} />
-                      <span style={{fontSize:12,color:"var(--text)"}}>{t}</span>
-                    </div>
-                  ))}
-                  <div style={{borderTop:"1px solid var(--border)",marginTop:9,paddingTop:9}}>
-                    <div style={{fontSize:11,color:"var(--muted)",marginBottom:3,display:"flex",alignItems:"center",gap:4}}><SvgIcon name="home" size={11} color="var(--muted)" /> = Studio required</div>
-                    <div style={{fontSize:11,color:"#e05c6a",display:"flex",alignItems:"center",gap:4}}><SvgIcon name="home" size={11} color="#e05c6a" />! = Not yet booked</div>
+          {/* Compact month calendar with dot indicators */}
+          {isLoading ? <p style={{color:"var(--muted)",textAlign:"center",padding:"24px 0"}}>Loading…</p> : <MobileMonthView />}
+
+          {/* Divider */}
+          <div style={{height:1,background:"var(--border)",margin:"20px -4px"}} />
+
+          {/* Events for selected day */}
+          <MobileEventsList />
+
+          {/* Studio alert */}
+          {unbookedStudio.length > 0 && (
+            <div style={{marginTop:20,padding:"12px 16px",borderRadius:12,background:"#e05c6a08",border:"1.5px solid #e05c6a33",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+              <span style={{fontWeight:700,fontSize:12,color:"#e05c6a",flexShrink:0}}>⚠ Studio not booked:</span>
+              <div style={{display:"flex",gap:7,flexWrap:"wrap",flex:1}}>
+                {unbookedStudio.map(e => (
+                  <div key={e.id} onClick={()=>handleEventClick(e)} style={{fontSize:11,cursor:"pointer",padding:"4px 10px",borderRadius:20,background:"var(--card)",border:"1px solid #e05c6a44",fontWeight:600,color:"#e05c6a"}}>
+                    {e.title} · <span style={{fontWeight:400,color:"var(--muted)"}}>{fmtDate(e.start_datetime)}</span>
                   </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Navigation */}
-        {view !== "list" && (
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-          <button onClick={()=>navCalendar(-1)} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:16}}>‹</button>
-          <span style={{fontFamily:"var(--font-d)",fontSize:16,fontWeight:700,minWidth:200,textAlign:"center"}}>{label}</span>
-          <button onClick={()=>navCalendar(1)} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:16}}>›</button>
-          <button onClick={()=>setCursor(new Date())} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,fontWeight:600,color:"var(--muted)"}}>Today</button>
-        </div>
-        )}
-
-        {isLoading ? <p style={{color:"var(--muted)"}}>Loading…</p> : (
-          view==="month" ? <MonthView /> : view==="week" ? <WeekView /> : <ListView />
-        )}
-
-
-      {/* Studio booking alerts — inline banner */}
-      {unbookedStudio.length > 0 && (
-        <div style={{marginTop:18,padding:"12px 16px",borderRadius:12,background:"#e05c6a08",border:"1.5px solid #e05c6a33",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-          <span style={{fontWeight:700,fontSize:12,color:"#e05c6a",flexShrink:0}}>⚠ Studio not booked:</span>
-          <div style={{display:"flex",gap:7,flexWrap:"wrap",flex:1}}>
-            {unbookedStudio.map(e => (
-              <div key={e.id} onClick={()=>handleEventClick(e)} style={{fontSize:11,cursor:"pointer",padding:"4px 10px",borderRadius:20,background:"var(--card)",border:"1px solid #e05c6a44",fontWeight:600,color:"#e05c6a"}}>
-                {e.title} · <span style={{fontWeight:400,color:"var(--muted)"}}>{fmtDate(e.start_datetime)}</span>
+                ))}
               </div>
-            ))}
+            </div>
+          )}
+
+          {/* FAB — add event */}
+          {isAdmin && (
+            <button onClick={() => openAdd(selectedDay || new Date())} style={{
+              position:"fixed",right:20,bottom:80,zIndex:50,
+              width:56,height:56,borderRadius:"50%",
+              background:"linear-gradient(135deg, var(--accent) 0%, #b47fe8 100%)",
+              border:"none",cursor:"pointer",
+              display:"flex",alignItems:"center",justifyContent:"center",
+              boxShadow:"0 4px 20px rgba(196,82,122,0.5)",
+              transition:"transform .15s, box-shadow .15s",
+            }}
+              onMouseEnter={ev=>{ev.currentTarget.style.transform="scale(1.08)";ev.currentTarget.style.boxShadow="0 6px 28px rgba(196,82,122,0.65)";}}
+              onMouseLeave={ev=>{ev.currentTarget.style.transform="scale(1)";ev.currentTarget.style.boxShadow="0 4px 20px rgba(196,82,122,0.5)";}}
+            >
+              <SvgIcon name="plus" size={24} color="#fff" />
+            </button>
+          )}
+        </div>
+      ) : (
+        /* ── DESKTOP LAYOUT (unchanged) ─────────────────────────────────── */
+        <div>
+          {/* Header */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,flexWrap:"wrap",gap:10}}>
+            <div>
+              <h1 style={{fontFamily:"var(--font-d)",fontSize:24,marginBottom:2}}>My Events</h1>
+              <p style={{color:"var(--muted)",fontSize:12}}>Click any day to add an event</p>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginLeft:"auto"}}>
+              {/* View toggle */}
+              {["month","week","list"].map(v => (
+                <button key={v} onClick={()=>setView(v)} style={{
+                  padding:"6px 14px",borderRadius:8,border:"1.5px solid var(--border)",fontSize:12,fontWeight:600,cursor:"pointer",
+                  background:view===v?"var(--accent)":"var(--card)",color:view===v?"#fff":"var(--text)",
+                }}>{v.charAt(0).toUpperCase()+v.slice(1)}</button>
+              ))}
+              {isAdmin && <Button onClick={()=>openAdd()} size="sm">Add Event</Button>}
+            </div>
           </div>
+
+          {/* Filters */}
+          <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center",flexWrap:"wrap"}}>
+            {["All",...EVENT_TYPES].map(t => {
+              const color = TYPE_COLORS[t] || "var(--muted)";
+              const active = filterType===t;
+              return (
+                <button key={t} onClick={()=>setFilterType(t)} style={{
+                  padding:"4px 12px",borderRadius:20,border:`1.5px solid ${active?color:"var(--border)"}`,
+                  fontSize:11,fontWeight:700,cursor:"pointer",
+                  background:active?color+"22":"transparent",color:active?color:"var(--muted)",
+                }}>{t}</button>
+              );
+            })}
+            <button onClick={()=>setStudioOnly(!studioOnly)} style={{
+              padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",
+              border:`1.5px solid ${studioOnly?"#e05c6a":"var(--border)"}`,
+              background:studioOnly?"#e05c6a22":"transparent",color:studioOnly?"#e05c6a":"var(--muted)",
+            }}><SvgIcon name="home" size={11} style={{marginRight:5}} /> Studio needed</button>
+
+            {/* Legend link */}
+            <div style={{position:"relative",marginLeft:4}}>
+              <button onClick={()=>setShowLegend(p=>!p)} style={{
+                background:"none",border:"none",fontSize:11,fontWeight:600,
+                color:"var(--muted)",cursor:"pointer",textDecoration:"underline",
+                textDecorationStyle:"dotted",padding:"4px 2px",
+              }}>colour guide</button>
+              {showLegend && (
+                <>
+                  <div onClick={()=>setShowLegend(false)} style={{position:"fixed",inset:0,zIndex:99}} />
+                  <div style={{
+                    position:"absolute",top:"calc(100% + 8px)",left:0,zIndex:100,
+                    background:"var(--card)",borderRadius:12,padding:14,width:200,
+                    boxShadow:"0 8px 32px rgba(0,0,0,0.14)",border:"1px solid var(--border)",
+                  }}>
+                    <div style={{fontWeight:700,fontSize:11,marginBottom:9,color:"var(--text)"}}>Event Types</div>
+                    {EVENT_TYPES.map(t => (
+                      <div key={t} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                        <div style={{width:10,height:10,borderRadius:3,background:TYPE_COLORS[t],flexShrink:0}} />
+                        <span style={{fontSize:12,color:"var(--text)"}}>{t}</span>
+                      </div>
+                    ))}
+                    <div style={{borderTop:"1px solid var(--border)",marginTop:9,paddingTop:9}}>
+                      <div style={{fontSize:11,color:"var(--muted)",marginBottom:3,display:"flex",alignItems:"center",gap:4}}><SvgIcon name="home" size={11} color="var(--muted)" /> = Studio required</div>
+                      <div style={{fontSize:11,color:"#e05c6a",display:"flex",alignItems:"center",gap:4}}><SvgIcon name="home" size={11} color="#e05c6a" />! = Not yet booked</div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Navigation */}
+          {view !== "list" && (
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+            <button onClick={()=>navCalendar(-1)} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:16}}>‹</button>
+            <span style={{fontFamily:"var(--font-d)",fontSize:16,fontWeight:700,minWidth:200,textAlign:"center"}}>{label}</span>
+            <button onClick={()=>navCalendar(1)} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:16}}>›</button>
+            <button onClick={()=>setCursor(new Date())} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,fontWeight:600,color:"var(--muted)"}}>Today</button>
+          </div>
+          )}
+
+          {isLoading ? <p style={{color:"var(--muted)"}}>Loading…</p> : (
+            view==="month" ? <MonthView /> : view==="week" ? <WeekView /> : <ListView />
+          )}
+
+          {/* Studio booking alerts — inline banner */}
+          {unbookedStudio.length > 0 && (
+            <div style={{marginTop:18,padding:"12px 16px",borderRadius:12,background:"#e05c6a08",border:"1.5px solid #e05c6a33",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+              <span style={{fontWeight:700,fontSize:12,color:"#e05c6a",flexShrink:0}}>⚠ Studio not booked:</span>
+              <div style={{display:"flex",gap:7,flexWrap:"wrap",flex:1}}>
+                {unbookedStudio.map(e => (
+                  <div key={e.id} onClick={()=>handleEventClick(e)} style={{fontSize:11,cursor:"pointer",padding:"4px 10px",borderRadius:20,background:"var(--card)",border:"1px solid #e05c6a44",fontWeight:600,color:"#e05c6a"}}>
+                    {e.title} · <span style={{fontWeight:400,color:"var(--muted)"}}>{fmtDate(e.start_datetime)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
