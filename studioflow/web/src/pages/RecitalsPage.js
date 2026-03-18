@@ -10,10 +10,8 @@ import Modal from "../components/shared/Modal";
 import { Field, Input, Select, Textarea } from "../components/shared/Field";
 import SvgIcon from "../components/shared/SvgIcon";
 
-const STATUS_OPTIONS = ["Planning","Confirmed","Rehearsals","Completed","Cancelled"];
-const STATUS_COLORS  = { Planning:"#6a7fdb", Confirmed:"#52c4a0", Rehearsals:"#f4a041", Completed:"#8ab4c0", Cancelled:"#e05c6a" };
-const STATUS_ICONS   = { Planning:"file-text", Confirmed:"check-circle", Rehearsals:"music", Completed:"trophy", Cancelled:"x" };
-const EMPTY = { title:"", event_date:"", venue:"", status:"Planning", description:"" };
+const RECITAL_COLOR = "#6a7fdb";
+const EMPTY = { title:"", event_date:"", venue:"", description:"" };
 
 // ── Demo data for tabs that don't yet have a backend ─────────────────────────
 
@@ -236,7 +234,6 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
       event_date:  recital?.event_date?.split("T")[0] || "",
       event_time:  recital?.event_time || "",
       venue:       recital?.venue      || "",
-      status:      recital?.status     || "Planning",
       description: recital?.description|| "",
     });
     setNewInfo("");
@@ -442,7 +439,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
     );
   }
 
-  const color   = STATUS_COLORS[recital.status] || "#888";
+  const color   = RECITAL_COLOR;
   // Use local-date constructor to avoid UTC midnight shift (mysql2 returns DATE as ISO string)
   const [_yr, _mo, _dy] = (recital.event_date||'').slice(0,10).split('-').map(Number);
   const d       = (_yr && _mo && _dy) ? new Date(_yr, _mo - 1, _dy) : new Date(NaN);
@@ -494,9 +491,6 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
             <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
               <span style={{ fontSize:12, background:"#6a7fdb22", color:"#6a7fdb", borderRadius:20, padding:"4px 12px", fontWeight:700 }}>
                 Performance
-              </span>
-              <span style={{ fontSize:12, background:color+"22", color, borderRadius:20, padding:"4px 12px", fontWeight:700, display:"inline-flex", alignItems:"center", gap:5 }}>
-                <SvgIcon name={STATUS_ICONS[recital.status] || "file-text"} size={14} color={color} /> {recital.status}
               </span>
             </div>
           </div>
@@ -759,12 +753,6 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
               <Field label="Venue / Location">
                 <Input value={editForm.venue} onChange={e => setEditForm(p=>({...p,venue:e.target.value}))} placeholder="e.g. Main Theater" />
               </Field>
-              <Field label="Status">
-                <Select value={editForm.status} onChange={e => setEditForm(p=>({...p,status:e.target.value}))}>
-                  {STATUS_OPTIONS.map(s => <option key={s}>{s}</option>)}
-                </Select>
-              </Field>
-
               {/* ── Description ── */}
               <div style={{ borderTop:"1px solid var(--border)", paddingTop:14 }}>
                 <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:".06em", color:"var(--muted)" }}>Overview</p>
@@ -1846,7 +1834,7 @@ export default function RecitalsPage() {
 
   const openAdd  = () => { setForm({ ...EMPTY }); setModal({}); };
   const openEdit = (r) => {
-    setForm({ title:r.title||"", event_date:r.event_date?.split("T")[0]||"", venue:r.venue||"", status:r.status||"Planning", description:r.description||"" });
+    setForm({ title:r.title||"", event_date:r.event_date?.split("T")[0]||"", venue:r.venue||"", description:r.description||"" });
     setModal(r);
   };
 
@@ -1919,7 +1907,7 @@ export default function RecitalsPage() {
         /* Grid cards */
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:12 }}>
           {sorted.map(r => {
-            const color = STATUS_COLORS[r.status] || "#888";
+            const color = RECITAL_COLOR;
             const [ryr, rmo, rdy] = (r.event_date||'').slice(0,10).split('-').map(Number);
             const d     = (ryr && rmo && rdy) ? new Date(ryr, rmo - 1, rdy) : new Date(NaN);
             const pct   = r.task_count ? Math.round(((r.tasks_done || 0) / r.task_count) * 100) : 0;
@@ -1942,7 +1930,6 @@ export default function RecitalsPage() {
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontFamily:"var(--font-d)", fontWeight:800, fontSize:14, marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.title}</div>
-                      <span style={{ fontSize:10, background:color+"22", color, borderRadius:20, padding:"2px 8px", fontWeight:700 }}>{r.status}</span>
                     </div>
                   </div>
                   {r.venue && (
@@ -1977,14 +1964,14 @@ export default function RecitalsPage() {
           <table style={{ width:"100%", borderCollapse:"collapse" }}>
             <thead>
               <tr style={{ background:"var(--surface)" }}>
-                {["Date","Event","Venue","Status","Tasks",""].map(h => (
+                {["Date","Event","Venue","Tasks",""].map(h => (
                   <th key={h} style={{ padding:"11px 14px", textAlign:"left", fontSize:11, fontWeight:700, letterSpacing:".06em", textTransform:"uppercase", color:"var(--muted)" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {sorted.map(r => {
-                const color = STATUS_COLORS[r.status] || "#888";
+                const color = RECITAL_COLOR;
                 const [tyr, tmo, tdy] = (r.event_date||'').slice(0,10).split('-').map(Number);
                 const d     = (tyr && tmo && tdy) ? new Date(tyr, tmo - 1, tdy) : new Date(NaN);
                 const pct   = r.task_count ? Math.round(((r.tasks_done || 0) / r.task_count) * 100) : null;
@@ -2004,9 +1991,6 @@ export default function RecitalsPage() {
                     </td>
                     <td style={{ padding:"10px 14px", fontWeight:700, fontSize:13, maxWidth:200, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.title}</td>
                     <td style={{ padding:"10px 14px", fontSize:12, color:"var(--muted)", maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.venue || "—"}</td>
-                    <td style={{ padding:"10px 14px" }}>
-                      <span style={{ fontSize:11, background:color+"22", color, borderRadius:20, padding:"2px 9px", fontWeight:700 }}>{r.status}</span>
-                    </td>
                     <td style={{ padding:"10px 14px", minWidth:120 }}>
                       {pct !== null ? (
                         <div>
@@ -2044,11 +2028,6 @@ export default function RecitalsPage() {
               </Field>
               <Field label="Venue / Location">
                 <Input value={form.venue} onChange={e => setForm(p => ({ ...p, venue:e.target.value }))} placeholder="e.g. Main Theater" />
-              </Field>
-              <Field label="Status">
-                <Select value={form.status} onChange={e => setForm(p => ({ ...p, status:e.target.value }))}>
-                  {STATUS_OPTIONS.map(s => <option key={s}>{s}</option>)}
-                </Select>
               </Field>
               <Field label="Description">
                 <Textarea value={form.description} onChange={e => setForm(p => ({ ...p, description:e.target.value }))} rows={3} />

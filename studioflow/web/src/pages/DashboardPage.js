@@ -230,6 +230,7 @@ export default function DashboardPage() {
         <ActionBtn color="#c4527a" onClick={() => navigate('/students')}>+ Add Student</ActionBtn>
         <ActionBtn color="#6a7fdb" onClick={() => navigate('/batches')}>+ Create Batch</ActionBtn>
         <ActionBtn color="#52c4a0" onClick={() => navigate('/schedule')}>+ Create Event</ActionBtn>
+        <ActionBtn color="#f4a041" onClick={() => navigate('/recitals')}>+ Create Recital</ActionBtn>
         <ActionBtn outline color="var(--border)" onClick={() => navigate('/schedule')}>View Schedule →</ActionBtn>
       </div>
 

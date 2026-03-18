@@ -940,14 +940,8 @@ export default function SchedulePage() {
               <p style={{color:"var(--muted)",fontSize:12}}>Click any day to add an event</p>
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginLeft:"auto"}}>
-              {/* View toggle */}
-              {["month","week","list"].map(v => (
-                <button key={v} onClick={()=>setView(v)} style={{
-                  padding:"6px 14px",borderRadius:8,border:"1.5px solid var(--border)",fontSize:12,fontWeight:600,cursor:"pointer",
-                  background:view===v?"var(--accent)":"var(--card)",color:view===v?"#fff":"var(--text)",
-                }}>{v.charAt(0).toUpperCase()+v.slice(1)}</button>
-              ))}
               {isAdmin && <Button onClick={()=>openAdd()} size="sm">Add Event</Button>}
+              {isAdmin && <Button variant="outline" onClick={()=>navigate("/recitals")} size="sm">Add Recital</Button>}
             </div>
           </div>
 
@@ -1003,14 +997,21 @@ export default function SchedulePage() {
           </div>
 
           {/* Navigation */}
-          {view !== "list" && (
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-            <button onClick={()=>navCalendar(-1)} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:16}}>‹</button>
-            <span style={{fontFamily:"var(--font-d)",fontSize:16,fontWeight:700,minWidth:200,textAlign:"center"}}>{label}</span>
-            <button onClick={()=>navCalendar(1)} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:16}}>›</button>
-            <button onClick={()=>setCursor(new Date())} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,fontWeight:600,color:"var(--muted)"}}>Today</button>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+            {view !== "list" && <>
+              <button onClick={()=>navCalendar(-1)} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:16,color:"var(--text)"}}>‹</button>
+              <span style={{fontFamily:"var(--font-d)",fontSize:16,fontWeight:700,minWidth:180,textAlign:"center"}}>{label}</span>
+              <button onClick={()=>navCalendar(1)} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:16,color:"var(--text)"}}>›</button>
+            </>}
+            <button onClick={()=>setCursor(new Date())} style={{background:"var(--surface)",border:"1.5px solid var(--border)",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,fontWeight:600,color:"var(--muted)"}}>Today</button>
+            <div style={{width:1,height:20,background:"var(--border)",margin:"0 2px"}} />
+            {["month","week","list"].map(v => (
+              <button key={v} onClick={()=>setView(v)} style={{
+                padding:"6px 14px",borderRadius:8,border:"1.5px solid var(--border)",fontSize:12,fontWeight:600,cursor:"pointer",
+                background:view===v?"var(--accent)":"var(--surface)",color:view===v?"#fff":"var(--muted)",
+              }}>{v.charAt(0).toUpperCase()+v.slice(1)}</button>
+            ))}
           </div>
-          )}
 
           {isLoading ? <p style={{color:"var(--muted)"}}>Loading…</p> : (
             view==="month" ? <MonthView /> : view==="week" ? <WeekView /> : <ListView />
@@ -1112,38 +1113,11 @@ export default function SchedulePage() {
                       </div>
                     </div>
                   )}
-                  {/* ── Colour swatch picker ── */}
-                  {(() => {
-                    const PASTEL = ["#FF9AA2","#FFB7B2","#FFDAC1","#FFF3B0","#E2F0CB","#B5EAD7","#C7CEEA","#A2C4F5","#D4B8E0","#F5B8D4","#B8F0E4","#F5D4A2"];
-                    return (
-                      <div style={{ marginBottom:18 }}>
-                        <div style={{ fontSize:10, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em", marginBottom:10 }}>Event Colour</div>
-                        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-                          {PASTEL.map(c => {
-                            const active = (e.color||TYPE_COLORS[e.type]||"#8a7a9a") === c;
-                            return (
-                              <button key={c} title={c} onClick={() => {
-                                api.update(sid, e.id, { ...e, color: c, batch_ids: (e.batches||[]).map(b=>b.id) })
-                                  .then(() => { qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,color:c}); });
-                              }} style={{
-                                width:28, height:28, borderRadius:"50%", background:c, border:"none",
-                                cursor:"pointer", flexShrink:0, transition:"all .15s",
-                                outline: active ? `3px solid ${c}` : "none",
-                                outlineOffset: active ? 2 : 0,
-                                boxShadow: active ? `0 0 0 2px var(--card), 0 0 0 4px ${c}` : "0 1px 3px rgba(0,0,0,.15)",
-                                transform: active ? "scale(1.2)" : "scale(1)",
-                              }} />
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })()}
                   {isAdmin && (
                     <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
                       <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Event</button>
                       {e.requires_studio && !e.studio_booked && (
-                        <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #52c4a0", background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:13, fontWeight:600 }}>✓ Mark Studio Booked</button>
+                        <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true,batch_ids:(e.batches||[]).map(b=>b.id)}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #52c4a0", background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="check-circle" size={14} color="#52c4a0" /> Mark Studio Booked</button>
                       )}
                       <button onClick={()=>{ if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="trash" size={14} color="#e05c6a" /> Delete Event</button>
                     </div>
