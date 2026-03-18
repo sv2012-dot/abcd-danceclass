@@ -1853,14 +1853,14 @@ export default function RecitalsPage() {
     if (match) setDetailId(match.id);
   }, [recitals, location.state?.openTitle]); // eslint-disable-line
 
-  // Auto-open the create modal when navigated with { state: { openAdd: true } }
+  // Auto-open the create modal when navigated with ?new=1 query param
   useEffect(() => {
-    if (location.state?.openAdd && modal === null) {
+    if (new URLSearchParams(location.search).get('new') === '1') {
       openAdd();
-      // Clear the flag so back-navigation doesn't re-open
-      window.history.replaceState({}, '');
+      // Strip the param from the URL without triggering a navigation
+      window.history.replaceState({}, '', '/recitals');
     }
-  }, [location.state?.openAdd]); // eslint-disable-line
+  }, [location.search]); // eslint-disable-line
 
   // ── Show full-page detail when detailId is set ─────────────────────────────
   if (detailId) {

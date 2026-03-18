@@ -941,7 +941,7 @@ export default function SchedulePage() {
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginLeft:"auto"}}>
               {isAdmin && <Button onClick={()=>openAdd()} size="sm">Add Event</Button>}
-              {isAdmin && <Button variant="outline" onClick={()=>navigate("/recitals", { state: { openAdd: true } })} size="sm">Add Recital</Button>}
+              {isAdmin && <Button variant="outline" onClick={()=>navigate("/recitals?new=1")} size="sm">Add Recital</Button>}
             </div>
           </div>
 
