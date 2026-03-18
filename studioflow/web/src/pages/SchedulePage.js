@@ -356,9 +356,13 @@ export default function SchedulePage() {
   const [cursor, setCursor]   = useState(new Date());
 
   // Panel state
-  const [panelMode, setPanelMode] = useState('view'); // 'view' | 'edit' | 'add'
+  const [panelMode, setPanelMode] = useState('view'); // 'view' | 'edit' | 'add' | 'add-recital'
   const [form, setForm]           = useState(EMPTY_FORM);
   const [detailEvent, setDetailEvent] = useState(null);
+
+  // Recital quick-create form (used in 'add-recital' panel mode)
+  const EMPTY_RECITAL_FORM = { title:'', event_date:'', event_time:'', venue:'', description:'' };
+  const [recitalForm, setRecitalForm] = useState(EMPTY_RECITAL_FORM);
 
   // Filters
   const [filterType, setFilterType] = useState("All");
@@ -468,7 +472,27 @@ export default function SchedulePage() {
     onError: err => toast.error(err.error || "Failed"),
   });
 
+  // ── Recital quick-create mutation ─────────────────────────────────────────
+  const recitalSaveMutation = useMutation({
+    mutationFn: data => recitalApi.create(sid, data),
+    onSuccess: (created) => {
+      qc.invalidateQueries({ queryKey: ["recitals"], exact: false });
+      toast.success("Recital created! Opening details…");
+      setPanelMode('view');
+      setDetailEvent(null);
+      setRecitalForm({ title:'', event_date:'', event_time:'', venue:'', description:'' });
+      navigate("/recitals", { state: { openTitle: created?.title } });
+    },
+    onError: err => toast.error(err?.error || "Failed to create recital"),
+  });
+
   // ── Open panel modes ──────────────────────────────────────────────────────
+  const openAddRecital = () => {
+    setRecitalForm({ title:'', event_date:'', event_time:'', venue:'', description:'' });
+    setDetailEvent(null);
+    setPanelMode('add-recital');
+  };
+
   const openAdd = (prefillDate) => {
     const base = prefillDate ? new Date(prefillDate) : new Date();
     base.setMinutes(0, 0, 0);
@@ -941,7 +965,7 @@ export default function SchedulePage() {
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginLeft:"auto"}}>
               {isAdmin && <Button onClick={()=>openAdd()} size="sm">Add Event</Button>}
-              {isAdmin && <Button variant="outline" onClick={()=>navigate("/recitals?new=1")} size="sm">Add Recital</Button>}
+              {isAdmin && <Button variant="outline" onClick={openAddRecital} size="sm">Add Recital</Button>}
             </div>
           </div>
 
@@ -1038,7 +1062,7 @@ export default function SchedulePage() {
         <div onClick={() => { setDetailEvent(null); setPanelMode('view'); }}
           style={{position:"fixed",inset:0,top:56,background:"rgba(0,0,0,0.4)",zIndex:399}} />
       )}
-      {(detailEvent || panelMode === 'add') && (
+      {(detailEvent || panelMode === 'add' || panelMode === 'add-recital') && (
         <div style={{
           position:"fixed", right:0, bottom:0, zIndex:400,
           top:    isMobile ? 56 : 0,
@@ -1052,7 +1076,7 @@ export default function SchedulePage() {
           {/* Panel header */}
           <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
             <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em" }}>
-              {panelMode === 'add' ? "New Event" : panelMode === 'edit' ? "Edit Event" : "Event Details"}
+              {panelMode === 'add' ? "New Event" : panelMode === 'edit' ? "Edit Event" : panelMode === 'add-recital' ? "New Recital" : "Event Details"}
             </span>
             <button onClick={() => { setDetailEvent(null); setPanelMode('view'); }}
               style={{ background:"none", border:"none", cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6, display:"flex", alignItems:"center" }}><SvgIcon name="x" size={18} /></button>
@@ -1202,6 +1226,69 @@ export default function SchedulePage() {
                   {saveMutation.isPending ? "Saving…" : panelMode === 'edit' ? "Save Changes" : form.recurrence!=="none" ? "Create Recurring Events" : "Create Event"}
                 </Button>
                 <Button variant="outline" onClick={() => { if (panelMode === 'add') setDetailEvent(null); setPanelMode('view'); }}>Cancel</Button>
+              </div>
+            </div>
+          )}
+
+          {/* ── ADD-RECITAL mode: recital quick-create form ── */}
+          {panelMode === 'add-recital' && (
+            <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
+              {/* Accent bar at top */}
+              <div style={{ height:4, background:"#c4527a", borderRadius:2, marginBottom:20, margin:"-0px -22px 20px -22px" }} />
+              <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                <Field label="Recital Title *">
+                  <Input
+                    value={recitalForm.title}
+                    onChange={e => setRecitalForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="e.g. Spring Showcase 2026"
+                    autoFocus
+                  />
+                </Field>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 12px" }}>
+                  <Field label="Date *">
+                    <Input
+                      type="date"
+                      value={recitalForm.event_date}
+                      onChange={e => setRecitalForm(f => ({ ...f, event_date: e.target.value }))}
+                    />
+                  </Field>
+                  <Field label="Time">
+                    <Input
+                      value={recitalForm.event_time}
+                      onChange={e => setRecitalForm(f => ({ ...f, event_time: e.target.value }))}
+                      placeholder="e.g. 7:00 PM"
+                    />
+                  </Field>
+                </div>
+                <Field label="Venue / Location">
+                  <Input
+                    value={recitalForm.venue}
+                    onChange={e => setRecitalForm(f => ({ ...f, venue: e.target.value }))}
+                    placeholder="e.g. Grand Theater"
+                  />
+                </Field>
+                <Field label="Description">
+                  <Textarea
+                    value={recitalForm.description}
+                    onChange={e => setRecitalForm(f => ({ ...f, description: e.target.value }))}
+                    rows={3}
+                    placeholder="Brief description…"
+                  />
+                </Field>
+              </div>
+              <div style={{ marginTop:8, padding:"10px 14px", borderRadius:10, background:"#c4527a10", border:"1.5px solid #c4527a22" }}>
+                <div style={{ fontSize:11, color:"#c4527a", fontWeight:600 }}>
+                  After creating, you'll be taken to the Recital detail page to add program, venue, volunteers, vendors and to-dos.
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:9, marginTop:18 }}>
+                <Button
+                  onClick={() => recitalSaveMutation.mutate(recitalForm)}
+                  disabled={!recitalForm.title.trim() || !recitalForm.event_date || recitalSaveMutation.isPending}
+                >
+                  {recitalSaveMutation.isPending ? "Creating…" : "Create Recital"}
+                </Button>
+                <Button variant="outline" onClick={() => { setPanelMode('view'); setDetailEvent(null); }}>Cancel</Button>
               </div>
             </div>
           )}
