@@ -225,13 +225,33 @@ function SchoolHomePage() {
     enabled:  !!sid,
   });
 
+  // ── responsive ────────────────────────────────────────────────────────────
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  useEffect(() => {
+    const h = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  const isMobile = windowWidth < 768;
+
   // ── modal state ───────────────────────────────────────────────────────────
   const [modal, setModal]           = useState(null);
   const [form, setForm]             = useState(EMPTY_EVENT);
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [showAddBatch,   setShowAddBatch]   = useState(false);
+  const [showAddRecital, setShowAddRecital] = useState(false);
   const [studentForm, setStudentForm]       = useState(EMPTY_STUDENT);
   const [batchForm,   setBatchForm]         = useState(EMPTY_BATCH);
+  const [recitalForm, setRecitalForm]       = useState({ title:'', event_date:'', event_time:'', venue:'', description:'' });
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const createMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!createMenuOpen) return;
+    const handler = (e) => { if (createMenuRef.current && !createMenuRef.current.contains(e.target)) setCreateMenuOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [createMenuOpen]);
 
   // ── derived data ──────────────────────────────────────────────────────────
   const upcoming = useMemo(() => {
@@ -246,7 +266,7 @@ function SchoolHomePage() {
   const upcomingClasses = useMemo(() => {
     const now = new Date();
     return (rawEvents||[])
-      .filter(e => new Date(e.start_datetime) >= now)
+      .filter(e => new Date(e.start_datetime) >= now && e.type !== "Recital")
       .sort((a,b) => a.start_datetime.localeCompare(b.start_datetime))
       .slice(0,3);
   }, [rawEvents]);
@@ -282,6 +302,17 @@ function SchoolHomePage() {
     },
     onError: err => toast.error(err.error||"Failed to create batch"),
   });
+  const recitalSaveMutation = useMutation({
+    mutationFn: data => recitalApi.create(sid, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey:["recitals",sid] });
+      qc.invalidateQueries({ queryKey:["stats",sid] });
+      toast.success("Recital created!");
+      setShowAddRecital(false);
+      setRecitalForm({ title:'', event_date:'', event_time:'', venue:'', description:'' });
+    },
+    onError: err => toast.error(err.error||"Failed to create recital"),
+  });
 
   const openAdd = () => {
     const base = new Date(); base.setMinutes(0,0,0);
@@ -301,52 +332,92 @@ function SchoolHomePage() {
   const fmtDue    = str => { if (!str) return null; const d = parseLocalDate(str); return isNaN(d) ? null : d.toLocaleDateString([],{month:"short",day:"numeric"}); };
   const isOverdue = str => { if (!str) return false; const due = parseLocalDate(str); const now = new Date(); now.setHours(0,0,0,0); return !isNaN(due) && due < now; };
 
+  // ── stats block (reused on desktop-top and mobile-bottom) ────────────────
+  const statsBlock = stats ? (
+    <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:isMobile?"stretch":"flex-end"}}>
+      {[
+        { label:"Students", value:stats.students??stats.student_count, color:"#c4527a", path:"/students",
+          icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+        { label:"Batches",  value:stats.batches??stats.batch_count,    color:"#6a7fdb", path:"/batches",
+          icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> },
+        { label:"Recitals", value:stats.upcoming_recitals,             color:"#f4a041", path:"/schedule",
+          icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+      ].map(({label,value,color,path,icon}) => (
+        <div key={label} onClick={()=>navigate(path)} style={{
+          background:"var(--card)",borderRadius:14,padding:"14px 18px",
+          border:"1.5px solid var(--border)",textAlign:"center",minWidth:isMobile?0:90,flex:isMobile?"1":"0 0 auto",
+          cursor:"pointer",transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+        }}
+          onMouseEnter={e=>{e.currentTarget.style.borderColor=color+"55";e.currentTarget.style.boxShadow=`0 4px 14px ${color}18`;e.currentTarget.style.transform="translateY(-1px)";}}
+          onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none";}}
+        >
+          <div style={{color:"var(--muted)"}}>{icon}</div>
+          <div style={{fontSize:24,fontWeight:800,color,fontFamily:"var(--font-d)",lineHeight:1}}>{value||0}</div>
+          <div style={{fontSize:10,color:"var(--muted)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>{label}</div>
+        </div>
+      ))}
+    </div>
+  ) : null;
+
   return (
     <div>
 
-      {/* ── Top row: greeting (left) + stat cards (right) ── */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,gap:20,flexWrap:"wrap"}}>
+      {/* ── Top row: greeting (left) + stat cards right (desktop only) ── */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:isMobile?12:24,gap:20,flexWrap:"wrap"}}>
         <div>
           <h1 style={{fontFamily:"var(--font-d)",fontSize:26,marginBottom:3,lineHeight:1.15}}>
             {greeting}, {user?.name?.split(" ")[0]}!
           </h1>
           <p style={{color:"var(--muted)",fontSize:13}}>{school?.name} · {todayStr}</p>
         </div>
-        {stats && (
-          <div style={{display:"flex",gap:10,flexShrink:0,flexWrap:"wrap"}}>
-            {[
-              { label:"Students", value:stats.students??stats.student_count, color:"#c4527a", path:"/students",
-                icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
-              { label:"Batches",  value:stats.batches??stats.batch_count,    color:"#6a7fdb", path:"/batches",
-                icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> },
-              { label:"Recitals", value:stats.upcoming_recitals,             color:"#f4a041", path:"/schedule",
-                icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
-            ].map(({label,value,color,path,icon}) => (
-              <div key={label} onClick={()=>navigate(path)} style={{
-                background:"var(--card)",borderRadius:14,padding:"14px 18px",
-                border:"1.5px solid var(--border)",textAlign:"center",minWidth:90,
-                cursor:"pointer",transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",gap:4,
-              }}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor=color+"55";e.currentTarget.style.boxShadow=`0 4px 14px ${color}18`;e.currentTarget.style.transform="translateY(-1px)";}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none";}}
-              >
-                <div style={{color:"var(--muted)"}}>{icon}</div>
-                <div style={{fontSize:24,fontWeight:800,color,fontFamily:"var(--font-d)",lineHeight:1}}>{value||0}</div>
-                <div style={{fontSize:10,color:"var(--muted)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>{label}</div>
-              </div>
-            ))}
-          </div>
-        )}
+        {!isMobile && statsBlock}
       </div>
 
-      {/* ── Quick actions ── */}
-      {isAdmin && (
+      {/* ── Mobile: consolidated Create button ── */}
+      {isMobile && isAdmin && (
+        <div ref={createMenuRef} style={{position:"relative",marginBottom:20}}>
+          <button onClick={()=>setCreateMenuOpen(o=>!o)} style={{
+            width:"100%",padding:"12px 18px",borderRadius:12,border:"1.5px solid var(--accent)",
+            background:"var(--accent)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",
+            display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create New
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{marginLeft:2,transition:"transform .2s",transform:createMenuOpen?"rotate(180deg)":"none"}}><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          {createMenuOpen && (
+            <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,right:0,background:"var(--card)",border:"1.5px solid var(--border)",borderRadius:12,boxShadow:"0 8px 24px rgba(0,0,0,.15)",zIndex:200,overflow:"hidden"}}>
+              {[
+                { label:"Create Event",   color:"#52c4a0", action:()=>{ openAdd(); setCreateMenuOpen(false); } },
+                { label:"Create Recital", color:"#c4527a", action:()=>{ setShowAddRecital(true); setCreateMenuOpen(false); } },
+                { label:"Add Student",    color:"#6a7fdb", action:()=>{ setShowAddStudent(true); setCreateMenuOpen(false); } },
+              ].map(({label,color,action}) => (
+                <button key={label} onClick={action} style={{
+                  width:"100%",padding:"13px 18px",background:"transparent",border:"none",
+                  borderBottom:"1px solid var(--border)",color:"var(--text)",fontSize:14,fontWeight:600,
+                  cursor:"pointer",display:"flex",alignItems:"center",gap:10,textAlign:"left",
+                }}
+                  onMouseEnter={e=>{e.currentTarget.style.background="var(--surface)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}
+                >
+                  <span style={{width:8,height:8,borderRadius:"50%",background:color,display:"inline-block",flexShrink:0}} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Desktop: Quick action buttons ── */}
+      {!isMobile && isAdmin && (
         <div style={{display:"flex",gap:10,marginBottom:28,flexWrap:"wrap"}}>
           {[
-            { label:"+ Add Student",   color:"#c4527a", bg:"#c4527a12", border:"#c4527a33", action:()=>setShowAddStudent(true) },
-            { label:"+ Create Batch",  color:"#6a7fdb", bg:"#6a7fdb12", border:"#6a7fdb33", action:()=>setShowAddBatch(true)   },
-            { label:"+ Create Event",  color:"#52c4a0", bg:"#52c4a012", border:"#52c4a033", action:openAdd                     },
-            { label:"View Schedule →", color:"#8a7a9a", bg:"#8a7a9a12", border:"#8a7a9a33", action:()=>navigate("/schedule")   },
+            { label:"+ Add Student",    color:"#c4527a", bg:"#c4527a12", border:"#c4527a33", action:()=>setShowAddStudent(true) },
+            { label:"+ Create Batch",   color:"#6a7fdb", bg:"#6a7fdb12", border:"#6a7fdb33", action:()=>setShowAddBatch(true)   },
+            { label:"+ Create Event",   color:"#52c4a0", bg:"#52c4a012", border:"#52c4a033", action:openAdd                     },
+            { label:"+ Create Recital", color:"#c4527a", bg:"#c4527a12", border:"#c4527a33", action:()=>setShowAddRecital(true)  },
+            { label:"View Schedule →",  color:"#8a7a9a", bg:"#8a7a9a12", border:"#8a7a9a33", action:()=>navigate("/schedule")   },
           ].map(({label,color,bg,border,action}) => (
             <button key={label} onClick={action} style={{
               padding:"9px 18px",borderRadius:22,border:`1.5px solid ${border}`,
@@ -372,6 +443,11 @@ function SchoolHomePage() {
             ? <div style={{padding:"28px 18px",color:"var(--muted)",fontSize:13,textAlign:"center"}}>No upcoming recitals</div>
             : upcoming.map(r => {
                 const d = parseLocalDate(r.event_date);
+                const tod = new Date(); tod.setHours(0,0,0,0);
+                const ed = parseLocalDate(r.event_date); ed.setHours(0,0,0,0);
+                const diff = Math.round((ed - tod) / 86400000);
+                const daysLabel = diff === 0 ? 'Today!' : diff === 1 ? 'Tomorrow' : diff > 0 ? `${diff}d to go` : `${Math.abs(diff)}d ago`;
+                const daysColor = diff <= 7 ? '#e05c6a' : diff <= 30 ? '#f4a041' : '#52c4a0';
                 return (
                   <div key={r.id} onClick={()=>navigate("/schedule",{state:{recitalId:r.id}})}
                     style={{display:"flex",alignItems:"center",gap:12,padding:"11px 18px",borderBottom:"1px solid var(--border)",cursor:"pointer",transition:"background .1s"}}
@@ -386,7 +462,7 @@ function SchoolHomePage() {
                       <div style={{fontWeight:700,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.title}</div>
                       <div style={{color:"var(--muted)",fontSize:11,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.venue||"—"}</div>
                     </div>
-                    <Badge>{r.status}</Badge>
+                    <span style={{fontSize:11,fontWeight:700,color:daysColor,background:daysColor+"18",borderRadius:20,padding:"3px 9px",whiteSpace:"nowrap",flexShrink:0}}>{daysLabel}</span>
                   </div>
                 );
               })
@@ -479,6 +555,14 @@ function SchoolHomePage() {
 
       </div>
 
+      {/* ── Mobile: stats at bottom ── */}
+      {isMobile && stats && (
+        <div style={{marginTop:24}}>
+          <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".1em",marginBottom:10}}>Studio Overview</div>
+          {statsBlock}
+        </div>
+      )}
+
       {/* ── Add Student Modal ────────────────────────────────────────────── */}
       {showAddStudent && (
         <Modal title="Add Student" onClose={()=>{setShowAddStudent(false);setStudentForm(EMPTY_STUDENT);}}>
@@ -518,6 +602,26 @@ function SchoolHomePage() {
             </Button>
             <Button variant="outline" onClick={()=>{setShowAddBatch(false);setBatchForm(EMPTY_BATCH);}}>Cancel</Button>
             <Button variant="ghost" style={{marginLeft:"auto"}} onClick={()=>{setShowAddBatch(false);navigate("/batches");}}>Go to Batches →</Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Add Recital Modal ───────────────────────────────────────────── */}
+      {showAddRecital && (
+        <Modal title="New Recital" onClose={()=>{setShowAddRecital(false);setRecitalForm({title:'',event_date:'',event_time:'',venue:'',description:''});}}>
+          <div style={{height:4,background:"linear-gradient(90deg,#c4527a,#e8607a)",borderRadius:4,marginBottom:16}} />
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
+            <Field label="Recital Title *" style={{gridColumn:"1/-1"}}><Input value={recitalForm.title} onChange={e=>setRecitalForm({...recitalForm,title:e.target.value})} placeholder="e.g. Spring Showcase 2026" /></Field>
+            <Field label="Date *"><Input type="date" value={recitalForm.event_date} onChange={e=>setRecitalForm({...recitalForm,event_date:e.target.value})} /></Field>
+            <Field label="Time"><Input type="time" value={recitalForm.event_time} onChange={e=>setRecitalForm({...recitalForm,event_time:e.target.value})} /></Field>
+            <Field label="Venue" style={{gridColumn:"1/-1"}}><Input value={recitalForm.venue} onChange={e=>setRecitalForm({...recitalForm,venue:e.target.value})} placeholder="e.g. Riverside Auditorium" /></Field>
+            <Field label="Notes" style={{gridColumn:"1/-1"}}><Textarea value={recitalForm.description} onChange={e=>setRecitalForm({...recitalForm,description:e.target.value})} placeholder="Any notes about the recital…" /></Field>
+          </div>
+          <div style={{display:"flex",gap:9,marginTop:8}}>
+            <Button onClick={()=>recitalSaveMutation.mutate(recitalForm)} disabled={!recitalForm.title||!recitalForm.event_date||recitalSaveMutation.isPending} style={{background:"#c4527a",borderColor:"#c4527a"}}>
+              {recitalSaveMutation.isPending?"Creating…":"Create Recital"}
+            </Button>
+            <Button variant="outline" onClick={()=>{setShowAddRecital(false);setRecitalForm({title:'',event_date:'',event_time:'',venue:'',description:''});}}>Cancel</Button>
           </div>
         </Modal>
       )}

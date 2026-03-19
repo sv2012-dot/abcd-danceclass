@@ -453,7 +453,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
     { id:"venue",      label:"Venue",             shortLabel:"Venue",     icon:"map-pin"     },
     { id:"volunteers", label:"Parent Volunteers", shortLabel:"Helpers",   icon:"users"       },
     { id:"vendors",    label:"Vendors",           shortLabel:"Vendors",   icon:"package"     },
-    { id:"tasks",      label:`To-Dos${recitalTodos.length ? ` (${done}/${recitalTodos.length})` : ""}`, shortLabel:`To-Dos${recitalTodos.length ? ` ${done}/${recitalTodos.length}` : ""}`, icon:"check-circle" },
+    { id:"tasks",      label:`To-Dos${recitalTodos.length ? ` (${done}/${recitalTodos.length})` : ""}`, shortLabel:"To-Dos", icon:"check-circle" },
   ];
 
   const META = [
@@ -1246,7 +1246,53 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                 <p style={{ color:"var(--muted)", fontSize:12, marginBottom:16 }}>Add parent volunteers who will help coordinate and assist at the event.</p>
                 <Button size="sm" onClick={openAddVolunteer}>Add First Volunteer</Button>
               </div>
+            ) : isMobile ? (
+              /* ── MOBILE: card-per-volunteer ── */
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {volunteers.map((v) => (
+                  <div key={v.id} style={{ background:"var(--card)", borderRadius:12, border:"1px solid var(--border)", overflow:"hidden" }}>
+                    {/* Card header */}
+                    <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", background:"var(--surface)", borderBottom:"1px solid var(--border)" }}>
+                      <div style={{
+                        width:36, height:36, borderRadius:"50%", flexShrink:0,
+                        background:`linear-gradient(135deg, hsl(${avatarHue(v.name)},55%,50%), hsl(${(avatarHue(v.name)+30)%360},55%,42%))`,
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        fontSize:13, fontWeight:800, color:"#fff", letterSpacing:".04em",
+                      }}>{initials(v.name)}</div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v.name}</div>
+                        {v.role && <div style={{ fontSize:12, color:"var(--muted)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v.role}</div>}
+                      </div>
+                      <div style={{ display:"flex", gap:5, flexShrink:0 }}>
+                        <button onClick={() => openEditVolunteer(v)} title="Edit" style={{ width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid var(--border)", background:"none", cursor:"pointer", color:"var(--muted)" }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button onClick={() => { if (window.confirm(`Remove ${v.name}?`)) deleteVolunteer(v.id); }} title="Remove" style={{ width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid #fecaca", background:"none", cursor:"pointer", color:"#e05c6a" }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                    {/* Card body */}
+                    <div style={{ padding:"12px 14px", display:"flex", flexDirection:"column", gap:8 }}>
+                      <span style={{
+                        alignSelf:"flex-start", fontSize:11, padding:"4px 12px", borderRadius:20, fontWeight:700,
+                        background: v.status === "Confirmed" ? "#52c4a020" : "#f4a04120",
+                        color:      v.status === "Confirmed" ? "#52c4a0"   : "#f4a041",
+                      }}>{v.status === "Confirmed" ? "✓ " : "⏱ "}{v.status}</span>
+                      {v.email && <div style={{ fontSize:12, color:"var(--muted)", display:"flex", alignItems:"center", gap:6 }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        {v.email}
+                      </div>}
+                      {v.phone && <div style={{ fontSize:12, color:"var(--muted)", display:"flex", alignItems:"center", gap:6 }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.56 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        {v.phone}
+                      </div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
+              /* ── DESKTOP: table-style list ── */
               <div style={{ borderRadius:12, overflow:"hidden", border:"1px solid var(--border)" }}>
                 {volunteers.map((v, i) => (
                   <div key={v.id} style={{
@@ -1275,28 +1321,15 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                     }}>
                       {v.status === "Confirmed" ? "✓ " : "⏱ "}{v.status}
                     </span>
-                    {/* Row actions */}
                     <div style={{ display:"flex", gap:6, flexShrink:0 }}>
                       <button onClick={() => openEditVolunteer(v)} title="Edit" style={{
-                        width: isMobile ? 30 : "auto",
-                        height: isMobile ? 30 : "auto",
-                        padding: isMobile ? 0 : "5px 10px",
-                        fontSize:11, border:"1px solid var(--border)",
+                        padding:"5px 10px", fontSize:11, border:"1px solid var(--border)",
                         borderRadius:7, background:"none", cursor:"pointer", color:"var(--muted)", fontWeight:600,
-                        display:"flex", alignItems:"center", justifyContent:"center",
-                      }}>
-                        {isMobile ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> : "Edit"}
-                      </button>
+                      }}>Edit</button>
                       <button onClick={() => { if (window.confirm(`Remove ${v.name}?`)) deleteVolunteer(v.id); }} title="Remove" style={{
-                        width: isMobile ? 30 : "auto",
-                        height: isMobile ? 30 : "auto",
-                        padding: isMobile ? 0 : "5px 10px",
-                        fontSize:11, border:"1px solid #fecaca",
+                        padding:"5px 10px", fontSize:11, border:"1px solid #fecaca",
                         borderRadius:7, background:"none", cursor:"pointer", color:"#e05c6a", fontWeight:600,
-                        display:"flex", alignItems:"center", justifyContent:"center",
-                      }}>
-                        {isMobile ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> : "Remove"}
-                      </button>
+                      }}>Remove</button>
                     </div>
                   </div>
                 ))}
@@ -1368,7 +1401,57 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                 <p style={{ color:"var(--muted)", fontSize:12, marginBottom:16 }}>Add photographers, costume rental, lighting & sound vendors.</p>
                 <Button size="sm" onClick={openAddVendor}>Add First Vendor</Button>
               </div>
+            ) : isMobile ? (
+              /* ── MOBILE: card-per-vendor ── */
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {vendors.map((v) => (
+                  <div key={v.id} style={{ background:"var(--card)", borderRadius:12, border:"1px solid var(--border)", overflow:"hidden" }}>
+                    {/* Card header */}
+                    <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", background:"var(--surface)", borderBottom:"1px solid var(--border)" }}>
+                      <div style={{
+                        width:36, height:36, borderRadius:9, flexShrink:0,
+                        background:"linear-gradient(135deg, #f4a041, #e05c6a)",
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                      }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="7" width="20" height="14" rx="2"/>
+                          <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+                        </svg>
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v.name}</div>
+                        {v.service && <div style={{ fontSize:12, color:"var(--muted)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v.service}</div>}
+                      </div>
+                      <div style={{ display:"flex", gap:5, flexShrink:0 }}>
+                        <button onClick={() => openEditVendor(v)} title="Edit" style={{ width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid var(--border)", background:"none", cursor:"pointer", color:"var(--muted)" }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button onClick={() => { if (window.confirm(`Remove ${v.name}?`)) deleteVendor(v.id); }} title="Remove" style={{ width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid #fecaca", background:"none", cursor:"pointer", color:"#e05c6a" }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                    {/* Card body */}
+                    <div style={{ padding:"12px 14px", display:"flex", flexDirection:"column", gap:8 }}>
+                      <span style={{
+                        alignSelf:"flex-start", fontSize:11, padding:"4px 12px", borderRadius:20, fontWeight:700,
+                        background: v.status === "Confirmed" ? "#52c4a020" : "#f4a04120",
+                        color:      v.status === "Confirmed" ? "#52c4a0"   : "#f4a041",
+                      }}>{v.status === "Confirmed" ? "✓ " : "⏱ "}{v.status}</span>
+                      {v.contact && <div style={{ fontSize:12, color:"var(--muted)", display:"flex", alignItems:"center", gap:6 }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        {v.contact}
+                      </div>}
+                      {v.phone && <div style={{ fontSize:12, color:"var(--muted)", display:"flex", alignItems:"center", gap:6 }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.56 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        {v.phone}
+                      </div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
+              /* ── DESKTOP: table-style list ── */
               <div style={{ borderRadius:12, overflow:"hidden", border:"1px solid var(--border)" }}>
                 {vendors.map((v, i) => (
                   <div key={v.id} style={{
@@ -1402,28 +1485,15 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                     }}>
                       {v.status === "Confirmed" ? "✓ " : "⏱ "}{v.status}
                     </span>
-                    {/* Row actions */}
                     <div style={{ display:"flex", gap:6, flexShrink:0 }}>
                       <button onClick={() => openEditVendor(v)} title="Edit" style={{
-                        width: isMobile ? 30 : "auto",
-                        height: isMobile ? 30 : "auto",
-                        padding: isMobile ? 0 : "5px 10px",
-                        fontSize:11, border:"1px solid var(--border)",
+                        padding:"5px 10px", fontSize:11, border:"1px solid var(--border)",
                         borderRadius:7, background:"none", cursor:"pointer", color:"var(--muted)", fontWeight:600,
-                        display:"flex", alignItems:"center", justifyContent:"center",
-                      }}>
-                        {isMobile ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> : "Edit"}
-                      </button>
+                      }}>Edit</button>
                       <button onClick={() => { if (window.confirm(`Remove ${v.name}?`)) deleteVendor(v.id); }} title="Remove" style={{
-                        width: isMobile ? 30 : "auto",
-                        height: isMobile ? 30 : "auto",
-                        padding: isMobile ? 0 : "5px 10px",
-                        fontSize:11, border:"1px solid #fecaca",
+                        padding:"5px 10px", fontSize:11, border:"1px solid #fecaca",
                         borderRadius:7, background:"none", cursor:"pointer", color:"#e05c6a", fontWeight:600,
-                        display:"flex", alignItems:"center", justifyContent:"center",
-                      }}>
-                        {isMobile ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> : "Remove"}
-                      </button>
+                      }}>Remove</button>
                     </div>
                   </div>
                 ))}
@@ -1479,7 +1549,69 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
 
             {recitalTodos.length === 0 ? (
               <p style={{ fontSize:13, color:"var(--muted)", marginBottom:20 }}>No to-dos yet. Add the first one below.</p>
+            ) : isMobile ? (
+              /* ── MOBILE: card-per-todo ── */
+              <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:16 }}>
+                {recitalTodos.map((t) => (
+                  <div key={t.id} style={{ background: t.is_complete ? "var(--surface)" : "var(--card)", borderRadius:12, border:"1px solid var(--border)", overflow:"hidden", transition:"background .1s" }}>
+                    {/* Card header */}
+                    <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", background:"var(--surface)", borderBottom:"1px solid var(--border)" }}>
+                      <div
+                        onClick={() => toggleTodoMut.mutate(t.id)}
+                        style={{
+                          width:28, height:28, borderRadius:"50%", flexShrink:0, cursor:"pointer",
+                          border: t.is_complete ? "none" : "2px solid var(--border)",
+                          background: t.is_complete ? color : "transparent",
+                          display:"flex", alignItems:"center", justifyContent:"center",
+                          transition:"all .15s",
+                        }}>
+                        {t.is_complete && <CheckIcon />}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{
+                          fontWeight:700, fontSize:14,
+                          overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+                          textDecoration: t.is_complete ? "line-through" : "none",
+                          color: t.is_complete ? "var(--muted)" : "var(--text)",
+                        }}>{t.title}</div>
+                      </div>
+                      <button
+                        onClick={() => deleteTodoMut.mutate(t.id)}
+                        title="Delete"
+                        style={{ width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", border:"none", background:"none", cursor:"pointer", color:"#c7c7cc", flexShrink:0 }}
+                        onMouseEnter={e => { e.currentTarget.style.color = "#ff3b30"; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = "#c7c7cc"; }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                    {/* Card body */}
+                    <div style={{ padding:"12px 14px", display:"flex", flexDirection:"column", gap:8 }}>
+                      <div style={{ display:"flex", gap:7, flexWrap:"wrap", alignItems:"center" }}>
+                        <span style={{
+                          alignSelf:"flex-start", fontSize:11, padding:"4px 12px", borderRadius:20, fontWeight:700,
+                          background: t.is_complete ? "#52c4a020" : "var(--border)",
+                          color:      t.is_complete ? "#52c4a0"   : "var(--muted)",
+                        }}>{t.is_complete ? "Done" : "Open"}</span>
+                        <span style={{ display:"flex", alignItems:"center", gap:4, fontSize:11, fontWeight:600, color: t.assigned_to ? "var(--text)" : "var(--muted)", background:"var(--surface)", padding:"2px 8px", borderRadius:999 }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                          {t.assigned_to || "Not assigned"}
+                        </span>
+                        {t.due_date && (
+                          <span style={{ display:"flex", alignItems:"center", gap:4, fontSize:11, color:"var(--muted)", background:"var(--surface)", padding:"2px 8px", borderRadius:999, fontWeight:600 }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            End by {t.due_date.slice(0,10)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
+              /* ── DESKTOP: table-style list ── */
               <div style={{ borderRadius:12, overflow:"hidden", border:"1px solid var(--border)", marginBottom:16 }}>
                 {recitalTodos.map((t, i) => (
                   <div key={t.id}
@@ -1489,7 +1621,6 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                       borderBottom: i < recitalTodos.length - 1 ? "1px solid var(--border)" : "none",
                       transition:"background .1s",
                     }}>
-                    {/* Checkbox */}
                     <div
                       onClick={() => toggleTodoMut.mutate(t.id)}
                       style={{
