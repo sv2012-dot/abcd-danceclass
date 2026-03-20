@@ -23,7 +23,7 @@ export default function LoginScreen() {
     <KeyboardAvoidingView style={s.screen} behavior={Platform.OS==='ios'?'padding':'height'}>
       <View style={s.inner}>
         <Text style={s.emoji}>🩰</Text>
-        <Text style={s.title}>StudioFlow</Text>
+        <Text style={s.title}>ManchQ</Text>
         <Text style={s.sub}>Dance School Management</Text>
         <View style={s.card}>
           <Text style={s.heading}>Sign In</Text>

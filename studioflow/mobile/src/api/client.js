@@ -1,8 +1,10 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
+const PROD_API = 'https://abcd-danceclass-production.up.railway.app/api';
+
 const api = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api',
+  baseURL: process.env.EXPO_PUBLIC_API_URL || PROD_API,
   timeout: 15000,
 });
 
