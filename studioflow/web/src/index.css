@@ -19,18 +19,18 @@
   --accent-foreground:   #7C3AED;
   --destructive:         #EF4444;
   --destructive-foreground: #FFFFFF;
-  --border:              #E5E7EB;
-  --input:               #E5E7EB;
+  --border:              #EAECF0;
+  --input:               #EAECF0;
   --ring:                #7C3AED;
 
-  /* Sidebar — white, clean */
-  --sidebar:                    #FFFFFF;
+  /* Sidebar — light gray (Figma) */
+  --sidebar:                    #F3F4F6;
   --sidebar-foreground:         #111827;
   --sidebar-primary:            #7C3AED;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent:             #F5F3FF;
-  --sidebar-accent-foreground:  #7C3AED;
-  --sidebar-border:             #E5E7EB;
+  --sidebar-accent:             #FFFFFF;
+  --sidebar-accent-foreground:  #111827;
+  --sidebar-border:             #EAECF0;
   --sidebar-ring:               #7C3AED;
   --sidebar-muted:              #9CA3AF;
 
@@ -50,8 +50,8 @@
   --radius: 0.75rem;
 
   /* Shadows */
-  --shadow:    0px 4px 8px -1px hsl(0 0% 0% / 0.08), 0px 1px 2px -2px hsl(0 0% 0% / 0.08);
-  --shadow-lg: 0px 8px 24px -2px hsl(0 0% 0% / 0.12), 0px 4px 6px -2px hsl(0 0% 0% / 0.07);
+  --shadow:    0 1px 3px rgba(0,0,0,.05);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,.08);
 
   /* ── Backward-compat aliases (keep existing var(--accent) etc. working) ── */
   --accent:       var(--primary);

@@ -1,151 +1,11 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import Card from '../components/shared/Card';
+import { TodoKeyframeStyles, TodoRow } from '../components/shared/TodoItem';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { todos as todosApi, events as eventsApi, recitals as recitalsApi } from '../api';
 import toast from 'react-hot-toast';
 
-/* ─── helpers ─────────────────────────────────────── */
-function formatDueDate(dateStr) {
-  if (!dateStr) return null;
-  const [y, m, d] = (dateStr || '').slice(0, 10).split('-').map(Number);
-  if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function isOverdue(dateStr) {
-  if (!dateStr) return false;
-  const [y, m, d] = (dateStr || '').slice(0, 10).split('-').map(Number);
-  if (!y || !m || !d) return false;
-  const due = new Date(y, m - 1, d);
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  return due < today;
-}
-
-/* ─── small pure components ── */
-const CheckCircle = ({ complete, onClick }) => (
-  <div
-    onClick={onClick}
-    title={complete ? 'Mark incomplete' : 'Mark complete'}
-    style={{
-      width: 20, height: 20, borderRadius: '50%',
-      border: complete ? '2px solid #34c759' : '2px solid var(--border)',
-      background: complete ? '#34c759' : 'var(--card)',
-      cursor: 'pointer', flexShrink: 0,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      transition: 'all .15s',
-    }}
-  >
-    {complete && (
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="20 6 9 17 4 12" />
-      </svg>
-    )}
-  </div>
-);
-
-const TrashIcon = ({ onClick }) => (
-  <button
-    onClick={onClick}
-    title="Delete"
-    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c7c7cc', padding: 4, display: 'flex', alignItems: 'center' }}
-    onMouseEnter={e => { e.currentTarget.style.color = '#ff3b30'; }}
-    onMouseLeave={e => { e.currentTarget.style.color = '#c7c7cc'; }}
-  >
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3,6 5,6 21,6" />
-      <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2" />
-    </svg>
-  </button>
-);
-
-const PersonIcon = () => (
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-  </svg>
-);
-
-const CalSmIcon = () => (
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-  </svg>
-);
-
-const TodoRow = ({ todo, onToggle, onDelete }) => {
-  const complete = !!todo.is_complete;
-  const overdue  = !complete && isOverdue(todo.due_date);
-  const linkedLabel = todo.event_title || todo.recital_title;
-  const linkedColor = todo.event_title ? '#6a7fdb' : '#c4527a';
-
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'flex-start', gap: 12,
-      padding: '11px 14px',
-      background: 'var(--card)', borderRadius: 10,
-      border: '1px solid var(--border)',
-      marginBottom: 6,
-      opacity: complete ? 0.65 : 1,
-      transition: 'opacity .15s',
-    }}>
-      <CheckCircle complete={complete} onClick={onToggle} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: 14,
-          color: complete ? 'var(--muted)' : 'var(--text)',
-          textDecoration: complete ? 'line-through' : 'none',
-          fontWeight: 500,
-        }}>
-          {todo.title}
-        </div>
-        {todo.notes && (
-          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{todo.notes}</div>
-        )}
-
-        {/* meta row: assigned + due + badges */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-
-          {/* Assigned to — always shown */}
-          <span style={{
-            display: 'flex', alignItems: 'center', gap: 4,
-            fontSize: 11, fontWeight: 600,
-            color: todo.assigned_to ? 'var(--text)' : 'var(--muted)',
-            background: 'var(--surface)',
-            padding: '2px 8px', borderRadius: 999,
-          }}>
-            <PersonIcon />
-            {todo.assigned_to || 'Not assigned'}
-          </span>
-
-          {/* End by date */}
-          {todo.due_date && (
-            <span style={{
-              display: 'flex', alignItems: 'center', gap: 4,
-              fontSize: 11, fontWeight: 600,
-              color: overdue ? '#ff3b30' : 'var(--muted)',
-              background: overdue ? '#fff0ee' : 'var(--surface)',
-              padding: '2px 8px', borderRadius: 999,
-            }}>
-              <CalSmIcon />
-              {overdue && '⚠ '}End by {formatDueDate(todo.due_date)}
-            </span>
-          )}
-
-          {/* Source type badge */}
-          {todo.recital_id && (
-            <span style={{ fontSize: 11, color: '#c4527a', background: '#c4527a15', border: '1px solid #c4527a30', padding: '2px 8px', borderRadius: 999, fontWeight: 700 }}>
-              Recital
-            </span>
-          )}
-          {linkedLabel && (
-            <span style={{ fontSize: 11, color: '#fff', background: linkedColor, padding: '2px 8px', borderRadius: 999, fontWeight: 600 }}>
-              {linkedLabel}
-            </span>
-          )}
-        </div>
-      </div>
-      <TrashIcon onClick={onDelete} />
-    </div>
-  );
-};
 
 const AllClearIllustration = () => (
   <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -288,23 +148,21 @@ export default function TodosPage() {
 
   return (
     <div>
+      <TodoKeyframeStyles />
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 28, margin: 0 }}>To-Dos</h1>
       </div>
 
       {/* ── Quick-add bar — top of page ── */}
-      <div style={{
-        marginBottom: 28,
-        background: 'var(--card)',
-        borderRadius: 16,
-        border: '1.5px solid var(--border)',
-        overflow: 'hidden',
-        boxShadow: showExtra
-          ? '0 6px 28px rgba(0,0,0,0.10)'
-          : '0 2px 12px rgba(0,0,0,0.05)',
-        transition: 'box-shadow .2s',
-      }}>
+      <Card
+        padding={0}
+        style={{
+          marginBottom: 28,
+          overflow: 'hidden',
+          boxShadow: showExtra ? '0 6px 28px rgba(0,0,0,0.10)' : undefined,
+        }}
+      >
         {/* single-line row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 18px' }}>
           <div style={{
@@ -432,7 +290,7 @@ export default function TodosPage() {
             </span>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Filter tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -447,7 +305,7 @@ export default function TodosPage() {
       {isLoading ? (
         <div style={{ color: 'var(--muted)', textAlign: 'center', marginTop: 60 }}>Loading…</div>
       ) : todos.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '52px 20px 40px', background: 'var(--card)', borderRadius: 16, border: '1.5px solid var(--border)' }}>
+        <Card style={{ textAlign: 'center', padding: '52px 20px 40px' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <AllClearIllustration />
           </div>
@@ -457,7 +315,7 @@ export default function TodosPage() {
           <div style={{ fontSize: 14, color: 'var(--muted)', maxWidth: 280, margin: '0 auto' }}>
             No tasks on the list. Use the bar above to add your first to-do.
           </div>
-        </div>
+        </Card>
       ) : (
         <>
           {openTodos.length > 0 && (

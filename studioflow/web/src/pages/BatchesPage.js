@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { batches as api, students as studentsApi, schedules as schedulesApi, recitals as recitalsApi } from "../api";
 import toast from "react-hot-toast";
-import Card from "../components/shared/Card";
+import Card, { CARD_TOKENS as CT } from "../components/shared/Card";
 import Button from "../components/shared/Button";
 import Badge from "../components/shared/Badge";
 import Modal from "../components/shared/Modal";
@@ -201,14 +201,17 @@ export default function BatchesPage() {
             const schedules = allSchedules.filter(s => s.batch_id === b.id);
             const firstSch  = schedules[0];
             return (
-              <div key={b.id} onClick={() => { setActiveId(active ? null : b.id); if (!active) setPanelMode("view"); }} style={{
-                background:"var(--card)", borderRadius:14, overflow:"hidden",
-                border:`1.5px solid ${active ? color : "var(--border)"}`,
-                boxShadow: active ? `0 0 0 3px ${color}22` : "0 2px 8px rgba(0,0,0,.06)",
-                transition:"all .15s", display:"flex", flexDirection:"column",
-                cursor:"pointer",
-              }}>
-                <div style={{ padding:"18px 18px 14px" }}>
+              <Card
+                key={b.id}
+                clickable
+                onClick={() => { setActiveId(active ? null : b.id); if (!active) setPanelMode("view"); }}
+                style={{
+                  overflow: "hidden", display: "flex", flexDirection: "column", padding: 0,
+                  // Per-batch colour accent when active (overrides Card default purple)
+                  ...(active ? { border: `${CT.borderWidth} solid ${color}`, boxShadow: `0 0 0 3px ${color}22` } : {}),
+                }}
+              >
+                <div style={{ padding:"18px 18px 14px", flex: 1 }}>
                   <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8, marginBottom:4 }}>
                     <div style={{ fontWeight:700, fontSize:15, lineHeight:1.3, color:"var(--foreground)" }}>{b.name}</div>
                     <div style={{ width:10, height:10, borderRadius:"50%", background:color, flexShrink:0, marginTop:4 }} />
@@ -243,14 +246,14 @@ export default function BatchesPage() {
                     </div>
                   )}
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>
 
       ) : (
         /* ── Table view ── */
-        <div style={{ background:"var(--card)", borderRadius:14, border:"1px solid var(--border)", overflow:"hidden" }}>
+        <Card variant="flat" padding={0} style={{ overflow:"hidden" }}>
           <table style={{ width:"100%", borderCollapse:"collapse" }}>
             <thead>
               <tr style={{ background:"var(--surface)" }}>
@@ -296,7 +299,7 @@ export default function BatchesPage() {
               })}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
 
       {/* ── Right Side Panel (view / edit / add) ── */}
@@ -385,7 +388,7 @@ export default function BatchesPage() {
                   detailStudents.length === 0 ? (
                     <div style={{ textAlign:"center", padding:"12px 0" }}>
                       <p style={{ fontSize:12, color:"var(--muted)", marginBottom:8 }}>No students enrolled yet.</p>
-                      <Button size="sm" variant="outline" onClick={openEnroll}>Enrol Students</Button>
+                      <Button size="sm" variant="secondary" onClick={openEnroll}>Enrol Students</Button>
                     </div>
                   ) : (
                     <>
@@ -515,7 +518,7 @@ export default function BatchesPage() {
 
               <div style={{ display:"flex", gap:9, marginTop:16 }}>
                 <Button onClick={handleSave} disabled={!form.name||saving}>{saving ? "Saving…" : panelMode === "edit" ? "Save Changes" : "Create Batch"}</Button>
-                <Button variant="outline" onClick={() => { if (panelMode === "add") setActiveId(null); setPanelMode("view"); }}>Cancel</Button>
+                <Button variant="secondary" onClick={() => { if (panelMode === "add") setActiveId(null); setPanelMode("view"); }}>Cancel</Button>
               </div>
             </div>
           )}
@@ -551,7 +554,7 @@ export default function BatchesPage() {
           )}
           <div style={{ display:"flex", gap:9, paddingTop:8, borderTop:"1px solid var(--border)" }}>
             <Button onClick={()=>enrollMutation.mutate()} disabled={enrollMutation.isPending}>{enrollMutation.isPending ? "Saving…" : `Save Enrolment (${enrollSel.length})`}</Button>
-            <Button variant="outline" onClick={()=>setEnrollModal(null)}>Cancel</Button>
+            <Button variant="secondary" onClick={()=>setEnrollModal(null)}>Cancel</Button>
             <Button variant="ghost" onClick={()=>setEnrollSel(allStudents.map(s=>s.id))} style={{ marginLeft:"auto" }}>Select All</Button>
             <Button variant="ghost" onClick={()=>setEnrollSel([])}>Clear</Button>
           </div>

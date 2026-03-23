@@ -261,10 +261,7 @@ function DateTimePicker({ label, value, onChange, minDate }) {
             <span style={{fontSize:12,color:"var(--muted)",fontWeight:500}}>
               {displayVal ? `${displayVal.date} ${displayVal.time}` : "No date selected"}
             </span>
-            <button type="button" onClick={confirm} style={{
-              background:"var(--accent)",color:"#fff",border:"none",borderRadius:8,
-              padding:"6px 16px",fontSize:12,fontWeight:700,cursor:"pointer",
-            }}>Done</button>
+            <Button type="button" size="sm" onClick={confirm}>Done</Button>
           </div>
         </div>
       )}
@@ -544,22 +541,26 @@ export default function SchedulePage() {
         style={{
           background: compact ? color : color+"22",
           borderRadius: compact ? 6 : 8,
-          padding: compact ? "3px 6px" : "5px 8px",
+          padding: compact ? "3px 5px" : "5px 8px",
           fontSize: compact ? 10 : 11, fontWeight: 700,
           color: compact ? "#fff" : (theme === "dark" ? "#ffffff" : "#1e1228"),
-          cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis",
-          whiteSpace: "nowrap", marginBottom: 2, lineHeight: 1.4,
-          display: "flex", alignItems: "center", gap: 4,
+          cursor: "pointer",
+          marginBottom: 2, lineHeight: 1.4,
+          display: "flex", alignItems: "center", gap: 3,
+          width: "100%", boxSizing: "border-box", minWidth: 0,
           boxShadow: compact ? `0 1px 4px ${color}55` : `0 1px 3px ${color}30`,
           border: compact ? "none" : `1.5px solid ${color}55`,
           transition: "opacity .15s",
+          overflow: "hidden",
         }}
         onMouseEnter={e => { e.currentTarget.style.opacity = "0.82"; }}
         onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
       >
-        {event.requires_studio && !compact && <span title="Studio required"><SvgIcon name="home" size={11} /></span>}
-        {!event.studio_booked && event.requires_studio && <span title="Not yet booked" style={{color: compact ? "#fff" : "#e05c6a", fontWeight:800}}>!</span>}
-        <span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{compact ? "" : fmtTime(event.start_datetime)+" "}{event.title}</span>
+        {event.requires_studio && !compact && <span style={{flexShrink:0}} title="Studio required"><SvgIcon name="home" size={11} /></span>}
+        {!event.studio_booked && event.requires_studio && <span style={{flexShrink:0, color: compact ? "#fff" : "#e05c6a", fontWeight:800}} title="Not yet booked">!</span>}
+        <span style={{overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1, minWidth:0}}>
+          {compact ? "" : fmtTime(event.start_datetime)+" "}{event.title}
+        </span>
       </div>
     );
   };
@@ -583,15 +584,13 @@ export default function SchedulePage() {
     const isToday = d => d && y === today.getFullYear() && m === today.getMonth() && d === today.getDate();
 
     return (
-      <div>
-        {/* Day headers */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1,marginBottom:1}}>
+      <div style={{overflowX:"auto"}}>
+        <div style={{minWidth:560}}>
+        {/* Unified grid: headers + cells share the same 7-column template */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:1,background:"var(--border)",borderRadius:12,overflow:"hidden"}}>
           {DAYS.map(d => (
-            <div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:"var(--muted)",padding:"6px 0",letterSpacing:"0.05em"}}>{d}</div>
+            <div key={d} style={{background:"var(--surface)",textAlign:"center",fontSize:11,fontWeight:700,color:"var(--muted)",padding:"6px 0",letterSpacing:"0.05em",minWidth:0,overflow:"hidden"}}>{d}</div>
           ))}
-        </div>
-        {/* Day cells */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1,background:"var(--border)",borderRadius:12,overflow:"hidden"}}>
           {cells.map((day, i) => {
             const dayEvents = eventsOnDay(day);
             const visible = dayEvents.slice(0,2);
@@ -604,6 +603,7 @@ export default function SchedulePage() {
                   background: day ? "var(--card)" : "var(--surface)",
                   minHeight: 100, padding: "6px 5px",
                   cursor: day && isAdmin ? "pointer" : "default",
+                  minWidth: 0, overflow: "hidden", width: "100%", boxSizing: "border-box",
                 }}
               >
                 {day && (
@@ -627,6 +627,7 @@ export default function SchedulePage() {
             );
           })}
         </div>
+        </div>{/* end minWidth wrapper */}
       </div>
     );
   };
@@ -642,12 +643,13 @@ export default function SchedulePage() {
                    .sort((a,b) => a.start_datetime.localeCompare(b.start_datetime));
     };
     return (
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:12,height:"calc(100vh - 350px)",minHeight:600}}>
+      <div style={{overflowX:"auto"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(110px,1fr))",gap:12,height:"calc(100vh - 350px)",minHeight:600,minWidth:770}}>
         {weekDays.map((date,i) => {
           const isToday = date.toDateString() === today.toDateString();
           const dayEvs = eventsOnDay(date);
           return (
-            <div key={i} style={{display:"flex",flexDirection:"column"}}>
+            <div key={i} style={{display:"flex",flexDirection:"column",minWidth:0,overflow:"hidden"}}>
               <div style={{textAlign:"center",marginBottom:12}}>
                 <div style={{fontSize:11,color:"var(--muted)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em"}}>{DAYS[i]}</div>
                 <div style={{
@@ -665,8 +667,8 @@ export default function SchedulePage() {
                 style={{
                   flex:1,background:"var(--card)",borderRadius:12,padding:10,border:"1.5px solid var(--border)",
                   cursor:isAdmin?"pointer":"default",
-                  overflow:"auto",display:"flex",flexDirection:"column",gap:8,
-                  transition:"all .15s"
+                  overflowX:"hidden",overflowY:"auto",display:"flex",flexDirection:"column",gap:8,
+                  transition:"all .15s",minWidth:0,
                 }}
               >
                 {dayEvs.map(e => {
@@ -679,21 +681,22 @@ export default function SchedulePage() {
                         background: `linear-gradient(135deg, ${color}20 0%, ${color}0d 100%)`,
                         border: `1.5px solid ${color}60`,
                         borderTop: `3px solid ${color}`,
-                        borderRadius: 10, padding: "10px 12px",
+                        borderRadius: 10, padding: "10px 10px",
                         fontSize: 12, fontWeight: 700, color: "var(--text)",
                         cursor: "pointer", transition: "all .15s",
-                        display:"flex",alignItems:"flex-start",gap:8,
+                        display:"flex",alignItems:"flex-start",gap:6,
                         boxShadow: `0 2px 8px ${color}20`,
+                        width:"100%", boxSizing:"border-box", minWidth:0, overflow:"hidden",
                       }}
                       onMouseEnter={ev => { ev.currentTarget.style.background = `linear-gradient(135deg, ${color}35 0%, ${color}18 100%)`; ev.currentTarget.style.boxShadow = `0 6px 18px ${color}40`; ev.currentTarget.style.transform = "translateY(-1px)"; }}
                       onMouseLeave={ev => { ev.currentTarget.style.background = `linear-gradient(135deg, ${color}20 0%, ${color}0d 100%)`; ev.currentTarget.style.boxShadow = `0 2px 8px ${color}20`; ev.currentTarget.style.transform = "none"; }}
                     >
                       <div style={{flexShrink:0,lineHeight:1,marginTop:2,display:"flex",alignItems:"flex-start"}}>
-                        <SvgIcon name={e.requires_studio ? "home" : e.type === "Class" ? "book-open" : e.type === "Recital" ? "theater" : e.type === "Rehearsal" ? "music" : "calendar"} size={18} color={color} />
-                        {noStudio && <div style={{fontSize:12,color:"#e05c6a",position:"relative",top:-8,left:-6}}>!</div>}
+                        <SvgIcon name={e.requires_studio ? "home" : e.type === "Class" ? "book-open" : e.type === "Recital" ? "theater" : e.type === "Rehearsal" ? "music" : "calendar"} size={16} color={color} />
+                        {noStudio && <div style={{fontSize:11,color:"#e05c6a",position:"relative",top:-6,left:-5}}>!</div>}
                       </div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontWeight:700,fontSize:12,marginBottom:2}}>{e.title}</div>
+                      <div style={{flex:1,minWidth:0,overflow:"hidden"}}>
+                        <div style={{fontWeight:700,fontSize:12,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title}</div>
                         <div style={{fontSize:10,color:"var(--muted)",fontWeight:500}}>{fmtTime(e.start_datetime)}</div>
                       </div>
                     </div>
@@ -704,6 +707,7 @@ export default function SchedulePage() {
             </div>
           );
         })}
+        </div>
       </div>
     );
   };
@@ -965,9 +969,12 @@ export default function SchedulePage() {
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginLeft:"auto"}}>
               {isAdmin && <Button onClick={()=>openAdd()} size="sm">Add Event</Button>}
-              {isAdmin && <Button variant="outline" onClick={openAddRecital} size="sm">Add Recital</Button>}
+              {isAdmin && <Button variant="secondary" onClick={openAddRecital} size="sm">Add Recital</Button>}
             </div>
           </div>
+
+          {/* ── Calendar card ── */}
+          <Card style={{padding:"20px 20px 24px"}}>
 
           {/* Filters */}
           <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center",flexWrap:"wrap"}}>
@@ -1054,6 +1061,8 @@ export default function SchedulePage() {
               </div>
             </div>
           )}
+
+          </Card>
         </div>
       )}
 
@@ -1225,7 +1234,7 @@ export default function SchedulePage() {
                 <Button onClick={()=>saveMutation.mutate(form)} disabled={!form.title||!form.start_datetime||saveMutation.isPending}>
                   {saveMutation.isPending ? "Saving…" : panelMode === 'edit' ? "Save Changes" : form.recurrence!=="none" ? "Create Recurring Events" : "Create Event"}
                 </Button>
-                <Button variant="outline" onClick={() => { if (panelMode === 'add') setDetailEvent(null); setPanelMode('view'); }}>Cancel</Button>
+                <Button variant="secondary" onClick={() => { if (panelMode === 'add') setDetailEvent(null); setPanelMode('view'); }}>Cancel</Button>
               </div>
             </div>
           )}
@@ -1288,7 +1297,7 @@ export default function SchedulePage() {
                 >
                   {recitalSaveMutation.isPending ? "Creating…" : "Create Recital"}
                 </Button>
-                <Button variant="outline" onClick={() => { setPanelMode('view'); setDetailEvent(null); }}>Cancel</Button>
+                <Button variant="secondary" onClick={() => { setPanelMode('view'); setDetailEvent(null); }}>Cancel</Button>
               </div>
             </div>
           )}

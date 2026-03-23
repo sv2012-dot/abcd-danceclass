@@ -622,7 +622,7 @@ export default function StudentsPage() {
                   <Button onClick={() => addMutation.mutate(addForm)} disabled={!addForm.name || addMutation.isPending}>
                     {addMutation.isPending ? "Adding…" : "Add Student"}
                   </Button>
-                  <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
+                  <Button variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
                 </div>
               </div>
             );
@@ -705,9 +705,9 @@ export default function StudentsPage() {
                     </PanelSection>
                   )}
                   <div style={{ display: "flex", gap: 9, marginTop: 24 }}>
-                    <button onClick={startEdit} style={{ flex: 1, padding: "9px 16px", borderRadius: 9, border: "1.5px solid var(--accent)", background: "var(--accent)", color: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "var(--font-b)", fontWeight: 600 }}>✏️ Edit Profile</button>
-                    <button onClick={() => { if (window.confirm("Remove this student?")) deleteMutation.mutate(selected.id); }}
-                      style={{ padding: "9px 14px", borderRadius: 9, border: "1.5px solid #e05c6a", background: "transparent", color: "#e05c6a", cursor: "pointer", fontSize: 13, fontFamily: "var(--font-b)" }}>🗑</button>
+                    <Button onClick={startEdit} style={{ flex: 1 }}>✏️ Edit Profile</Button>
+                    <Button variant="danger" onClick={() => { if (window.confirm("Remove this student?")) deleteMutation.mutate(selected.id); }}
+                      style={{ padding: "9px 14px" }}>🗑</Button>
                   </div>
                 </>
               ) : (
@@ -807,7 +807,7 @@ export default function StudentsPage() {
                     <Button onClick={() => editMutation.mutate(editForm)} disabled={!editForm.name || editMutation.isPending}>
                       {editMutation.isPending ? "Saving…" : "Save Changes"}
                     </Button>
-                    <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+                    <Button variant="secondary" onClick={() => setIsEditing(false)}>Cancel</Button>
                   </div>
                 </>
               )}

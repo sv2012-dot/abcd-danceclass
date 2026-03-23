@@ -130,11 +130,8 @@ const NAV_ITEMS = {
 function initials(name = '') {
   return name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
 }
-function schoolGradient(name = '') {
-  const h1 = (name.charCodeAt(0) * 37 + (name.charCodeAt(1) || 0) * 13) % 360;
-  const h2 = (h1 + 38) % 360;
-  return `linear-gradient(135deg, hsl(${h1},62%,42%) 0%, hsl(${h2},55%,35%) 100%)`;
-}
+// Figma: fixed purple→magenta gradient for school avatar
+const AVATAR_GRAD = 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)';
 
 const SIDEBAR_W = 232;
 const MOBILE_BP = 768;
@@ -165,44 +162,48 @@ export default function AppShell() {
   const handleLogout = () => { logout(); navigate('/login'); };
 
   // ── Sidebar content (shared between desktop & mobile drawer) ──────────────
-  const SidebarContent = () => (
+  const SidebarContent = ({ showBrand = true }) => (
     <>
-      {/* School brand */}
-      <div
-        style={{ padding:'18px 16px 15px', borderBottom:'1px solid var(--sidebar-border)', cursor: isSuperAdmin ? 'default' : 'pointer', userSelect:'none' }}
-        onClick={() => { if (!isSuperAdmin) { navigate('/about'); setMenuOpen(false); } }}
-      >
-        <div style={{ display:'flex', alignItems:'center', gap:11, marginBottom:6 }}>
-          <div style={{ width:40, height:40, borderRadius:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, color:'#fff', fontSize:14, letterSpacing:'-0.5px', background: schoolGradient(schoolName) }}>
-            {initials(schoolName)}
+      {/* School brand — hidden on mobile (top bar handles it) */}
+      {showBrand && (
+        <div
+          onClick={() => navigate('/about')}
+          style={{ padding:'20px 16px 16px', borderBottom:'1px solid var(--sidebar-border)', cursor:'pointer', transition:'background .15s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          title="View school profile"
+        >
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{ width:52, height:52, borderRadius:'50%', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, color:'#fff', fontSize:16, letterSpacing:'-0.5px', background: AVATAR_GRAD }}>
+              {initials(schoolName)}
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:15, fontWeight:700, color:'var(--sidebar-foreground)', lineHeight:1.25, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {schoolName}
+              </div>
+              <div style={{ fontSize:13, color:'var(--sidebar-muted)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {isSuperAdmin ? 'Platform admin' : (city || brief)}
+              </div>
+            </div>
           </div>
-          <span style={{ fontSize:13, fontWeight:700, color:'var(--sidebar-foreground)', lineHeight:1.2, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-            {schoolName}
-          </span>
         </div>
-        {!isSuperAdmin && (
-          <>
-            <div style={{ fontSize:11, color:'var(--sidebar-muted)', paddingLeft:51 }}>{brief}</div>
-            <div style={{ fontSize:10, color:'var(--sidebar-accent-foreground)', paddingLeft:51, marginTop:3, letterSpacing:'0.04em', opacity:0.7 }}>View school profile →</div>
-          </>
-        )}
-        {isSuperAdmin && <div style={{ fontSize:11, color:'var(--sidebar-muted)', paddingLeft:51 }}>Multi-school platform admin</div>}
-      </div>
+      )}
 
       {/* Nav */}
-      <nav style={{ flex:1, padding:'12px 10px', overflowY:'auto' }}>
+      <nav style={{ flex:1, padding:'16px 10px', overflowY:'auto' }}>
         {navItems.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === '/'}
             style={({ isActive }) => ({
-              display:'flex', alignItems:'center', gap:10, width:'100%',
-              padding:'9px 12px', borderRadius:8, border:'none', marginBottom:2,
-              fontSize:13, fontWeight: isActive ? 600 : 500,
-              color: isActive ? 'var(--sidebar-accent-foreground)' : 'var(--sidebar-muted)',
-              background: isActive ? 'var(--sidebar-accent)' : 'transparent',
-              cursor:'pointer', textDecoration:'none', transition:'all .15s',
+              display:'flex', alignItems:'center', gap:12, width:'100%',
+              padding:'12px 14px', borderRadius:10, border:'none', marginBottom:4,
+              fontSize:14, fontWeight: isActive ? 600 : 400,
+              color: isActive ? '#111827' : '#9CA3AF',
+              background: isActive ? '#FFFFFF' : 'transparent',
+              boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+              cursor:'pointer', textDecoration:'none', transition:'background .15s, color .15s, box-shadow .15s',
               boxSizing:'border-box',
             })}
           >
@@ -213,11 +214,11 @@ export default function AppShell() {
       </nav>
 
       {/* User footer */}
-      <div style={{ padding:'12px 16px 10px', borderTop:'1px solid var(--sidebar-border)' }}>
-        <div style={{ fontSize:10, color:'var(--sidebar-muted)', marginBottom:1, textTransform:'uppercase', letterSpacing:'0.06em' }}>Signed in as</div>
-        <div style={{ fontSize:12, fontWeight:700, color:'var(--sidebar-foreground)', marginBottom:6, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.name}</div>
+      <div style={{ padding:'14px 16px 12px', borderTop:'1px solid var(--sidebar-border)' }}>
+        <div style={{ fontSize:10, color:'var(--sidebar-muted)', marginBottom:3, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:600 }}>Signed in as</div>
+        <div style={{ fontSize:13, fontWeight:700, color:'var(--sidebar-foreground)', marginBottom:6, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.name}</div>
         <button
-          style={{ background:'none', border:'none', color:'var(--sidebar-muted)', fontSize:11, cursor:'pointer', width:'100%', textAlign:'left', padding:'4px 0' }}
+          style={{ background:'none', border:'none', color:'var(--sidebar-muted)', fontSize:13, cursor:'pointer', textAlign:'left', padding:0 }}
           onMouseEnter={e => { e.currentTarget.style.color = '#DC2626'; }}
           onMouseLeave={e => { e.currentTarget.style.color = 'var(--sidebar-muted)'; }}
           onClick={handleLogout}
@@ -256,12 +257,9 @@ export default function AppShell() {
       </div>
 
       {/* Platform brand */}
-      <div style={{ padding:'10px 16px 14px', borderTop:'1px solid var(--sidebar-border)', display:'flex', alignItems:'center', gap:9, opacity:0.5 }}>
-        <ClassicalDanceIcon size={20} color="var(--sidebar-foreground)" />
-        <div>
-          <div style={{ fontSize:11, fontWeight:700, color:'var(--sidebar-foreground)', letterSpacing:'-0.2px' }}>ManchQ</div>
-          <div style={{ fontSize:9, color:'var(--sidebar-muted)', letterSpacing:'0.07em', textTransform:'uppercase', marginTop:1 }}>Dance studio platform</div>
-        </div>
+      <div style={{ padding:'12px 16px 16px', borderTop:'1px solid var(--sidebar-border)' }}>
+        <div style={{ fontSize:13, fontWeight:700, color:'var(--sidebar-foreground)' }}>ManchQ</div>
+        <div style={{ fontSize:10, color:'var(--sidebar-muted)', letterSpacing:'0.08em', textTransform:'uppercase', marginTop:2, fontWeight:500 }}>Your dance studio manager</div>
       </div>
     </>
   );
@@ -288,9 +286,19 @@ export default function AppShell() {
 
       {/* Top bar */}
       <header style={{ height:56, background:'var(--sidebar)', borderBottom:'1px solid var(--sidebar-border)', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 16px', flexShrink:0, zIndex:200 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <ClassicalDanceIcon size={22} color="var(--sidebar-foreground)" />
-          <span style={{ fontSize:15, fontWeight:700, color:'var(--sidebar-foreground)', letterSpacing:'-0.3px' }}>{schoolName}</span>
+        <div
+          onClick={() => navigate('/about')}
+          style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', flex:1, minWidth:0 }}
+        >
+          <div style={{ width:36, height:36, borderRadius:'50%', background:AVATAR_GRAD, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:13, flexShrink:0 }}>
+            {initials(schoolName)}
+          </div>
+          <div style={{ minWidth:0, flex:1 }}>
+            <div style={{ fontSize:14, fontWeight:700, color:'var(--sidebar-foreground)', letterSpacing:'-0.3px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', lineHeight:1.2 }}>{schoolName}</div>
+            <div style={{ fontSize:11, color:'var(--sidebar-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1, lineHeight:1.2 }}>
+              {isSuperAdmin ? 'Platform admin' : (city || brief)}
+            </div>
+          </div>
         </div>
         <button
           onClick={() => setMenuOpen(o => !o)}
@@ -318,7 +326,7 @@ export default function AppShell() {
         transition:'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
         zIndex:300, overflowY:'auto',
       }}>
-        <SidebarContent />
+        <SidebarContent showBrand={false} />
       </div>
 
       {/* Page content */}
@@ -326,6 +334,18 @@ export default function AppShell() {
         <div style={{ padding:'20px 16px', maxWidth:1340, margin:'0 auto' }}>
           <Outlet />
         </div>
+
+        {/* Mobile footer */}
+        <footer style={{ borderTop:'1px solid var(--sidebar-border)', padding:'14px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'var(--sidebar)' }}>
+          <div>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--sidebar-foreground)' }}>ManchQ</div>
+            <div style={{ fontSize:10, color:'var(--sidebar-muted)', letterSpacing:'0.08em', textTransform:'uppercase', marginTop:2, fontWeight:500 }}>Your dance studio manager</div>
+          </div>
+          <div style={{ textAlign:'right' }}>
+            <div style={{ fontSize:10, color:'var(--sidebar-muted)', textTransform:'uppercase', letterSpacing:'0.07em', fontWeight:600, marginBottom:2 }}>Signed in as</div>
+            <div style={{ fontSize:12, fontWeight:700, color:'var(--sidebar-foreground)' }}>{user?.name}</div>
+          </div>
+        </footer>
       </main>
     </div>
   );

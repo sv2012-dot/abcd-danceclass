@@ -4,13 +4,36 @@ const bcrypt = require('bcryptjs');
 exports.list = async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT s.*, COUNT(DISTINCT st.id) as student_count, COUNT(DISTINCT b.id) as batch_count
+      SELECT s.*,
+        COUNT(DISTINCT st.id) as student_count,
+        COUNT(DISTINCT b.id)  as batch_count,
+        u.id    as admin_id,
+        u.name  as admin_name,
+        u.email as admin_email
       FROM schools s
       LEFT JOIN students st ON st.school_id = s.id AND st.is_active = 1
-      LEFT JOIN batches b ON b.school_id = s.id AND b.is_active = 1
-      GROUP BY s.id ORDER BY s.created_at DESC
+      LEFT JOIN batches  b  ON b.school_id  = s.id AND b.is_active  = 1
+      LEFT JOIN users    u  ON u.school_id  = s.id AND u.role = 'school_admin'
+      GROUP BY s.id, u.id, u.name, u.email
+      ORDER BY s.created_at DESC
     `);
     res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.resetAdminPassword = async (req, res) => {
+  const { password } = req.body;
+  if (!password || password.length < 6)
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  try {
+    const hash = bcrypt.hashSync(password, 10);
+    const [result] = await pool.query(
+      `UPDATE users SET password = ? WHERE school_id = ? AND role = 'school_admin'`,
+      [hash, req.params.id]
+    );
+    if (result.affectedRows === 0)
+      return res.status(404).json({ error: 'No admin user found for this school' });
+    res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 

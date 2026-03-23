@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { vendors as api } from "../api";
 import toast from "react-hot-toast";
-import Card from "../components/shared/Card";
+import Card, { CARD_TOKENS as CT } from "../components/shared/Card";
 import Button from "../components/shared/Button";
 import { Field, Input, Textarea } from "../components/shared/Field";
 import SvgIcon from "../components/shared/SvgIcon";
@@ -34,13 +34,20 @@ function VendorCard({ vendor: v, active, onSelect, onEdit, onRemove, onToggleFav
   const cat = catInfo(v.category);
   const websiteDisplay = v.website?.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "") || null;
   return (
-    <div onClick={() => onSelect(v)} style={{
-      background: "var(--card)", borderRadius: 14, cursor: "pointer",
-      border: active ? "1.5px solid var(--accent)" : v.is_favorite ? `1.5px solid ${cat.color}66` : "1.5px solid var(--border)",
-      boxShadow: active ? "0 0 0 3px rgba(196,82,122,.13)" : v.is_favorite ? `0 2px 12px ${cat.color}22` : "0 2px 8px rgba(0,0,0,.06)",
-      display: "flex", flexDirection: "column", overflow: "hidden", transition: "all .15s",
-    }}>
-      <div style={{ padding: "16px 18px 14px", flex: 1 }}>
+    <Card
+      clickable
+      active={active}
+      onClick={() => onSelect(v)}
+      style={{
+        display: "flex", flexDirection: "column", overflow: "hidden",
+        // Favourite colour accent (overridden by Card's active=purple when selected)
+        ...(!active && v.is_favorite ? {
+          border: `${CT.borderWidth} solid ${cat.color}66`,
+          boxShadow: `0 2px 12px ${cat.color}22`,
+        } : {}),
+      }}
+    >
+      <div style={{ flex: 1 }}>
         {/* Header row */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
@@ -114,11 +121,7 @@ function VendorCard({ vendor: v, active, onSelect, onEdit, onRemove, onToggleFav
           )}
         </div>
       </div>
-      <div onClick={e => e.stopPropagation()} style={{ display: "flex", gap: 8, padding: "10px 18px", borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
-        <Button size="sm" variant="outline" onClick={() => onEdit(v)}>Edit</Button>
-        <Button size="sm" variant="ghost" onClick={() => { if (window.confirm(`Remove "${v.name}"?`)) onRemove(v.id); }} style={{ color: "#dc2626", marginLeft: "auto" }}>Remove</Button>
-      </div>
-    </div>
+    </Card>
   );
 }
 
@@ -461,7 +464,7 @@ export default function VendorsPage() {
               </label>
               <div style={{ display: "flex", gap: 9, marginTop: 20 }}>
                 <Button onClick={handleSave} disabled={!editForm.name || saving}>{saving ? "Saving…" : "Save Changes"}</Button>
-                <Button variant="outline" onClick={() => setPanelMode("view")}>Cancel</Button>
+                <Button variant="secondary" onClick={() => setPanelMode("view")}>Cancel</Button>
               </div>
             </div>
           )}
@@ -476,7 +479,7 @@ export default function VendorsPage() {
               </label>
               <div style={{ display: "flex", gap: 9, marginTop: 20 }}>
                 <Button onClick={handleSave} disabled={!addForm.name || saving}>{saving ? "Saving…" : "Add Vendor"}</Button>
-                <Button variant="outline" onClick={() => { setSelected(null); setPanelMode(null); }}>Cancel</Button>
+                <Button variant="secondary" onClick={() => { setSelected(null); setPanelMode(null); }}>Cancel</Button>
               </div>
             </div>
           )}

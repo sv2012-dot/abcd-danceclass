@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { studios as api } from "../api";
 import toast from "react-hot-toast";
-import Card from "../components/shared/Card";
+import Card, { CARD_TOKENS as CT } from "../components/shared/Card";
 import Button from "../components/shared/Button";
 import { Field, Input, Textarea } from "../components/shared/Field";
 import SvgIcon from "../components/shared/SvgIcon";
@@ -313,7 +313,7 @@ function _unused_AddStudioModal({ onClose, onSave, saving }) {
             <Button onClick={() => onSave(form)} disabled={!form.name || saving}>
               {saving ? "Saving…" : "Add Studio"}
             </Button>
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
           </div>
         </div>
       )}
@@ -352,7 +352,7 @@ function _unused_EditStudioModal({ studio, onClose, onSave, saving }) {
       </label>
       <div style={{ display: "flex", gap: 9, marginTop: 20 }}>
         <Button onClick={() => onSave(form)} disabled={!form.name || saving}>{saving ? "Saving…" : "Save Changes"}</Button>
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button variant="secondary" onClick={onClose}>Cancel</Button>
       </div>
     </Modal>
   );
@@ -362,13 +362,16 @@ function _unused_EditStudioModal({ studio, onClose, onSave, saving }) {
 function StudioCard({ studio, active, onSelect, onEdit, onRemove, onToggleFav }) {
   const fullAddress    = [studio.address, studio.city, studio.state, studio.zip].filter(Boolean).join(", ");
   const websiteDisplay = studio.website?.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "") || null;
+  const favOverride    = !active && studio.is_favorite
+    ? { border: `${CT.borderWidth} solid #e0607e`, boxShadow: "0 2px 12px rgba(196,82,122,.15)" }
+    : {};
   return (
-    <div onClick={() => onSelect(studio)} style={{
-      background: "var(--card)", borderRadius: 14, cursor: "pointer",
-      border: active ? "1.5px solid var(--accent)" : studio.is_favorite ? "1.5px solid #e0607e" : "1.5px solid var(--border)",
-      boxShadow: active ? "0 0 0 3px rgba(196,82,122,.13)" : studio.is_favorite ? "0 2px 12px rgba(196,82,122,.15)" : "0 2px 8px rgba(0,0,0,.06)",
-      display: "flex", flexDirection: "column", overflow: "hidden", transition: "all .15s",
-    }}>
+    <Card
+      clickable
+      active={active}
+      onClick={() => onSelect(studio)}
+      style={{ display: "flex", flexDirection: "column", overflow: "hidden", padding: 0, ...favOverride }}
+    >
       <div style={{ padding: "18px 18px 14px", flex: 1 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
           <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.3, color: "var(--text)", flex: 1 }}>{studio.name}</div>
@@ -417,11 +420,7 @@ function StudioCard({ studio, active, onSelect, onEdit, onRemove, onToggleFav })
           )}
         </div>
       </div>
-      <div onClick={e => e.stopPropagation()} style={{ display: "flex", gap: 8, padding: "12px 18px", borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
-        <Button size="sm" variant="outline" onClick={() => onEdit(studio)}>Edit</Button>
-        <Button size="sm" variant="ghost" onClick={() => { if (window.confirm(`Remove "${studio.name}"?`)) onRemove(studio.id); }} style={{ color: "#dc2626", marginLeft: "auto" }}>Remove</Button>
-      </div>
-    </div>
+    </Card>
   );
 }
 
@@ -661,14 +660,8 @@ export default function StudiosPage() {
                     </div>
                   )}
                   <div style={{ display: "flex", gap: 9, marginTop: 8 }}>
-                    <button onClick={() => { setPanelMode('edit'); setEditForm({ ...s, is_favorite: !!s.is_favorite, capacity: s.capacity ?? "", hourly_rate: s.hourly_rate ?? "" }); }} style={{
-                      flex: 1, padding: "9px 16px", borderRadius: 9,
-                      border: "1.5px solid var(--accent)", background: "var(--accent)",
-                      color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600,
-                    display:"inline-flex", alignItems:"center", gap:7,
-                    }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Studio</button>
-                    <button onClick={() => { if (window.confirm(`Remove "${s.name}"?`)) removeMutation.mutate(s.id); }}
-                      style={{ padding: "9px 14px", borderRadius: 9, border: "1.5px solid #e05c6a", background: "transparent", color: "#e05c6a", cursor: "pointer", fontSize: 13, display:"inline-flex", alignItems:"center", justifyContent:"center" }}><SvgIcon name="trash" size={14} color="#e05c6a" /></button>
+                    <Button onClick={() => { setPanelMode('edit'); setEditForm({ ...s, is_favorite: !!s.is_favorite, capacity: s.capacity ?? "", hourly_rate: s.hourly_rate ?? "" }); }} style={{ flex: 1 }} icon={<SvgIcon name="pencil" size={14} color="#fff" />}>Edit Studio</Button>
+                    <Button variant="danger" onClick={() => { if (window.confirm(`Remove "${s.name}"?`)) removeMutation.mutate(s.id); }} style={{ padding: "9px 14px" }} icon={<SvgIcon name="trash" size={14} color="#fff" />} />
                   </div>
                 </div>
               </>
@@ -699,7 +692,7 @@ export default function StudiosPage() {
               </label>
               <div style={{ display: "flex", gap: 9, marginTop: 20 }}>
                 <Button onClick={handleSave} disabled={!editForm.name || saving}>{saving ? "Saving…" : "Save Changes"}</Button>
-                <Button variant="outline" onClick={() => setPanelMode('view')}>Cancel</Button>
+                <Button variant="secondary" onClick={() => setPanelMode('view')}>Cancel</Button>
               </div>
             </div>
           )}
@@ -801,7 +794,7 @@ export default function StudiosPage() {
                   </label>
                   <div style={{ display: "flex", gap: 9, marginTop: 20 }}>
                     <Button onClick={handleSave} disabled={!addForm.name || saving}>{saving ? "Saving…" : "Add Studio"}</Button>
-                    <Button variant="outline" onClick={() => { setSelected(null); setPanelMode(null); }}>Cancel</Button>
+                    <Button variant="secondary" onClick={() => { setSelected(null); setPanelMode(null); }}>Cancel</Button>
                   </div>
                 </>
               )}

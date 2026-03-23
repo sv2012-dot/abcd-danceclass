@@ -12,6 +12,7 @@ export const schools = {
   create: (data) => api.post('/schools', data),
   update: (id, data) => api.put(`/schools/${id}`, data),
   stats: (id) => api.get(`/schools/${id}/stats`),
+  resetAdminPassword: (id, password) => api.post(`/schools/${id}/reset-admin-password`, { password }),
 };
 
 export const students = {

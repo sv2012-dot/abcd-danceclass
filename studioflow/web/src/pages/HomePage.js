@@ -5,10 +5,25 @@ import { useAuth } from "../context/AuthContext";
 import { events as api, batches as batchesApi, students as studentsApi, schools, recitals as recitalApi, todos as todosApi } from "../api";
 import toast from "react-hot-toast";
 import Button from "../components/shared/Button";
+import Card from "../components/shared/Card";
 import Modal from "../components/shared/Modal";
 import Badge from "../components/shared/Badge";
 import { Field, Input, Select, Textarea } from "../components/shared/Field";
 import SvgIcon from "../components/shared/SvgIcon";
+
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const C = {
+  ebony:        '#111827',   // Primary text   (Figma: r=0.067 g=0.094 b=0.153)
+  boulder:      '#9CA3AF',   // Secondary text  (Figma: r=0.612 g=0.639 b=0.686)
+  grayChate:    '#6B7280',   // Labels / tertiary (Figma: r=0.420 g=0.447 b=0.502)
+  accentPurple: '#7C3AED',   // Primary accent
+  accentMagenta:'#DC4EFF',   // Secondary accent / View Schedule button (Figma: r=0.861 g=0.305 b=1.0)
+  accentGrad:   'linear-gradient(135deg,#7C3AED 0%,#DC4EFF 100%)',
+  border:       '#EAECF0',   // Matches CARD_TOKENS.border
+  white:        '#FFFFFF',
+  surface:      '#F7F8FB',
+  createBtn:    'rgba(138,122,154,0.07)', // + Create button bg (Figma: r=0.541 g=0.478 b=0.604 op=0.07)
+};
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const EVENT_TYPES = ["Class", "Recital", "Rehearsal", "Workshop", "Other"];
@@ -336,25 +351,26 @@ function SchoolHomePage() {
   const statsBlock = stats ? (
     <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:isMobile?"stretch":"flex-end"}}>
       {[
-        { label:"Students", value:stats.students??stats.student_count, color:"#c4527a", path:"/students",
-          icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
-        { label:"Batches",  value:stats.batches??stats.batch_count,    color:"#6a7fdb", path:"/batches",
-          icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> },
-        { label:"Recitals", value:stats.upcoming_recitals,             color:"#f4a041", path:"/schedule",
-          icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
-      ].map(({label,value,color,path,icon}) => (
-        <div key={label} onClick={()=>navigate(path)} style={{
-          background:"var(--card)",borderRadius:14,padding:"14px 18px",
-          border:"1.5px solid var(--border)",textAlign:"center",minWidth:isMobile?0:90,flex:isMobile?"1":"0 0 auto",
-          cursor:"pointer",transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",gap:4,
-        }}
-          onMouseEnter={e=>{e.currentTarget.style.borderColor=color+"55";e.currentTarget.style.boxShadow=`0 4px 14px ${color}18`;e.currentTarget.style.transform="translateY(-1px)";}}
-          onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none";}}
+        { label:"Students", value:stats.students??stats.student_count, path:"/students",
+          icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+        { label:"Batches",  value:stats.batches??stats.batch_count,    path:"/batches",
+          icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg> },
+        { label:"Recitals", value:stats.upcoming_recitals,             path:"/schedule",
+          icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+      ].map(({label,value,path,icon}) => (
+        <Card key={label} clickable onClick={()=>navigate(path)}
+          padding={16}
+          style={{
+            minWidth:isMobile?0:110, flex:isMobile?"1":"0 0 auto",
+            display:"flex", flexDirection:"column", alignItems:"flex-start", gap:10,
+          }}
         >
-          <div style={{color:"var(--muted)"}}>{icon}</div>
-          <div style={{fontSize:24,fontWeight:800,color,fontFamily:"var(--font-d)",lineHeight:1}}>{value||0}</div>
-          <div style={{fontSize:10,color:"var(--muted)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>{label}</div>
-        </div>
+          <div style={{fontSize:24,fontWeight:800,color:"#171717",lineHeight:1}}>{value||0}</div>
+          <div style={{display:"flex",alignItems:"center",gap:6,color:C.grayChate}}>
+            {icon}
+            <span style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</span>
+          </div>
+        </Card>
       ))}
     </div>
   ) : null;
@@ -362,45 +378,53 @@ function SchoolHomePage() {
   return (
     <div>
 
-      {/* ── Top row: greeting (left) + stat cards right (desktop only) ── */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:isMobile?12:24,gap:20,flexWrap:"wrap"}}>
-        <div>
-          <h1 style={{fontFamily:"var(--font-d)",fontSize:26,marginBottom:3,lineHeight:1.15}}>
-            {greeting}, {user?.name?.split(" ")[0]}!
-          </h1>
-          <p style={{color:"var(--muted)",fontSize:13}}>{school?.name} · {todayStr}</p>
+      {/* ── Stats row: right-aligned above greeting (desktop only) ── */}
+      {!isMobile && stats && (
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:20}}>
+          {statsBlock}
         </div>
-        {!isMobile && statsBlock}
+      )}
+
+      {/* ── Greeting ── */}
+      <div style={{marginBottom:isMobile?12:20}}>
+        <h1 style={{fontFamily:"var(--font-d)",fontSize:26,marginBottom:3,lineHeight:1.2,fontWeight:700,color:C.ebony}}>
+          {greeting}, {user?.name?.split(" ")[0]}!
+        </h1>
+        <p style={{color:C.boulder,fontSize:13,fontWeight:400}}>{school?.name} · {todayStr}</p>
       </div>
 
       {/* ── Mobile: consolidated Create button ── */}
       {isMobile && isAdmin && (
         <div ref={createMenuRef} style={{position:"relative",marginBottom:20}}>
           <button onClick={()=>setCreateMenuOpen(o=>!o)} style={{
-            width:"100%",padding:"12px 18px",borderRadius:12,border:"1.5px solid var(--accent)",
-            background:"var(--accent)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",
+            width:"100%",padding:"13px 20px",borderRadius:14,border:"none",
+            background:C.accentGrad,color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",
             display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+            boxShadow:"0 4px 20px rgba(124,58,237,.3)",
           }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Create New
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{marginLeft:2,transition:"transform .2s",transform:createMenuOpen?"rotate(180deg)":"none"}}><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           {createMenuOpen && (
-            <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,right:0,background:"var(--card)",border:"1.5px solid var(--border)",borderRadius:12,boxShadow:"0 8px 24px rgba(0,0,0,.15)",zIndex:200,overflow:"hidden"}}>
+            <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,right:0,background:C.white,border:`1.5px solid ${C.border}`,borderRadius:14,boxShadow:"0 8px 32px rgba(0,0,0,.14)",zIndex:200,overflow:"hidden"}}>
               {[
-                { label:"Create Event",   color:"#52c4a0", action:()=>{ openAdd(); setCreateMenuOpen(false); } },
-                { label:"Create Recital", color:"#c4527a", action:()=>{ setShowAddRecital(true); setCreateMenuOpen(false); } },
-                { label:"Add Student",    color:"#6a7fdb", action:()=>{ setShowAddStudent(true); setCreateMenuOpen(false); } },
-              ].map(({label,color,action}) => (
+                { label:"Create Event",   color:"#0EA5E9",      action:()=>{ openAdd(); setCreateMenuOpen(false); } },
+                { label:"Create Recital", color:"#C026D3",      action:()=>{ setShowAddRecital(true); setCreateMenuOpen(false); } },
+                { label:"Add Student",    color:C.accentPurple, action:()=>{ setShowAddStudent(true); setCreateMenuOpen(false); } },
+              ].map(({label,color,action},i,arr) => (
                 <button key={label} onClick={action} style={{
-                  width:"100%",padding:"13px 18px",background:"transparent",border:"none",
-                  borderBottom:"1px solid var(--border)",color:"var(--text)",fontSize:14,fontWeight:600,
-                  cursor:"pointer",display:"flex",alignItems:"center",gap:10,textAlign:"left",
+                  width:"100%",padding:"15px 20px",background:"transparent",border:"none",
+                  borderBottom: i < arr.length-1 ? `1px solid ${C.border}` : "none",
+                  color:C.ebony,fontSize:14,fontWeight:600,
+                  cursor:"pointer",display:"flex",alignItems:"center",gap:14,textAlign:"left",
                 }}
-                  onMouseEnter={e=>{e.currentTarget.style.background="var(--surface)";}}
+                  onMouseEnter={e=>{e.currentTarget.style.background=C.surface;}}
                   onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}
                 >
-                  <span style={{width:8,height:8,borderRadius:"50%",background:color,display:"inline-block",flexShrink:0}} />
+                  <span style={{width:36,height:36,borderRadius:10,background:color+"14",color,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:18}}>
+                    {label==="Create Event" ? "📅" : label==="Create Recital" ? "✨" : "👤"}
+                  </span>
                   {label}
                 </button>
               ))}
@@ -409,24 +433,52 @@ function SchoolHomePage() {
         </div>
       )}
 
-      {/* ── Desktop: Quick action buttons ── */}
+      {/* ── Desktop: Action buttons (Figma: right-aligned + Create / View Schedule) ── */}
       {!isMobile && isAdmin && (
-        <div style={{display:"flex",gap:10,marginBottom:28,flexWrap:"wrap"}}>
-          {[
-            { label:"+ Add Student",    color:"#c4527a", bg:"#c4527a12", border:"#c4527a33", action:()=>setShowAddStudent(true) },
-            { label:"+ Create Batch",   color:"#6a7fdb", bg:"#6a7fdb12", border:"#6a7fdb33", action:()=>setShowAddBatch(true)   },
-            { label:"+ Create Event",   color:"#52c4a0", bg:"#52c4a012", border:"#52c4a033", action:openAdd                     },
-            { label:"+ Create Recital", color:"#c4527a", bg:"#c4527a12", border:"#c4527a33", action:()=>setShowAddRecital(true)  },
-            { label:"View Schedule →",  color:"#8a7a9a", bg:"#8a7a9a12", border:"#8a7a9a33", action:()=>navigate("/schedule")   },
-          ].map(({label,color,bg,border,action}) => (
-            <button key={label} onClick={action} style={{
-              padding:"9px 18px",borderRadius:22,border:`1.5px solid ${border}`,
-              background:bg,color,fontWeight:700,fontSize:13,cursor:"pointer",transition:"all .15s",
+        <div ref={createMenuRef} style={{display:"flex",gap:10,marginBottom:28,justifyContent:"flex-end",alignItems:"center",position:"relative"}}>
+          {/* + Create dropdown */}
+          <div style={{position:"relative"}}>
+            <button onClick={()=>setCreateMenuOpen(o=>!o)} style={{
+              padding:"10px 18px", borderRadius:12, border:"none",
+              background:C.createBtn, color:"#000", fontWeight:700, fontSize:13, cursor:"pointer",
+              transition:"background .15s", display:"flex",alignItems:"center",gap:6,
             }}
-              onMouseEnter={e=>{e.currentTarget.style.background=color+"22";e.currentTarget.style.boxShadow=`0 4px 12px ${color}33`;}}
-              onMouseLeave={e=>{e.currentTarget.style.background=bg;e.currentTarget.style.boxShadow="none";}}
-            >{label}</button>
-          ))}
+              onMouseEnter={e=>{e.currentTarget.style.background="rgba(138,122,154,0.12)";}}
+              onMouseLeave={e=>{e.currentTarget.style.background=C.createBtn;}}
+            >
+              + Create
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{transition:"transform .2s",transform:createMenuOpen?"rotate(180deg)":"none"}}><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            {createMenuOpen && (
+              <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,minWidth:190,background:C.white,border:`1px solid ${C.border}`,borderRadius:12,boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:200,overflow:"hidden"}}>
+                {[
+                  { label:"Create Event",   action:()=>{ openAdd(); setCreateMenuOpen(false); } },
+                  { label:"Create Recital", action:()=>{ setShowAddRecital(true); setCreateMenuOpen(false); } },
+                  { label:"Add Student",    action:()=>{ setShowAddStudent(true); setCreateMenuOpen(false); } },
+                  { label:"Create Batch",   action:()=>{ setShowAddBatch(true); setCreateMenuOpen(false); } },
+                ].map(({label,action},i,arr) => (
+                  <button key={label} onClick={action} style={{
+                    width:"100%",padding:"11px 16px",background:"transparent",border:"none",
+                    borderBottom: i < arr.length-1 ? `1px solid ${C.border}` : "none",
+                    color:C.ebony,fontSize:13,fontWeight:600,
+                    cursor:"pointer",display:"flex",alignItems:"center",gap:10,textAlign:"left",
+                  }}
+                    onMouseEnter={e=>{e.currentTarget.style.background=C.surface;}}
+                    onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}
+                  >{label}</button>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* View Schedule */}
+          <button onClick={()=>navigate("/schedule")} style={{
+            padding:"10px 18px", borderRadius:12, border:"none",
+            background:C.accentMagenta, color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer",
+            transition:"opacity .15s,transform .15s",
+          }}
+            onMouseEnter={e=>{e.currentTarget.style.opacity=".88";e.currentTarget.style.transform="translateY(-1px)";}}
+            onMouseLeave={e=>{e.currentTarget.style.opacity="1";e.currentTarget.style.transform="none";}}
+          >View Schedule →</button>
         </div>
       )}
 
@@ -434,131 +486,124 @@ function SchoolHomePage() {
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:20}}>
 
         {/* Upcoming Recitals */}
-        <div style={{background:"var(--card)",borderRadius:14,border:"1.5px solid var(--border)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px 11px",borderBottom:"1px solid var(--border)"}}>
-            <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".1em",display:"flex",alignItems:"center"}}><SvgIcon name="star" size={13} color="var(--muted)" style={{marginRight:5}} /> Upcoming Recitals</div>
-            <button onClick={()=>navigate("/schedule")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600,padding:0}}>View all →</button>
+        <Card padding={0} style={{display:"flex",flexDirection:"column"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.grayChate,textTransform:"uppercase",letterSpacing:".1em"}}>Upcoming Recitals</div>
+            <button onClick={()=>navigate("/schedule")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.accentPurple,fontWeight:600,padding:0}}>View All</button>
           </div>
           {upcoming.length === 0
-            ? <div style={{padding:"28px 18px",color:"var(--muted)",fontSize:13,textAlign:"center"}}>No upcoming recitals</div>
-            : upcoming.map(r => {
+            ? <div style={{padding:"28px 16px",color:C.grayChate,fontSize:13,textAlign:"center"}}>No upcoming recitals</div>
+            : upcoming.map((r,i) => {
                 const d = parseLocalDate(r.event_date);
                 const tod = new Date(); tod.setHours(0,0,0,0);
                 const ed = parseLocalDate(r.event_date); ed.setHours(0,0,0,0);
                 const diff = Math.round((ed - tod) / 86400000);
-                const daysLabel = diff === 0 ? 'Today!' : diff === 1 ? 'Tomorrow' : diff > 0 ? `${diff}d to go` : `${Math.abs(diff)}d ago`;
-                const daysColor = diff <= 7 ? '#e05c6a' : diff <= 30 ? '#f4a041' : '#52c4a0';
+                const daysLabel = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : diff > 0 ? `${diff} days` : `${Math.abs(diff)}d ago`;
                 return (
                   <div key={r.id} onClick={()=>navigate("/schedule",{state:{recitalId:r.id}})}
-                    style={{display:"flex",alignItems:"center",gap:12,padding:"11px 18px",borderBottom:"1px solid var(--border)",cursor:"pointer",transition:"background .1s"}}
-                    onMouseEnter={e=>{e.currentTarget.style.background="var(--surface)";}}
+                    style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderTop:`1px solid ${C.border}`,cursor:"pointer",transition:"background .1s"}}
+                    onMouseEnter={e=>{e.currentTarget.style.background=C.surface;}}
                     onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}
                   >
-                    <div style={{textAlign:"center",minWidth:44,background:"#c4527a15",borderRadius:10,padding:"6px 5px",flexShrink:0}}>
-                      <div style={{fontSize:18,fontWeight:800,color:"#c4527a",fontFamily:"var(--font-d)",lineHeight:1}}>{isNaN(d)?"—":d.getDate()}</div>
-                      <div style={{fontSize:9,color:"#c4527a",textTransform:"uppercase",fontWeight:700,marginTop:1}}>{isNaN(d)?"":d.toLocaleString("default",{month:"short"})}</div>
+                    {/* Left-bar date block */}
+                    <div style={{display:"flex",alignItems:"stretch",gap:8,flexShrink:0}}>
+                      <div style={{width:3,borderRadius:99,background:C.accentPurple,minHeight:36}} />
+                      <div style={{textAlign:"center",minWidth:28}}>
+                        <div style={{fontSize:17,fontWeight:800,color:C.ebony,lineHeight:1}}>{isNaN(d)?"—":d.getDate()}</div>
+                        <div style={{fontSize:9,color:C.grayChate,textTransform:"uppercase",fontWeight:700,marginTop:2,letterSpacing:".04em"}}>{isNaN(d)?"":d.toLocaleString("default",{month:"short"})}</div>
+                      </div>
                     </div>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:700,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.title}</div>
-                      <div style={{color:"var(--muted)",fontSize:11,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.venue||"—"}</div>
+                      <div style={{fontWeight:700,fontSize:13,color:C.ebony,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.title}</div>
+                      <div style={{color:C.boulder,fontSize:11,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.venue||"—"}</div>
                     </div>
-                    <span style={{fontSize:11,fontWeight:700,color:daysColor,background:daysColor+"18",borderRadius:20,padding:"3px 9px",whiteSpace:"nowrap",flexShrink:0}}>{daysLabel}</span>
+                    <span style={{fontSize:11,fontWeight:600,color:"#171717",background:"#F3F4F6",borderRadius:20,padding:"3px 10px",whiteSpace:"nowrap",flexShrink:0}}>{daysLabel}</span>
                   </div>
                 );
               })
           }
-        </div>
+        </Card>
 
         {/* Upcoming Classes */}
-        <div style={{background:"var(--card)",borderRadius:14,border:"1.5px solid var(--border)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px 11px",borderBottom:"1px solid var(--border)"}}>
-            <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".1em",display:"flex",alignItems:"center"}}><SvgIcon name="calendar" size={13} color="var(--muted)" style={{marginRight:5}} /> Upcoming Classes</div>
-            <button onClick={()=>navigate("/schedule")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600,padding:0}}>View all →</button>
+        <Card padding={0} style={{display:"flex",flexDirection:"column"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.grayChate,textTransform:"uppercase",letterSpacing:".1em"}}>Upcoming Classes</div>
+            <button onClick={()=>navigate("/schedule")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.accentPurple,fontWeight:600,padding:0}}>View All</button>
           </div>
           {upcomingClasses.length === 0
-            ? <div style={{padding:"28px 18px",color:"var(--muted)",fontSize:13,textAlign:"center"}}>No upcoming events</div>
+            ? <div style={{padding:"28px 16px",color:C.grayChate,fontSize:13,textAlign:"center"}}>No upcoming events</div>
             : upcomingClasses.map(e => {
                 const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
                 const d     = parseLocalDate((e.start_datetime||"").slice(0,10));
                 return (
                   <div key={e.id} onClick={()=>navigate("/schedule")}
-                    style={{display:"flex",alignItems:"center",gap:12,padding:"11px 18px",borderBottom:"1px solid var(--border)",cursor:"pointer",transition:"background .1s"}}
-                    onMouseEnter={ev=>{ev.currentTarget.style.background="var(--surface)";}}
+                    style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderTop:`1px solid ${C.border}`,cursor:"pointer",transition:"background .1s"}}
+                    onMouseEnter={ev=>{ev.currentTarget.style.background=C.surface;}}
                     onMouseLeave={ev=>{ev.currentTarget.style.background="transparent";}}
                   >
-                    <div style={{textAlign:"center",minWidth:44,background:color+"18",borderRadius:10,padding:"6px 5px",flexShrink:0}}>
-                      <div style={{fontSize:18,fontWeight:800,color,fontFamily:"var(--font-d)",lineHeight:1}}>{isNaN(d)?"—":d.getDate()}</div>
-                      <div style={{fontSize:9,color,textTransform:"uppercase",fontWeight:700,marginTop:1}}>{isNaN(d)?"":d.toLocaleString("default",{month:"short"})}</div>
+                    {/* Left-bar date block */}
+                    <div style={{display:"flex",alignItems:"stretch",gap:8,flexShrink:0}}>
+                      <div style={{width:3,borderRadius:99,background:C.accentPurple,minHeight:36}} />
+                      <div style={{textAlign:"center",minWidth:28}}>
+                        <div style={{fontSize:17,fontWeight:800,color:C.ebony,lineHeight:1}}>{isNaN(d)?"—":d.getDate()}</div>
+                        <div style={{fontSize:9,color:C.grayChate,textTransform:"uppercase",fontWeight:700,marginTop:2,letterSpacing:".04em"}}>{isNaN(d)?"":d.toLocaleString("default",{month:"short"})}</div>
+                      </div>
                     </div>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:700,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title}</div>
-                      <div style={{color:"var(--muted)",fontSize:11,marginTop:1}}>{fmtTime(e.start_datetime)}{e.location?" · "+e.location:""}</div>
+                      <div style={{fontWeight:700,fontSize:13,color:C.ebony,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title}</div>
+                      <div style={{color:C.boulder,fontSize:11,marginTop:2}}>{fmtTime(e.start_datetime)}{e.location?" · "+e.location:""}</div>
                     </div>
                     <Badge color={color}>{e.type}</Badge>
                   </div>
                 );
               })
           }
-        </div>
+        </Card>
 
         {/* Open To-Dos */}
-        <div style={{background:"var(--card)",borderRadius:14,border:"1.5px solid var(--border)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px 11px",borderBottom:"1px solid var(--border)"}}>
-            <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".1em",display:"flex",alignItems:"center"}}><SvgIcon name="check-circle" size={13} color="var(--muted)" style={{marginRight:5}} /> Open To-Dos</div>
-            <button onClick={()=>navigate("/todos")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600,padding:0}}>View all →</button>
+        <Card padding={0} style={{display:"flex",flexDirection:"column"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.grayChate,textTransform:"uppercase",letterSpacing:".1em"}}>To-Do</div>
+            <button onClick={()=>navigate("/todos")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.accentPurple,fontWeight:600,padding:0}}>Add To-do</button>
           </div>
           {openTodos.length === 0
-            ? <div style={{padding:"20px 18px",color:"var(--muted)",fontSize:13,textAlign:"center"}}>All caught up!</div>
-            : openTodos.map((todo,idx) => {
+            ? <div style={{padding:"20px 16px",color:C.grayChate,fontSize:13,textAlign:"center"}}>All caught up!</div>
+            : openTodos.map((todo) => {
                 const od = isOverdue(todo.due_date);
                 return (
-                  <div key={todo.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid var(--border)"}}>
+                  <div key={todo.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderTop:`1px solid ${C.border}`}}>
                     <div onClick={()=>{
                         qc.setQueryData(["todos",sid], old => { if (!old?.todos) return old; return {...old,todos:old.todos.map(t=>t.id===todo.id?{...t,is_complete:1}:t)}; });
                         todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid]));
                       }}
-                      style={{width:18,height:18,borderRadius:"50%",border:"2px solid var(--border)",background:"transparent",cursor:"pointer",flexShrink:0,transition:"all .15s"}}
-                      onMouseEnter={e=>{e.currentTarget.style.borderColor="#52c4a0";e.currentTarget.style.background="#52c4a015";}}
-                      onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.background="transparent";}}
+                      style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${C.border}`,background:"transparent",cursor:"pointer",flexShrink:0,transition:"all .15s"}}
+                      onMouseEnter={e=>{e.currentTarget.style.borderColor=C.accentPurple;e.currentTarget.style.background=C.accentPurple+"15";}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.background="transparent";}}
                     />
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{todo.title}</div>
-                      <div style={{display:"flex",gap:6,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
-                        <span style={{fontSize:11,fontWeight:600,color:todo.assigned_to?"var(--text)":"var(--muted)",background:"var(--surface)",padding:"1px 7px",borderRadius:999,display:"inline-flex",alignItems:"center"}}>
-                          <SvgIcon name="user" size={11} style={{marginRight:3}} /> {todo.assigned_to||"Not assigned"}
-                        </span>
-                        {(todo.event_title||todo.recital_title) && (
-                          <span style={{fontSize:11,color:"var(--muted)"}}>
-                            {todo.recital_title?todo.recital_title:todo.event_title}
-                          </span>
-                        )}
+                      <div style={{fontSize:13,fontWeight:600,color:C.ebony,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{todo.title}</div>
+                      <div style={{fontSize:11,color:C.boulder,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        {todo.due_date ? `Due: ${fmtDue(todo.due_date)}` : ""}
+                        {todo.assigned_to ? ` · Assigned to: ${todo.assigned_to}` : ""}
                       </div>
                     </div>
-                    {todo.due_date && (
-                      <span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:999,flexShrink:0,color:od?"#ff3b30":"var(--muted)",background:od?"#fff0ee":"var(--surface)",display:"inline-flex",alignItems:"center"}}>
-                        {od && <SvgIcon name="alert-triangle" size={11} color="#ff3b30" style={{marginRight:3}} />}{fmtDue(todo.due_date)}
-                      </span>
-                    )}
-                    <button onClick={()=>todosApi.remove(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid]))}
-                      style={{background:"none",border:"none",cursor:"pointer",color:"#c7c7cc",padding:4,display:"flex",alignItems:"center",flexShrink:0,transition:"color .15s"}}
-                      onMouseEnter={e=>{e.currentTarget.style.color="#ff3b30";}} onMouseLeave={e=>{e.currentTarget.style.color="#c7c7cc";}}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2"/></svg>
+                    <button onClick={()=>navigate("/todos")}
+                      style={{background:"none",border:"none",cursor:"pointer",color:C.grayChate,padding:4,display:"flex",alignItems:"center",flexShrink:0,transition:"color .15s"}}
+                      onMouseEnter={e=>{e.currentTarget.style.color=C.ebony;}} onMouseLeave={e=>{e.currentTarget.style.color=C.grayChate;}}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
                   </div>
                 );
               })
           }
-          <div style={{padding:"10px 16px",borderTop:"1px solid var(--border)"}}>
-            <button onClick={()=>navigate("/todos")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontWeight:600,padding:0}}>+ Add to-do</button>
-          </div>
-        </div>
+        </Card>
 
       </div>
 
       {/* ── Mobile: stats at bottom ── */}
       {isMobile && stats && (
         <div style={{marginTop:24}}>
-          <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".1em",marginBottom:10}}>Studio Overview</div>
+          <div style={{fontSize:10,fontWeight:700,color:C.grayChate,textTransform:"uppercase",letterSpacing:".1em",marginBottom:10}}>Studio Overview</div>
           {statsBlock}
         </div>
       )}
@@ -579,7 +624,7 @@ function SchoolHomePage() {
             <Button onClick={()=>addStudentMutation.mutate(studentForm)} disabled={!studentForm.name||addStudentMutation.isPending}>
               {addStudentMutation.isPending?"Saving…":"Add Student"}
             </Button>
-            <Button variant="outline" onClick={()=>{setShowAddStudent(false);setStudentForm(EMPTY_STUDENT);}}>Cancel</Button>
+            <Button variant="secondary" onClick={()=>{setShowAddStudent(false);setStudentForm(EMPTY_STUDENT);}}>Cancel</Button>
             <Button variant="ghost" style={{marginLeft:"auto"}} onClick={()=>{setShowAddStudent(false);navigate("/students");}}>Go to Students →</Button>
           </div>
         </Modal>
@@ -600,7 +645,7 @@ function SchoolHomePage() {
             <Button onClick={()=>addBatchMutation.mutate(batchForm)} disabled={!batchForm.name||addBatchMutation.isPending}>
               {addBatchMutation.isPending?"Saving…":"Create Batch"}
             </Button>
-            <Button variant="outline" onClick={()=>{setShowAddBatch(false);setBatchForm(EMPTY_BATCH);}}>Cancel</Button>
+            <Button variant="secondary" onClick={()=>{setShowAddBatch(false);setBatchForm(EMPTY_BATCH);}}>Cancel</Button>
             <Button variant="ghost" style={{marginLeft:"auto"}} onClick={()=>{setShowAddBatch(false);navigate("/batches");}}>Go to Batches →</Button>
           </div>
         </Modal>
@@ -621,7 +666,7 @@ function SchoolHomePage() {
             <Button onClick={()=>recitalSaveMutation.mutate(recitalForm)} disabled={!recitalForm.title||!recitalForm.event_date||recitalSaveMutation.isPending} style={{background:"#c4527a",borderColor:"#c4527a"}}>
               {recitalSaveMutation.isPending?"Creating…":"Create Recital"}
             </Button>
-            <Button variant="outline" onClick={()=>{setShowAddRecital(false);setRecitalForm({title:'',event_date:'',event_time:'',venue:'',description:''});}}>Cancel</Button>
+            <Button variant="secondary" onClick={()=>{setShowAddRecital(false);setRecitalForm({title:'',event_date:'',event_time:'',venue:'',description:''});}}>Cancel</Button>
           </div>
         </Modal>
       )}
@@ -678,7 +723,7 @@ function SchoolHomePage() {
             <Button onClick={()=>saveMutation.mutate(form)} disabled={!form.title||!form.start_datetime||saveMutation.isPending}>
               {saveMutation.isPending?"Saving…":modal.id?"Save Changes":form.recurrence!=="none"?"Create Recurring Events":"Create Event"}
             </Button>
-            <Button variant="outline" onClick={()=>setModal(null)}>Cancel</Button>
+            <Button variant="secondary" onClick={()=>setModal(null)}>Cancel</Button>
           </div>
         </Modal>
       )}

@@ -640,10 +640,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                         Change
                         <input type="file" accept="image/*" style={{ display:"none" }} onChange={handlePosterUpload} />
                       </label>
-                      <button onClick={removePoster} style={{ padding:"8px 18px", borderRadius:8, background:"rgba(224,92,106,.88)", fontSize:12, fontWeight:700, cursor:"pointer", color:"#fff", border:"none", display:"flex", alignItems:"center", gap:6 }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                      <Button variant="danger" size="sm" onClick={removePoster}
+                        icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>}>
                         Remove
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </>
@@ -700,8 +700,8 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                     placeholder="instagram.com/p/…" autoFocus
                     style={{ width:"100%", padding:"8px 10px", borderRadius:8, fontSize:12, border:"1px solid var(--border)", background:"var(--card)", color:"var(--text)", outline:"none", boxSizing:"border-box" }} />
                   <div style={{ display:"flex", gap:8, width:"100%" }}>
-                    <button onClick={saveInstaUrl} style={{ flex:1, padding:"8px 0", borderRadius:8, background:"linear-gradient(45deg,#f09433,#bc1888)", border:"none", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>Link</button>
-                    <button onClick={() => setShowInstaForm(false)} style={{ flex:1, padding:"8px 0", borderRadius:8, background:"var(--border)", border:"none", color:"var(--muted)", fontSize:12, fontWeight:700, cursor:"pointer" }}>Cancel</button>
+                    <Button size="sm" onClick={saveInstaUrl} style={{ flex:1, background:"linear-gradient(45deg,#f09433,#bc1888)", boxShadow:"none" }}>Link</Button>
+                    <Button size="sm" variant="secondary" onClick={() => setShowInstaForm(false)} style={{ flex:1 }}>Cancel</Button>
                   </div>
                 </div>
               )}
@@ -809,7 +809,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
             </div>
 
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
-              <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+              <Button variant="secondary" onClick={() => setEditOpen(false)}>Cancel</Button>
               <Button onClick={saveInlineEdit} disabled={updateMutation.isPending}>
                 {updateMutation.isPending ? "Saving…" : "Save Changes"}
               </Button>
@@ -1131,7 +1131,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                   </Field>
                 </div>
                 <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
-                  <Button variant="outline" onClick={() => setProgModal(null)}>Cancel</Button>
+                  <Button variant="secondary" onClick={() => setProgModal(null)}>Cancel</Button>
                   <Button onClick={saveProg}>{progModal?.id ? "Save Changes" : "Add Number"}</Button>
                 </div>
               </Modal>
@@ -1223,16 +1223,9 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                       color:"var(--text)", outline:"none", fontFamily:"inherit",
                     }}
                   />
-                  <button onClick={saveSugUrl} style={{
-                    padding:"9px 18px", borderRadius:9, border:"none", cursor:"pointer",
-                    background:"#6a7fdb", color:"#fff", fontSize:13, fontWeight:700,
-                    transition:"opacity .15s",
-                  }}>Save</button>
+                  <Button onClick={saveSugUrl}>Save</Button>
                   {editingUrl && (
-                    <button onClick={() => { setEditingUrl(false); setSugInput(sugUrl); }} style={{
-                      padding:"9px 14px", borderRadius:9, border:"1px solid var(--border)",
-                      background:"none", cursor:"pointer", fontSize:13, color:"var(--muted)",
-                    }}>Cancel</button>
+                    <Button variant="secondary" onClick={() => { setEditingUrl(false); setSugInput(sugUrl); }}>Cancel</Button>
                   )}
                 </div>
               )}
@@ -1377,7 +1370,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                     </select>
                   </div>
                   <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:4 }}>
-                    <Button variant="outline" onClick={() => setVolunteerModal(null)}>Cancel</Button>
+                    <Button variant="secondary" onClick={() => setVolunteerModal(null)}>Cancel</Button>
                     <Button onClick={saveVolunteer}>{volunteerModal?.id ? "Save Changes" : "Add Volunteer"}</Button>
                   </div>
                 </div>
@@ -1524,7 +1517,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                   </Field>
                 </div>
                 <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
-                  <Button variant="outline" onClick={() => setVendorModal(null)}>Cancel</Button>
+                  <Button variant="secondary" onClick={() => setVendorModal(null)}>Cancel</Button>
                   <Button onClick={saveVendor}>{vendorModal?.id ? "Save Changes" : "Add Vendor"}</Button>
                 </div>
               </Modal>
@@ -2143,7 +2136,7 @@ export default function RecitalsPage() {
                     </td>
                     <td style={{ padding:"10px 14px" }}>
                       <div style={{ display:"flex", gap:5 }} onClick={e => e.stopPropagation()}>
-                        <Button size="sm" variant="outline" onClick={() => openEdit(r)}>Edit</Button>
+                        <Button size="sm" variant="secondary" onClick={() => openEdit(r)}>Edit</Button>
                         <Button size="sm" variant="danger" onClick={() => { if (window.confirm("Delete event?")) deleteMutation.mutate(r.id); }}>Del</Button>
                       </div>
                     </td>
@@ -2174,7 +2167,7 @@ export default function RecitalsPage() {
               </Field>
             </div>
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
-              <Button variant="outline" type="button" onClick={() => setModal(null)}>Cancel</Button>
+              <Button variant="secondary" type="button" onClick={() => setModal(null)}>Cancel</Button>
               <Button type="submit" disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? "Saving…" : modal?.id ? "Save Changes" : "Create Event"}
               </Button>
