@@ -192,6 +192,100 @@ const IconRecitals = () => (
 );
 
 
+// ── Gradient text helper ───────────────────────────────────────────────────────
+const GRAD_TEXT = {
+  background: BTN_GRAD,
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  backgroundClip: 'text',
+};
+
+function SectionTitle({ first, accent, onViewAll }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
+      <h2 style={{ fontSize: 22, fontWeight: 800, color: C.ebony, margin: 0, letterSpacing: '-0.02em', textTransform: 'uppercase' }}>
+        {first}{' '}
+        <span style={GRAD_TEXT}>{accent}</span>
+      </h2>
+      {onViewAll && (
+        <button onClick={onViewAll} style={{ fontSize: 12, fontWeight: 600, color: C.accentPurple, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+          View All →
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Week event row ─────────────────────────────────────────────────────────────
+function WeekEventRow({ e }) {
+  const d = new Date(e.start_datetime);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const eventDay = new Date(d); eventDay.setHours(0, 0, 0, 0);
+  const diff = Math.round((eventDay - today) / 86400000);
+  const daysLabel = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : `${diff} days`;
+  const col = TYPE_COLOR[e.type] || C.accentPurple;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <div style={{ width: 3, height: 44, borderRadius: 99, background: col, flexShrink: 0 }} />
+        <div style={{ textAlign: 'center', minWidth: 28 }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: C.ebony, lineHeight: 1, fontFamily: 'var(--font-d)' }}>{d.getDate()}</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: C.grayChate, textTransform: 'uppercase', letterSpacing: '.05em', marginTop: 2 }}>
+            {d.toLocaleString('default', { month: 'short' })}
+          </div>
+        </div>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, color: C.ebony, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
+        <div style={{ fontSize: 12, color: C.boulder, marginTop: 2 }}>{e.location || '—'}</div>
+      </div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.boulder, background: C.bg, borderRadius: 20, padding: '4px 12px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+        {daysLabel}
+      </div>
+    </div>
+  );
+}
+
+// ── Recital image card ─────────────────────────────────────────────────────────
+const CARD_GRADS = [
+  'linear-gradient(135deg, #1a1035 0%, #2d1b69 100%)',
+  'linear-gradient(135deg, #0d1b2a 0%, #1b4332 100%)',
+  'linear-gradient(135deg, #1a0533 0%, #7c1d6f 100%)',
+  'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
+];
+
+function RecitalCard({ r, index, onClick }) {
+  const bg = CARD_GRADS[index % CARD_GRADS.length];
+  return (
+    <div onClick={onClick} style={{ position: 'relative', height: 190, borderRadius: 16, overflow: 'hidden', cursor: 'pointer', background: bg }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,.22)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+    >
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.88) 0%, rgba(0,0,0,.25) 55%, transparent 100%)' }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '14px 14px' }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '.03em', lineHeight: 1.25 }}>{r.title}</div>
+        {r.venue && <div style={{ fontSize: 11, color: 'rgba(255,255,255,.65)', marginTop: 4 }}>{r.venue}</div>}
+      </div>
+    </div>
+  );
+}
+
+function FeaturedRecitalCard({ r, onClick }) {
+  return (
+    <div onClick={onClick} style={{ position: 'relative', height: 280, borderRadius: 16, overflow: 'hidden', cursor: 'pointer', background: CARD_GRADS[0] }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,.22)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+    >
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.92) 0%, rgba(0,0,0,.45) 55%, transparent 100%)' }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px 18px' }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,.55)', textTransform: 'uppercase', letterSpacing: '.14em', marginBottom: 7 }}>Featured Recital</div>
+        <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', textTransform: 'uppercase', lineHeight: 1.2, letterSpacing: '.02em' }}>{r.title}</div>
+        {r.venue && <div style={{ fontSize: 12, color: 'rgba(255,255,255,.65)', marginTop: 6 }}>{r.venue}</div>}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user, school } = useAuth();
@@ -271,6 +365,7 @@ export default function DashboardPage() {
   const upcomingEvents = (eventList || [])
     .filter(e => new Date(e.start_datetime) >= now)
     .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
+  const thisWeekEvents = upcomingEvents.filter(e => (new Date(e.start_datetime) - now) / 86400000 <= 7);
   const openTodos = todoList.filter(t => !t.is_complete);
 
   const dateStr = now.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
@@ -450,29 +545,110 @@ export default function DashboardPage() {
   // ── DESKTOP LAYOUT ─────────────────────────────────────────────────────────────
   return (
     <div>
-      {/* Top row: greeting + stat cards */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, gap: 20, flexWrap: 'wrap' }}>
+      {/* Top row: greeting + action buttons */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, gap: 20 }}>
         <div>
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 28, fontWeight: 800, color: C.ebony, marginBottom: 6, lineHeight: 1.1 }}>
-            {getGreeting()}, {firstName}! 👋
+            {getGreeting()}, {firstName}!
           </h1>
           <p style={{ color: C.boulder, fontSize: 13 }}>{school?.name} · {dateStr}</p>
         </div>
-        {statsBlock}
+        <div style={{ display: 'flex', gap: 10, flexShrink: 0, position: 'relative' }} ref={createMenuRef}>
+          <Button variant="secondary" onClick={() => setCreateMenuOpen(o => !o)}>+ Create</Button>
+          <Button variant="primary" onClick={() => navigate('/schedule')}>View Schedule →</Button>
+          {createMenuOpen && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 200, background: C.white, borderRadius: 14, border: `1.5px solid ${C.border}`, boxShadow: '0 8px 32px rgba(0,0,0,.14)', overflow: 'hidden', minWidth: 210 }}>
+              {CREATE_OPTIONS.map((opt, i) => (
+                <button key={i} onClick={opt.onClick} style={{ width: '100%', padding: '14px 18px', background: 'none', border: 'none', borderBottom: i < CREATE_OPTIONS.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, color: C.ebony, fontSize: 14, fontWeight: 600 }}
+                  onMouseEnter={e => e.currentTarget.style.background = C.bg}
+                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                >
+                  <span style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: opt.color + '14', color: opt.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{opt.icon}</span>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Quick action row */}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 28 }}>
-        <Button variant="secondary" onClick={() => navigate('/students')}>+ Add Student</Button>
-        <Button variant="secondary" onClick={() => navigate('/batches')}>+ Create Batch</Button>
-        <Button variant="secondary" onClick={() => navigate('/schedule')}>+ Create Event</Button>
-        <Button variant="secondary" onClick={() => navigate('/recitals?new=1')}>+ Create Recital</Button>
-        <div style={{ flex: 1 }} />
-        <Button variant="primary" onClick={() => navigate('/schedule')}>View Schedule →</Button>
-      </div>
+      {/* Main 2-column layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 36, alignItems: 'start' }}>
 
-      {/* Widgets */}
-      {widgetsBlock}
+        {/* ── Left column ── */}
+        <div>
+          {/* THIS WEEK */}
+          <SectionTitle first="THIS" accent="WEEK" onViewAll={() => navigate('/schedule')} />
+          <div style={{ background: C.white, borderRadius: 16, border: `1.5px solid ${C.border}`, overflow: 'hidden', marginBottom: 36 }}>
+            {thisWeekEvents.length === 0
+              ? <div style={{ padding: '28px 20px', color: C.grayChate, fontSize: 13, textAlign: 'center' }}>No events this week</div>
+              : thisWeekEvents.slice(0, 5).map(e => <WeekEventRow key={e.id} e={e} />)
+            }
+          </div>
+
+          {/* UPCOMING RECITALS */}
+          <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={() => navigate('/recitals')} />
+          {upcomingRecitals.length === 0 ? (
+            <div style={{ padding: '28px 20px', color: C.grayChate, fontSize: 13, textAlign: 'center', background: C.white, borderRadius: 16, border: `1.5px solid ${C.border}` }}>
+              No upcoming recitals
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+              {upcomingRecitals.slice(0, 3).map((r, i) => (
+                <RecitalCard key={r.id} r={r} index={i} onClick={() => navigate('/recitals')} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Right column ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+          {/* Featured Recital */}
+          {upcomingRecitals[0] && (
+            <div>
+              <SectionTitle first="FEATURED" accent="RECITAL" />
+              <FeaturedRecitalCard r={upcomingRecitals[0]} onClick={() => navigate('/recitals')} />
+            </div>
+          )}
+
+          {/* TO DOs */}
+          <div>
+            <SectionTitle first="TO" accent="DOs" />
+            <div style={{ background: C.white, borderRadius: 16, border: `1.5px solid ${C.border}`, overflow: 'hidden' }}>
+              {openTodos.length === 0 && !addingTodo
+                ? <div style={{ padding: '28px 20px', color: C.grayChate, fontSize: 13, textAlign: 'center' }}>All caught up!</div>
+                : openTodos.slice(0, 5).map(t => (
+                    <SharedTodoRow key={t.id} todo={t} compact
+                      onToggle={() => toggleTodo.mutate(t.id)}
+                      onDelete={() => deleteTodo.mutate(t.id)}
+                    />
+                  ))
+              }
+              <div style={{ padding: '10px 18px' }}>
+                {addingTodo ? (
+                  <form onSubmit={e => { e.preventDefault(); if (newTodo.trim()) addTodo.mutate(newTodo.trim()); }}
+                    style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      autoFocus value={newTodo}
+                      onChange={e => setNewTodo(e.target.value)}
+                      placeholder="What needs doing?"
+                      style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: `1.5px solid ${C.accentPurple}`, background: '#fff', color: C.ebony, fontSize: 13, outline: 'none' }}
+                      onKeyDown={e => { if (e.key === 'Escape') { setAddingTodo(false); setNewTodo(''); } }}
+                    />
+                    <Button type="submit" size="sm">Add</Button>
+                    <Button type="button" variant="secondary" size="sm" onClick={() => { setAddingTodo(false); setNewTodo(''); }}>✕</Button>
+                  </form>
+                ) : (
+                  <button onClick={() => setAddingTodo(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accentPurple, fontSize: 13, fontWeight: 600, padding: 0 }}>
+                    + Add to-do
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }
