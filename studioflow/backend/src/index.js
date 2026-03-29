@@ -24,6 +24,8 @@ app.use(cors({
   origin: (origin, cb) => {
     // Allow requests with no origin (curl, mobile apps, same-origin)
     if (!origin) return cb(null, true);
+    // Allow any localhost origin for local development
+    if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return cb(null, true);
     if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
     cb(new Error(`CORS: origin ${origin} not allowed`));
   },
