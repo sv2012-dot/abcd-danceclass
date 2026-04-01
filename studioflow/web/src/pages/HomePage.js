@@ -268,9 +268,10 @@ const RECITAL_CARD_GRADS = [
   'linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)',
 ];
 function RecitalImageCard({ r, index, onClick }) {
-  const bg = RECITAL_CARD_GRADS[index % RECITAL_CARD_GRADS.length];
+  const poster = localStorage.getItem(`poster_${r.id}`);
+  const gradBg = RECITAL_CARD_GRADS[index % RECITAL_CARD_GRADS.length];
   return (
-    <div onClick={onClick} style={{ position:'relative', height:190, borderRadius:16, overflow:'hidden', cursor:'pointer', background:bg, transition:'transform .15s,box-shadow .15s' }}
+    <div onClick={onClick} style={{ position:'relative', height:190, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) center/cover no-repeat` : gradBg, transition:'transform .15s,box-shadow .15s' }}
       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';}}
       onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}
     >
@@ -283,8 +284,9 @@ function RecitalImageCard({ r, index, onClick }) {
   );
 }
 function FeaturedRecitalCard({ r, onClick }) {
+  const poster = localStorage.getItem(`poster_${r.id}`);
   return (
-    <div onClick={onClick} style={{ position:'relative', height:280, borderRadius:16, overflow:'hidden', cursor:'pointer', background:RECITAL_CARD_GRADS[0], transition:'transform .15s,box-shadow .15s' }}
+    <div onClick={onClick} style={{ position:'relative', height:280, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) center/cover no-repeat` : RECITAL_CARD_GRADS[0], transition:'transform .15s,box-shadow .15s' }}
       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';}}
       onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}
     >
@@ -587,7 +589,7 @@ function SchoolHomePage() {
             {upcoming.length === 0
               ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center', background:C.white, borderRadius:16, border:`1.5px solid ${C.border}` }}>No upcoming recitals</div>
               : <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
-                  {upcoming.slice(0,3).map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} onClick={()=>navigate('/recitals')} />)}
+                  {upcoming.slice(0,3).map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />)}
                 </div>
             }
           </div>
@@ -596,7 +598,7 @@ function SchoolHomePage() {
             {upcoming[0] && (
               <div>
                 <SectionTitle first="FEATURED" accent="RECITAL" />
-                <FeaturedRecitalCard r={upcoming[0]} onClick={()=>navigate('/recitals')} />
+                <FeaturedRecitalCard r={upcoming[0]} onClick={()=>navigate('/recitals',{state:{openTitle:upcoming[0].title}})} />
               </div>
             )}
             <div>
