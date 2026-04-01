@@ -217,6 +217,87 @@ export default function HomePage() {
   return <SchoolHomePage />;
 }
 
+// ── Dashboard helpers ─────────────────────────────────────────────────────────
+const GRAD_TEXT_STYLE = {
+  background: C.accentGrad,
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  backgroundClip: 'text',
+};
+function SectionTitle({ first, accent, onViewAll }) {
+  return (
+    <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:16 }}>
+      <h2 style={{ fontSize:22, fontWeight:800, color:C.ebony, margin:0, letterSpacing:'-0.02em', textTransform:'uppercase' }}>
+        {first}{' '}<span style={GRAD_TEXT_STYLE}>{accent}</span>
+      </h2>
+      {onViewAll && <button onClick={onViewAll} style={{ fontSize:12, fontWeight:600, color:C.accentPurple, background:'none', border:'none', cursor:'pointer', padding:0 }}>View All →</button>}
+    </div>
+  );
+}
+function ThisWeekRow({ e, onNavigate }) {
+  const d = new Date(e.start_datetime);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const ed = new Date(d); ed.setHours(0,0,0,0);
+  const diff = Math.round((ed - today) / 86400000);
+  const daysLabel = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : `${diff} days`;
+  const col = TYPE_COLORS[e.type] || C.accentPurple;
+  return (
+    <div onClick={onNavigate} style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 20px', borderBottom:`1px solid ${C.border}`, cursor:'pointer', transition:'background .1s' }}
+      onMouseEnter={ev=>ev.currentTarget.style.background=C.surface}
+      onMouseLeave={ev=>ev.currentTarget.style.background='transparent'}
+    >
+      <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
+        <div style={{ width:3, height:44, borderRadius:99, background:col, flexShrink:0 }} />
+        <div style={{ textAlign:'center', minWidth:28 }}>
+          <div style={{ fontSize:20, fontWeight:800, color:C.ebony, lineHeight:1, fontFamily:'var(--font-d)' }}>{d.getDate()}</div>
+          <div style={{ fontSize:9, fontWeight:700, color:C.grayChate, textTransform:'uppercase', letterSpacing:'.05em', marginTop:2 }}>{d.toLocaleString('default',{month:'short'})}</div>
+        </div>
+      </div>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontWeight:700, fontSize:14, color:C.ebony, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{e.title}</div>
+        <div style={{ fontSize:12, color:C.boulder, marginTop:2 }}>{e.location||e.venue||'—'}</div>
+      </div>
+      <div style={{ fontSize:11, fontWeight:700, color:C.boulder, background:C.surface, borderRadius:20, padding:'4px 12px', whiteSpace:'nowrap', flexShrink:0 }}>{daysLabel}</div>
+    </div>
+  );
+}
+const RECITAL_CARD_GRADS = [
+  'linear-gradient(135deg,#1a1035 0%,#2d1b69 100%)',
+  'linear-gradient(135deg,#0d1b2a 0%,#1b4332 100%)',
+  'linear-gradient(135deg,#1a0533 0%,#7c1d6f 100%)',
+  'linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)',
+];
+function RecitalImageCard({ r, index, onClick }) {
+  const bg = RECITAL_CARD_GRADS[index % RECITAL_CARD_GRADS.length];
+  return (
+    <div onClick={onClick} style={{ position:'relative', height:190, borderRadius:16, overflow:'hidden', cursor:'pointer', background:bg, transition:'transform .15s,box-shadow .15s' }}
+      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';}}
+      onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}
+    >
+      <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(0,0,0,.88) 0%,rgba(0,0,0,.25) 55%,transparent 100%)' }} />
+      <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'14px' }}>
+        <div style={{ fontSize:13, fontWeight:800, color:'#fff', textTransform:'uppercase', letterSpacing:'.03em', lineHeight:1.25 }}>{r.title}</div>
+        {r.venue && <div style={{ fontSize:11, color:'rgba(255,255,255,.65)', marginTop:4 }}>{r.venue}</div>}
+      </div>
+    </div>
+  );
+}
+function FeaturedRecitalCard({ r, onClick }) {
+  return (
+    <div onClick={onClick} style={{ position:'relative', height:280, borderRadius:16, overflow:'hidden', cursor:'pointer', background:RECITAL_CARD_GRADS[0], transition:'transform .15s,box-shadow .15s' }}
+      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';}}
+      onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}
+    >
+      <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.45) 55%,transparent 100%)' }} />
+      <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'20px 18px' }}>
+        <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,.55)', textTransform:'uppercase', letterSpacing:'.14em', marginBottom:7 }}>Featured Recital</div>
+        <div style={{ fontSize:16, fontWeight:800, color:'#fff', textTransform:'uppercase', lineHeight:1.2, letterSpacing:'.02em' }}>{r.title}</div>
+        {r.venue && <div style={{ fontSize:12, color:'rgba(255,255,255,.65)', marginTop:6 }}>{r.venue}</div>}
+      </div>
+    </div>
+  );
+}
+
 // ── School Home ───────────────────────────────────────────────────────────────
 function SchoolHomePage() {
   const { user, school } = useAuth();
@@ -284,6 +365,14 @@ function SchoolHomePage() {
       .filter(e => new Date(e.start_datetime) >= now && e.type !== "Recital")
       .sort((a,b) => a.start_datetime.localeCompare(b.start_datetime))
       .slice(0,3);
+  }, [rawEvents]);
+
+  const thisWeekEvents = useMemo(() => {
+    const now = new Date();
+    const weekOut = new Date(now.getTime() + 7 * 86400000);
+    return (rawEvents||[])
+      .filter(e => { const d = new Date(e.start_datetime); return d >= now && d <= weekOut; })
+      .sort((a,b) => a.start_datetime.localeCompare(b.start_datetime));
   }, [rawEvents]);
 
   // ── mutations ─────────────────────────────────────────────────────────────
@@ -482,8 +571,75 @@ function SchoolHomePage() {
         </div>
       )}
 
-      {/* ── 3-column widget grid ── */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:20}}>
+      {/* ── Desktop: 2-column layout ── */}
+      {!isMobile && (
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 360px', gap:36, alignItems:'start' }}>
+          {/* Left column */}
+          <div>
+            <SectionTitle first="THIS" accent="WEEK" onViewAll={()=>navigate('/schedule')} />
+            <div style={{ background:C.white, borderRadius:16, border:`1.5px solid ${C.border}`, overflow:'hidden', marginBottom:36 }}>
+              {thisWeekEvents.length === 0
+                ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center' }}>No events this week</div>
+                : thisWeekEvents.slice(0,5).map(e => <ThisWeekRow key={e.id} e={e} onNavigate={()=>navigate('/schedule')} />)
+              }
+            </div>
+            <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>navigate('/recitals')} />
+            {upcoming.length === 0
+              ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center', background:C.white, borderRadius:16, border:`1.5px solid ${C.border}` }}>No upcoming recitals</div>
+              : <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
+                  {upcoming.slice(0,3).map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} onClick={()=>navigate('/recitals')} />)}
+                </div>
+            }
+          </div>
+          {/* Right column */}
+          <div style={{ display:'flex', flexDirection:'column', gap:28 }}>
+            {upcoming[0] && (
+              <div>
+                <SectionTitle first="FEATURED" accent="RECITAL" />
+                <FeaturedRecitalCard r={upcoming[0]} onClick={()=>navigate('/recitals')} />
+              </div>
+            )}
+            <div>
+              <SectionTitle first="TO" accent="DOs" />
+              <Card padding={0} style={{ display:'flex', flexDirection:'column' }}>
+                {openTodos.length === 0
+                  ? <div style={{ padding:'20px 16px', color:C.grayChate, fontSize:13, textAlign:'center' }}>All caught up!</div>
+                  : openTodos.map(todo => {
+                      const od = isOverdue(todo.due_date);
+                      return (
+                        <div key={todo.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderTop:`1px solid ${C.border}` }}>
+                          <div onClick={()=>{
+                              qc.setQueryData(['todos',sid], old => { if (!old?.todos) return old; return {...old,todos:old.todos.map(t=>t.id===todo.id?{...t,is_complete:1}:t)}; });
+                              todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(['todos',sid]));
+                            }}
+                            style={{ width:18, height:18, borderRadius:'50%', border:`2px solid ${C.border}`, background:'transparent', cursor:'pointer', flexShrink:0, transition:'all .15s' }}
+                            onMouseEnter={e=>{e.currentTarget.style.borderColor=C.accentPurple;e.currentTarget.style.background=C.accentPurple+'15';}}
+                            onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.background='transparent';}}
+                          />
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:13, fontWeight:600, color:od?'#e05c6a':C.ebony, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{todo.title}</div>
+                            <div style={{ fontSize:11, color:C.boulder, marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                              {todo.due_date?`Due: ${fmtDue(todo.due_date)}`:''}
+                              {todo.assigned_to?` · Assigned to: ${todo.assigned_to}`:''}
+                            </div>
+                          </div>
+                          <button onClick={()=>navigate('/todos')} style={{ background:'none', border:'none', cursor:'pointer', color:C.grayChate, padding:4, display:'flex', alignItems:'center', flexShrink:0, transition:'color .15s' }}
+                            onMouseEnter={e=>e.currentTarget.style.color=C.ebony} onMouseLeave={e=>e.currentTarget.style.color=C.grayChate}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
+                        </div>
+                      );
+                    })
+                }
+              </Card>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Mobile: stacked cards ── */}
+      {isMobile && (
+        <div style={{ display:'grid', gap:20 }}>
 
         {/* Upcoming Recitals */}
         <Card padding={0} style={{display:"flex",flexDirection:"column"}}>
@@ -598,7 +754,8 @@ function SchoolHomePage() {
           }
         </Card>
 
-      </div>
+        </div>
+      )}
 
       {/* ── Mobile: stats at bottom ── */}
       {isMobile && stats && (
@@ -733,31 +890,227 @@ function SchoolHomePage() {
 }
 
 // ── Super Admin Dashboard ─────────────────────────────────────────────────────
+const EMPTY_SCHOOL = { name:'', owner_name:'', email:'', phone:'', city:'', dance_style:'', admin_email:'', admin_password:'' };
+
 function SuperAdminDash() {
-  const navigate = useNavigate();
-  const { data: schoolList } = useQuery({ queryKey:["schools"], queryFn:()=>import("../api").then(m=>m.schools.list()) });
+  const qc = useQueryClient();
+  const { data: schoolList = [], isLoading } = useQuery({
+    queryKey: ['schools'],
+    queryFn: () => schools.list(),
+  });
+
+  const [resetId,   setResetId]   = useState(null);
+  const [resetPw,   setResetPw]   = useState('');
+  const [showPw,    setShowPw]    = useState(false);
+  const [resetDone, setResetDone] = useState(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form,      setForm]      = useState(EMPTY_SCHOOL);
+  const [created,   setCreated]   = useState(null);
+
+  const resetMut = useMutation({
+    mutationFn: ({ id, password }) => schools.resetAdminPassword(id, password),
+    onSuccess: (_, { id }) => {
+      setResetDone(id);
+      setResetId(null);
+      setResetPw('');
+      setTimeout(() => setResetDone(null), 4000);
+    },
+  });
+
+  const createMut = useMutation({
+    mutationFn: (data) => schools.create(data),
+    onSuccess: () => {
+      qc.invalidateQueries(['schools']);
+      setCreated({ name: form.name, admin_email: form.admin_email, admin_password: form.admin_password });
+      setShowCreate(false);
+      setForm(EMPTY_SCHOOL);
+    },
+  });
+
+  const setF = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  return (
+    <div style={{ maxWidth: 760 }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:28, gap:16, flexWrap:'wrap' }}>
+        <div>
+          <h1 style={{ fontFamily:'var(--font-d)', fontSize:26, color:C.ebony, marginBottom:4 }}>Super Admin</h1>
+          <p style={{ color:C.boulder, fontSize:13 }}>Manage all schools and their login credentials</p>
+        </div>
+        <Button onClick={() => { setShowCreate(true); setCreated(null); }}>+ Add School</Button>
+      </div>
+
+      {/* New school credentials banner */}
+      {created && (
+        <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:12, padding:'16px 20px', marginBottom:20 }}>
+          <div style={{ fontWeight:700, fontSize:13, color:'#15803D', marginBottom:10 }}>
+            ✅ "{created.name}" created — save these login details now:
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px 24px' }}>
+            <SACredRow label="Admin Email" value={created.admin_email} />
+            <SACredRow label="Password" value={created.admin_password} secret />
+          </div>
+          <button onClick={() => setCreated(null)} style={{ marginTop:10, fontSize:12, color:'#15803D', background:'none', border:'none', cursor:'pointer', padding:0, fontWeight:600 }}>Dismiss</button>
+        </div>
+      )}
+
+      {/* School list */}
+      {isLoading ? (
+        <div style={{ color:C.boulder, fontSize:13, padding:24 }}>Loading…</div>
+      ) : (
+        <div style={{ display:'grid', gap:10 }}>
+          {schoolList.map(s => {
+            const hue = s.name.charCodeAt(0) * 7 % 360;
+            const isResetting = resetId === s.id;
+            const justReset   = resetDone === s.id;
+            return (
+              <div key={s.id} style={{ background:C.white, border:`1.5px solid ${justReset ? '#86EFAC' : C.border}`, borderRadius:14, overflow:'hidden', transition:'border-color .3s' }}>
+                {/* Main row */}
+                <div style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px' }}>
+                  <div style={{ width:44, height:44, borderRadius:12, background:`hsl(${hue},55%,64%)`, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, color:'#fff', fontSize:18, flexShrink:0 }}>
+                    {s.name[0]}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:700, fontSize:14, color:C.ebony }}>{s.name}</div>
+                    <div style={{ color:C.boulder, fontSize:12, marginTop:2 }}>{s.city}{s.dance_style ? ` · ${s.dance_style}` : ''}</div>
+                  </div>
+                  <div style={{ fontSize:12, color:C.grayChate, textAlign:'right', flexShrink:0 }}>
+                    <div>{s.student_count} students</div>
+                    <div>{s.batch_count} batches</div>
+                  </div>
+                </div>
+
+                {/* Credentials bar */}
+                <div style={{ borderTop:`1px solid ${C.border}`, padding:'10px 18px', background:'#FAFAFA', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:10, fontWeight:700, color:C.grayChate, textTransform:'uppercase', letterSpacing:'.08em', marginBottom:3 }}>Admin Login</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <span style={{ fontSize:13, fontWeight:600, color:C.ebony, fontFamily:'monospace' }}>
+                        {s.admin_email || <span style={{ color:C.grayChate, fontFamily:'inherit', fontWeight:400 }}>No admin set</span>}
+                      </span>
+                      {s.admin_email && (
+                        <button onClick={() => navigator.clipboard?.writeText(s.admin_email)} title="Copy email"
+                          style={{ background:'none', border:'none', cursor:'pointer', color:C.grayChate, padding:'1px 4px', borderRadius:4, fontSize:12 }}>⎘</button>
+                      )}
+                    </div>
+                  </div>
+
+                  {justReset ? (
+                    <span style={{ fontSize:12, fontWeight:700, color:'#15803D' }}>✓ Password updated</span>
+                  ) : isResetting ? (
+                    <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                      <input
+                        autoFocus
+                        type={showPw ? 'text' : 'password'}
+                        value={resetPw}
+                        onChange={e => setResetPw(e.target.value)}
+                        placeholder="New password (min 6)"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && resetPw.length >= 6) resetMut.mutate({ id: s.id, password: resetPw });
+                          if (e.key === 'Escape') { setResetId(null); setResetPw(''); }
+                        }}
+                        style={{ padding:'6px 10px', borderRadius:8, border:`1.5px solid ${C.accentPurple}`, fontSize:12, outline:'none', width:180, fontFamily:'monospace' }}
+                      />
+                      <button onClick={() => setShowPw(v => !v)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:14, color:C.boulder, padding:0 }}>
+                        {showPw ? '🙈' : '👁'}
+                      </button>
+                      <Button size="sm" onClick={() => resetMut.mutate({ id: s.id, password: resetPw })} disabled={resetPw.length < 6 || resetMut.isPending}>
+                        {resetMut.isPending ? '…' : 'Save'}
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => { setResetId(null); setResetPw(''); }}>Cancel</Button>
+                    </div>
+                  ) : (
+                    <Button size="sm" variant="secondary" onClick={() => { setResetId(s.id); setResetPw(''); setShowPw(false); }}>
+                      🔑 Reset Password
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Create School modal */}
+      {showCreate && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+          onClick={e => { if (e.target === e.currentTarget) setShowCreate(false); }}>
+          <div style={{ background:C.white, borderRadius:18, width:'100%', maxWidth:500, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 24px 64px rgba(0,0,0,.22)' }}>
+            <div style={{ padding:'20px 24px', borderBottom:`1px solid ${C.border}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <span style={{ fontWeight:700, fontSize:16, color:C.ebony }}>Add New School</span>
+              <button onClick={() => setShowCreate(false)} style={{ background:'none', border:'none', fontSize:22, cursor:'pointer', color:C.boulder, lineHeight:1 }}>×</button>
+            </div>
+            <div style={{ padding:'20px 24px' }}>
+              <div style={{ fontSize:11, fontWeight:700, color:C.grayChate, textTransform:'uppercase', letterSpacing:'.08em', marginBottom:14 }}>School Details</div>
+              {[
+                { label:'School Name *', key:'name', placeholder:'e.g. Rhythm & Grace Academy' },
+                { label:'Owner Name *',  key:'owner_name', placeholder:'Full name' },
+              ].map(({ label, key, placeholder }) => (
+                <div key={key} style={{ marginBottom:14 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:C.boulder, textTransform:'uppercase', letterSpacing:'.07em', marginBottom:5 }}>{label}</div>
+                  <input value={form[key]} onChange={e => setF(key, e.target.value)} placeholder={placeholder}
+                    style={{ width:'100%', padding:'9px 12px', borderRadius:9, border:`1.5px solid ${C.border}`, fontSize:13, color:C.ebony, background:C.white, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}
+                    onFocus={e => e.target.style.borderColor = C.accentPurple}
+                    onBlur={e => e.target.style.borderColor = C.border} />
+                </div>
+              ))}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 14px' }}>
+                {[
+                  { label:'City', key:'city', placeholder:'City' },
+                  { label:'Dance Style', key:'dance_style', placeholder:'e.g. Ballet' },
+                ].map(({ label, key, placeholder }) => (
+                  <div key={key} style={{ marginBottom:14 }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:C.boulder, textTransform:'uppercase', letterSpacing:'.07em', marginBottom:5 }}>{label}</div>
+                    <input value={form[key]} onChange={e => setF(key, e.target.value)} placeholder={placeholder}
+                      style={{ width:'100%', padding:'9px 12px', borderRadius:9, border:`1.5px solid ${C.border}`, fontSize:13, color:C.ebony, background:C.white, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}
+                      onFocus={e => e.target.style.borderColor = C.accentPurple}
+                      onBlur={e => e.target.style.borderColor = C.border} />
+                  </div>
+                ))}
+              </div>
+              <div style={{ borderTop:`1px solid ${C.border}`, margin:'4px 0 16px' }} />
+              <div style={{ fontSize:11, fontWeight:700, color:C.grayChate, textTransform:'uppercase', letterSpacing:'.08em', marginBottom:14 }}>Admin Login Credentials</div>
+              {[
+                { label:'Admin Email *', key:'admin_email', placeholder:'admin@school.com', type:'email' },
+                { label:'Password *',    key:'admin_password', placeholder:'Min 6 characters', type:'text' },
+              ].map(({ label, key, placeholder, type }) => (
+                <div key={key} style={{ marginBottom:14 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:C.boulder, textTransform:'uppercase', letterSpacing:'.07em', marginBottom:5 }}>{label}</div>
+                  <input type={type} value={form[key]} onChange={e => setF(key, e.target.value)} placeholder={placeholder}
+                    style={{ width:'100%', padding:'9px 12px', borderRadius:9, border:`1.5px solid ${C.border}`, fontSize:13, color:C.ebony, background:C.white, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}
+                    onFocus={e => e.target.style.borderColor = C.accentPurple}
+                    onBlur={e => e.target.style.borderColor = C.border} />
+                </div>
+              ))}
+              <div style={{ fontSize:11, color:C.boulder, marginTop:-8, marginBottom:16 }}>
+                ⚠ Save these credentials — the password cannot be recovered after creation (only reset).
+              </div>
+              <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+                <Button variant="secondary" onClick={() => setShowCreate(false)}>Cancel</Button>
+                <Button
+                  onClick={() => createMut.mutate(form)}
+                  disabled={!form.name || !form.owner_name || !form.admin_email || !form.admin_password || createMut.isPending}
+                >
+                  {createMut.isPending ? 'Creating…' : 'Create School'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SACredRow({ label, value, secret }) {
+  const [vis, setVis] = useState(!secret);
   return (
     <div>
-      <h1 style={{fontFamily:"var(--font-d)",fontSize:26,marginBottom:4}}>Super Admin Dashboard</h1>
-      <p style={{color:"var(--muted)",marginBottom:24,fontSize:13}}>Manage all schools on the platform</p>
-      <h2 style={{fontFamily:"var(--font-d)",fontSize:17,marginBottom:12}}>All Schools</h2>
-      <div style={{display:"grid",gap:9}}>
-        {(schoolList||[]).map(s => (
-          <div key={s.id} onClick={()=>navigate("/schools")} style={{
-            display:"flex",alignItems:"center",gap:14,padding:14,background:"var(--card)",
-            borderRadius:12,border:"1.5px solid var(--border)",cursor:"pointer",transition:"all .15s",
-          }}
-            onMouseEnter={e=>{e.currentTarget.style.borderColor="#c4527a44";e.currentTarget.style.boxShadow="0 4px 12px #c4527a10";}}
-            onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.boxShadow="none";}}
-          >
-            <div style={{width:40,height:40,borderRadius:"50%",background:`hsl(${s.name.charCodeAt(0)*7%360},55%,68%)`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#fff",fontSize:16,flexShrink:0}}>{s.name[0]}</div>
-            <div style={{flex:1}}>
-              <div style={{fontWeight:700,fontSize:14}}>{s.name}</div>
-              <div style={{color:"var(--muted)",fontSize:12}}>{s.owner_name} · {s.city} · {s.dance_style}</div>
-            </div>
-            <div style={{fontSize:12,color:"var(--muted)"}}>{s.student_count} students · {s.batch_count} batches</div>
-          </div>
-        ))}
+      <div style={{ fontSize:10, fontWeight:700, color:'#15803D', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:2 }}>{label}</div>
+      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+        <span style={{ fontSize:13, fontWeight:600, fontFamily:'monospace', color:'#065F46' }}>{vis ? value : '••••••••'}</span>
+        {secret && <button onClick={() => setVis(v => !v)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, color:'#15803D', padding:0 }}>{vis ? 'hide' : 'show'}</button>}
+        <button onClick={() => navigator.clipboard?.writeText(value)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, color:'#15803D', padding:0 }}>⎘ copy</button>
       </div>
     </div>
   );
