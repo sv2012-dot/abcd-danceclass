@@ -49,11 +49,11 @@ exports.create = async (req, res) => {
 };
 
 exports.update = async (req, res) => {
-  const { title, event_date, venue, status, description } = req.body;
+  const { title, event_date, venue, status, description, is_featured } = req.body;
   try {
     await pool.query(
-      'UPDATE recitals SET title=?,event_date=?,venue=?,status=?,description=? WHERE id=? AND school_id=?',
-      [title, event_date, venue||null, status||'Planning', description||null, req.params.id, req.params.schoolId]
+      'UPDATE recitals SET title=?,event_date=?,venue=?,status=?,description=?,is_featured=? WHERE id=? AND school_id=?',
+      [title, event_date, venue||null, status||'Planning', description||null, is_featured ? 1 : 0, req.params.id, req.params.schoolId]
     );
     const [rows] = await pool.query('SELECT * FROM recitals WHERE id = ?', [req.params.id]);
     res.json(rows[0]);

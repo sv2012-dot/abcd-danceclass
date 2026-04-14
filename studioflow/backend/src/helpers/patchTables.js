@@ -74,6 +74,7 @@ async function patchTables() {
     await addColumnIfMissing('schools',  'profile_json', 'LONGTEXT NULL');
     await addColumnIfMissing('students', 'avatar',       'VARCHAR(100) NULL');
     await addColumnIfMissing('todos',    'assigned_to',  'VARCHAR(100) NULL');
+    await addColumnIfMissing('recitals', 'is_featured',  'TINYINT(1) NOT NULL DEFAULT 0');
 
     // Vendors table
     await pool.query(`

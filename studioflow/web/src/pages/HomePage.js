@@ -357,9 +357,21 @@ function SchoolHomePage() {
     const todayStr = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
     return (recitalList||[])
       .filter(r => (r.event_date||"").slice(0,10) >= todayStr)
-      .sort((a,b) => (a.event_date||"").slice(0,10).localeCompare((b.event_date||"").slice(0,10)))
-      .slice(0,3);
+      .sort((a,b) => (a.event_date||"").slice(0,10).localeCompare((b.event_date||"").slice(0,10)));
   }, [recitalList]);
+
+  // Featured: starred recitals → latest among them; none starred → earliest upcoming
+  const featuredRecital = useMemo(() => {
+    const starred = upcoming.filter(r => r.is_featured);
+    if (starred.length > 0) return starred.sort((a,b) => (b.event_date||"").localeCompare(a.event_date||""))[0];
+    return upcoming[0] || null;
+  }, [upcoming]);
+
+  // Grid: next 3 upcoming recitals excluding the featured one
+  const upcomingGrid = useMemo(() => {
+    if (!featuredRecital) return upcoming.slice(0,3);
+    return upcoming.filter(r => r.id !== featuredRecital.id).slice(0,3);
+  }, [upcoming, featuredRecital]);
 
   const upcomingClasses = useMemo(() => {
     const now = new Date();
@@ -589,16 +601,16 @@ function SchoolHomePage() {
             {upcoming.length === 0
               ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center', background:C.white, borderRadius:16, border:`1.5px solid ${C.border}` }}>No upcoming recitals</div>
               : <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
-                  {upcoming.slice(1,4).map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />)}
+                  {upcomingGrid.map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />)}
                 </div>
             }
           </div>
           {/* Right column */}
           <div style={{ display:'flex', flexDirection:'column', gap:28 }}>
-            {upcoming[0] && (
+            {featuredRecital && (
               <div>
                 <SectionTitle first="FEATURED" accent="RECITAL" />
-                <FeaturedRecitalCard r={upcoming[0]} onClick={()=>navigate('/recitals',{state:{openTitle:upcoming[0].title}})} />
+                <FeaturedRecitalCard r={featuredRecital} onClick={()=>navigate('/recitals',{state:{openTitle:featuredRecital.title}})} />
               </div>
             )}
             <div>

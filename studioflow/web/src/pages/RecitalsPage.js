@@ -494,23 +494,50 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
               </span>
             </div>
           </div>
-          <button onClick={openInlineEdit} style={{
-            display:"inline-flex", alignItems:"center", gap:6,
-            padding: isMobile ? "8px 12px" : "9px 18px",
-            borderRadius:10, border:"1.5px solid var(--border)",
-            background:"var(--card)", cursor:"pointer",
-            fontSize: isMobile ? 12 : 13, fontWeight:600,
-            color:"var(--text)", transition:"all .15s", flexShrink:0,
-          }}
-            onMouseEnter={e => e.currentTarget.style.background = "var(--surface)"}
-            onMouseLeave={e => e.currentTarget.style.background = "var(--card)"}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-            {isMobile ? "Edit" : "Edit Event"}
-          </button>
+          <div style={{ display:"flex", gap:8, flexShrink:0 }}>
+            {/* ── Star / Featured toggle ── */}
+            <button
+              title={recital.is_featured ? "Remove featured" : "Mark as featured on dashboard"}
+              onClick={() => {
+                const next = recital.is_featured ? 0 : 1;
+                api.update(sid, recital.id, { ...recital, is_featured: next })
+                  .then(() => qc.invalidateQueries(["recital-detail", sid, id]))
+                  .then(() => qc.invalidateQueries(["recitals", sid]));
+              }}
+              style={{
+                display:"inline-flex", alignItems:"center", justifyContent:"center",
+                width: isMobile ? 36 : 40, height: isMobile ? 36 : 40,
+                borderRadius:10, border:"1.5px solid var(--border)",
+                background: recital.is_featured ? "#FFF9C4" : "var(--card)",
+                cursor:"pointer", transition:"all .15s", flexShrink:0,
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = recital.is_featured ? "#FFF176" : "var(--surface)"}
+              onMouseLeave={e => e.currentTarget.style.background = recital.is_featured ? "#FFF9C4" : "var(--card)"}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill={recital.is_featured ? "#F59E0B" : "none"} stroke={recital.is_featured ? "#F59E0B" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </button>
+
+            {/* ── Edit Event ── */}
+            <button onClick={openInlineEdit} style={{
+              display:"inline-flex", alignItems:"center", gap:6,
+              padding: isMobile ? "8px 12px" : "9px 18px",
+              borderRadius:10, border:"1.5px solid var(--border)",
+              background:"var(--card)", cursor:"pointer",
+              fontSize: isMobile ? 12 : 13, fontWeight:600,
+              color:"var(--text)", transition:"all .15s",
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = "var(--surface)"}
+              onMouseLeave={e => e.currentTarget.style.background = "var(--card)"}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              {isMobile ? "Edit" : "Edit Event"}
+            </button>
+          </div>
         </div>
 
         {/* Metadata strip — full width */}
