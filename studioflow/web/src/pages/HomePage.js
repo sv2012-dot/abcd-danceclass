@@ -275,7 +275,7 @@ function RecitalImageCard({ r, index, onClick }) {
       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';}}
       onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}
     >
-      <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(0,0,0,.88) 0%,rgba(0,0,0,.25) 55%,transparent 100%)' }} />
+      <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(0,0,0,.55) 0%,rgba(0,0,0,.10) 55%,transparent 100%)' }} />
       <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'14px' }}>
         <div style={{ fontSize:13, fontWeight:800, color:'#fff', textTransform:'uppercase', letterSpacing:'.03em', lineHeight:1.25 }}>{r.title}</div>
         {r.venue && <div style={{ fontSize:11, color:'rgba(255,255,255,.65)', marginTop:4 }}>{r.venue}</div>}
@@ -290,7 +290,7 @@ function FeaturedRecitalCard({ r, onClick }) {
       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';}}
       onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}
     >
-      <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.45) 55%,transparent 100%)' }} />
+      <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(0,0,0,.60) 0%,rgba(0,0,0,.15) 55%,transparent 100%)' }} />
       <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'20px 18px' }}>
         <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,.55)', textTransform:'uppercase', letterSpacing:'.14em', marginBottom:7 }}>Featured Recital</div>
         <div style={{ fontSize:16, fontWeight:800, color:'#fff', textTransform:'uppercase', lineHeight:1.2, letterSpacing:'.02em' }}>{r.title}</div>
