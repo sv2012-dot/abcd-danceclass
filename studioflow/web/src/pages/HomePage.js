@@ -367,11 +367,18 @@ function SchoolHomePage() {
     return upcoming[0] || null;
   }, [upcoming]);
 
-  // Grid: next 3 upcoming recitals excluding the featured one
+  // Grid: 3 recitals excluding featured — future first, pad with recent past if needed
   const upcomingGrid = useMemo(() => {
-    if (!featuredRecital) return upcoming.slice(0,3);
-    return upcoming.filter(r => r.id !== featuredRecital.id).slice(0,3);
-  }, [upcoming, featuredRecital]);
+    const t = new Date();
+    const todayStr = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+    const future = upcoming.filter(r => r.id !== featuredRecital?.id);
+    if (future.length >= 3) return future.slice(0, 3);
+    const past = (recitalList||[])
+      .filter(r => (r.event_date||'').slice(0,10) < todayStr && r.id !== featuredRecital?.id)
+      .sort((a,b) => (b.event_date||'').localeCompare(a.event_date||''))
+      .slice(0, 3 - future.length);
+    return [...future, ...past];
+  }, [upcoming, featuredRecital, recitalList]);
 
   const upcomingClasses = useMemo(() => {
     const now = new Date();
