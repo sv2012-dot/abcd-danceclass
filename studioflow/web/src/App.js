@@ -13,6 +13,7 @@ import SchoolAboutPage from './pages/SchoolAboutPage';
 import TodosPage from './pages/TodosPage';
 import StudiosPage from './pages/StudiosPage';
 import VendorsPage from './pages/VendorsPage';
+import RecitalsPage from './pages/RecitalsPage';
 import AppShell from './components/shared/AppShell';
 
 function RequireAuth({ children, roles }) {
@@ -33,7 +34,7 @@ function AppRoutes() {
         <Route path="students" element={<RequireAuth roles={['superadmin','school_admin','teacher']}><StudentsPage /></RequireAuth>} />
         <Route path="batches" element={<RequireAuth roles={['superadmin','school_admin','teacher']}><BatchesPage /></RequireAuth>} />
         <Route path="schedule" element={<SchedulePage />} />
-        <Route path="recitals" element={<Navigate to="/schedule" replace />} />
+        <Route path="recitals" element={<RequireAuth roles={['superadmin','school_admin','teacher']}><RecitalsPage /></RequireAuth>} />
         <Route path="schools" element={<RequireAuth roles={['superadmin']}><SchoolsPage /></RequireAuth>} />
         <Route path="parent" element={<RequireAuth roles={['parent']}><ParentPortalPage /></RequireAuth>} />
         <Route path="about" element={<SchoolAboutPage />} />
