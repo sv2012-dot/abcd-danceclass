@@ -589,7 +589,7 @@ function SchoolHomePage() {
             {upcoming.length === 0
               ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center', background:C.white, borderRadius:16, border:`1.5px solid ${C.border}` }}>No upcoming recitals</div>
               : <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
-                  {upcoming.slice(0,3).map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />)}
+                  {upcoming.slice(1,4).map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />)}
                 </div>
             }
           </div>
