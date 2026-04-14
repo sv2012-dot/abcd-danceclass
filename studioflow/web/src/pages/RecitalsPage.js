@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { recitals as api, todos as todosApi } from "../api";
@@ -500,9 +500,17 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
               title={recital.is_featured ? "Remove featured" : "Mark as featured on dashboard"}
               onClick={() => {
                 const next = recital.is_featured ? 0 : 1;
-                api.update(sid, recital.id, { ...recital, is_featured: next })
-                  .then(() => qc.invalidateQueries(["recital-detail", sid, id]))
-                  .then(() => qc.invalidateQueries(["recitals", sid]));
+                api.update(sid, recital.id, {
+                  title:       recital.title,
+                  event_date:  (recital.event_date || '').slice(0, 10),
+                  venue:       recital.venue       || '',
+                  status:      recital.status      || 'Planning',
+                  description: recital.description || '',
+                  is_featured: next,
+                }).then(() => {
+                  qc.invalidateQueries(["recital-detail", sid, id]);
+                  qc.invalidateQueries(["recitals", sid]);
+                });
               }}
               style={{
                 display:"inline-flex", alignItems:"center", justifyContent:"center",
@@ -1949,6 +1957,7 @@ export default function RecitalsPage() {
   const { user } = useAuth();
   const sid = user?.school_id;
   const qc  = useQueryClient();
+  const navigate = useNavigate();
 
   const [view,    setView]    = useState("grid");
   const [modal,   setModal]   = useState(null);
@@ -2015,11 +2024,13 @@ export default function RecitalsPage() {
 
   // ── Show full-page detail when detailId is set ─────────────────────────────
   if (detailId) {
+    const detailRecital = recitals.find(r => r.id === detailId);
+    const recitalDate   = (detailRecital?.event_date || '').slice(0, 10);
     return (
       <RecitalDetail
         id={detailId}
         sid={sid}
-        onBack={() => setDetailId(null)}
+        onBack={() => navigate('/schedule', recitalDate ? { state: { goToDate: recitalDate } } : {})}
         onEdit={(r) => { openEdit(r); }}
       />
     );

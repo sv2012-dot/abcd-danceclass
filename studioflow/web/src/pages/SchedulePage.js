@@ -307,6 +307,12 @@ export default function SchedulePage() {
       setRecitalDetailId(location.state.recitalId);
       window.history.replaceState({}, '');
     }
+    // If navigated here with goToDate (e.g. back from recital detail), jump to that month
+    if (location.state?.goToDate) {
+      const d = new Date(location.state.goToDate);
+      if (!isNaN(d)) { setCursor(d); setSelectedDay(d); }
+      window.history.replaceState({}, '');
+    }
   }, []); // eslint-disable-line
 
 
