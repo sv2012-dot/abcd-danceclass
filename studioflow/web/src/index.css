@@ -23,8 +23,8 @@
   --input:               #EAECF0;
   --ring:                #7C3AED;
 
-  /* Sidebar — light gray (Figma) */
-  --sidebar:                    #F3F4F6;
+  /* Sidebar — white in light mode */
+  --sidebar:                    #FFFFFF;
   --sidebar-foreground:         #111827;
   --sidebar-primary:            #7C3AED;
   --sidebar-primary-foreground: #FFFFFF;
