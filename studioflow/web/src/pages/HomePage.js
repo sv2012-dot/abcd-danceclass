@@ -582,7 +582,7 @@ function SchoolHomePage() {
             <div style={{ background:C.white, borderRadius:16, border:`1.5px solid ${C.border}`, overflow:'hidden', marginBottom:36 }}>
               {thisWeekEvents.length === 0
                 ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center' }}>No events this week</div>
-                : thisWeekEvents.slice(0,5).map(e => <ThisWeekRow key={e.id} e={e} onNavigate={()=>navigate('/schedule')} />)
+                : thisWeekEvents.slice(0,5).map(e => <ThisWeekRow key={e.id} e={e} onNavigate={()=>navigate('/schedule',{state:{openEventId:e.id,eventDate:e.start_datetime}})} />)
               }
             </div>
             <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>navigate('/recitals')} />
@@ -658,7 +658,7 @@ function SchoolHomePage() {
                 const diff = Math.round((ed - tod) / 86400000);
                 const daysLabel = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : diff > 0 ? `${diff} days` : `${Math.abs(diff)}d ago`;
                 return (
-                  <div key={r.id} onClick={()=>navigate("/schedule",{state:{recitalId:r.id}})}
+                  <div key={r.id} onClick={()=>navigate("/recitals",{state:{openTitle:r.title}})}
                     style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderTop:`1px solid ${C.border}`,cursor:"pointer",transition:"background .1s"}}
                     onMouseEnter={e=>{e.currentTarget.style.background=C.surface;}}
                     onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}
@@ -694,7 +694,7 @@ function SchoolHomePage() {
                 const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
                 const d     = parseLocalDate((e.start_datetime||"").slice(0,10));
                 return (
-                  <div key={e.id} onClick={()=>navigate("/schedule")}
+                  <div key={e.id} onClick={()=>navigate("/schedule",{state:{openEventId:e.id,eventDate:e.start_datetime}})}
                     style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderTop:`1px solid ${C.border}`,cursor:"pointer",transition:"background .1s"}}
                     onMouseEnter={ev=>{ev.currentTarget.style.background=C.surface;}}
                     onMouseLeave={ev=>{ev.currentTarget.style.background="transparent";}}

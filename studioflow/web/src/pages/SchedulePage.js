@@ -305,10 +305,29 @@ export default function SchedulePage() {
   useEffect(() => {
     if (location.state?.recitalId) {
       setRecitalDetailId(location.state.recitalId);
-      // Clear the state so back-navigation works cleanly
       window.history.replaceState({}, '');
     }
   }, []); // eslint-disable-line
+
+  // If navigated here with openEventId, jump to that date and open the event panel
+  const pendingEventIdRef = useRef(null);
+  useEffect(() => {
+    if (location.state?.openEventId) {
+      pendingEventIdRef.current = location.state.openEventId;
+      if (location.state.eventDate) {
+        const d = new Date(location.state.eventDate);
+        if (!isNaN(d)) { setCursor(d); setSelectedDay(d); }
+      }
+      window.history.replaceState({}, '');
+    }
+  }, []); // eslint-disable-line
+
+  // Once events load, open the pending event side panel
+  useEffect(() => {
+    if (!pendingEventIdRef.current || !rawEvents.length) return;
+    const ev = rawEvents.find(e => String(e.id) === String(pendingEventIdRef.current));
+    if (ev) { pendingEventIdRef.current = null; handleEventClick(ev); }
+  }, [rawEvents]); // eslint-disable-line
 
   // Recitals are the single source of truth for Recital-type events.
   // They are fetched separately and merged into the calendar display.
