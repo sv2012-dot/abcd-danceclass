@@ -11,17 +11,17 @@ import { TodoKeyframeStyles, TodoRow as SharedTodoRow } from '../components/shar
 // ── Design tokens ──────────────────────────────────────────────────────────────
 const C = {
   // Text hierarchy
-  ebony:      '#1A1A1A',   // Primary text
-  boulder:    '#767676',   // Secondary text
-  grayChate:  '#9EA6B4',   // Tertiary text
+  ebony:      'var(--text)',
+  boulder:    'var(--muted)',
+  grayChate:  'var(--muted)',
   // Accent
   accentPurple: '#7C3AED', // Primary accent
   accentMagenta:'#D946EF', // Secondary accent
   accentGrad: BTN_GRAD,
   // Surfaces
-  white:  '#FFFFFF',
-  bg:     '#F7F8FB',
-  border: '#EAECF0',
+  white:  'var(--card)',
+  bg:     'var(--background)',
+  border: 'var(--border)',
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

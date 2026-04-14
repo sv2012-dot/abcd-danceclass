@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { events as api, batches as batchesApi, students as studentsApi, schools, recitals as recitalApi, todos as todosApi } from "../api";
 import toast from "react-hot-toast";
-import Button from "../components/shared/Button";
+import Button, { BTN_GRAD } from "../components/shared/Button";
 import Card from "../components/shared/Card";
 import Modal from "../components/shared/Modal";
 import Badge from "../components/shared/Badge";
@@ -13,16 +13,17 @@ import SvgIcon from "../components/shared/SvgIcon";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
-  ebony:        '#111827',   // Primary text   (Figma: r=0.067 g=0.094 b=0.153)
-  boulder:      '#9CA3AF',   // Secondary text  (Figma: r=0.612 g=0.639 b=0.686)
-  grayChate:    '#6B7280',   // Labels / tertiary (Figma: r=0.420 g=0.447 b=0.502)
-  accentPurple: '#7C3AED',   // Primary accent
-  accentMagenta:'#DC4EFF',   // Secondary accent / View Schedule button (Figma: r=0.861 g=0.305 b=1.0)
-  accentGrad:   'linear-gradient(135deg,#7C3AED 0%,#DC4EFF 100%)',
-  border:       '#EAECF0',   // Matches CARD_TOKENS.border
-  white:        '#FFFFFF',
-  surface:      '#F7F8FB',
-  createBtn:    'rgba(138,122,154,0.07)', // + Create button bg (Figma: r=0.541 g=0.478 b=0.604 op=0.07)
+  ebony:        'var(--text)',
+  boulder:      'var(--muted)',
+  grayChate:    'var(--muted)',
+  accentPurple: '#7C3AED',
+  accentMagenta:'#DC4EFF',
+  accentGrad:   BTN_GRAD,
+  white:        'var(--card)',
+  bg:           'var(--background)',
+  surface:      'var(--surface)',
+  border:       'var(--border)',
+  createBtn:    'rgba(138,122,154,0.07)',
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -475,7 +476,7 @@ function SchoolHomePage() {
         <Card key={label} clickable onClick={()=>navigate(path)} padding={16}
           style={{ flex:"1", display:"flex", flexDirection:"column", alignItems:"flex-start", gap:10 }}
         >
-          <div style={{fontSize:24,fontWeight:800,color:"#171717",lineHeight:1}}>{value||0}</div>
+          <div style={{fontSize:24,fontWeight:800,color:'var(--text)',lineHeight:1}}>{value||0}</div>
           <div style={{display:"flex",alignItems:"center",gap:6,color:C.grayChate}}>
             {icon}
             <span style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</span>
@@ -716,7 +717,7 @@ function SchoolHomePage() {
                       <div style={{fontWeight:700,fontSize:13,color:C.ebony,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.title}</div>
                       <div style={{color:C.boulder,fontSize:11,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.venue||"—"}</div>
                     </div>
-                    <span style={{fontSize:11,fontWeight:600,color:"#171717",background:"#F3F4F6",borderRadius:20,padding:"3px 10px",whiteSpace:"nowrap",flexShrink:0}}>{daysLabel}</span>
+                    <span style={{fontSize:11,fontWeight:600,color:'var(--text)',background:"#F3F4F6",borderRadius:20,padding:"3px 10px",whiteSpace:"nowrap",flexShrink:0}}>{daysLabel}</span>
                   </div>
                 );
               })
