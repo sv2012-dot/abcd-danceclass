@@ -153,6 +153,13 @@ export default function AppShell() {
   // Close drawer on route change
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
+  const isDashboard = location.pathname === '/';
+  const dashBg = isDashboard
+    ? theme === 'dark'
+      ? 'linear-gradient(145deg, #1a1028 0%, #130d22 35%, #0e1428 65%, #1a0e30 100%)'
+      : 'linear-gradient(145deg, #f0e8ff 0%, #f8f2ff 30%, #eef2ff 60%, #f5eeff 100%)'
+    : 'var(--background)';
+
   const navItems     = NAV_ITEMS[user?.role] || [];
   const isSuperAdmin = user?.role === 'superadmin';
   const schoolName   = school?.name || (isSuperAdmin ? 'ManchQ Platform' : 'Your Studio');
@@ -271,7 +278,7 @@ export default function AppShell() {
         <aside style={{ width:SIDEBAR_W, background:'var(--sidebar)', display:'flex', flexDirection:'column', flexShrink:0, height:'100vh', borderRight:'1px solid var(--sidebar-border)' }}>
           <SidebarContent />
         </aside>
-        <main style={{ flex:1, overflowY:'auto', background:'var(--background)' }}>
+        <main style={{ flex:1, overflowY:'auto', background: dashBg, transition:'background .3s' }}>
           <div style={{ padding:'32px 36px', maxWidth:1340, margin:'0 auto' }}>
             <Outlet />
           </div>
@@ -330,7 +337,7 @@ export default function AppShell() {
       </div>
 
       {/* Page content */}
-      <main style={{ flex:1, overflowY:'auto', background:'var(--background)' }}>
+      <main style={{ flex:1, overflowY:'auto', background: dashBg, transition:'background .3s' }}>
         <div style={{ padding:'20px 16px', maxWidth:1340, margin:'0 auto' }}>
           <Outlet />
         </div>

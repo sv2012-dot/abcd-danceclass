@@ -486,12 +486,7 @@ function SchoolHomePage() {
   ) : null;
 
   return (
-    <div style={{
-      margin: '-24px -28px',
-      padding: '28px 28px 40px',
-      background: 'linear-gradient(145deg, #f5f0ff 0%, #faf5ff 30%, #f0f4ff 60%, #f8f0ff 100%)',
-      minHeight: 'calc(100vh - 60px)',
-    }}>
+    <div>
 
       {/* Stats row moved below upcoming recitals on desktop */}
 
