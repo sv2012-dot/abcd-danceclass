@@ -309,25 +309,6 @@ export default function SchedulePage() {
     }
   }, []); // eslint-disable-line
 
-  // If navigated here with openEventId, jump to that date and open the event panel
-  const pendingEventIdRef = useRef(null);
-  useEffect(() => {
-    if (location.state?.openEventId) {
-      pendingEventIdRef.current = location.state.openEventId;
-      if (location.state.eventDate) {
-        const d = new Date(location.state.eventDate);
-        if (!isNaN(d)) { setCursor(d); setSelectedDay(d); }
-      }
-      window.history.replaceState({}, '');
-    }
-  }, []); // eslint-disable-line
-
-  // Once events load, open the pending event side panel
-  useEffect(() => {
-    if (!pendingEventIdRef.current || !rawEvents.length) return;
-    const ev = rawEvents.find(e => String(e.id) === String(pendingEventIdRef.current));
-    if (ev) { pendingEventIdRef.current = null; handleEventClick(ev); }
-  }, [rawEvents]); // eslint-disable-line
 
   // Recitals are the single source of truth for Recital-type events.
   // They are fetched separately and merged into the calendar display.
@@ -448,6 +429,24 @@ export default function SchedulePage() {
       return true;
     });
   }, [rawEvents, recitalEvents, recitalsList, filterType, studioOnly]);
+
+  // If navigated with openEventId (e.g. from dashboard THIS WEEK row), jump to date + open panel
+  const pendingEventIdRef = useRef(null);
+  useEffect(() => {
+    if (location.state?.openEventId) {
+      pendingEventIdRef.current = location.state.openEventId;
+      if (location.state.eventDate) {
+        const d = new Date(location.state.eventDate);
+        if (!isNaN(d)) { setCursor(d); setSelectedDay(d); }
+      }
+      window.history.replaceState({}, '');
+    }
+  }, []); // eslint-disable-line
+  useEffect(() => {
+    if (!pendingEventIdRef.current || !rawEvents.length) return;
+    const ev = rawEvents.find(e => String(e.id) === String(pendingEventIdRef.current));
+    if (ev) { pendingEventIdRef.current = null; handleEventClick(ev); }
+  }, [rawEvents]); // eslint-disable-line
 
   // ── Mutations ────────────────────────────────────────────────────────────
   const saveMutation = useMutation({
