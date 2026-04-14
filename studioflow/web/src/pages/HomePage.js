@@ -445,8 +445,9 @@ function SchoolHomePage() {
   const todayStr = new Date().toLocaleDateString([],{weekday:"long",month:"long",day:"numeric",year:"numeric"});
 
   // ── render ────────────────────────────────────────────────────────────────
-  const allTodos  = todosData?.todos || [];
-  const openTodos = allTodos.filter(t => !t.is_complete).sort((a,b) => new Date(b.created_at)-new Date(a.created_at)).slice(0,5);
+  const allTodos    = todosData?.todos || [];
+  const latestTodos = [...allTodos].sort((a,b) => new Date(b.created_at)-new Date(a.created_at)).slice(0,5);
+  const openTodos   = latestTodos; // kept for mobile section below
   const fmtDue    = str => { if (!str) return null; const d = parseLocalDate(str); return isNaN(d) ? null : d.toLocaleDateString([],{month:"short",day:"numeric"}); };
   const isOverdue = str => { if (!str) return false; const due = parseLocalDate(str); const now = new Date(); now.setHours(0,0,0,0); return !isNaN(due) && due < now; };
 
@@ -614,33 +615,33 @@ function SchoolHomePage() {
               </div>
             )}
             <div>
-              <SectionTitle first="TO" accent="DOs" />
+              <SectionTitle first="TO" accent="DOs" onViewAll={()=>navigate('/todos')} />
               <Card padding={0} style={{ display:'flex', flexDirection:'column' }}>
-                {openTodos.length === 0
-                  ? <div style={{ padding:'20px 16px', color:C.grayChate, fontSize:13, textAlign:'center' }}>All caught up!</div>
-                  : openTodos.map(todo => {
-                      const od = isOverdue(todo.due_date);
+                {latestTodos.length === 0
+                  ? <div style={{ padding:'20px 16px', color:C.grayChate, fontSize:13, textAlign:'center' }}>No to-dos yet</div>
+                  : latestTodos.map(todo => {
+                      const done = !!todo.is_complete;
+                      const od   = !done && isOverdue(todo.due_date);
                       return (
-                        <div key={todo.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderTop:`1px solid ${C.border}` }}>
+                        <div key={todo.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderTop:`1px solid ${C.border}`, opacity: done ? 0.6 : 1, transition:'opacity .2s' }}>
+                          {/* Toggle circle / checkmark */}
                           <div onClick={()=>{
-                              qc.setQueryData(['todos',sid], old => { if (!old?.todos) return old; return {...old,todos:old.todos.map(t=>t.id===todo.id?{...t,is_complete:1}:t)}; });
+                              qc.setQueryData(['todos',sid], old => { if (!old?.todos) return old; return {...old,todos:old.todos.map(t=>t.id===todo.id?{...t,is_complete:done?0:1}:t)}; });
                               todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(['todos',sid]));
                             }}
-                            style={{ width:18, height:18, borderRadius:'50%', border:`2px solid ${C.border}`, background:'transparent', cursor:'pointer', flexShrink:0, transition:'all .15s' }}
-                            onMouseEnter={e=>{e.currentTarget.style.borderColor=C.accentPurple;e.currentTarget.style.background=C.accentPurple+'15';}}
-                            onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.background='transparent';}}
-                          />
+                            style={{ width:18, height:18, borderRadius:'50%', border:`2px solid ${done ? C.accentPurple : C.border}`, background: done ? C.accentPurple : 'transparent', cursor:'pointer', flexShrink:0, transition:'all .15s', display:'flex', alignItems:'center', justifyContent:'center' }}
+                            onMouseEnter={e=>{if(!done){e.currentTarget.style.borderColor=C.accentPurple;e.currentTarget.style.background=C.accentPurple+'15';}}}
+                            onMouseLeave={e=>{if(!done){e.currentTarget.style.borderColor=C.border;e.currentTarget.style.background='transparent';}}}
+                          >
+                            {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                          </div>
                           <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontSize:13, fontWeight:600, color:od?'#e05c6a':C.ebony, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{todo.title}</div>
+                            <div style={{ fontSize:13, fontWeight:600, color: od ? '#e05c6a' : C.ebony, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textDecoration: done ? 'line-through' : 'none' }}>{todo.title}</div>
                             <div style={{ fontSize:11, color:C.boulder, marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                              {todo.due_date?`Due: ${fmtDue(todo.due_date)}`:''}
-                              {todo.assigned_to?` · Assigned to: ${todo.assigned_to}`:''}
+                              {todo.due_date ? `Due: ${fmtDue(todo.due_date)}` : ''}
+                              {todo.assigned_to ? ` · ${todo.assigned_to}` : ''}
                             </div>
                           </div>
-                          <button onClick={()=>navigate('/todos')} style={{ background:'none', border:'none', cursor:'pointer', color:C.grayChate, padding:4, display:'flex', alignItems:'center', flexShrink:0, transition:'color .15s' }}
-                            onMouseEnter={e=>e.currentTarget.style.color=C.ebony} onMouseLeave={e=>e.currentTarget.style.color=C.grayChate}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                          </button>
                         </div>
                       );
                     })
