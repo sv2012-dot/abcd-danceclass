@@ -24,7 +24,7 @@ const TYPE_COLORS = {
   Other:     "#8a7a9a",
 };
 
-const DAYS  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const DAYS  = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const MONTHS = ["January","February","March","April","May","June",
                 "July","August","September","October","November","December"];
 
@@ -72,7 +72,7 @@ function computeEndFromDuration(startStr, durationMins) {
 
 // ── DateTimePicker component ─────────────────────────────────────────────────
 const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const DAYS_SHORT   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+const DAYS_SHORT   = ["Mo","Tu","We","Th","Fr","Sa","Su"];
 
 function DateTimePicker({ label, value, onChange, minDate }) {
   const [open, setOpen] = useState(false);
@@ -133,8 +133,8 @@ function DateTimePicker({ label, value, onChange, minDate }) {
 
   const confirm = () => setOpen(false);
 
-  // Build calendar grid
-  const firstDow = new Date(cal.year, cal.month, 1).getDay();
+  // Build calendar grid (week starts Monday: Mon=0 … Sun=6)
+  const firstDow = (new Date(cal.year, cal.month, 1).getDay() + 6) % 7;
   const daysInMo = new Date(cal.year, cal.month+1, 0).getDate();
   const cells = [];
   for (let i = 0; i < firstDow; i++) cells.push(null);
@@ -592,7 +592,7 @@ export default function SchedulePage() {
   // ── Month grid ───────────────────────────────────────────────────────────
   const MonthView = () => {
     const y = cursor.getFullYear(), m = cursor.getMonth();
-    const firstDay = startOfMonth(y, m).getDay();
+    const firstDay = (startOfMonth(y, m).getDay() + 6) % 7; // Mon=0 … Sun=6
     const totalDays = daysInMonth(y, m);
     const cells = [];
     for (let i = 0; i < firstDay; i++) cells.push(null);
@@ -790,7 +790,7 @@ export default function SchedulePage() {
   // ── Mobile Month View ────────────────────────────────────────────────────
   const MobileMonthView = () => {
     const y = cursor.getFullYear(), m = cursor.getMonth();
-    const firstDay = startOfMonth(y, m).getDay();
+    const firstDay = (startOfMonth(y, m).getDay() + 6) % 7; // Mon=0 … Sun=6
     const totalDays = daysInMonth(y, m);
     const cells = [];
     for (let i = 0; i < firstDay; i++) cells.push(null);
