@@ -459,22 +459,21 @@ function SchoolHomePage() {
   const isOverdue = str => { if (!str) return false; const due = parseLocalDate(str); const now = new Date(); now.setHours(0,0,0,0); return !isNaN(due) && due < now; };
 
   // ── stats block (reused on desktop-top and mobile-bottom) ────────────────
+  const STAT_ITEMS = stats ? [
+    { label:"Students", value:stats.students??stats.student_count, path:"/students",
+      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, accent: C.accentPurple },
+    { label:"Batches",  value:stats.batches??stats.batch_count,    path:"/batches",
+      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>, accent: '#0EA5E9' },
+    { label:"Recitals", value:stats.upcoming_recitals,             path:"/recitals",
+      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, accent: C.accentMagenta },
+  ] : [];
+
+  // Mobile stat block (unchanged compact style)
   const statsBlock = stats ? (
-    <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:isMobile?"stretch":"flex-end"}}>
-      {[
-        { label:"Students", value:stats.students??stats.student_count, path:"/students",
-          icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
-        { label:"Batches",  value:stats.batches??stats.batch_count,    path:"/batches",
-          icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg> },
-        { label:"Recitals", value:stats.upcoming_recitals,             path:"/schedule",
-          icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
-      ].map(({label,value,path,icon}) => (
-        <Card key={label} clickable onClick={()=>navigate(path)}
-          padding={16}
-          style={{
-            minWidth:isMobile?0:110, flex:isMobile?"1":"0 0 auto",
-            display:"flex", flexDirection:"column", alignItems:"flex-start", gap:10,
-          }}
+    <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"stretch"}}>
+      {STAT_ITEMS.map(({label,value,path,icon}) => (
+        <Card key={label} clickable onClick={()=>navigate(path)} padding={16}
+          style={{ flex:"1", display:"flex", flexDirection:"column", alignItems:"flex-start", gap:10 }}
         >
           <div style={{fontSize:24,fontWeight:800,color:"#171717",lineHeight:1}}>{value||0}</div>
           <div style={{display:"flex",alignItems:"center",gap:6,color:C.grayChate}}>
@@ -489,12 +488,7 @@ function SchoolHomePage() {
   return (
     <div>
 
-      {/* ── Stats row: right-aligned above greeting (desktop only) ── */}
-      {!isMobile && stats && (
-        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:20}}>
-          {statsBlock}
-        </div>
-      )}
+      {/* Stats row moved below upcoming recitals on desktop */}
 
       {/* ── Greeting ── */}
       <div style={{marginBottom:isMobile?12:20}}>
@@ -612,6 +606,33 @@ function SchoolHomePage() {
                   {upcomingGrid.map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />)}
                 </div>
             }
+
+            {/* ── Studio Overview stats ── */}
+            {stats && (
+              <div style={{ marginTop:36 }}>
+                <SectionTitle first="STUDIO" accent="OVERVIEW" />
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
+                  {STAT_ITEMS.map(({label,value,path,icon,accent}) => (
+                    <div key={label} onClick={()=>navigate(path)} style={{
+                      background:C.white, borderRadius:16, border:`1.5px solid ${C.border}`,
+                      padding:'20px 24px', cursor:'pointer', transition:'all .15s',
+                      display:'flex', alignItems:'center', gap:16,
+                    }}
+                      onMouseEnter={e=>{e.currentTarget.style.borderColor=accent;e.currentTarget.style.boxShadow=`0 4px 16px ${accent}22`;}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.boxShadow='none';}}
+                    >
+                      <div style={{ width:48, height:48, borderRadius:14, background:accent+'15', color:accent, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        {icon}
+                      </div>
+                      <div>
+                        <div style={{ fontSize:28, fontWeight:800, color:C.ebony, lineHeight:1, fontFamily:'var(--font-d)' }}>{value||0}</div>
+                        <div style={{ fontSize:11, fontWeight:700, color:C.grayChate, textTransform:'uppercase', letterSpacing:'.08em', marginTop:4 }}>{label}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           {/* Right column */}
           <div style={{ display:'flex', flexDirection:'column', gap:28 }}>
