@@ -1,5 +1,19 @@
 const pool = require('../../config/db');
 
+// mysql2 with timezone:'+00:00' converts DATETIME → Date objects marked as UTC,
+// which adds a timezone offset on JSON serialization.
+// We extract the stored wall-clock value using getUTC* so the frontend receives
+// a plain ISO string (no Z) and treats it as local time.
+function fmtDt(d) {
+  if (!d) return null;
+  if (!(d instanceof Date)) return d;
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}T${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
+}
+function formatEventDates(rows) {
+  return rows.map(e => ({ ...e, start_datetime: fmtDt(e.start_datetime), end_datetime: fmtDt(e.end_datetime) }));
+}
+
 // Helper: attach batches array to each event row
 async function attachBatches(events) {
   if (!events.length) return events;
@@ -44,7 +58,7 @@ exports.list = async (req, res) => {
     if (to)   { q += ' AND e.start_datetime <= ?'; params.push(to); }
     q += ' ORDER BY e.start_datetime ASC';
     const [rows] = await pool.query(q, params);
-    res.json(await attachBatches(rows));
+    res.json(await attachBatches(formatEventDates(rows)));
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
@@ -79,24 +93,33 @@ exports.create = async (req, res) => {
     if (recurrence === 'none' || !recurrence || !recurrence_end) {
       ids.push(await insertOne(start_datetime, end_datetime));
     } else {
+      // Parse the wall-clock string directly (no Date conversion to avoid UTC shift)
+      const [datePart, timePart] = start_datetime.split('T');
+      const [eDatePart, eTimePart] = end_datetime.split('T');
       const interval = recurrence === 'weekly' ? 7 : 14;
-      let s = new Date(start_datetime);
-      let e = new Date(end_datetime);
-      const endDate = new Date(recurrence_end);
-      endDate.setHours(23, 59, 59);
-      while (s <= endDate) {
+      // Advance date portion day-by-day without timezone conversion
+      const addDays = (dateStr, days) => {
+        const d = new Date(dateStr + 'T00:00:00Z'); // parse as UTC date-only
+        d.setUTCDate(d.getUTCDate() + days);
+        const p = n => String(n).padStart(2,'0');
+        return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}`;
+      };
+      const endDate = new Date(recurrence_end + 'T23:59:59Z');
+      let curDate  = datePart;
+      let curEDate = eDatePart;
+      while (new Date(curDate + 'T00:00:00Z') <= endDate) {
         ids.push(await insertOne(
-          s.toISOString().slice(0,19).replace('T',' '),
-          e.toISOString().slice(0,19).replace('T',' ')
+          `${curDate} ${timePart  || '00:00:00'}`.replace('T',' '),
+          `${curEDate} ${eTimePart || '00:00:00'}`.replace('T',' ')
         ));
-        s = new Date(s.getTime() + interval * 86400000);
-        e = new Date(e.getTime() + interval * 86400000);
+        curDate  = addDays(curDate,  interval);
+        curEDate = addDays(curEDate, interval);
       }
     }
 
     await conn.commit();
     const [rows] = await pool.query('SELECT e.* FROM events e WHERE e.id IN (?) ORDER BY e.start_datetime', [ids]);
-    res.status(201).json(await attachBatches(rows));
+    res.status(201).json(await attachBatches(formatEventDates(rows)));
   } catch (err) {
     await conn.rollback();
     res.status(500).json({ error: err.message });
@@ -120,7 +143,7 @@ exports.update = async (req, res) => {
     await syncBatches(conn, req.params.id, batchIds);
     await conn.commit();
     const [rows] = await pool.query('SELECT e.* FROM events e WHERE e.id = ?', [req.params.id]);
-    const withBatches = await attachBatches(rows);
+    const withBatches = await attachBatches(formatEventDates(rows));
     res.json(withBatches[0]);
   } catch (err) {
     await conn.rollback();
@@ -142,6 +165,6 @@ exports.studioRequired = async (req, res) => {
       WHERE e.school_id = ? AND e.requires_studio = 1
       ORDER BY e.start_datetime ASC
     `, [req.params.schoolId]);
-    res.json(await attachBatches(rows));
+    res.json(await attachBatches(formatEventDates(rows)));
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
