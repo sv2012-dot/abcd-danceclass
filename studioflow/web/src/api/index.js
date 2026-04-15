@@ -47,6 +47,7 @@ export const recitals = {
   create: (schoolId, data) => api.post(`/schools/${schoolId}/recitals`, data),
   update: (schoolId, id, data) => api.put(`/schools/${schoolId}/recitals/${id}`, data),
   remove: (schoolId, id) => api.delete(`/schools/${schoolId}/recitals/${id}`),
+  uploadPoster: (schoolId, id, poster_url) => api.patch(`/schools/${schoolId}/recitals/${id}/poster`, { poster_url }),
   addTask: (schoolId, id, task_text) => api.post(`/schools/${schoolId}/recitals/${id}/tasks`, { task_text }),
   toggleTask: (schoolId, id, taskId) => api.put(`/schools/${schoolId}/recitals/${id}/tasks/${taskId}/toggle`),
   deleteTask: (schoolId, id, taskId) => api.delete(`/schools/${schoolId}/recitals/${id}/tasks/${taskId}`),

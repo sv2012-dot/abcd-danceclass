@@ -7,49 +7,55 @@ import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
 import { Field, Input, Textarea } from "../components/shared/Field";
 
-// ─── DiceBear avatar config ────────────────────────────────────────────────
-const AVATAR_STYLES = [
-  {
-    key: "micah",
-    label: "Illustrated",
-    seeds: ["Amara","Leila","Sofia","Zoe","Maya","Luna","Aria","Nadia"],
-  },
-  {
-    key: "lorelei",
-    label: "Portrait",
-    seeds: ["Bella","Chloe","Daisy","Eva","Flora","Grace","Hope","Iris"],
-  },
-  {
-    key: "thumbs",
-    label: "Fun",
-    seeds: ["Jasmine","Kira","Lena","Mia","Nina","Olive","Petra","Rosa"],
-  },
-];
+// ─── Dance avatar stickers — individual PNGs ──────────────────────────────
+// 72 files: sticker_RR_CC.png (rows 01-06, cols 01-12).
+// Index = (row-1)*12 + (col-1), zero-based, 0–71.
+const TOTAL_STICKERS = 72;
+const STICKER_SRCS = Array.from({ length: TOTAL_STICKERS }, (_, i) => {
+  const row = Math.floor(i / 12) + 1;
+  const col = (i % 12) + 1;
+  return `/stickers/sticker_${String(row).padStart(2,'0')}_${String(col).padStart(2,'0')}.png`;
+});
 
-function dicebearUrl(avatarVal) {
-  if (!avatarVal) return null;
-  const [style, ...rest] = avatarVal.split(":");
-  const seed = rest.join(":");
-  if (!style || !seed) return null;
-  return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
+const AVATAR_COLORS = ["#FFB347","#FF6B9D","#7E57C2","#42A5F5","#26C99E","#FFCA28","#EF5350","#29B6F6","#AB47BC","#66BB6A"];
+function getBgColor(s) { return AVATAR_COLORS[((s.id||0)*13+(s.name?.charCodeAt(1)||0))%AVATAR_COLORS.length]; }
+
+// Parse avatar value → returns { type:'sprite'|'legacy'|'none', index }
+function parseAvatar(val) {
+  if (!val) return { type:'none' };
+  if (val.startsWith('sprite:')) return { type:'sprite', index: parseInt(val.slice(7), 10) };
+  return { type:'legacy' }; // old dicebear format, show color fallback
 }
 
-// Fallback: cheerful emoji avatars for students without a DiceBear avatar
-const HAPPY_EMOJIS  = ["💃","🌟","🎵","🌺","⭐","🎶","✨","🌸","🦋","🎀","🌻","💫","🎭","🌈","🏵️","🎊","🌼","🎯","🪷","🎤"];
-const AVATAR_COLORS = ["#FFB347","#FF6B9D","#7E57C2","#42A5F5","#26C99E","#FFCA28","#EF5350","#29B6F6","#AB47BC","#66BB6A"];
-function getStudentEmoji(s) { return HAPPY_EMOJIS[((s.id||0)*7+(s.name?.charCodeAt(0)||0))%HAPPY_EMOJIS.length]; }
-function getStudentColor(s) { return AVATAR_COLORS[((s.id||0)*13+(s.name?.charCodeAt(1)||0))%AVATAR_COLORS.length]; }
+// Random sprite 0–(TOTAL_STICKERS-1)
+function randomSpriteVal() {
+  return `sprite:${Math.floor(Math.random() * TOTAL_STICKERS)}`;
+}
+
+// ─── SpriteAvatar: renders one individual sticker PNG ─────────────────────
+function SpriteAvatar({ index, size }) {
+  return (
+    <div style={{ width:size, height:size, borderRadius:'50%', overflow:'hidden', flexShrink:0 }}>
+      <img
+        src={STICKER_SRCS[index] || STICKER_SRCS[0]}
+        alt=""
+        draggable={false}
+        style={{ width:'100%', height:'100%', objectFit:'cover', pointerEvents:'none', userSelect:'none' }}
+      />
+    </div>
+  );
+}
 
 // ─── StudentAvatar ─────────────────────────────────────────────────────────
 function StudentAvatar({ student, size = 44, border, active, onClick }) {
-  const url = dicebearUrl(student.avatar);
+  const av = parseAvatar(student.avatar);
   return (
     <div
       onClick={onClick}
       style={{
         width: size, height: size, borderRadius: "50%", flexShrink: 0,
         overflow: "hidden",
-        background: url ? "var(--surface)" : getStudentColor(student),
+        background: av.type === 'sprite' ? 'transparent' : getBgColor(student),
         border: border || `2px solid ${active ? "var(--accent)" : "var(--border)"}`,
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: size * 0.46, lineHeight: 1,
@@ -61,75 +67,84 @@ function StudentAvatar({ student, size = 44, border, active, onClick }) {
       onMouseEnter={onClick ? e => { e.currentTarget.style.boxShadow = "0 0 0 3px rgba(196,82,122,.25)"; } : undefined}
       onMouseLeave={onClick ? e => { e.currentTarget.style.boxShadow = "0 0 0 0 transparent"; } : undefined}
     >
-      {url
-        ? <img src={url} alt={student.name} style={{ width: "100%", height: "100%", display: "block" }} />
-        : getStudentEmoji(student)
+      {av.type === 'sprite'
+        ? <SpriteAvatar index={av.index} size={size} />
+        : <span style={{ fontSize: size * 0.46 }}>🎵</span>
       }
     </div>
   );
 }
 
-// ─── AvatarPicker ──────────────────────────────────────────────────────────
+// ─── AvatarPicker — sprite sheet grid ─────────────────────────────────────
 function AvatarPicker({ current, onPick, onClose }) {
-  const [tab, setTab]     = useState(() => {
-    if (!current) return 0;
-    const styleKey = current.split(":")[0];
-    const idx = AVATAR_STYLES.findIndex(s => s.key === styleKey);
-    return idx >= 0 ? idx : 0;
-  });
-  const [picked, setPicked] = useState(current || "");
+  const initIdx = current?.startsWith('sprite:') ? parseInt(current.slice(7), 10) : null;
+  const [picked, setPicked] = useState(initIdx);
+
+  const doRandom = () => {
+    const idx = Math.floor(Math.random() * TOTAL_STICKERS);
+    setPicked(idx);
+  };
+
+  const indices = Array.from({ length: TOTAL_STICKERS }, (_, i) => i);
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,0.55)",
-        display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+      style={{ position:"fixed", inset:0, zIndex:700, background:"rgba(0,0,0,0.65)",
+        display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ background: "var(--card)", borderRadius: 20, width: "100%", maxWidth: 380,
-        display: "flex", flexDirection: "column", maxHeight: "85vh",
-        boxShadow: "0 24px 64px rgba(0,0,0,.30)", overflow: "hidden" }}>
+      <div style={{ background:"var(--card)", borderRadius:20, width:"100%", maxWidth:500,
+        display:"flex", flexDirection:"column", maxHeight:"90vh",
+        boxShadow:"0 24px 64px rgba(0,0,0,.40)", overflow:"hidden" }}>
 
         {/* Header */}
-        <div style={{ padding: "18px 20px 0", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-          <div style={{ fontWeight: 800, fontSize: 16 }}>Choose Avatar</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--muted)", padding: 4, borderRadius: 6, lineHeight: 1 }}>✕</button>
+        <div style={{ padding:"18px 20px 0", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+          <div>
+            <div style={{ fontWeight:800, fontSize:16 }}>Choose Avatar</div>
+            <div style={{ fontSize:12, color:"var(--muted)", marginTop:2 }}>Pick a dancer that represents this student</div>
+          </div>
+          <button onClick={onClose} style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"var(--muted)", padding:4, borderRadius:6, lineHeight:1 }}>✕</button>
         </div>
 
-        {/* Style tabs */}
-        <div style={{ display: "flex", gap: 6, padding: "14px 20px 12px", flexShrink: 0 }}>
-          {AVATAR_STYLES.map((s, i) => (
-            <button key={s.key} onClick={() => setTab(i)} style={{
-              padding: "5px 16px", borderRadius: 20, border: "none", cursor: "pointer",
-              fontSize: 12, fontWeight: 700, transition: "all .15s",
-              background: tab === i ? "var(--accent)" : "var(--surface)",
-              color: tab === i ? "#fff" : "var(--muted)",
-            }}>{s.label}</button>
-          ))}
+        {/* Random button */}
+        <div style={{ padding:"12px 20px 8px", flexShrink:0, display:"flex", gap:8 }}>
+          <button onClick={doRandom} style={{
+            padding:"6px 16px", borderRadius:20, border:"1.5px solid var(--border)",
+            background:"var(--surface)", color:"var(--text)", cursor:"pointer",
+            fontSize:12, fontWeight:700, display:"flex", alignItems:"center", gap:6,
+          }}>
+            🎲 Random
+          </button>
+          {picked !== null && (
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <SpriteAvatar index={picked} size={28} />
+              <span style={{ fontSize:12, color:"var(--muted)" }}>Selected #{picked + 1}</span>
+            </div>
+          )}
         </div>
 
-        {/* Avatar grid */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 8px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
-            {AVATAR_STYLES[tab].seeds.map(seed => {
-              const val = `${AVATAR_STYLES[tab].key}:${seed}`;
-              const url = `https://api.dicebear.com/9.x/${AVATAR_STYLES[tab].key}/svg?seed=${encodeURIComponent(seed)}`;
-              const sel = picked === val;
+        {/* Sprite grid */}
+        <div style={{ flex:1, overflowY:"auto", padding:"4px 16px 8px" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:8 }}>
+            {indices.map(idx => {
+              const sel = picked === idx;
               return (
-                <div key={seed} onClick={() => setPicked(val)} style={{
-                  borderRadius: "50%", overflow: "hidden", aspectRatio: "1/1",
-                  border: sel ? "3px solid var(--accent)" : "2px solid var(--border)",
-                  cursor: "pointer", position: "relative",
-                  boxShadow: sel ? "0 0 0 4px rgba(196,82,122,.2)" : "0 2px 6px rgba(0,0,0,.08)",
-                  transition: "all .15s",
+                <div key={idx} onClick={() => setPicked(idx)} style={{
+                  borderRadius:"50%", aspectRatio:"1/1", cursor:"pointer", position:"relative",
+                  outline: sel ? "3px solid var(--accent)" : "2px solid transparent",
+                  outlineOffset:2,
+                  boxShadow: sel ? "0 0 0 5px rgba(196,82,122,.18)" : "none",
+                  transition:"outline .12s, box-shadow .12s, transform .12s",
+                  transform: sel ? "scale(1.08)" : "scale(1)",
                 }}>
-                  <img src={url} alt={seed} style={{ width: "100%", height: "100%", display: "block" }} />
+                  <SpriteAvatar index={idx} size={60} />
                   {sel && (
-                    <div style={{
-                      position: "absolute", inset: 0, background: "rgba(196,82,122,.12)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 800 }}>✓</div>
-                    </div>
+                    <div style={{ position:"absolute", bottom:0, right:0,
+                      width:18, height:18, borderRadius:"50%",
+                      background:"var(--accent)", border:"2px solid var(--card)",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      fontSize:9, color:"#fff", fontWeight:900,
+                    }}>✓</div>
                   )}
                 </div>
               );
@@ -137,27 +152,24 @@ function AvatarPicker({ current, onPick, onClose }) {
           </div>
         </div>
 
-        {/* Preview + actions */}
-        <div style={{ padding: "16px 20px 20px", borderTop: "1px solid var(--border)", flexShrink: 0, display: "flex", alignItems: "center", gap: 12 }}>
-          {/* Preview */}
-          <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden", border: "2px solid var(--accent)", flexShrink: 0, background: "var(--surface)" }}>
-            {picked
-              ? <img src={dicebearUrl(picked)} alt="preview" style={{ width: "100%", height: "100%", display: "block" }} />
-              : <div style={{ width: "100%", height: "100%", background: "var(--surface)" }} />
-            }
-          </div>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-            <button onClick={() => { onPick(picked); onClose(); }} style={{
-              width: "100%", padding: "9px", borderRadius: 10, border: "none",
-              background: "var(--accent)", color: "#fff", cursor: "pointer",
-              fontWeight: 700, fontSize: 13,
-            }}>Use This Avatar</button>
-            <button onClick={() => { onPick(""); onClose(); }} style={{
-              width: "100%", padding: "7px", borderRadius: 10,
-              border: "1.5px solid var(--border)", background: "transparent",
-              color: "var(--muted)", cursor: "pointer", fontWeight: 600, fontSize: 12,
-            }}>Reset to Default</button>
-          </div>
+        {/* Footer actions */}
+        <div style={{ padding:"14px 20px 18px", borderTop:"1px solid var(--border)", flexShrink:0, display:"flex", gap:10 }}>
+          <button
+            disabled={picked === null}
+            onClick={() => { onPick(`sprite:${picked}`); onClose(); }}
+            style={{
+              flex:1, padding:"10px", borderRadius:10, border:"none",
+              background: picked !== null ? "var(--accent)" : "var(--surface)",
+              color: picked !== null ? "#fff" : "var(--muted)",
+              cursor: picked !== null ? "pointer" : "default",
+              fontWeight:700, fontSize:13, transition:"all .15s",
+            }}
+          >Use This Avatar</button>
+          <button onClick={() => { onPick(randomSpriteVal()); onClose(); }} style={{
+            padding:"10px 18px", borderRadius:10,
+            border:"1.5px solid var(--border)", background:"transparent",
+            color:"var(--muted)", cursor:"pointer", fontWeight:600, fontSize:12,
+          }}>Random →</button>
         </div>
       </div>
     </div>
@@ -248,7 +260,11 @@ export default function StudentsPage() {
   const invalidate = () => { qc.invalidateQueries(["students", sid]); qc.invalidateQueries(["stats", sid]); };
 
   const addMutation = useMutation({
-    mutationFn: data => api.create(sid, data),
+    mutationFn: data => {
+      // Auto-assign a random dancer sticker if none was chosen
+      const payload = { ...data, avatar: data.avatar || randomSpriteVal() };
+      return api.create(sid, payload);
+    },
     onSuccess: () => { invalidate(); toast.success("Student added"); setShowAdd(false); setAddForm(EMPTY); },
     onError: err => toast.error(err?.error || "Failed to add student"),
   });

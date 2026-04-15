@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 // Import CARD_TOKENS in any page that needs card-adjacent styling (batch rows,
 // schedule items, etc.) so every surface stays visually consistent.
 export const CARD_TOKENS = {
-  bg:           '#FFFFFF',
-  border:       '#EAECF0',
+  bg:           'var(--card)',
+  border:       'var(--border)',
   borderWidth:  '1.5px',
   radius:       14,      // default container card
   radiusRow:    10,      // list-item row card

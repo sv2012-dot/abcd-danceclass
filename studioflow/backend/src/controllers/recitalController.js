@@ -67,6 +67,22 @@ exports.remove = async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
+exports.uploadPoster = async (req, res) => {
+  const { poster_url } = req.body;
+  if (!poster_url) return res.status(400).json({ error: 'poster_url required' });
+  // Accept data URLs (base64) or plain https URLs
+  if (!poster_url.startsWith('data:image/') && !poster_url.startsWith('https://')) {
+    return res.status(400).json({ error: 'Invalid image format' });
+  }
+  try {
+    await pool.query(
+      'UPDATE recitals SET poster_url=? WHERE id=? AND school_id=?',
+      [poster_url, req.params.id, req.params.schoolId]
+    );
+    res.json({ poster_url });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
 exports.addTask = async (req, res) => {
   const { task_text } = req.body;
   if (!task_text) return res.status(400).json({ error: 'task_text required' });

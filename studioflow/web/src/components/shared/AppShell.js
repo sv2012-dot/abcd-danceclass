@@ -143,6 +143,7 @@ export default function AppShell() {
   const location  = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BP);
+  const [hoveredNav, setHoveredNav] = useState(null);
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < MOBILE_BP);
@@ -203,14 +204,17 @@ export default function AppShell() {
             key={item.to}
             to={item.to}
             end={item.to === '/'}
+            onMouseEnter={() => setHoveredNav(item.to)}
+            onMouseLeave={() => setHoveredNav(null)}
             style={({ isActive }) => ({
               display:'flex', alignItems:'center', gap:12, width:'100%',
               padding:'12px 14px', borderRadius:10, border:'none', marginBottom:4,
-              fontSize:14, fontWeight: isActive ? 600 : 400,
-              color: isActive ? 'var(--sidebar-foreground)' : 'var(--sidebar-muted)',
-              background: isActive ? 'var(--surface)' : 'transparent',
+              fontSize:14, fontWeight: isActive ? 600 : 500,
+              color: isActive ? 'var(--sidebar-foreground)' : 'var(--sidebar-foreground)',
+              opacity: isActive ? 1 : hoveredNav === item.to ? 1 : 0.72,
+              background: isActive ? 'rgba(124,58,237,0.09)' : hoveredNav === item.to ? 'rgba(124,58,237,0.09)' : 'transparent',
               boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-              cursor:'pointer', textDecoration:'none', transition:'background .15s, color .15s, box-shadow .15s',
+              cursor:'pointer', textDecoration:'none', transition:'background .15s, opacity .15s',
               boxSizing:'border-box',
             })}
           >
@@ -337,8 +341,8 @@ export default function AppShell() {
       </div>
 
       {/* Page content */}
-      <main style={{ flex:1, overflowY:'auto', background: dashBg, transition:'background .3s' }}>
-        <div style={{ padding:'20px 16px', maxWidth:1340, margin:'0 auto' }}>
+      <main style={{ flex:1, overflowY:'auto', overflowX:'hidden', background: dashBg, transition:'background .3s' }}>
+        <div style={{ padding:'20px 16px', maxWidth:1340, margin:'0 auto', boxSizing:'border-box', width:'100%' }}>
           <Outlet />
         </div>
 

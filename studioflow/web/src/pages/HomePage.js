@@ -23,7 +23,8 @@ const C = {
   bg:           'var(--background)',
   surface:      'var(--surface)',
   border:       'var(--border)',
-  createBtn:    'rgba(138,122,154,0.07)',
+  createBtn:    'rgba(124,58,237,0.10)',
+  createBtnHov: 'rgba(124,58,237,0.18)',
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -268,11 +269,47 @@ const RECITAL_CARD_GRADS = [
   'linear-gradient(135deg,#1a0533 0%,#7c1d6f 100%)',
   'linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)',
 ];
-function RecitalImageCard({ r, index, onClick }) {
-  const poster = localStorage.getItem(`poster_${r.id}`);
-  const gradBg = RECITAL_CARD_GRADS[index % RECITAL_CARD_GRADS.length];
+// Compress an image File to a base64 data URL at max 900px wide
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const maxW = 900;
+      const scale = img.width > maxW ? maxW / img.width : 1;
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+function RecitalImageCard({ r, index, onClick, schoolId, onPosterUpdate, canEdit }) {
+  const poster  = r.poster_url || null;
+  const gradBg  = RECITAL_CARD_GRADS[index % RECITAL_CARD_GRADS.length];
+  const inputRef = React.useRef();
+  const [uploading, setUploading] = React.useState(false);
+
+  const handleUpload = async (e) => {
+    e.stopPropagation();
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const dataUrl = await compressImage(file);
+      await recitalApi.uploadPoster(schoolId, r.id, dataUrl);
+      onPosterUpdate && onPosterUpdate(r.id, dataUrl);
+    } catch { /* silent */ }
+    setUploading(false);
+  };
+
   return (
-    <div onClick={onClick} style={{ position:'relative', height:190, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) center/cover no-repeat` : gradBg, transition:'transform .15s,box-shadow .15s' }}
+    <div onClick={onClick} style={{ position:'relative', height:190, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) top/cover no-repeat` : gradBg, transition:'transform .15s,box-shadow .15s' }}
       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';}}
       onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}
     >
@@ -281,13 +318,39 @@ function RecitalImageCard({ r, index, onClick }) {
         <div style={{ fontSize:13, fontWeight:800, color:'#fff', textTransform:'uppercase', letterSpacing:'.03em', lineHeight:1.25 }}>{r.title}</div>
         {r.venue && <div style={{ fontSize:11, color:'rgba(255,255,255,.65)', marginTop:4 }}>{r.venue}</div>}
       </div>
+      {canEdit && (
+        <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:10, right:10 }}>
+          <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleUpload} />
+          <button onClick={e=>{e.stopPropagation();inputRef.current?.click();}} disabled={uploading}
+            style={{ background:'rgba(0,0,0,.45)', border:'none', borderRadius:8, color:'#fff', fontSize:11, fontWeight:700, padding:'5px 10px', cursor:'pointer', backdropFilter:'blur(4px)' }}>
+            {uploading ? '…' : poster ? '🖼 Change' : '+ Photo'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
-function FeaturedRecitalCard({ r, onClick }) {
-  const poster = localStorage.getItem(`poster_${r.id}`);
+
+function FeaturedRecitalCard({ r, onClick, schoolId, onPosterUpdate, canEdit }) {
+  const poster   = r.poster_url || null;
+  const inputRef = React.useRef();
+  const [uploading, setUploading] = React.useState(false);
+
+  const handleUpload = async (e) => {
+    e.stopPropagation();
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const dataUrl = await compressImage(file);
+      await recitalApi.uploadPoster(schoolId, r.id, dataUrl);
+      onPosterUpdate && onPosterUpdate(r.id, dataUrl);
+    } catch { /* silent */ }
+    setUploading(false);
+  };
+
   return (
-    <div onClick={onClick} style={{ position:'relative', height:280, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) center/cover no-repeat` : RECITAL_CARD_GRADS[0], transition:'transform .15s,box-shadow .15s' }}
+    <div onClick={onClick} style={{ position:'relative', height:280, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) top/cover no-repeat` : RECITAL_CARD_GRADS[0], transition:'transform .15s,box-shadow .15s' }}
       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';}}
       onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}
     >
@@ -297,6 +360,15 @@ function FeaturedRecitalCard({ r, onClick }) {
         <div style={{ fontSize:16, fontWeight:800, color:'#fff', textTransform:'uppercase', lineHeight:1.2, letterSpacing:'.02em' }}>{r.title}</div>
         {r.venue && <div style={{ fontSize:12, color:'rgba(255,255,255,.65)', marginTop:6 }}>{r.venue}</div>}
       </div>
+      {canEdit && (
+        <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:10, right:10 }}>
+          <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleUpload} />
+          <button onClick={e=>{e.stopPropagation();inputRef.current?.click();}} disabled={uploading}
+            style={{ background:'rgba(0,0,0,.45)', border:'none', borderRadius:8, color:'#fff', fontSize:11, fontWeight:700, padding:'5px 10px', cursor:'pointer', backdropFilter:'blur(4px)' }}>
+            {uploading ? '…' : poster ? '🖼 Change' : '+ Photo'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -331,7 +403,9 @@ function SchoolHomePage() {
     window.addEventListener('resize', h);
     return () => window.removeEventListener('resize', h);
   }, []);
-  const isMobile = windowWidth < 768;
+  const isMobile  = windowWidth < 768;
+  const isTablet  = windowWidth >= 768 && windowWidth < 1100;
+  const isDesktop = windowWidth >= 1100;
 
   // ── modal state ───────────────────────────────────────────────────────────
   const [modal, setModal]           = useState(null);
@@ -440,6 +514,13 @@ function SchoolHomePage() {
     onError: err => toast.error(err.error||"Failed to create recital"),
   });
 
+  // Update poster_url in the recitals query cache immediately after upload
+  const handlePosterUpdate = (recitalId, dataUrl) => {
+    qc.setQueryData(['recitals', sid], old =>
+      Array.isArray(old) ? old.map(r => r.id === recitalId ? { ...r, poster_url: dataUrl } : r) : old
+    );
+  };
+
   const openAdd = () => {
     const base = new Date(); base.setMinutes(0,0,0);
     const end  = new Date(base); end.setHours(base.getHours()+1);
@@ -459,6 +540,43 @@ function SchoolHomePage() {
   const fmtDue    = str => { if (!str) return null; const d = parseLocalDate(str); return isNaN(d) ? null : d.toLocaleDateString([],{month:"short",day:"numeric"}); };
   const isOverdue = str => { if (!str) return false; const due = parseLocalDate(str); const now = new Date(); now.setHours(0,0,0,0); return !isNaN(due) && due < now; };
 
+  // ── reusable rendered sections ───────────────────────────────────────────
+  const renderTodoSection = (
+    <div>
+      <SectionTitle first="TO" accent="DOs" onViewAll={()=>navigate('/todos')} />
+      <Card padding={0} style={{ display:'flex', flexDirection:'column' }}>
+        {latestTodos.length === 0
+          ? <div style={{ padding:'20px 16px', color:C.grayChate, fontSize:13, textAlign:'center' }}>No to-dos yet</div>
+          : latestTodos.map(todo => {
+              const done = !!todo.is_complete;
+              const od   = !done && isOverdue(todo.due_date);
+              return (
+                <div key={todo.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderTop:`1px solid ${C.border}`, opacity: done ? 0.6 : 1, transition:'opacity .2s' }}>
+                  <div onClick={()=>{
+                      qc.setQueryData(['todos',sid], old => { if (!old?.todos) return old; return {...old,todos:old.todos.map(t=>t.id===todo.id?{...t,is_complete:done?0:1}:t)}; });
+                      todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(['todos',sid]));
+                    }}
+                    style={{ width:18, height:18, borderRadius:'50%', border:`2px solid ${done ? C.accentPurple : C.border}`, background: done ? C.accentPurple : 'transparent', cursor:'pointer', flexShrink:0, transition:'all .15s', display:'flex', alignItems:'center', justifyContent:'center' }}
+                    onMouseEnter={e=>{if(!done){e.currentTarget.style.borderColor=C.accentPurple;e.currentTarget.style.background=C.accentPurple+'15';}}}
+                    onMouseLeave={e=>{if(!done){e.currentTarget.style.borderColor=C.border;e.currentTarget.style.background='transparent';}}}
+                  >
+                    {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color: od ? '#e05c6a' : C.ebony, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textDecoration: done ? 'line-through' : 'none' }}>{todo.title}</div>
+                    <div style={{ fontSize:11, color:C.boulder, marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      {todo.due_date ? `Due: ${fmtDue(todo.due_date)}` : ''}
+                      {todo.assigned_to ? ` · ${todo.assigned_to}` : ''}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+        }
+      </Card>
+    </div>
+  );
+
   // ── stats block (reused on desktop-top and mobile-bottom) ────────────────
   const STAT_ITEMS = stats ? [
     { label:"Students", value:stats.students??stats.student_count, path:"/students",
@@ -468,6 +586,32 @@ function SchoolHomePage() {
     { label:"Recitals", value:stats.upcoming_recitals,             path:"/recitals",
       icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, accent: C.accentMagenta },
   ] : [];
+
+  const renderStatsSection = stats ? (
+    <div>
+      <SectionTitle first="STUDIO" accent="OVERVIEW" />
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
+        {STAT_ITEMS.map(({label,value,path,icon,accent}) => (
+          <div key={label} onClick={()=>navigate(path)} style={{
+            background:C.white, borderRadius:16, border:`1.5px solid ${C.border}`,
+            padding:'20px 24px', cursor:'pointer', transition:'all .15s',
+            display:'flex', alignItems:'center', gap:16,
+          }}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor=accent;e.currentTarget.style.boxShadow=`0 4px 16px ${accent}22`;}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.boxShadow='none';}}
+          >
+            <div style={{ width:48, height:48, borderRadius:14, background:accent+'15', color:accent, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              {icon}
+            </div>
+            <div>
+              <div style={{ fontSize:28, fontWeight:800, color:C.ebony, lineHeight:1, fontFamily:'var(--font-d)' }}>{value||0}</div>
+              <div style={{ fontSize:11, fontWeight:700, color:C.grayChate, textTransform:'uppercase', letterSpacing:'.08em', marginTop:4 }}>{label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  ) : null;
 
   // Mobile stat block (unchanged compact style)
   const statsBlock = stats ? (
@@ -546,10 +690,10 @@ function SchoolHomePage() {
           <div style={{position:"relative"}}>
             <button onClick={()=>setCreateMenuOpen(o=>!o)} style={{
               padding:"10px 18px", borderRadius:12, border:"none",
-              background:C.createBtn, color:"#000", fontWeight:700, fontSize:13, cursor:"pointer",
+              background:C.createBtn, color:'var(--accent)', fontWeight:700, fontSize:13, cursor:"pointer",
               transition:"background .15s", display:"flex",alignItems:"center",gap:6,
             }}
-              onMouseEnter={e=>{e.currentTarget.style.background="rgba(138,122,154,0.12)";}}
+              onMouseEnter={e=>{e.currentTarget.style.background=C.createBtnHov;}}
               onMouseLeave={e=>{e.currentTarget.style.background=C.createBtn;}}
             >
               + Create
@@ -588,96 +732,64 @@ function SchoolHomePage() {
         </div>
       )}
 
-      {/* ── Desktop: 2-column layout ── */}
+      {/* ── Tablet + Desktop: full-feature layout ── */}
       {!isMobile && (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 360px', gap:36, alignItems:'start' }}>
-          {/* Left column */}
-          <div>
-            <SectionTitle first="THIS" accent="WEEK" onViewAll={()=>navigate('/schedule')} />
-            <div style={{ background:C.white, borderRadius:16, border:`1.5px solid ${C.border}`, overflow:'hidden', marginBottom:36 }}>
-              {thisWeekEvents.length === 0
-                ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center' }}>No events this week</div>
-                : thisWeekEvents.slice(0,5).map(e => <ThisWeekRow key={e.id} e={e} onNavigate={()=>navigate('/schedule',{state:{openEventId:e.id,eventDate:e.start_datetime}})} />)
-              }
-            </div>
-            <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>navigate('/recitals')} />
-            {upcoming.length === 0
-              ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center', background:C.white, borderRadius:16, border:`1.5px solid ${C.border}` }}>No upcoming recitals</div>
-              : <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
-                  {upcomingGrid.map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />)}
-                </div>
-            }
+        <div>
+          {/* Tablet: stats strip at top */}
+          {isTablet && renderStatsSection && (
+            <div style={{ marginBottom:28 }}>{renderStatsSection}</div>
+          )}
 
-            {/* ── Studio Overview stats ── */}
-            {stats && (
-              <div style={{ marginTop:36 }}>
-                <SectionTitle first="STUDIO" accent="OVERVIEW" />
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
-                  {STAT_ITEMS.map(({label,value,path,icon,accent}) => (
-                    <div key={label} onClick={()=>navigate(path)} style={{
-                      background:C.white, borderRadius:16, border:`1.5px solid ${C.border}`,
-                      padding:'20px 24px', cursor:'pointer', transition:'all .15s',
-                      display:'flex', alignItems:'center', gap:16,
-                    }}
-                      onMouseEnter={e=>{e.currentTarget.style.borderColor=accent;e.currentTarget.style.boxShadow=`0 4px 16px ${accent}22`;}}
-                      onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.boxShadow='none';}}
-                    >
-                      <div style={{ width:48, height:48, borderRadius:14, background:accent+'15', color:accent, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                        {icon}
-                      </div>
-                      <div>
-                        <div style={{ fontSize:28, fontWeight:800, color:C.ebony, lineHeight:1, fontFamily:'var(--font-d)' }}>{value||0}</div>
-                        <div style={{ fontSize:11, fontWeight:700, color:C.grayChate, textTransform:'uppercase', letterSpacing:'.08em', marginTop:4 }}>{label}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          {/* Right column */}
-          <div style={{ display:'flex', flexDirection:'column', gap:28 }}>
-            {featuredRecital && (
-              <div>
-                <SectionTitle first="FEATURED" accent="RECITAL" />
-                <FeaturedRecitalCard r={featuredRecital} onClick={()=>navigate('/recitals',{state:{openTitle:featuredRecital.title}})} />
-              </div>
-            )}
+          {/* Main grid: 2-col on desktop, single col on tablet */}
+          <div style={{ display:'grid', gridTemplateColumns: isDesktop ? '1fr 360px' : '1fr', gap: isDesktop ? 36 : 0, alignItems:'start' }}>
+            {/* Left / main column */}
             <div>
-              <SectionTitle first="TO" accent="DOs" onViewAll={()=>navigate('/todos')} />
-              <Card padding={0} style={{ display:'flex', flexDirection:'column' }}>
-                {latestTodos.length === 0
-                  ? <div style={{ padding:'20px 16px', color:C.grayChate, fontSize:13, textAlign:'center' }}>No to-dos yet</div>
-                  : latestTodos.map(todo => {
-                      const done = !!todo.is_complete;
-                      const od   = !done && isOverdue(todo.due_date);
-                      return (
-                        <div key={todo.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderTop:`1px solid ${C.border}`, opacity: done ? 0.6 : 1, transition:'opacity .2s' }}>
-                          {/* Toggle circle / checkmark */}
-                          <div onClick={()=>{
-                              qc.setQueryData(['todos',sid], old => { if (!old?.todos) return old; return {...old,todos:old.todos.map(t=>t.id===todo.id?{...t,is_complete:done?0:1}:t)}; });
-                              todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(['todos',sid]));
-                            }}
-                            style={{ width:18, height:18, borderRadius:'50%', border:`2px solid ${done ? C.accentPurple : C.border}`, background: done ? C.accentPurple : 'transparent', cursor:'pointer', flexShrink:0, transition:'all .15s', display:'flex', alignItems:'center', justifyContent:'center' }}
-                            onMouseEnter={e=>{if(!done){e.currentTarget.style.borderColor=C.accentPurple;e.currentTarget.style.background=C.accentPurple+'15';}}}
-                            onMouseLeave={e=>{if(!done){e.currentTarget.style.borderColor=C.border;e.currentTarget.style.background='transparent';}}}
-                          >
-                            {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                          </div>
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontSize:13, fontWeight:600, color: od ? '#e05c6a' : C.ebony, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textDecoration: done ? 'line-through' : 'none' }}>{todo.title}</div>
-                            <div style={{ fontSize:11, color:C.boulder, marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                              {todo.due_date ? `Due: ${fmtDue(todo.due_date)}` : ''}
-                              {todo.assigned_to ? ` · ${todo.assigned_to}` : ''}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
+              <SectionTitle first="THIS" accent="WEEK" onViewAll={()=>navigate('/schedule')} />
+              <div style={{ background:C.white, borderRadius:16, border:`1.5px solid ${C.border}`, overflow:'hidden', marginBottom:36 }}>
+                {thisWeekEvents.length === 0
+                  ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center' }}>No events this week</div>
+                  : thisWeekEvents.slice(0,5).map(e => <ThisWeekRow key={e.id} e={e} onNavigate={()=>navigate('/schedule',{state:{openEventId:e.id,eventDate:e.start_datetime}})} />)
                 }
-              </Card>
+              </div>
+              <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>navigate('/recitals')} />
+              {upcoming.length === 0
+                ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center', background:C.white, borderRadius:16, border:`1.5px solid ${C.border}` }}>No upcoming recitals</div>
+                : <div style={{ display:'grid', gridTemplateColumns: isDesktop ? 'repeat(3,1fr)' : 'repeat(2,1fr)', gap:12 }}>
+                    {upcomingGrid.map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />)}
+                  </div>
+              }
+              {/* Desktop: stats below recitals */}
+              {isDesktop && renderStatsSection && (
+                <div style={{ marginTop:36 }}>{renderStatsSection}</div>
+              )}
             </div>
+
+            {/* Right column — desktop only */}
+            {isDesktop && (
+              <div style={{ display:'flex', flexDirection:'column', gap:28 }}>
+                {featuredRecital && (
+                  <div>
+                    <SectionTitle first="FEATURED" accent="RECITAL" />
+                    <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:featuredRecital.title}})} />
+                  </div>
+                )}
+                {renderTodoSection}
+              </div>
+            )}
           </div>
+
+          {/* Tablet: featured recital + todos stacked below main */}
+          {isTablet && (
+            <div style={{ display:'grid', gap:28, marginTop:28 }}>
+              {featuredRecital && (
+                <div>
+                  <SectionTitle first="FEATURED" accent="RECITAL" />
+                  <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:featuredRecital.title}})} />
+                </div>
+              )}
+              {renderTodoSection}
+            </div>
+          )}
         </div>
       )}
 
@@ -685,44 +797,24 @@ function SchoolHomePage() {
       {isMobile && (
         <div style={{ display:'grid', gap:20 }}>
 
-        {/* Upcoming Recitals */}
-        <Card padding={0} style={{display:"flex",flexDirection:"column"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px"}}>
-            <div style={{fontSize:11,fontWeight:700,color:C.grayChate,textTransform:"uppercase",letterSpacing:".1em"}}>Upcoming Recitals</div>
-            <button onClick={()=>navigate("/schedule")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.accentPurple,fontWeight:600,padding:0}}>View All</button>
-          </div>
+        {/* Upcoming Recitals — image cards matching desktop style */}
+        <div>
+          <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>navigate('/recitals')} />
           {upcoming.length === 0
-            ? <div style={{padding:"28px 16px",color:C.grayChate,fontSize:13,textAlign:"center"}}>No upcoming recitals</div>
-            : upcoming.map((r,i) => {
-                const d = parseLocalDate(r.event_date);
-                const tod = new Date(); tod.setHours(0,0,0,0);
-                const ed = parseLocalDate(r.event_date); ed.setHours(0,0,0,0);
-                const diff = Math.round((ed - tod) / 86400000);
-                const daysLabel = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : diff > 0 ? `${diff} days` : `${Math.abs(diff)}d ago`;
-                return (
-                  <div key={r.id} onClick={()=>navigate("/recitals",{state:{openTitle:r.title}})}
-                    style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderTop:`1px solid ${C.border}`,cursor:"pointer",transition:"background .1s"}}
-                    onMouseEnter={e=>{e.currentTarget.style.background=C.surface;}}
-                    onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}
-                  >
-                    {/* Left-bar date block */}
-                    <div style={{display:"flex",alignItems:"stretch",gap:8,flexShrink:0}}>
-                      <div style={{width:3,borderRadius:99,background:C.accentPurple,minHeight:36}} />
-                      <div style={{textAlign:"center",minWidth:28}}>
-                        <div style={{fontSize:17,fontWeight:800,color:C.ebony,lineHeight:1}}>{isNaN(d)?"—":d.getDate()}</div>
-                        <div style={{fontSize:9,color:C.grayChate,textTransform:"uppercase",fontWeight:700,marginTop:2,letterSpacing:".04em"}}>{isNaN(d)?"":d.toLocaleString("default",{month:"short"})}</div>
-                      </div>
-                    </div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:700,fontSize:13,color:C.ebony,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.title}</div>
-                      <div style={{color:C.boulder,fontSize:11,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.venue||"—"}</div>
-                    </div>
-                    <span style={{fontSize:11,fontWeight:600,color:'var(--text)',background:"#F3F4F6",borderRadius:20,padding:"3px 10px",whiteSpace:"nowrap",flexShrink:0}}>{daysLabel}</span>
-                  </div>
-                );
-              })
+            ? <div style={{padding:"28px 20px",color:C.grayChate,fontSize:13,textAlign:"center",background:C.white,borderRadius:16,border:`1.5px solid ${C.border}`}}>No upcoming recitals</div>
+            : <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                {upcomingGrid.map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />)}
+              </div>
           }
-        </Card>
+        </div>
+
+        {/* Featured Recital */}
+        {featuredRecital && (
+          <div>
+            <SectionTitle first="FEATURED" accent="RECITAL" />
+            <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:featuredRecital.title}})} />
+          </div>
+        )}
 
         {/* Upcoming Classes */}
         <Card padding={0} style={{display:"flex",flexDirection:"column"}}>
