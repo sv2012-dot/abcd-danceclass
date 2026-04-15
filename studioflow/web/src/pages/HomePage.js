@@ -556,9 +556,9 @@ function SchoolHomePage() {
                       qc.setQueryData(['todos',sid], old => { if (!old?.todos) return old; return {...old,todos:old.todos.map(t=>t.id===todo.id?{...t,is_complete:done?0:1}:t)}; });
                       todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(['todos',sid]));
                     }}
-                    style={{ width:18, height:18, borderRadius:'50%', border:`2px solid ${done ? C.accentPurple : C.border}`, background: done ? C.accentPurple : 'transparent', cursor:'pointer', flexShrink:0, transition:'all .15s', display:'flex', alignItems:'center', justifyContent:'center' }}
+                    style={{ width:18, height:18, borderRadius:'50%', border:`2px solid ${done ? C.accentPurple : 'var(--muted)'}`, background: done ? C.accentPurple : 'transparent', cursor:'pointer', flexShrink:0, transition:'all .15s', display:'flex', alignItems:'center', justifyContent:'center' }}
                     onMouseEnter={e=>{if(!done){e.currentTarget.style.borderColor=C.accentPurple;e.currentTarget.style.background=C.accentPurple+'15';}}}
-                    onMouseLeave={e=>{if(!done){e.currentTarget.style.borderColor=C.border;e.currentTarget.style.background='transparent';}}}
+                    onMouseLeave={e=>{if(!done){e.currentTarget.style.borderColor='var(--muted)';e.currentTarget.style.background='transparent';}}}
                   >
                     {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                   </div>
@@ -615,10 +615,10 @@ function SchoolHomePage() {
 
   // Mobile stat block (unchanged compact style)
   const statsBlock = stats ? (
-    <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"stretch"}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10}}>
       {STAT_ITEMS.map(({label,value,path,icon}) => (
-        <Card key={label} clickable onClick={()=>navigate(path)} padding={16}
-          style={{ flex:"1", display:"flex", flexDirection:"column", alignItems:"flex-start", gap:10 }}
+        <Card key={label} clickable onClick={()=>navigate(path)} padding={12}
+          style={{ display:"flex", flexDirection:"column", alignItems:"flex-start", gap:8, minWidth:0 }}
         >
           <div style={{fontSize:24,fontWeight:800,color:'var(--text)',lineHeight:1}}>{value||0}</div>
           <div style={{display:"flex",alignItems:"center",gap:6,color:C.grayChate}}>
@@ -631,7 +631,7 @@ function SchoolHomePage() {
   ) : null;
 
   return (
-    <div>
+    <div style={{ width:'100%', minWidth:0, boxSizing:'border-box' }}>
 
       {/* Stats row moved below upcoming recitals on desktop */}
 
@@ -754,7 +754,7 @@ function SchoolHomePage() {
               <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>navigate('/recitals')} />
               {upcoming.length === 0
                 ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center', background:C.white, borderRadius:16, border:`1.5px solid ${C.border}` }}>No upcoming recitals</div>
-                : <div style={{ display:'grid', gridTemplateColumns: isDesktop ? 'repeat(3,1fr)' : 'repeat(2,1fr)', gap:12 }}>
+                : <div style={{ display:'grid', gridTemplateColumns: isDesktop ? 'repeat(3,minmax(0,1fr))' : 'repeat(2,minmax(0,1fr))', gap:12 }}>
                     {upcomingGrid.map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />)}
                   </div>
               }
@@ -795,14 +795,14 @@ function SchoolHomePage() {
 
       {/* ── Mobile: stacked cards ── */}
       {isMobile && (
-        <div style={{ display:'grid', gap:20 }}>
+        <div style={{ display:'grid', gap:20, width:'100%', boxSizing:'border-box', minWidth:0 }}>
 
         {/* Upcoming Recitals — image cards matching desktop style */}
         <div>
           <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>navigate('/recitals')} />
           {upcoming.length === 0
             ? <div style={{padding:"28px 20px",color:C.grayChate,fontSize:13,textAlign:"center",background:C.white,borderRadius:16,border:`1.5px solid ${C.border}`}}>No upcoming recitals</div>
-            : <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            : <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:10 }}>
                 {upcomingGrid.map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />)}
               </div>
           }
@@ -868,9 +868,9 @@ function SchoolHomePage() {
                         qc.setQueryData(["todos",sid], old => { if (!old?.todos) return old; return {...old,todos:old.todos.map(t=>t.id===todo.id?{...t,is_complete:1}:t)}; });
                         todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid]));
                       }}
-                      style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${C.border}`,background:"transparent",cursor:"pointer",flexShrink:0,transition:"all .15s"}}
+                      style={{width:18,height:18,borderRadius:"50%",border:`2px solid var(--muted)`,background:"transparent",cursor:"pointer",flexShrink:0,transition:"all .15s"}}
                       onMouseEnter={e=>{e.currentTarget.style.borderColor=C.accentPurple;e.currentTarget.style.background=C.accentPurple+"15";}}
-                      onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.background="transparent";}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--muted)';e.currentTarget.style.background="transparent";}}
                     />
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:13,fontWeight:600,color:C.ebony,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{todo.title}</div>
