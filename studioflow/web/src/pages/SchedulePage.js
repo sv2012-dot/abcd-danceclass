@@ -1187,7 +1187,7 @@ export default function SchedulePage() {
           {/* ── EDIT / ADD mode: event form ── */}
           {(panelMode === 'edit' || panelMode === 'add') && (
             <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:"0 16px"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"0 16px"}}>
                 <Field label="Title *" style={{gridColumn:"1/-1"}}>
                   <Input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="e.g. Junior Ballet Class" />
                 </Field>
@@ -1277,7 +1277,7 @@ export default function SchedulePage() {
                     autoFocus
                   />
                 </Field>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:"0 12px" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:"0 12px" }}>
                   <Field label="Date *">
                     <Input
                       type="date"

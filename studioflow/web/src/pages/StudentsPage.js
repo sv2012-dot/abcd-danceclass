@@ -619,7 +619,7 @@ export default function StudentsPage() {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "0 16px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: "0 16px" }}>
                   <Field label="Full Name *"><Input value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} placeholder="Student name" /></Field>
                   <Field label="Age"><Input type="number" value={addForm.age} onChange={e => setAddForm({ ...addForm, age: e.target.value })} placeholder="e.g. 12" min="0" max="99" /></Field>
                   {(!ageKnown || isAdult) && (<>
