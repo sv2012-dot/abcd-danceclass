@@ -34,7 +34,7 @@ const TYPE_COLORS = {
   Workshop: "#52c4a0", Other: "#8a7a9a",
 };
 const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const DAYS_SHORT   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+const DAYS_SHORT   = ["Mo","Tu","We","Th","Fr","Sa","Su"];
 const LEVELS = ["Beginner","Intermediate","Advanced","Professional"];
 
 const EMPTY_EVENT = {
@@ -117,7 +117,8 @@ function DateTimePicker({ label, value, onChange }) {
     else { const t=new Date(); emit(cal.year,cal.month,t.getDate(),h,m); }
   };
 
-  const firstDow = new Date(cal.year,cal.month,1).getDay();
+  const dow = new Date(cal.year,cal.month,1).getDay();
+  const firstDow = dow === 0 ? 6 : dow - 1;
   const dim      = new Date(cal.year,cal.month+1,0).getDate();
   const cells    = [];
   for (let i=0;i<firstDow;i++) cells.push(null);
@@ -149,7 +150,7 @@ function DateTimePicker({ label, value, onChange }) {
         <SvgIcon name="calendar" size={14} color="var(--muted)" style={{flexShrink:0}} />
       </button>
       {open && (
-        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,zIndex:400,background:"var(--card)",borderRadius:16,boxShadow:"0 12px 40px rgba(0,0,0,0.16)",border:"1px solid var(--border)",width:300,overflow:"hidden"}}>
+        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,zIndex:400,background:"var(--card)",borderRadius:16,boxShadow:"0 12px 40px rgba(0,0,0,0.16)",border:"1px solid var(--border)",width:"min(300px,calc(100vw - 20px))",maxWidth:300,overflow:"hidden"}}>
           <div style={{display:"flex",borderBottom:`1px solid var(--border)`}}>
             {["date","time"].map(t => (
               <button key={t} type="button" onClick={()=>setTab(t)} style={{
@@ -160,19 +161,19 @@ function DateTimePicker({ label, value, onChange }) {
             ))}
           </div>
           {tab==="date" && (
-            <div style={{padding:14}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-                <button type="button" onClick={()=>setCal(c=>c.month===0?{year:c.year-1,month:11}:{...c,month:c.month-1})} style={{background:"var(--surface)",border:"none",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:14}}>‹</button>
-                <span style={{fontWeight:700,fontSize:13}}>{MONTHS_SHORT[cal.month]} {cal.year}</span>
-                <button type="button" onClick={()=>setCal(c=>c.month===11?{year:c.year+1,month:0}:{...c,month:c.month+1})} style={{background:"var(--surface)",border:"none",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:14}}>›</button>
+            <div style={{padding:"10px 10px"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,gap:4}}>
+                <button type="button" onClick={()=>setCal(c=>c.month===0?{year:c.year-1,month:11}:{...c,month:c.month-1})} style={{background:"var(--surface)",border:"none",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:13,flex:0.5}}>‹</button>
+                <span style={{fontWeight:700,fontSize:12}}>{MONTHS_SHORT[cal.month]} {cal.year}</span>
+                <button type="button" onClick={()=>setCal(c=>c.month===11?{year:c.year+1,month:0}:{...c,month:c.month+1})} style={{background:"var(--surface)",border:"none",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:13,flex:0.5}}>›</button>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:4}}>
-                {DAYS_SHORT.map(d=><div key={d} style={{textAlign:"center",fontSize:10,fontWeight:700,color:"var(--muted)",padding:"2px 0"}}>{d}</div>)}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:3,gap:1}}>
+                {DAYS_SHORT.map(d=><div key={d} style={{textAlign:"center",fontSize:9,fontWeight:700,color:"var(--muted)",padding:"1px 0"}}>{d}</div>)}
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1}}>
                 {cells.map((day,i) => (
                   <button key={i} type="button" disabled={!day} onClick={()=>day&&selectDay(day)} style={{
-                    padding:"6px 0",textAlign:"center",fontSize:12,fontWeight:500,border:"none",cursor:day?"pointer":"default",borderRadius:8,
+                    padding:"5px 0",textAlign:"center",fontSize:11,fontWeight:500,border:"none",cursor:day?"pointer":"default",borderRadius:6,
                     background:isSelected(day)?"var(--accent)":isToday(day)?"var(--surface)":"transparent",
                     color:isSelected(day)?"#fff":isToday(day)?"var(--accent)":day?"var(--text)":"transparent",
                     fontWeight:isToday(day)||isSelected(day)?700:500,
@@ -182,29 +183,29 @@ function DateTimePicker({ label, value, onChange }) {
             </div>
           )}
           {tab==="time" && (
-            <div style={{padding:14}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,maxHeight:220,overflow:"hidden"}}>
+            <div style={{padding:"10px 10px"}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,maxHeight:200,overflow:"hidden"}}>
                 <div>
-                  <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:6}}>Hour</div>
-                  <div style={{maxHeight:190,overflowY:"auto",display:"grid",gap:2}}>
+                  <div style={{fontSize:9,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>Hour</div>
+                  <div style={{maxHeight:170,overflowY:"auto",display:"grid",gap:1}}>
                     {HOURS.map(h => {
                       const lbl = h===0?"12 AM":h<12?`${h} AM`:h===12?"12 PM":`${h-12} PM`;
-                      return <button key={h} type="button" onClick={()=>selectTime(h,minute)} style={{padding:"5px 8px",borderRadius:6,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:hour===h?"var(--accent)":"transparent",color:hour===h?"#fff":"var(--text)"}}>{lbl}</button>;
+                      return <button key={h} type="button" onClick={()=>selectTime(h,minute)} style={{padding:"4px 6px",borderRadius:5,border:"none",cursor:"pointer",fontSize:11,fontWeight:500,textAlign:"left",background:hour===h?"var(--accent)":"transparent",color:hour===h?"#fff":"var(--text)"}}>{lbl}</button>;
                     })}
                   </div>
                 </div>
                 <div>
-                  <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:6}}>Minute</div>
-                  <div style={{display:"grid",gap:2}}>
-                    {MINS.map(m => <button key={m} type="button" onClick={()=>selectTime(hour,m)} style={{padding:"5px 8px",borderRadius:6,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:minute===m?"var(--accent)":"transparent",color:minute===m?"#fff":"var(--text)"}}>:{String(m).padStart(2,"0")}</button>)}
+                  <div style={{fontSize:9,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>Minute</div>
+                  <div style={{display:"grid",gap:1}}>
+                    {MINS.map(m => <button key={m} type="button" onClick={()=>selectTime(hour,m)} style={{padding:"4px 6px",borderRadius:5,border:"none",cursor:"pointer",fontSize:11,fontWeight:500,textAlign:"left",background:minute===m?"var(--accent)":"transparent",color:minute===m?"#fff":"var(--text)"}}>:{String(m).padStart(2,"0")}</button>)}
                   </div>
                 </div>
               </div>
             </div>
           )}
-          <div style={{borderTop:`1px solid var(--border)`,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontSize:12,color:"var(--muted)",fontWeight:500}}>{displayVal?`${displayVal.date} ${displayVal.time}`:"No date selected"}</span>
-            <button type="button" onClick={()=>setOpen(false)} style={{background:"var(--accent)",color:"#fff",border:"none",borderRadius:8,padding:"6px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Done</button>
+          <div style={{borderTop:`1px solid var(--border)`,padding:"8px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+            <span style={{fontSize:11,color:"var(--muted)",fontWeight:500}}>{displayVal?`${displayVal.date} ${displayVal.time}`:"No date selected"}</span>
+            <button type="button" onClick={()=>setOpen(false)} style={{background:"var(--accent)",color:"#fff",border:"none",borderRadius:6,padding:"5px 14px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>Done</button>
           </div>
         </div>
       )}
