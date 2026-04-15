@@ -24,7 +24,7 @@ const TYPE_COLORS = {
   Other:     "#8a7a9a",
 };
 
-const DAYS  = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const DAYS  = ["M","T","W","T","F","S","S"];
 const MONTHS = ["January","February","March","April","May","June",
                 "July","August","September","October","November","December"];
 
@@ -608,12 +608,12 @@ export default function SchedulePage() {
     const isToday = d => d && y === today.getFullYear() && m === today.getMonth() && d === today.getDate();
 
     return (
-      <div style={{overflowX:"auto"}}>
-        <div style={{minWidth:560}}>
+      <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+        <div style={{minWidth:"min(560px,calc(100vw - 32px))"}}>
         {/* Unified grid: headers + cells share the same 7-column template */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:1,background:"var(--border)",borderRadius:12,overflow:"hidden"}}>
           {DAYS.map(d => (
-            <div key={d} style={{background:"var(--surface)",textAlign:"center",fontSize:11,fontWeight:700,color:"var(--muted)",padding:"6px 0",letterSpacing:"0.05em",minWidth:0,overflow:"hidden"}}>{d}</div>
+            <div key={d} style={{background:"var(--surface)",textAlign:"center",fontSize:"clamp(9px,2vw,11px)",fontWeight:700,color:"var(--muted)",padding:"4px 0",letterSpacing:"0.05em",minWidth:0,overflow:"hidden"}}>{d}</div>
           ))}
           {cells.map((day, i) => {
             const dayEvents = eventsOnDay(day);
@@ -625,7 +625,7 @@ export default function SchedulePage() {
                 onClick={() => day && isAdmin && openAdd(new Date(y, m, day))}
                 style={{
                   background: day ? "var(--card)" : "var(--surface)",
-                  minHeight: 100, padding: "6px 5px",
+                  minHeight: "clamp(60px,15vw,100px)", padding: "4px 3px",
                   cursor: day && isAdmin ? "pointer" : "default",
                   minWidth: 0, overflow: "hidden", width: "100%", boxSizing: "border-box",
                 }}
