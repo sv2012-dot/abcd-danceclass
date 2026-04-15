@@ -13,6 +13,26 @@ import SvgIcon from "../components/shared/SvgIcon";
 const RECITAL_COLOR = "#6a7fdb";
 const EMPTY = { title:"", event_date:"", venue:"", description:"" };
 
+// ── Image compression helper ──────────────────────────────────────────────────
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const maxW = 900;
+      const scale = img.width > maxW ? maxW / img.width : 1;
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 // ── Demo data for tabs that don't yet have a backend ─────────────────────────
 
 function initials(name="") { return name.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase()||"?"; }
@@ -89,9 +109,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const [infoItems,  setInfoItems]  = useState([]); // Important Information bullet list
   const [newInfo,    setNewInfo]    = useState("");  // new bullet input
 
-  // Event poster
-  const [poster,        setPoster]        = useState(null);  // base64 data URL
+  // Event poster — synced to DB via poster_url, local state for display
+  const [poster,        setPoster]        = useState(null);
   const [posterHover,   setPosterHover]   = useState(false);
+  const [posterSaving,  setPosterSaving]  = useState(false);
   // Instagram post as poster
   const [instaUrl,      setInstaUrl]      = useState("");    // saved IG post URL
   const [instaInput,    setInstaInput]    = useState("");    // live input
@@ -149,9 +170,6 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
       localStorage.setItem(INFO_KEY, JSON.stringify(defaults));
     }
 
-    const savedPoster = localStorage.getItem(POSTER_KEY);
-    if (savedPoster) setPoster(savedPoster);
-
     const savedInsta = localStorage.getItem(INSTA_KEY);
     if (savedInsta) { setInstaUrl(savedInsta); setInstaInput(savedInsta); }
 
@@ -163,7 +181,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
 
     const savedVenueConfirmed = localStorage.getItem(VENUE_CONFIRMED_KEY);
     if (savedVenueConfirmed) setVenueConfirmed(savedVenueConfirmed === "true");
-  }, [SUG_KEY, VENDORS_KEY, PROGRAM_KEY, INFO_KEY, POSTER_KEY, INSTA_KEY, VENUE_KEY, VENUE_CONVO_KEY, VENUE_CONFIRMED_KEY]);
+  }, [SUG_KEY, VENDORS_KEY, PROGRAM_KEY, INFO_KEY, INSTA_KEY, VENUE_KEY, VENUE_CONVO_KEY, VENUE_CONFIRMED_KEY]);
 
   const persistVendors = (list) => {
     setVendors(list);
@@ -260,28 +278,46 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const editInfoItem = (i, val) => setInfoItems(p => p.map((x, idx) => idx === i ? val : x));
 
   // ── Poster helpers ────────────────────────────────────────────────────────
-  const handlePosterUpload = (e) => {
+  const handlePosterUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error("Image too large (max 5 MB)"); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const data = reader.result;
-      setPoster(data);
-      // Clear Instagram if switching to image
-      setInstaUrl(""); setInstaInput(""); setShowInstaForm(false);
-      localStorage.removeItem(INSTA_KEY);
-      try { localStorage.setItem(POSTER_KEY, data); toast.success("Poster saved"); }
-      catch { toast("Poster loaded but too large to persist.", { icon:"⚠️" }); }
-    };
-    reader.readAsDataURL(file);
+    if (file.size > 10 * 1024 * 1024) { toast.error("Image too large (max 10 MB)"); return; }
     e.target.value = "";
+    // Clear Instagram if switching to image
+    setInstaUrl(""); setInstaInput(""); setShowInstaForm(false);
+    localStorage.removeItem(INSTA_KEY);
+    try {
+      const dataUrl = await compressImage(file);
+      setPosterSaving(true);
+      await api.uploadPoster(sid, id, dataUrl);
+      setPoster(dataUrl);
+      qc.setQueryData(["recital-detail", sid, id], (old) => old ? { ...old, poster_url: dataUrl } : old);
+      qc.setQueryData(["recitals", sid], (old) =>
+        Array.isArray(old) ? old.map(r => r.id === Number(id) ? { ...r, poster_url: dataUrl } : r) : old
+      );
+      toast.success("Poster saved");
+    } catch {
+      toast.error("Failed to save poster");
+    } finally {
+      setPosterSaving(false);
+    }
   };
 
-  const removePoster = () => {
-    setPoster(null);
-    localStorage.removeItem(POSTER_KEY);
-    toast.success("Poster removed");
+  const removePoster = async () => {
+    try {
+      setPosterSaving(true);
+      await api.uploadPoster(sid, id, '');
+      setPoster(null);
+      qc.setQueryData(["recital-detail", sid, id], (old) => old ? { ...old, poster_url: '' } : old);
+      qc.setQueryData(["recitals", sid], (old) =>
+        Array.isArray(old) ? old.map(r => r.id === Number(id) ? { ...r, poster_url: '' } : r) : old
+      );
+      toast.success("Poster removed");
+    } catch {
+      toast.error("Failed to remove poster");
+    } finally {
+      setPosterSaving(false);
+    }
   };
 
   // ── Instagram helpers ─────────────────────────────────────────────────────
@@ -391,6 +427,12 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
     },
     enabled: !!sid && !!id,
   });
+
+  // Seed poster from DB once recital loads
+  useEffect(() => {
+    if (recital?.poster_url) setPoster(recital.poster_url);
+    else if (recital && !recital.poster_url) setPoster(null);
+  }, [recital?.poster_url]);
 
   // ── Unified todos for this recital ───────────────────────────────────────
   const { data: todosData } = useQuery({

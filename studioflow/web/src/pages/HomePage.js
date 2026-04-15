@@ -323,7 +323,7 @@ function RecitalImageCard({ r, index, onClick, schoolId, onPosterUpdate, canEdit
           <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleUpload} />
           <button onClick={e=>{e.stopPropagation();inputRef.current?.click();}} disabled={uploading}
             style={{ background:'rgba(0,0,0,.45)', border:'none', borderRadius:8, color:'#fff', fontSize:11, fontWeight:700, padding:'5px 10px', cursor:'pointer', backdropFilter:'blur(4px)' }}>
-            {uploading ? '…' : poster ? '🖼 Change' : '+ Photo'}
+            {uploading ? '…' : poster ? 'Change' : '+ Photo'}
           </button>
         </div>
       )}
@@ -365,7 +365,7 @@ function FeaturedRecitalCard({ r, onClick, schoolId, onPosterUpdate, canEdit }) 
           <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleUpload} />
           <button onClick={e=>{e.stopPropagation();inputRef.current?.click();}} disabled={uploading}
             style={{ background:'rgba(0,0,0,.45)', border:'none', borderRadius:8, color:'#fff', fontSize:11, fontWeight:700, padding:'5px 10px', cursor:'pointer', backdropFilter:'blur(4px)' }}>
-            {uploading ? '…' : poster ? '🖼 Change' : '+ Photo'}
+            {uploading ? '…' : poster ? 'Change' : '+ Photo'}
           </button>
         </div>
       )}

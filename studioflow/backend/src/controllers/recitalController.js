@@ -69,15 +69,15 @@ exports.remove = async (req, res) => {
 
 exports.uploadPoster = async (req, res) => {
   const { poster_url } = req.body;
-  if (!poster_url) return res.status(400).json({ error: 'poster_url required' });
-  // Accept data URLs (base64) or plain https URLs
-  if (!poster_url.startsWith('data:image/') && !poster_url.startsWith('https://')) {
+  if (poster_url === undefined) return res.status(400).json({ error: 'poster_url required' });
+  // Allow empty string (removes poster), data URLs (base64), or plain https URLs
+  if (poster_url !== '' && !poster_url.startsWith('data:image/') && !poster_url.startsWith('https://')) {
     return res.status(400).json({ error: 'Invalid image format' });
   }
   try {
     await pool.query(
       'UPDATE recitals SET poster_url=? WHERE id=? AND school_id=?',
-      [poster_url, req.params.id, req.params.schoolId]
+      [poster_url || null, req.params.id, req.params.schoolId]
     );
     res.json({ poster_url });
   } catch (err) { res.status(500).json({ error: err.message }); }
