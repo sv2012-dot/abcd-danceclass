@@ -904,7 +904,7 @@ function SchoolHomePage() {
       {/* ── Add Student Modal ────────────────────────────────────────────── */}
       {showAddStudent && (
         <Modal title="Add Student" onClose={()=>{setShowAddStudent(false);setStudentForm(EMPTY_STUDENT);}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:"0 16px"}}>
             <Field label="Full Name *" style={{gridColumn:"1/-1"}}><Input value={studentForm.name} onChange={e=>setStudentForm({...studentForm,name:e.target.value})} placeholder="e.g. Aanya Patel" /></Field>
             <Field label="Age"><Input type="number" value={studentForm.age} onChange={e=>setStudentForm({...studentForm,age:e.target.value})} placeholder="e.g. 10" /></Field>
             <Field label="Phone"><Input value={studentForm.phone} onChange={e=>setStudentForm({...studentForm,phone:e.target.value})} placeholder="e.g. 212-555-0101" /></Field>
@@ -926,7 +926,7 @@ function SchoolHomePage() {
       {/* ── Add Batch Modal ──────────────────────────────────────────────── */}
       {showAddBatch && (
         <Modal title="Create Batch" onClose={()=>{setShowAddBatch(false);setBatchForm(EMPTY_BATCH);}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:"0 16px"}}>
             <Field label="Batch Name *" style={{gridColumn:"1/-1"}}><Input value={batchForm.name} onChange={e=>setBatchForm({...batchForm,name:e.target.value})} placeholder="e.g. Junior Ballet" /></Field>
             <Field label="Dance Style"><Input value={batchForm.dance_style} onChange={e=>setBatchForm({...batchForm,dance_style:e.target.value})} placeholder="e.g. Ballet" /></Field>
             <Field label="Level"><Select value={batchForm.level} onChange={e=>setBatchForm({...batchForm,level:e.target.value})}>{LEVELS.map(l=><option key={l}>{l}</option>)}</Select></Field>
@@ -948,7 +948,7 @@ function SchoolHomePage() {
       {showAddRecital && (
         <Modal title="New Recital" onClose={()=>{setShowAddRecital(false);setRecitalForm({title:'',event_date:'',event_time:'',venue:'',description:''});}}>
           <div style={{height:4,background:"linear-gradient(90deg,#c4527a,#e8607a)",borderRadius:4,marginBottom:16}} />
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:"0 16px"}}>
             <Field label="Recital Title *" style={{gridColumn:"1/-1"}}><Input value={recitalForm.title} onChange={e=>setRecitalForm({...recitalForm,title:e.target.value})} placeholder="e.g. Spring Showcase 2026" /></Field>
             <Field label="Date *"><Input type="date" value={recitalForm.event_date} onChange={e=>setRecitalForm({...recitalForm,event_date:e.target.value})} /></Field>
             <Field label="Time"><Input type="time" value={recitalForm.event_time} onChange={e=>setRecitalForm({...recitalForm,event_time:e.target.value})} /></Field>
@@ -967,7 +967,7 @@ function SchoolHomePage() {
       {/* ── Add Event Modal ──────────────────────────────────────────────── */}
       {modal !== null && (
         <Modal title={modal.id ? "Edit Event" : "New Event"} onClose={()=>setModal(null)} wide>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:"0 16px"}}>
             <Field label="Title *" style={{gridColumn:"1/-1"}}><Input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="e.g. Junior Ballet Class" /></Field>
             <Field label="Event Type"><Select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>{EVENT_TYPES.map(t=><option key={t}>{t}</option>)}</Select></Field>
             <div style={{gridColumn:"1/-1"}}>
@@ -1082,7 +1082,7 @@ function SuperAdminDash() {
           <div style={{ fontWeight:700, fontSize:13, color:'#15803D', marginBottom:10 }}>
             ✅ "{created.name}" created — save these login details now:
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px 24px' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:'6px 24px' }}>
             <SACredRow label="Admin Email" value={created.admin_email} />
             <SACredRow label="Password" value={created.admin_password} secret />
           </div>
@@ -1190,7 +1190,7 @@ function SuperAdminDash() {
                     onBlur={e => e.target.style.borderColor = C.border} />
                 </div>
               ))}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 14px' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:'0 14px' }}>
                 {[
                   { label:'City', key:'city', placeholder:'City' },
                   { label:'Dance Style', key:'dance_style', placeholder:'e.g. Ballet' },

@@ -727,7 +727,7 @@ function SuperAdminDash() {
           <div style={{ fontWeight: 700, fontSize: 13, color: '#15803D', marginBottom: 10 }}>
             ✅ School "{created.name}" created — save these login details now:
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: '6px 24px' }}>
             <CredRow label="Admin Email" value={created.admin_email} />
             <CredRow label="Password" value={created.admin_password} secret />
           </div>
@@ -830,7 +830,7 @@ function SuperAdminDash() {
               <div style={{ fontSize: 11, fontWeight: 700, color: C.grayChate, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 14 }}>School Details</div>
               <LabelInput label="School Name *" value={form.name} onChange={v => set('name', v)} placeholder="e.g. Rhythm & Grace Academy" />
               <LabelInput label="Owner Name *" value={form.owner_name} onChange={v => set('owner_name', v)} placeholder="Full name" />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: '0 14px' }}>
                 <LabelInput label="City" value={form.city} onChange={v => set('city', v)} placeholder="City" />
                 <LabelInput label="Dance Style" value={form.dance_style} onChange={v => set('dance_style', v)} placeholder="e.g. Ballet" />
               </div>

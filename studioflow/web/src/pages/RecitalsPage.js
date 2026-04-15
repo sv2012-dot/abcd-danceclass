@@ -819,7 +819,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
               <Field label="Event Title">
                 <Input value={editForm.title} onChange={e => setEditForm(p=>({...p,title:e.target.value}))} required />
               </Field>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:12 }}>
                 <Field label="Date">
                   <Input type="date" value={editForm.event_date} onChange={e => setEditForm(p=>({...p,event_date:e.target.value}))} />
                 </Field>
@@ -1159,7 +1159,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
             {progModal !== null && (
               <Modal title={progModal?.id ? "Edit Number" : "Add Number"} onClose={() => setProgModal(null)}>
                 <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:12 }}>
                     <Field label="Time"><Input value={progForm.time} onChange={e => setProgForm(p=>({...p,time:e.target.value}))} placeholder="e.g. 6:30 PM" /></Field>
                     <Field label="Duration"><Input value={progForm.duration} onChange={e => setProgForm(p=>({...p,duration:e.target.value}))} placeholder="e.g. 8 min" /></Field>
                   </div>

@@ -270,7 +270,7 @@ function _unused_AddStudioModal({ onClose, onSave, saving }) {
             Back to search
           </button>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "0 16px" }}>
             <Field label="Studio Name *" style={{ gridColumn: "1 / -1" }}>
               <Input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Venue name" autoFocus />
             </Field>
@@ -280,7 +280,7 @@ function _unused_AddStudioModal({ onClose, onSave, saving }) {
             <Field label="City">
               <Input value={form.city} onChange={e => set("city", e.target.value)} placeholder="City" />
             </Field>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 10px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "0 10px" }}>
               <Field label="State"><Input value={form.state} onChange={e => set("state", e.target.value)} placeholder="State" /></Field>
               <Field label="ZIP"><Input value={form.zip} onChange={e => set("zip", e.target.value)} placeholder="ZIP / Postcode" /></Field>
             </div>
@@ -331,11 +331,11 @@ function _unused_EditStudioModal({ studio, onClose, onSave, saving }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   return (
     <Modal title="Edit Studio" onClose={onClose} wide>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "0 16px" }}>
         <Field label="Studio Name *" style={{ gridColumn: "1 / -1" }}><Input value={form.name} onChange={e => set("name", e.target.value)} /></Field>
         <Field label="Address" style={{ gridColumn: "1 / -1" }}><Input value={form.address} onChange={e => set("address", e.target.value)} /></Field>
         <Field label="City"><Input value={form.city} onChange={e => set("city", e.target.value)} /></Field>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 10px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "0 10px" }}>
           <Field label="State"><Input value={form.state} onChange={e => set("state", e.target.value)} /></Field>
           <Field label="ZIP"><Input value={form.zip} onChange={e => set("zip", e.target.value)} /></Field>
         </div>
@@ -671,11 +671,11 @@ export default function StudiosPage() {
           {/* ── EDIT mode ── */}
           {panelMode === 'edit' && (
             <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "0 16px" }}>
                 <Field label="Studio Name *" style={{ gridColumn: "1 / -1" }}><Input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} /></Field>
                 <Field label="Address" style={{ gridColumn: "1 / -1" }}><Input value={editForm.address} onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))} /></Field>
                 <Field label="City"><Input value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))} /></Field>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 10px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "0 10px" }}>
                   <Field label="State"><Input value={editForm.state} onChange={e => setEditForm(f => ({ ...f, state: e.target.value }))} /></Field>
                   <Field label="ZIP"><Input value={editForm.zip} onChange={e => setEditForm(f => ({ ...f, zip: e.target.value }))} /></Field>
                 </div>
@@ -765,7 +765,7 @@ export default function StudiosPage() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                     Back to search
                   </button>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "0 16px" }}>
                     <Field label="Studio Name *" style={{ gridColumn: "1 / -1" }}>
                       <Input value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} placeholder="Venue name" autoFocus />
                     </Field>
@@ -773,7 +773,7 @@ export default function StudiosPage() {
                       <Input value={addForm.address} onChange={e => setAddForm(f => ({ ...f, address: e.target.value }))} placeholder="Street address" />
                     </Field>
                     <Field label="City"><Input value={addForm.city} onChange={e => setAddForm(f => ({ ...f, city: e.target.value }))} placeholder="City" /></Field>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 10px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "0 10px" }}>
                       <Field label="State"><Input value={addForm.state} onChange={e => setAddForm(f => ({ ...f, state: e.target.value }))} placeholder="State" /></Field>
                       <Field label="ZIP"><Input value={addForm.zip} onChange={e => setAddForm(f => ({ ...f, zip: e.target.value }))} placeholder="ZIP" /></Field>
                     </div>

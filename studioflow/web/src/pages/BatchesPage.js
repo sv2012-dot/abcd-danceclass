@@ -464,7 +464,7 @@ export default function BatchesPage() {
                 <Field label="Batch Name *">
                   <Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="e.g. Junior Ballet" />
                 </Field>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:"0 16px" }}>
                   <Field label="Dance Style"><Input value={form.dance_style} onChange={e=>setForm({...form,dance_style:e.target.value})} placeholder="e.g. Ballet" /></Field>
                   <Field label="Level"><Select value={form.level} onChange={e=>setForm({...form,level:e.target.value})}>{LEVELS.map(l=><option key={l}>{l}</option>)}</Select></Field>
                   <Field label="Instructor Name"><Input value={form.teacher_name} onChange={e=>setForm({...form,teacher_name:e.target.value})} placeholder="e.g. Swapna Varma" /></Field>

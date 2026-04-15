@@ -128,7 +128,7 @@ function VendorCard({ vendor: v, active, onSelect, onEdit, onRemove, onToggleFav
 /* ─── Vendor form fields (shared by add & edit) ─────────────────────── */
 function VendorFormFields({ form, set }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "0 16px" }}>
       <Field label="Category *" style={{ gridColumn: "1 / -1" }}>
         <select value={form.category} onChange={e => set("category", e.target.value)}
           style={{ width: "100%", padding: "9px 12px", borderRadius: 9, border: "1.5px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13, fontFamily: "var(--font-sans)" }}>
