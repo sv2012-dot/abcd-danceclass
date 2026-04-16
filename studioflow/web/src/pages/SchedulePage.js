@@ -810,8 +810,8 @@ export default function SchedulePage() {
       <div>
         {/* Day-of-week headers */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:6}}>
-          {["S","M","T","W","T","F","S"].map((d,i) => (
-            <div key={i} style={{textAlign:"center",fontSize:12,fontWeight:600,color:"var(--muted)",padding:"4px 0"}}>{d}</div>
+          {DAYS.map(d => (
+            <div key={d} style={{textAlign:"center",fontSize:12,fontWeight:600,color:"var(--muted)",padding:"4px 0"}}>{d}</div>
           ))}
         </div>
         {/* Day cells */}
