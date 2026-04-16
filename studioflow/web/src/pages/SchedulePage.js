@@ -24,7 +24,7 @@ const TYPE_COLORS = {
   Other:     "#8a7a9a",
 };
 
-const DAYS  = ["M","T","W","T","F","S","S"];
+const DAYS  = ["Mo","Tu","We","Th","Fr","Sa","Su"];
 const MONTHS = ["January","February","March","April","May","June",
                 "July","August","September","October","November","December"];
 
