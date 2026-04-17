@@ -954,6 +954,13 @@ export default function SchedulePage() {
         sid={sid}
         onBack={() => setRecitalDetailId(null)}
         onEdit={() => {}}
+        onDeleted={(eventDate) => {
+          if (eventDate) {
+            const d = new Date(eventDate.slice(0, 10) + 'T12:00:00');
+            if (!isNaN(d)) setCursor(d);
+          }
+          setRecitalDetailId(null);
+        }}
       />
     );
   }

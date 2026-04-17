@@ -96,8 +96,7 @@ function useWindowWidth() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Full-page Detail View
 // ─────────────────────────────────────────────────────────────────────────────
-export function RecitalDetail({ id, onBack, sid, onEdit }) {
-  const navigate = useNavigate();
+export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
   const [tab,              setTab]          = useState("overview");
   const [newTask,          setNewTask]      = useState("");
   const [newTaskAssignedTo, setNewTaskAssignedTo] = useState("");
@@ -283,7 +282,8 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
       qc.invalidateQueries({ queryKey: ["recitals", sid] });
       qc.invalidateQueries({ queryKey: ["events"], exact: false });
       toast.success("Recital deleted");
-      navigate('/schedule');
+      if (onDeleted) onDeleted(recital?.event_date);
+      else onBack();
     },
     onError: () => toast.error("Failed to delete recital"),
   });
