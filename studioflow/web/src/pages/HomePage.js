@@ -325,7 +325,7 @@ function RecitalImageCard({ r, index, onClick, schoolId, onPosterUpdate, canEdit
           <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleUpload} />
           <button onClick={e=>{e.stopPropagation();inputRef.current?.click();}} disabled={uploading}
             style={{ background:'rgba(0,0,0,.45)', border:'none', borderRadius:8, color:'#fff', fontSize:11, fontWeight:700, padding:'5px 10px', cursor:'pointer', backdropFilter:'blur(4px)' }}>
-            {uploading ? '…' : poster ? 'Change' : '+ Photo'}
+            {uploading ? '…' : poster ? '+' : '+ Photo'}
           </button>
         </div>
       )}
@@ -367,7 +367,7 @@ function FeaturedRecitalCard({ r, onClick, schoolId, onPosterUpdate, canEdit }) 
           <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleUpload} />
           <button onClick={e=>{e.stopPropagation();inputRef.current?.click();}} disabled={uploading}
             style={{ background:'rgba(0,0,0,.45)', border:'none', borderRadius:8, color:'#fff', fontSize:11, fontWeight:700, padding:'5px 10px', cursor:'pointer', backdropFilter:'blur(4px)' }}>
-            {uploading ? '…' : poster ? 'Change' : '+ Photo'}
+            {uploading ? '…' : poster ? '+' : '+ Photo'}
           </button>
         </div>
       )}
@@ -797,26 +797,27 @@ function SchoolHomePage() {
 
       {/* ── Mobile: stacked cards ── */}
       {isMobile && (
-        <div style={{ display:'grid', gap:20, width:'100%', boxSizing:'border-box', minWidth:0 }}>
+        <div style={{ display:'grid', gap:40, width:'100%', boxSizing:'border-box', minWidth:0 }}>
 
-        {/* Upcoming Recitals — image cards matching desktop style */}
+        {/* Upcoming Recitals — featured large + 1 more, max 2 total */}
         <div>
           <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>navigate('/recitals')} />
           {upcoming.length === 0
             ? <div style={{padding:"28px 20px",color:C.grayChate,fontSize:13,textAlign:"center",background:C.white,borderRadius:16,border:`1.5px solid ${C.border}`}}>No upcoming recitals</div>
-            : <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:10 }}>
-                {upcomingGrid.map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />)}
+            : <div>
+                {featuredRecital && (
+                  <div style={{ marginBottom: 10 }}>
+                    <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:featuredRecital.title}})} />
+                  </div>
+                )}
+                {upcomingGrid.slice(0, featuredRecital ? 1 : 2).map((r,i) => (
+                  <div key={r.id} style={{ marginBottom: 10 }}>
+                    <RecitalImageCard r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />
+                  </div>
+                ))}
               </div>
           }
         </div>
-
-        {/* Featured Recital */}
-        {featuredRecital && (
-          <div>
-            <SectionTitle first="FEATURED" accent="RECITAL" />
-            <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:featuredRecital.title}})} />
-          </div>
-        )}
 
         {/* Upcoming Classes */}
         <Card padding={0} style={{display:"flex",flexDirection:"column"}}>
@@ -856,14 +857,14 @@ function SchoolHomePage() {
 
         {/* To-Dos */}
         <Card padding={0} style={{display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:`1px solid ${C.border}`}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px"}}>
             <div style={{fontSize:11,fontWeight:700,color:C.grayChate,textTransform:"uppercase",letterSpacing:".1em"}}>To-Do</div>
             <button onClick={()=>navigate("/todos")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.accentPurple,fontWeight:600,padding:0}}>Add To-do</button>
           </div>
           {latestTodos.length === 0
             ? <div style={{padding:"20px 16px",color:C.grayChate,fontSize:13,textAlign:"center"}}>All caught up!</div>
             : latestTodos.map(t => (
-                <TodoRow key={t.id} todo={t} compact
+                <TodoRow key={t.id} todo={t} compact flat
                   onToggle={() => toggleTodoMutation.mutate(t.id)}
                   onDelete={() => deleteTodoMutation.mutate(t.id)}
                 />

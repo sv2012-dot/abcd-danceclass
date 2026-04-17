@@ -69,8 +69,8 @@ export const AnimatedCheckCircle = ({ visuallyComplete, animating }) => (
   <div style={{ width: 44, height: 44, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
     <div style={{
       width: 20, height: 20, borderRadius: '50%',
-      border: visuallyComplete ? '2px solid #34c759' : '2px solid var(--border)',
-      background: visuallyComplete ? '#34c759' : 'var(--card)',
+      border: visuallyComplete ? '2px solid #7C3AED' : '2px solid var(--border)',
+      background: visuallyComplete ? 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)' : 'var(--card)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexShrink: 0,
       ...(animating
@@ -102,7 +102,7 @@ export const AnimatedCheckCircle = ({ visuallyComplete, animating }) => (
  * Clicking anywhere on the row (circle or text) toggles the item.
  * Only the trash icon triggers delete.
  */
-export function TodoRow({ todo, onToggle, onDelete, compact = false }) {
+export function TodoRow({ todo, onToggle, onDelete, compact = false, flat = false }) {
   const serverComplete = !!todo.is_complete;
 
   const [localComplete, setLocalComplete] = useState(false);
@@ -147,6 +147,39 @@ export function TodoRow({ todo, onToggle, onDelete, compact = false }) {
       setLocalComplete(false); // server state takes over
     }, 800));
   };
+
+  /* ── flat mode: plain row matching Upcoming Classes visual style ── */
+  if (flat) {
+    return (
+      <div
+        onClick={handleClick}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          borderTop: '1px solid var(--border)',
+          padding: '0 16px 0 0',
+          cursor: 'pointer',
+          opacity: serverComplete ? 0.65 : 1,
+          background: 'transparent',
+          transition: 'background .1s, opacity .5s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface)'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+      >
+        <AnimatedCheckCircle visuallyComplete={visuallyComplete} animating={animating} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <span style={{
+            fontSize: 13, fontWeight: 500, lineHeight: 1.4, display: 'block',
+            color: visuallyComplete ? 'var(--muted)' : 'var(--text)',
+            textDecoration: (visuallyComplete && striked) ? 'line-through' : 'none',
+            transition: 'color .3s, text-decoration .2s',
+          }}>
+            {todo.title}
+          </span>
+        </div>
+        <TrashIcon onClick={e => { e.stopPropagation(); onDelete(); }} />
+      </div>
+    );
+  }
 
   return (
     <Card

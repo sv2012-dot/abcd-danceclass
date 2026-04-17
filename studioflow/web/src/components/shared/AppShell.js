@@ -86,6 +86,11 @@ const Icons = {
       <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
     </svg>
   ),
+  about: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+    </svg>
+  ),
   menu: (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
@@ -102,6 +107,7 @@ const NAV_ITEMS = {
   superadmin: [
     { to:'/', label:'Dashboard', icon:'dashboard' },
     { to:'/schools', label:'Schools', icon:'schools' },
+    { to:'/about', label:'About', icon:'about' },
   ],
   school_admin: [
     { to:'/', label:'Dashboard', icon:'dashboard' },
@@ -111,6 +117,7 @@ const NAV_ITEMS = {
     { to:'/students', label:'Students', icon:'users' },
     { to:'/studios', label:'Studios', icon:'studios' },
     { to:'/vendors', label:'Vendors', icon:'vendors' },
+    { to:'/about', label:'About', icon:'about' },
   ],
   teacher: [
     { to:'/', label:'Dashboard', icon:'dashboard' },
@@ -120,10 +127,12 @@ const NAV_ITEMS = {
     { to:'/students', label:'Students', icon:'users' },
     { to:'/studios', label:'Studios', icon:'studios' },
     { to:'/vendors', label:'Vendors', icon:'vendors' },
+    { to:'/about', label:'About', icon:'about' },
   ],
   parent: [
     { to:'/', label:'Dashboard', icon:'dashboard' },
     { to:'/parent', label:'My Children', icon:'parent' },
+    { to:'/about', label:'About', icon:'about' },
   ],
 };
 
@@ -298,7 +307,7 @@ export default function AppShell() {
       {/* Top bar */}
       <header style={{ height:56, background:'var(--sidebar)', borderBottom:'1px solid var(--sidebar-border)', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 16px', flexShrink:0, zIndex:200 }}>
         <div
-          onClick={() => navigate('/about')}
+          onClick={() => navigate('/')}
           style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', flex:1, minWidth:0 }}
         >
           <div style={{ width:36, height:36, borderRadius:'50%', background:AVATAR_GRAD, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:13, flexShrink:0 }}>
