@@ -351,21 +351,24 @@ export default function AppShell() {
 
       {/* Page content */}
       <main style={{ flex:1, overflowY:'auto', overflowX:'hidden', background: dashBg, transition:'background .3s' }}>
-        <div style={{ padding:'20px 16px', maxWidth:1340, margin:'0 auto', boxSizing:'border-box', width:'100%' }}>
-          <Outlet />
-        </div>
+        {/* Flex column wrapper so footer always hugs the bottom of the viewport */}
+        <div style={{ display:'flex', flexDirection:'column', minHeight:'100%' }}>
+          <div style={{ flex:1, padding:'20px 16px', maxWidth:1340, margin:'0 auto', boxSizing:'border-box', width:'100%' }}>
+            <Outlet />
+          </div>
 
-        {/* Mobile footer */}
-        <footer style={{ borderTop:'1px solid var(--sidebar-border)', padding:'14px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'var(--sidebar)' }}>
-          <div>
-            <div style={{ fontSize:13, fontWeight:700, color:'var(--sidebar-foreground)' }}>ManchQ</div>
-            <div style={{ fontSize:10, color:'var(--sidebar-muted)', letterSpacing:'0.08em', textTransform:'uppercase', marginTop:2, fontWeight:500 }}>Your dance studio manager</div>
-          </div>
-          <div style={{ textAlign:'right' }}>
-            <div style={{ fontSize:10, color:'var(--sidebar-muted)', textTransform:'uppercase', letterSpacing:'0.07em', fontWeight:600, marginBottom:2 }}>Signed in as</div>
-            <div style={{ fontSize:12, fontWeight:700, color:'var(--sidebar-foreground)' }}>{user?.name}</div>
-          </div>
-        </footer>
+          {/* Mobile footer */}
+          <footer style={{ borderTop:'1px solid var(--sidebar-border)', padding:'14px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'var(--sidebar)', flexShrink:0 }}>
+            <div>
+              <div style={{ fontSize:13, fontWeight:700, color:'var(--sidebar-foreground)' }}>ManchQ</div>
+              <div style={{ fontSize:10, color:'var(--sidebar-muted)', letterSpacing:'0.08em', textTransform:'uppercase', marginTop:2, fontWeight:500 }}>Your dance studio manager</div>
+            </div>
+            <div style={{ textAlign:'right' }}>
+              <div style={{ fontSize:10, color:'var(--sidebar-muted)', textTransform:'uppercase', letterSpacing:'0.07em', fontWeight:600, marginBottom:2 }}>Signed in as</div>
+              <div style={{ fontSize:12, fontWeight:700, color:'var(--sidebar-foreground)' }}>{user?.name}</div>
+            </div>
+          </footer>
+        </div>
       </main>
     </div>
   );

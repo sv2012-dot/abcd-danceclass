@@ -69,7 +69,7 @@ export const AnimatedCheckCircle = ({ visuallyComplete, animating }) => (
   <div style={{ width: 44, height: 44, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
     <div style={{
       width: 20, height: 20, borderRadius: '50%',
-      border: visuallyComplete ? '2px solid #7C3AED' : '2px solid var(--border)',
+      border: visuallyComplete ? '2px solid #7C3AED' : '2px solid var(--border-visible)',
       background: visuallyComplete ? 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)' : 'var(--card)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexShrink: 0,

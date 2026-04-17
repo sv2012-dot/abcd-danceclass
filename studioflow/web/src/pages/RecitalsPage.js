@@ -259,8 +259,11 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   // ── Inline Edit Event helpers ────────────────────────────────────────────
   const updateMutation = useMutation({
     mutationFn: (data) => api.update(sid, id, data),
-    onSuccess: (updated) => {
-      qc.setQueryData(["recital-detail", sid, id], (old) => ({ ...old, ...updated }));
+    onSuccess: (updated, variables) => {
+      // Merge form values first (variables = editForm), then overlay server response.
+      // This ensures fields like event_time are immediately visible even if the
+      // API response doesn't echo every field back.
+      qc.setQueryData(["recital-detail", sid, id], (old) => ({ ...old, ...variables, ...updated }));
       qc.invalidateQueries(["recitals", sid]);
       toast.success("Event updated");
       setEditOpen(false);
@@ -579,12 +582,12 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
               style={{
                 display:"inline-flex", alignItems:"center", justifyContent:"center",
                 width: isMobile ? 36 : 40, height: isMobile ? 36 : 40,
-                borderRadius:10, border:"1.5px solid var(--border)",
-                background: recital.is_featured ? "#FFF9C4" : "var(--card)",
+                borderRadius:10, border:"1.5px solid var(--border-visible)",
+                background: recital.is_featured ? "#FFF9C4" : "var(--surface)",
                 cursor:"pointer", transition:"all .15s", flexShrink:0,
               }}
-              onMouseEnter={e => e.currentTarget.style.background = recital.is_featured ? "#FFF176" : "var(--surface)"}
-              onMouseLeave={e => e.currentTarget.style.background = recital.is_featured ? "#FFF9C4" : "var(--card)"}
+              onMouseEnter={e => e.currentTarget.style.background = recital.is_featured ? "#FFF176" : "var(--secondary)"}
+              onMouseLeave={e => e.currentTarget.style.background = recital.is_featured ? "#FFF9C4" : "var(--surface)"}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill={recital.is_featured ? "#F59E0B" : "none"} stroke={recital.is_featured ? "#F59E0B" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>

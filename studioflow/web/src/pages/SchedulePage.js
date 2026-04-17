@@ -1189,7 +1189,7 @@ export default function SchedulePage() {
                     {EVENT_TYPES.map(t=><option key={t}>{t}</option>)}
                   </Select>
                 </Field>
-                <div style={{gridColumn:"1/-1"}}>
+                <div style={{gridColumn:"1/-1", marginBottom:12}}>
                   <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Batches (optional)</div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
                     {batches.map(b => {
