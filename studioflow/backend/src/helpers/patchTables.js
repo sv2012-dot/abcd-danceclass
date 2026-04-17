@@ -76,6 +76,7 @@ async function patchTables() {
     await addColumnIfMissing('todos',    'assigned_to',  'VARCHAR(100) NULL');
     await addColumnIfMissing('recitals', 'is_featured',  'TINYINT(1) NOT NULL DEFAULT 0');
     await addColumnIfMissing('recitals', 'poster_url',   'MEDIUMTEXT NULL');
+    await addColumnIfMissing('recitals', 'event_time',   'VARCHAR(10) NULL');
 
     // Vendors table
     await pool.query(`
