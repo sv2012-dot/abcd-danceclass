@@ -281,6 +281,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
       qc.removeQueries(["recital-detail", sid, id]);
       qc.setQueryData(["recitals", sid], old => Array.isArray(old) ? old.filter(r => r.id !== id) : old);
       qc.invalidateQueries(["recitals", sid]);
+      qc.invalidateQueries({ queryKey: ["events"], exact: false });
       toast.success("Recital deleted");
       navigate('/recitals');
     },

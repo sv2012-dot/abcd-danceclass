@@ -62,6 +62,19 @@ exports.update = async (req, res) => {
 
 exports.remove = async (req, res) => {
   try {
+    // Fetch the recital title before deleting so we can clean up the events table
+    const [recitalRows] = await pool.query(
+      'SELECT title FROM recitals WHERE id = ? AND school_id = ?',
+      [req.params.id, req.params.schoolId]
+    );
+    if (!recitalRows[0]) return res.status(404).json({ error: 'Recital not found' });
+
+    // Delete any matching Recital-type events in the events table (legacy entries)
+    await pool.query(
+      "DELETE FROM events WHERE school_id = ? AND type = 'Recital' AND LOWER(title) = LOWER(?)",
+      [req.params.schoolId, recitalRows[0].title]
+    );
+
     await pool.query('DELETE FROM recitals WHERE id = ? AND school_id = ?', [req.params.id, req.params.schoolId]);
     res.json({ message: 'Recital deleted' });
   } catch (err) { res.status(500).json({ error: err.message }); }
