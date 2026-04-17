@@ -115,7 +115,8 @@ export const AnimatedCheckCircle = ({ visuallyComplete, animating, particles, on
       }} />
     ))}
     {/* Circle button */}
-    <div
+    <button
+      type="button"
       onClick={onClick}
       title={visuallyComplete ? 'Mark incomplete' : 'Mark complete'}
       style={{
@@ -123,7 +124,7 @@ export const AnimatedCheckCircle = ({ visuallyComplete, animating, particles, on
         border: visuallyComplete ? '2px solid #34c759' : '2px solid var(--border)',
         background: visuallyComplete ? '#34c759' : 'var(--card)',
         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        position: 'relative', zIndex: 1,
+        position: 'relative', zIndex: 1, padding: 0, flexShrink: 0,
         ...(animating
           ? { animation: 'checkBounce 1.3s cubic-bezier(0.34,1.56,0.64,1) forwards' }
           : { transition: 'background .2s, border-color .2s' }),
@@ -142,7 +143,7 @@ export const AnimatedCheckCircle = ({ visuallyComplete, animating, particles, on
           <polyline points="20 6 9 17 4 12"/>
         </svg>
       )}
-    </div>
+    </button>
   </div>
 );
 

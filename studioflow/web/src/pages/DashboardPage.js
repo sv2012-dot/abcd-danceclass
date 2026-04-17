@@ -394,7 +394,7 @@ export default function DashboardPage() {
   const widgetsBlock = (
     // TodoKeyframeStyles is included here so animations work in both mobile & desktop layouts
     <><TodoKeyframeStyles />
-    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 18 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 18, width: '100%', boxSizing: 'border-box' }}>
       {/* Upcoming Recitals */}
       <Widget title="Upcoming Recitals" onViewAll={() => navigate('/recitals')}>
         {upcomingRecitals.length === 0
@@ -433,7 +433,7 @@ export default function DashboardPage() {
                 style={{
                   flex: 1, padding: '6px 10px', borderRadius: 8,
                   border: `1.5px solid ${C.accentPurple}`,
-                  background: '#fff', color: C.ebony, fontSize: 13, outline: 'none',
+                  background: 'var(--card)', color: C.ebony, fontSize: 13, outline: 'none',
                 }}
                 onKeyDown={e => { if (e.key === 'Escape') { setAddingTodo(false); setNewTodo(''); } }}
               />
@@ -454,7 +454,7 @@ export default function DashboardPage() {
 
   // ── Stat cards block ───────────────────────────────────────────────────────────
   const statsBlock = (
-    <div style={{ display: 'flex', gap: 12, flexShrink: 0, flexWrap: isMobile ? 'nowrap' : 'wrap' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, width: '100%' }}>
       <StatCard label="Students" value={studentList.length}           icon={<IconStudents />} accentColor={C.accentPurple}  isMobile={isMobile} />
       <StatCard label="Batches"  value={batchList.length}             icon={<IconBatches  />} accentColor="#0EA5E9"           isMobile={isMobile} />
       <StatCard label="Recitals" value={upcomingRecitals.length}      icon={<IconRecitals />} accentColor={C.accentMagenta}  isMobile={isMobile} />
@@ -464,7 +464,7 @@ export default function DashboardPage() {
   // ── MOBILE LAYOUT ─────────────────────────────────────────────────────────────
   if (isMobile) {
     return (
-      <div style={{ paddingBottom: 24 }}>
+      <div style={{ paddingBottom: 24, width: '100%', boxSizing: 'border-box' }}>
         {/* Greeting */}
         <div style={{ marginBottom: 20 }}>
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 22, fontWeight: 800, color: C.ebony, marginBottom: 4, lineHeight: 1.2 }}>
