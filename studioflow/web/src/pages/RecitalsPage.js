@@ -597,6 +597,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                 width: isMobile ? 36 : 40, height: isMobile ? 36 : 40,
                 borderRadius:10, border:"1.5px solid var(--border-visible)",
                 background: recital.is_featured ? "#FFF9C4" : "var(--surface)",
+                color: recital.is_featured ? "#F59E0B" : "var(--muted-foreground)",
                 cursor:"pointer", transition:"all .15s", flexShrink:0,
               }}
               onMouseEnter={e => e.currentTarget.style.background = recital.is_featured ? "#FFF176" : "var(--secondary)"}
