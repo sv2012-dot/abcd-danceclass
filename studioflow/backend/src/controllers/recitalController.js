@@ -25,6 +25,7 @@ exports.get = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
+  // event_time: e.g. "18:00" (stored as VARCHAR, formatted on client)
   const { title, event_date, event_time, venue, status, description, tasks } = req.body;
   if (!title || !event_date) return res.status(400).json({ error: 'Title and event_date required' });
   const conn = await pool.getConnection();

@@ -660,9 +660,9 @@ function SchoolHomePage() {
 
       {/* ── Mobile: consolidated Create button ── */}
       {isMobile && isAdmin && (
-        <div ref={createMenuRef} style={{position:"relative",marginBottom:24}}>
+        <div ref={createMenuRef} style={{position:"relative",marginBottom:24,display:"flex",justifyContent:"flex-end"}}>
           <button onClick={()=>setCreateMenuOpen(o=>!o)} style={{
-            width:"100%",padding:"13px 20px",borderRadius:14,border:"none",
+            width:"30%",padding:"13px 20px",borderRadius:14,border:"none",
             background:C.accentGrad,color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",
             display:"flex",alignItems:"center",justifyContent:"center",gap:8,
             boxShadow:"0 4px 20px rgba(124,58,237,.3)",
@@ -672,7 +672,7 @@ function SchoolHomePage() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{marginLeft:2,transition:"transform .2s",transform:createMenuOpen?"rotate(180deg)":"none"}}><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           {createMenuOpen && (
-            <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,right:0,background:C.white,border:`1.5px solid ${C.border}`,borderRadius:14,boxShadow:"0 8px 32px rgba(0,0,0,.14)",zIndex:200,overflow:"hidden"}}>
+            <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,minWidth:220,background:C.white,border:`1.5px solid ${C.border}`,borderRadius:14,boxShadow:"0 8px 32px rgba(0,0,0,.14)",zIndex:200,overflow:"hidden"}}>
               {[
                 { label:"Create Event",   color:"#0EA5E9",      action:()=>{ openAdd(); setCreateMenuOpen(false); } },
                 { label:"Create Recital", color:"#C026D3",      action:()=>{ setShowAddRecital(true); setCreateMenuOpen(false); } },

@@ -386,7 +386,7 @@ export default function SchedulePage() {
   const [detailEvent, setDetailEvent] = useState(null);
 
   // Recital quick-create form (used in 'add-recital' panel mode)
-  const EMPTY_RECITAL_FORM = { title:'', event_date:'', event_time:'', venue:'', description:'' };
+  const EMPTY_RECITAL_FORM = { title:'', event_date:'', event_time:'18:00', venue:'', description:'' };
   const [recitalForm, setRecitalForm] = useState(EMPTY_RECITAL_FORM);
 
   // Filters
