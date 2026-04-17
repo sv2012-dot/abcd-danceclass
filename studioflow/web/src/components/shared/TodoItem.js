@@ -234,6 +234,8 @@ export function TodoRow({ todo, onToggle, onDelete, compact = false }) {
   return (
     <Card
       variant="row"
+      clickable
+      onClick={handleClick}
       style={{
         display: 'flex', alignItems: 'flex-start', gap: 10,
         marginBottom: 4,
@@ -245,7 +247,7 @@ export function TodoRow({ todo, onToggle, onDelete, compact = false }) {
         visuallyComplete={visuallyComplete}
         animating={animating}
         particles={particles.current}
-        onClick={handleClick}
+        onClick={e => e.stopPropagation()}
       />
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Title with sequenced strikethrough */}
@@ -298,7 +300,7 @@ export function TodoRow({ todo, onToggle, onDelete, compact = false }) {
           </>
         )}
       </div>
-      <TrashIcon onClick={onDelete} />
+      <TrashIcon onClick={e => { e.stopPropagation(); onDelete(); }} />
     </Card>
   );
 }
