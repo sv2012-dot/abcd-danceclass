@@ -647,12 +647,12 @@ function SchoolHomePage() {
   ) : null;
 
   return (
-    <div style={{ width:'100%', minWidth:0, boxSizing:'border-box' }}>
+    <div style={{ width:'100%', minWidth:0, boxSizing:'border-box', ...(isMobile && { paddingTop:24, paddingBottom:24 }) }}>
 
       {/* Stats row moved below upcoming recitals on desktop */}
 
       {/* ── Greeting ── */}
-      <div style={{marginBottom:isMobile?12:20}}>
+      <div style={{marginBottom:isMobile?24:20}}>
         <p style={{fontFamily:"var(--font-b)",fontSize:13,fontWeight:400,color:C.boulder}}>
           <span style={{fontWeight:600,color:C.ebony}}>{greeting}, {user?.name?.split(" ")[0]}!</span>{' · '}{todayStr}
         </p>
@@ -660,7 +660,7 @@ function SchoolHomePage() {
 
       {/* ── Mobile: consolidated Create button ── */}
       {isMobile && isAdmin && (
-        <div ref={createMenuRef} style={{position:"relative",marginBottom:20}}>
+        <div ref={createMenuRef} style={{position:"relative",marginBottom:24}}>
           <button onClick={()=>setCreateMenuOpen(o=>!o)} style={{
             width:"100%",padding:"13px 20px",borderRadius:14,border:"none",
             background:C.accentGrad,color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",
@@ -816,7 +816,7 @@ function SchoolHomePage() {
 
       {/* ── Mobile: stacked cards ── */}
       {isMobile && (
-        <div style={{ display:'grid', gap:40, width:'100%', boxSizing:'border-box', minWidth:0 }}>
+        <div style={{ display:'grid', gap:24, width:'100%', boxSizing:'border-box', minWidth:0 }}>
 
         {/* Upcoming Recitals — row 1: 2-col grid tiles, row 2: featured full-width */}
         <div>
