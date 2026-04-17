@@ -125,6 +125,9 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const dragItem     = useRef(null); // index being dragged
   const dragOverItem = useRef(null); // index being hovered over
 
+  // Delete confirmation
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   // Inline edit modal (meta + overview)
   const [editOpen,   setEditOpen]   = useState(false);
   const [editForm,   setEditForm]   = useState({});
@@ -269,6 +272,16 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
       setEditOpen(false);
     },
     onError: () => toast.error("Failed to save changes"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.remove(sid, id),
+    onSuccess: () => {
+      qc.invalidateQueries(["recitals", sid]);
+      toast.success("Recital deleted");
+      onBack();
+    },
+    onError: () => toast.error("Failed to delete recital"),
   });
 
   const openInlineEdit = () => {
@@ -612,6 +625,26 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
               </svg>
               {isMobile ? "Edit" : "Edit Event"}
             </button>
+
+            {/* ── Delete Recital ── */}
+            <button onClick={() => setConfirmDelete(true)} style={{
+              display:"inline-flex", alignItems:"center", justifyContent:"center",
+              width: isMobile ? 36 : 40, height: isMobile ? 36 : 40,
+              borderRadius:10, border:"1.5px solid var(--border)",
+              background:"var(--card)", cursor:"pointer",
+              color:"var(--muted)", transition:"all .15s", flexShrink:0,
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#fff0ee"; e.currentTarget.style.borderColor = "#ff3b30"; e.currentTarget.style.color = "#ff3b30"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "var(--card)"; e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--muted)"; }}
+              title="Delete recital"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -832,6 +865,32 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
             </div>
 
           </div>
+        )}
+
+        {/* ── Delete confirmation modal ── */}
+        {confirmDelete && (
+          <Modal title="Delete Recital" onClose={() => setConfirmDelete(false)}>
+            <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+              <p style={{ margin:0, fontSize:14, color:"var(--text)", lineHeight:1.6 }}>
+                Are you sure you want to delete <strong>{recital?.title}</strong>? This action cannot be undone.
+              </p>
+              <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+                <button onClick={() => setConfirmDelete(false)} style={{
+                  padding:"9px 20px", borderRadius:10, border:"1.5px solid var(--border)",
+                  background:"var(--card)", color:"var(--text)", fontWeight:600, fontSize:13, cursor:"pointer",
+                }}>
+                  Cancel
+                </button>
+                <button onClick={() => { setConfirmDelete(false); deleteMutation.mutate(); }} disabled={deleteMutation.isPending} style={{
+                  padding:"9px 20px", borderRadius:10, border:"none",
+                  background:"#ff3b30", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer",
+                  opacity: deleteMutation.isPending ? 0.7 : 1,
+                }}>
+                  {deleteMutation.isPending ? "Deleting…" : "Yes, Delete"}
+                </button>
+              </div>
+            </div>
+          </Modal>
         )}
 
         {/* ── Inline Edit Event modal ── */}
