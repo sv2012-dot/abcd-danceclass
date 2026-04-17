@@ -22,50 +22,17 @@ export function isOverdue(dateStr) {
 export const TodoKeyframeStyles = () => (
   <style>{`
     @keyframes checkBounce {
-      0%   { transform: scale(0.3);  }
-      35%  { transform: scale(1.50); }
-      60%  { transform: scale(0.85); }
-      80%  { transform: scale(1.12); }
+      0%   { transform: scale(0.4);  }
+      50%  { transform: scale(1.35); }
+      75%  { transform: scale(0.9);  }
       100% { transform: scale(1);    }
     }
     @keyframes checkDraw {
       from { stroke-dashoffset: 30; }
       to   { stroke-dashoffset: 0;  }
     }
-    /* Real confetti: burst up, arc out, fall with gravity, flutter (scaleX flip) */
-    @keyframes confettiRain {
-      0%   {
-        opacity: 1;
-        transform: translate(0, 0) rotate(0deg) scaleX(1);
-      }
-      20%  {
-        opacity: 1;
-        transform: translate(calc(var(--tx) * .38), calc(var(--arc)))
-                   rotate(calc(var(--tr) * .25)) scaleX(-0.6);
-      }
-      50%  {
-        opacity: 1;
-        transform: translate(calc(var(--tx) * .68), calc(var(--arc) * .25 + var(--ty) * .42))
-                   rotate(calc(var(--tr) * .58)) scaleX(0.85);
-      }
-      80%  {
-        opacity: 0.85;
-        transform: translate(calc(var(--tx) * .9), calc(var(--ty) * .82))
-                   rotate(calc(var(--tr) * .85)) scaleX(-0.4);
-      }
-      100% {
-        opacity: 0;
-        transform: translate(var(--tx), var(--ty)) rotate(var(--tr)) scaleX(0.2);
-      }
-    }
   `}</style>
 );
-
-export const CONFETTI_COLORS = [
-  '#7C3AED','#DC4EFF','#34c759','#f4a041',
-  '#6a7fdb','#FF6B6B','#22d3ee','#f59e0b',
-  '#e879f9','#4ade80','#fb923c','#38bdf8',
-];
 
 /* ─── icons ──────────────────────────────────────── */
 export const TrashIcon = ({ onClick }) => (
@@ -95,60 +62,28 @@ export const CalSmIcon = () => (
   </svg>
 );
 
-/* ─── animated check circle ───────────────────────── */
-export const AnimatedCheckCircle = ({ visuallyComplete, animating, particles, onClick }) => (
-  /* Outer div is 44×44 so the tap target meets mobile guidelines, but the
-     visual circle stays 20×20 centred inside it. */
-  <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-    {/* Confetti burst — anchored to the visual centre */}
-    {animating && particles.map((p, i) => (
-      <span key={i} style={{
-        position: 'absolute', top: '50%', left: '50%',
-        width: p.w, height: p.h,
-        marginTop: -p.h / 2, marginLeft: -p.w / 2,
-        borderRadius: 1,
-        background: p.color,
-        '--tx':  `${Math.round(Math.cos(p.angle) * p.distance)}px`,
-        '--ty':  `${Math.round(Math.sin(p.angle) * p.distance)}px`,
-        '--tr':  `${p.rotation}deg`,
-        '--arc': `${p.arc}px`,
-        animation: `confettiRain ${1.5 + (i % 6) * 0.12}s cubic-bezier(0.22,0.68,0,1.2) ${i * 0.018}s forwards`,
-        pointerEvents: 'none', zIndex: 20, display: 'block',
-      }} />
-    ))}
-    {/* Invisible full-size tap button */}
-    <button
-      type="button"
-      onClick={onClick}
-      title={visuallyComplete ? 'Mark incomplete' : 'Mark complete'}
-      style={{
-        position: 'absolute', inset: 0, borderRadius: '50%',
-        background: 'transparent', border: 'none',
-        cursor: 'pointer', padding: 0, zIndex: 2,
-        WebkitTapHighlightColor: 'transparent',
-      }}
-    />
-    {/* Visual circle — pointer-events off so clicks fall through to button */}
-    <div
-      style={{
-        width: 20, height: 20, borderRadius: '50%',
-        border: visuallyComplete ? '2px solid #34c759' : '2px solid var(--border)',
-        background: visuallyComplete ? '#34c759' : 'var(--card)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        position: 'relative', zIndex: 1, flexShrink: 0,
-        pointerEvents: 'none',
-        ...(animating
-          ? { animation: 'checkBounce 1.3s cubic-bezier(0.34,1.56,0.64,1) forwards' }
-          : { transition: 'background .2s, border-color .2s' }),
-      }}
-    >
+/* ─── check circle (visual only — Card handles the click) ─── */
+export const AnimatedCheckCircle = ({ visuallyComplete, animating }) => (
+  /* 44×44 touch target area, circle stays 20×20 inside.
+     pointerEvents:none so all taps fall through to the Card. */
+  <div style={{ width: 44, height: 44, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+    <div style={{
+      width: 20, height: 20, borderRadius: '50%',
+      border: visuallyComplete ? '2px solid #34c759' : '2px solid var(--border)',
+      background: visuallyComplete ? '#34c759' : 'var(--card)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0,
+      ...(animating
+        ? { animation: 'checkBounce 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards' }
+        : { transition: 'background .2s, border-color .2s' }),
+    }}>
       {visuallyComplete && (
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff"
           strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
           style={{
             strokeDasharray: 30,
             ...(animating
-              ? { animation: 'checkDraw 0.8s 0.2s ease-out forwards' }
+              ? { animation: 'checkDraw 0.35s 0.1s ease-out forwards' }
               : { strokeDashoffset: 0 }),
           }}
         >
@@ -161,26 +96,21 @@ export const AnimatedCheckCircle = ({ visuallyComplete, animating, particles, on
 
 /* ─── shared TodoRow ──────────────────────────────── */
 /**
- * Animation sequence (incomplete → complete):
- *   0ms    : check turns green, bounce + confetti start
- *   900ms  : strikethrough appears on text
- *   3000ms : onToggle() called → server saves → item moves to completed section
- *
  * compact=false (default) — full row with metadata (TodosPage)
  * compact=true            — title + check + trash only (Dashboard widget)
+ *
+ * Clicking anywhere on the row (circle or text) toggles the item.
+ * Only the trash icon triggers delete.
  */
 export function TodoRow({ todo, onToggle, onDelete, compact = false }) {
   const serverComplete = !!todo.is_complete;
 
-  // Local visual state — drives appearance before server confirms
   const [localComplete, setLocalComplete] = useState(false);
   const [striked,       setStriked]       = useState(serverComplete);
   const [animating,     setAnimating]     = useState(false);
-  const particles = useRef([]);
-  const pending   = useRef(false);
-  const timers    = useRef([]);
+  const pending = useRef(false);
+  const timers  = useRef([]);
 
-  // Keep striked in sync when server state changes (e.g. page load, undo)
   useEffect(() => { setStriked(serverComplete); }, [serverComplete]);
 
   const clearTimers = () => { timers.current.forEach(clearTimeout); timers.current = []; };
@@ -192,43 +122,30 @@ export function TodoRow({ todo, onToggle, onDelete, compact = false }) {
 
   const handleClick = () => {
     if (serverComplete) {
-      // Toggling back to incomplete: immediate, no animation
+      // Un-complete: immediate, no animation
       onToggle();
       setLocalComplete(false);
       setStriked(false);
       return;
     }
-    if (pending.current) return; // prevent double-click during animation
+    if (pending.current) return;
     pending.current = true;
+    clearTimers();
 
-    // Step 1 (0ms): check turns green + bounce + confetti
-    particles.current = Array.from({ length: 30 }, (_, i) => {
-      const isStrip = i % 3 !== 0; // 2/3 are long thin strips, 1/3 squarish
-      return {
-        angle:    (i / 30) * Math.PI * 2 + (Math.random() - 0.5) * 0.4,
-        distance: 32 + Math.floor(Math.random() * 44),
-        color:    CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-        // Rectangle dimensions: strips vs. squares
-        w: isStrip ? 8 + Math.floor(Math.random() * 7)  : 5 + Math.floor(Math.random() * 4),
-        h: isStrip ? 3 + Math.floor(Math.random() * 2)  : 5 + Math.floor(Math.random() * 4),
-        rotation: Math.floor(Math.random() * 540) - 180,
-        // Upward arc kick: all pieces burst upward first, then gravity pulls them
-        arc: -(24 + Math.floor(Math.random() * 22)),
-      };
-    });
+    // Immediately show check + bounce
     setLocalComplete(true);
     setAnimating(true);
 
-    // Step 2 (600ms): strikethrough appears after check settles
-    timers.current.push(setTimeout(() => setStriked(true), 600));
+    // Strikethrough after bounce settles (~400ms)
+    timers.current.push(setTimeout(() => setStriked(true), 400));
 
-    // Step 3 (2000ms): confetti finishes, state changes via onToggle
+    // Fire mutation after short visual confirmation (~800ms)
     timers.current.push(setTimeout(() => {
       setAnimating(false);
-      onToggle();        // fires the mutation — item will move/fade after this
+      onToggle();
       pending.current = false;
-      setLocalComplete(false); // cleanup: server state now owns it
-    }, 2000));
+      setLocalComplete(false); // server state takes over
+    }, 800));
   };
 
   return (
@@ -237,7 +154,7 @@ export function TodoRow({ todo, onToggle, onDelete, compact = false }) {
       clickable
       onClick={handleClick}
       style={{
-        display: 'flex', alignItems: 'flex-start', gap: 10,
+        display: 'flex', alignItems: 'center', gap: 4,
         marginBottom: 4,
         opacity: serverComplete ? 0.65 : 1,
         transition: 'box-shadow .18s, border-color .18s, opacity .5s',
@@ -246,16 +163,13 @@ export function TodoRow({ todo, onToggle, onDelete, compact = false }) {
       <AnimatedCheckCircle
         visuallyComplete={visuallyComplete}
         animating={animating}
-        particles={particles.current}
-        onClick={e => e.stopPropagation()}
       />
       <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Title with sequenced strikethrough */}
         <span style={{
           fontSize: 13, fontWeight: 500, lineHeight: 1.4, display: 'block',
           color: visuallyComplete ? 'var(--muted)' : 'var(--text)',
           textDecoration: (visuallyComplete && striked) ? 'line-through' : 'none',
-          transition: 'color .4s, text-decoration .3s',
+          transition: 'color .3s, text-decoration .2s',
         }}>
           {todo.title}
         </span>
