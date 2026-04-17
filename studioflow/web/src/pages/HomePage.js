@@ -653,10 +653,9 @@ function SchoolHomePage() {
 
       {/* ── Greeting ── */}
       <div style={{marginBottom:isMobile?12:20}}>
-        <h1 style={{fontFamily:"var(--font-d)",fontSize:26,marginBottom:3,lineHeight:1.2,fontWeight:700,color:C.ebony}}>
-          {greeting}, {user?.name?.split(" ")[0]}!
-        </h1>
-        <p style={{color:C.boulder,fontSize:13,fontWeight:400}}>{school?.name} · {todayStr}</p>
+        <p style={{fontFamily:"var(--font-b)",fontSize:13,fontWeight:400,color:C.boulder}}>
+          <span style={{fontWeight:600,color:C.ebony}}>{greeting}, {user?.name?.split(" ")[0]}!</span>{' · '}{todayStr}
+        </p>
       </div>
 
       {/* ── Mobile: consolidated Create button ── */}
