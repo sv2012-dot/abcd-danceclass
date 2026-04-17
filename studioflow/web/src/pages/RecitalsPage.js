@@ -127,6 +127,8 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
 
   // Delete confirmation
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Capture event_date before deletion so we can navigate correctly after cache is cleared
+  const eventDateRef = useRef(null);
 
   // Inline edit modal (meta + overview)
   const [editOpen,   setEditOpen]   = useState(false);
@@ -277,12 +279,11 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
   const deleteMutation = useMutation({
     mutationFn: () => api.remove(sid, id),
     onSuccess: () => {
-      qc.removeQueries({ queryKey: ["recital-detail", sid, id] });
       qc.setQueryData(["recitals", sid], old => Array.isArray(old) ? old.filter(r => r.id !== id) : old);
       qc.invalidateQueries({ queryKey: ["recitals", sid] });
       qc.invalidateQueries({ queryKey: ["events"], exact: false });
       toast.success("Recital deleted");
-      if (onDeleted) onDeleted(recital?.event_date);
+      if (onDeleted) onDeleted(eventDateRef.current);
       else onBack();
     },
     onError: () => toast.error("Failed to delete recital"),
@@ -469,6 +470,19 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
     },
     enabled: !!sid && !!id,
   });
+
+  // Keep eventDateRef up-to-date so it survives cache removal during delete
+  useEffect(() => { if (recital?.event_date) eventDateRef.current = recital.event_date; }, [recital?.event_date]);
+
+  // Fallback: if cache was invalidated and recital is gone (e.g. after delete finishes re-fetching),
+  // navigate away instead of showing "Loading event…"
+  useEffect(() => {
+    if (!isLoading && !recital && !!sid && !!id) {
+      if (onDeleted) onDeleted(eventDateRef.current);
+      else if (onBack) onBack();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, recital]);
 
   // Seed poster from DB once recital loads
   useEffect(() => {
