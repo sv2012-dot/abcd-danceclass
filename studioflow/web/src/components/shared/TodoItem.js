@@ -72,11 +72,11 @@ export const TrashIcon = ({ onClick }) => (
   <button
     onClick={onClick}
     title="Delete"
-    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c7c7cc', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: '6px 8px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
     onMouseEnter={e => { e.currentTarget.style.color = '#ff3b30'; }}
-    onMouseLeave={e => { e.currentTarget.style.color = '#c7c7cc'; }}
+    onMouseLeave={e => { e.currentTarget.style.color = 'var(--muted)'; }}
   >
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="3,6 5,6 21,6" />
       <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2" />
     </svg>
