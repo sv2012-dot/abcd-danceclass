@@ -10,6 +10,7 @@ import Modal from "../components/shared/Modal";
 import Badge from "../components/shared/Badge";
 import { Field, Input, Select, Textarea } from "../components/shared/Field";
 import SvgIcon from "../components/shared/SvgIcon";
+import { TodoKeyframeStyles, TodoRow } from "../components/shared/TodoItem";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -514,6 +515,24 @@ function SchoolHomePage() {
     },
     onError: err => toast.error(err.error||"Failed to create recital"),
   });
+  const toggleTodoMutation = useMutation({
+    mutationFn: id => todosApi.toggle(sid, id),
+    onMutate: async id => {
+      await qc.cancelQueries(['todos', sid]);
+      const prev = qc.getQueryData(['todos', sid]);
+      qc.setQueryData(['todos', sid], old => {
+        if (!old?.todos) return old;
+        return { ...old, todos: old.todos.map(t => t.id === id ? { ...t, is_complete: t.is_complete ? 0 : 1 } : t) };
+      });
+      return { prev };
+    },
+    onError: (_e, _id, ctx) => { qc.setQueryData(['todos', sid], ctx.prev); },
+    onSettled: () => qc.invalidateQueries(['todos', sid]),
+  });
+  const deleteTodoMutation = useMutation({
+    mutationFn: id => todosApi.remove(sid, id),
+    onSuccess: () => qc.invalidateQueries(['todos', sid]),
+  });
 
   // Update poster_url in the recitals query cache immediately after upload
   const handlePosterUpdate = (recitalId, dataUrl) => {
@@ -544,35 +563,17 @@ function SchoolHomePage() {
   // ── reusable rendered sections ───────────────────────────────────────────
   const renderTodoSection = (
     <div>
+      <TodoKeyframeStyles />
       <SectionTitle first="TO" accent="DOs" onViewAll={()=>navigate('/todos')} />
-      <Card padding={0} style={{ display:'flex', flexDirection:'column' }}>
+      <Card padding={0} style={{ display:'flex', flexDirection:'column', overflow:'hidden' }}>
         {latestTodos.length === 0
           ? <div style={{ padding:'20px 16px', color:C.grayChate, fontSize:13, textAlign:'center' }}>No to-dos yet</div>
-          : latestTodos.map(todo => {
-              const done = !!todo.is_complete;
-              const od   = !done && isOverdue(todo.due_date);
-              return (
-                <div key={todo.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderTop:`1px solid ${C.border}`, opacity: done ? 0.6 : 1, transition:'opacity .2s' }}>
-                  <div onClick={()=>{
-                      qc.setQueryData(['todos',sid], old => { if (!old?.todos) return old; return {...old,todos:old.todos.map(t=>t.id===todo.id?{...t,is_complete:done?0:1}:t)}; });
-                      todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(['todos',sid]));
-                    }}
-                    style={{ width:18, height:18, borderRadius:'50%', border:`2px solid ${done ? C.accentPurple : 'var(--muted)'}`, background: done ? C.accentPurple : 'transparent', cursor:'pointer', flexShrink:0, transition:'all .15s', display:'flex', alignItems:'center', justifyContent:'center' }}
-                    onMouseEnter={e=>{if(!done){e.currentTarget.style.borderColor=C.accentPurple;e.currentTarget.style.background=C.accentPurple+'15';}}}
-                    onMouseLeave={e=>{if(!done){e.currentTarget.style.borderColor='var(--muted)';e.currentTarget.style.background='transparent';}}}
-                  >
-                    {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:13, fontWeight:600, color: od ? '#e05c6a' : C.ebony, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textDecoration: done ? 'line-through' : 'none' }}>{todo.title}</div>
-                    <div style={{ fontSize:11, color:C.boulder, marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                      {todo.due_date ? `Due: ${fmtDue(todo.due_date)}` : ''}
-                      {todo.assigned_to ? ` · ${todo.assigned_to}` : ''}
-                    </div>
-                  </div>
-                </div>
-              );
-            })
+          : latestTodos.map(t => (
+              <TodoRow key={t.id} todo={t} compact
+                onToggle={() => toggleTodoMutation.mutate(t.id)}
+                onDelete={() => deleteTodoMutation.mutate(t.id)}
+              />
+            ))
         }
       </Card>
     </div>
@@ -853,51 +854,20 @@ function SchoolHomePage() {
           }
         </Card>
 
-        {/* Open To-Dos */}
-        <Card padding={0} style={{display:"flex",flexDirection:"column"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px"}}>
+        {/* To-Dos */}
+        <Card padding={0} style={{display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:`1px solid ${C.border}`}}>
             <div style={{fontSize:11,fontWeight:700,color:C.grayChate,textTransform:"uppercase",letterSpacing:".1em"}}>To-Do</div>
             <button onClick={()=>navigate("/todos")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.accentPurple,fontWeight:600,padding:0}}>Add To-do</button>
           </div>
-          {openTodos.length === 0
+          {latestTodos.length === 0
             ? <div style={{padding:"20px 16px",color:C.grayChate,fontSize:13,textAlign:"center"}}>All caught up!</div>
-            : openTodos.map((todo) => {
-                const od = isOverdue(todo.due_date);
-                const toggle = () => {
-                  qc.setQueryData(["todos",sid], old => { if (!old?.todos) return old; return {...old,todos:old.todos.map(t=>t.id===todo.id?{...t,is_complete:1}:t)}; });
-                  todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid]));
-                };
-                const remove = (e) => {
-                  e.stopPropagation();
-                  todosApi.remove(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid]));
-                };
-                return (
-                  <div key={todo.id} onClick={toggle} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderTop:`1px solid ${C.border}`,cursor:"pointer"}}
-                    onMouseEnter={e=>{e.currentTarget.style.background="var(--surface)";}}
-                    onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}
-                  >
-                    <button type="button" onClick={e=>{e.stopPropagation();toggle();}}
-                      style={{width:20,height:20,borderRadius:"50%",border:`2px solid var(--muted)`,background:"transparent",cursor:"pointer",flexShrink:0,transition:"all .15s",padding:0,minWidth:20}}
-                      onMouseEnter={e=>{e.currentTarget.style.borderColor=C.accentPurple;e.currentTarget.style.background=C.accentPurple+"15";}}
-                      onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--muted)';e.currentTarget.style.background="transparent";}}
-                    />
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:600,color: od ? '#e05c6a' : C.ebony,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{todo.title}</div>
-                      <div style={{fontSize:11,color:C.boulder,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                        {todo.due_date ? `Due: ${fmtDue(todo.due_date)}` : ""}
-                        {todo.assigned_to ? ` · Assigned to: ${todo.assigned_to}` : ""}
-                      </div>
-                    </div>
-                    <button type="button" onClick={remove}
-                      style={{background:"none",border:"none",cursor:"pointer",color:"var(--muted)",padding:"6px 4px",display:"flex",alignItems:"center",flexShrink:0,transition:"color .15s"}}
-                      onMouseEnter={e=>{e.currentTarget.style.color="#ff3b30";}} onMouseLeave={e=>{e.currentTarget.style.color="var(--muted)";}}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2"/>
-                      </svg>
-                    </button>
-                  </div>
-                );
-              })
+            : latestTodos.map(t => (
+                <TodoRow key={t.id} todo={t} compact
+                  onToggle={() => toggleTodoMutation.mutate(t.id)}
+                  onDelete={() => deleteTodoMutation.mutate(t.id)}
+                />
+              ))
           }
         </Card>
 
