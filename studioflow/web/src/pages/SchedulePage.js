@@ -484,7 +484,20 @@ export default function SchedulePage() {
       const wasEdit = panelMode === 'edit' && !!detailEvent?.id;
       toast.success(wasEdit ? "Event updated" : "Event(s) created");
       setPanelMode('view');
-      if (!wasEdit) setDetailEvent(null);
+      if (!wasEdit) {
+        setDetailEvent(null);
+      } else {
+        // Immediately update the detail panel so the user sees the new time/fields
+        // without waiting for the background refetch to complete.
+        //   prev          → keeps relational fields the API may not echo (batches array, etc.)
+        //   submittedData → applies form values as an immediate fallback
+        //   savedEvent    → server response is authoritative (overrides both above)
+        setDetailEvent(prev => ({
+          ...prev,
+          ...submittedData,
+          ...(savedEvent && !Array.isArray(savedEvent) ? savedEvent : {}),
+        }));
+      }
       // When a NEW Recital event is created, also create the recital record immediately
       // so the calendar always opens the full-page detail on first click
       if (!wasEdit && submittedData?.type === "Recital") {
