@@ -268,7 +268,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
       // This ensures fields like event_time are immediately visible even if the
       // API response doesn't echo every field back.
       qc.setQueryData(["recital-detail", sid, id], (old) => ({ ...old, ...variables, ...updated }));
-      qc.invalidateQueries(["recitals", sid]);
+      qc.invalidateQueries({ queryKey: ["recitals", sid] });
       toast.success("Event updated");
       setEditOpen(false);
     },
@@ -278,12 +278,12 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const deleteMutation = useMutation({
     mutationFn: () => api.remove(sid, id),
     onSuccess: () => {
-      qc.removeQueries(["recital-detail", sid, id]);
+      qc.removeQueries({ queryKey: ["recital-detail", sid, id] });
       qc.setQueryData(["recitals", sid], old => Array.isArray(old) ? old.filter(r => r.id !== id) : old);
-      qc.invalidateQueries(["recitals", sid]);
+      qc.invalidateQueries({ queryKey: ["recitals", sid] });
       qc.invalidateQueries({ queryKey: ["events"], exact: false });
       toast.success("Recital deleted");
-      navigate('/recitals');
+      navigate('/schedule');
     },
     onError: () => toast.error("Failed to delete recital"),
   });
@@ -2118,7 +2118,8 @@ export default function RecitalsPage() {
   const deleteMutation = useMutation({
     mutationFn: id => api.remove(sid, id),
     onSuccess: (_, id) => {
-      qc.invalidateQueries(["recitals", sid]);
+      qc.invalidateQueries({ queryKey: ["recitals", sid] });
+      qc.invalidateQueries({ queryKey: ["events"], exact: false });
       toast.success("Event deleted");
       if (detailId === id) setDetailId(null);
     },
@@ -2151,7 +2152,7 @@ export default function RecitalsPage() {
     if (new URLSearchParams(location.search).get('new') === '1') {
       openAdd();
       // Strip the param from the URL without triggering a navigation
-      window.history.replaceState({}, '', '/recitals');
+      window.history.replaceState({}, '', '/schedule');
     }
   }, [location.search]); // eslint-disable-line
 

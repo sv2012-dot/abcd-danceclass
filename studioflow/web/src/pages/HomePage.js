@@ -599,7 +599,7 @@ function SchoolHomePage() {
       icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, accent: C.accentPurple },
     { label:"Batches",  value:stats.batches??stats.batch_count,    path:"/batches",
       icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>, accent: '#0EA5E9' },
-    { label:"Recitals", value:stats.upcoming_recitals,             path:"/recitals",
+    { label:"Recitals", value:stats.upcoming_recitals,             path:"/schedule",
       icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, accent: C.accentMagenta },
   ] : [];
 
@@ -772,11 +772,11 @@ function SchoolHomePage() {
                   : thisWeekEvents.slice(0,5).map(e => <ThisWeekRow key={e.id} e={e} onNavigate={()=>navigate('/schedule',{state:{openEventId:e.id,eventDate:e.start_datetime}})} />)
                 }
               </div>
-              <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>navigate('/recitals')} />
+              <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>navigate('/schedule')} />
               {upcoming.length === 0
                 ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center', background:C.white, borderRadius:16, border:`1.5px solid ${C.border}` }}>No upcoming recitals</div>
                 : <div style={{ display:'grid', gridTemplateColumns: isDesktop ? 'repeat(3,minmax(0,1fr))' : 'repeat(2,minmax(0,1fr))', gap:12 }}>
-                    {upcomingGrid.map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />)}
+                    {upcomingGrid.map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/schedule',{state:{recitalId:r.id}})} />)}
                   </div>
               }
               {/* Desktop: stats below recitals */}
@@ -791,7 +791,7 @@ function SchoolHomePage() {
                 {featuredRecital && (
                   <div>
                     <SectionTitle first="FEATURED" accent="RECITAL" />
-                    <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:featuredRecital.title}})} />
+                    <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/schedule',{state:{recitalId:featuredRecital.id}})} />
                   </div>
                 )}
                 {renderTodoSection}
@@ -805,7 +805,7 @@ function SchoolHomePage() {
               {featuredRecital && (
                 <div>
                   <SectionTitle first="FEATURED" accent="RECITAL" />
-                  <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:featuredRecital.title}})} />
+                  <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/schedule',{state:{recitalId:featuredRecital.id}})} />
                 </div>
               )}
               {renderTodoSection}
@@ -820,19 +820,19 @@ function SchoolHomePage() {
 
         {/* Upcoming Recitals — row 1: 2-col grid tiles, row 2: featured full-width */}
         <div>
-          <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>navigate('/recitals')} />
+          <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>navigate('/schedule')} />
           {upcoming.length === 0
             ? <div style={{padding:"28px 20px",color:C.grayChate,fontSize:13,textAlign:"center",background:C.white,borderRadius:16,border:`1.5px solid ${C.border}`}}>No upcoming recitals</div>
             : <div>
                 {upcomingGrid.slice(0, 2).length > 0 && (
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom: featuredRecital ? 10 : 0 }}>
                     {upcomingGrid.slice(0, 2).map((r, i) => (
-                      <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />
+                      <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/schedule',{state:{recitalId:r.id}})} />
                     ))}
                   </div>
                 )}
                 {featuredRecital && (
-                  <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:featuredRecital.title}})} />
+                  <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/schedule',{state:{recitalId:featuredRecital.id}})} />
                 )}
               </div>
           }
@@ -907,7 +907,6 @@ function SchoolHomePage() {
         <Modal title="Add Student" onClose={()=>{setShowAddStudent(false);setStudentForm(EMPTY_STUDENT);}}>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"0 16px"}}>
             <Field label="Full Name *" style={{gridColumn:"1/-1"}}><Input value={studentForm.name} onChange={e=>setStudentForm({...studentForm,name:e.target.value})} placeholder="e.g. Aanya Patel" /></Field>
-            <Field label="Age"><Input type="number" value={studentForm.age} onChange={e=>setStudentForm({...studentForm,age:e.target.value})} placeholder="e.g. 10" /></Field>
             <Field label="Phone"><Input value={studentForm.phone} onChange={e=>setStudentForm({...studentForm,phone:e.target.value})} placeholder="e.g. 212-555-0101" /></Field>
             <Field label="Guardian Name"><Input value={studentForm.guardian_name} onChange={e=>setStudentForm({...studentForm,guardian_name:e.target.value})} placeholder="e.g. Meera Patel" /></Field>
             <Field label="Guardian Phone"><Input value={studentForm.guardian_phone} onChange={e=>setStudentForm({...studentForm,guardian_phone:e.target.value})} placeholder="e.g. 212-555-0100" /></Field>

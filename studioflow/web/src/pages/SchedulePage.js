@@ -537,7 +537,7 @@ export default function SchedulePage() {
       setPanelMode('view');
       setDetailEvent(null);
       setRecitalForm({ title:'', event_date:'', event_time:'18:00', venue:'', description:'' });
-      navigate("/recitals", { state: { openTitle: created?.title } });
+      if (created?.id) setRecitalDetailId(created.id);
     },
     onError: err => toast.error(err?.error || "Failed to create recital"),
   });

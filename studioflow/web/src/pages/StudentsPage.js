@@ -321,8 +321,6 @@ export default function StudentsPage() {
   const filtered  = list.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()));
   const fmtLong   = d => { if (!d) return null; const [y,m,dy] = (d||"").slice(0,10).split("-").map(Number); return (y&&m&&dy) ? new Date(y,m-1,dy).toLocaleDateString("en",{year:"numeric",month:"long",day:"numeric"}) : null; };
   const fmtShort  = d => { if (!d) return null; const [y,m,dy] = (d||"").slice(0,10).split("-").map(Number); return (y&&m&&dy) ? new Date(y,m-1,dy).toLocaleDateString("en",{month:"short",year:"numeric"}) : null; };
-  const ageLabel  = age => { const n = Number(age); if (!age && age !== 0) return null; return n > 18 ? "Adult" : `${n} yrs`; };
-  const ageDot    = age => { const n = Number(age); if (!age && age !== 0) return "#aaa"; if (n <= 8) return "#6a7fdb"; if (n <= 12) return "#f4a041"; if (n <= 18) return "#52c4a0"; return "#52c4a0"; };
 
   // Fee status helpers
   const feeBadgeProps = (status, dueDay) => {
@@ -464,8 +462,6 @@ export default function StudentsPage() {
             const active   = selected?.id === s.id;
             const batches  = s.batches ? String(s.batches).split(",").map(b => b.trim()).filter(Boolean) : [];
             const noEnroll = batches.length === 0;
-            const label    = ageLabel(s.age);
-            const dotColor = ageDot(s.age);
             const joinStr  = fmtShort(s.join_date);
             return (
               <div key={s.id} onClick={() => pick(s)} style={{
@@ -478,12 +474,6 @@ export default function StudentsPage() {
                   <StudentAvatar student={s} size={52} active={active} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text)" }}>{s.name}</div>
-                    {label && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
-                        <div style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-                        <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>{label}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
                 <div style={{ height: 1, background: "var(--border)", margin: "0 18px" }} />
@@ -539,7 +529,7 @@ export default function StudentsPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "var(--surface)" }}>
-                {["Student","Age","Contact","Batch","Joined",""].map(h => (
+                {["Student","Contact","Batch","Joined",""].map(h => (
                   <th key={h} style={{ padding: "11px 14px", textAlign: "left", fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>{h}</th>
                 ))}
               </tr>
@@ -555,7 +545,6 @@ export default function StudentsPage() {
                         <span style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</span>
                       </div>
                     </td>
-                    <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--muted)" }}>{ageLabel(s.age) || "—"}</td>
                     <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--muted)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.email || s.phone || "—"}</td>
                     <td style={{ padding: "10px 14px" }}>
                       {s.batches
@@ -602,10 +591,6 @@ export default function StudentsPage() {
 
           {/* ── ADD mode ── */}
           {showAdd && (() => {
-            const addAge   = Number(addForm.age);
-            const ageKnown = String(addForm.age ?? "").trim() !== "" && !isNaN(addAge) && addAge > 0;
-            const isMinor  = ageKnown && addAge <= 18;
-            const isAdult  = ageKnown && addAge > 18;
             return (
               <div style={{ flex: 1, overflowY: "auto", padding: "22px 24px" }}>
                 {/* Avatar picker row */}
@@ -621,16 +606,11 @@ export default function StudentsPage() {
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: "0 16px" }}>
                   <Field label="Full Name *"><Input value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} placeholder="Student name" /></Field>
-                  <Field label="Age"><Input type="number" value={addForm.age} onChange={e => setAddForm({ ...addForm, age: e.target.value })} placeholder="e.g. 12" min="0" max="99" /></Field>
-                  {(!ageKnown || isAdult) && (<>
-                    <Field label="Phone / WhatsApp"><Input value={addForm.phone} onChange={e => setAddForm({ ...addForm, phone: e.target.value })} placeholder="+1 555 000 0000" /></Field>
-                    <Field label="Email"><Input value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} placeholder="email@example.com" /></Field>
-                  </>)}
-                  {isMinor && (<>
-                    <Field label="Guardian Name *"><Input value={addForm.guardian_name} onChange={e => setAddForm({ ...addForm, guardian_name: e.target.value })} placeholder="Parent or guardian" /></Field>
-                    <Field label="Guardian Phone"><Input value={addForm.guardian_phone} onChange={e => setAddForm({ ...addForm, guardian_phone: e.target.value })} placeholder="+1 555 000 0000" /></Field>
-                    <Field label="Guardian Email"><Input value={addForm.guardian_email} onChange={e => setAddForm({ ...addForm, guardian_email: e.target.value })} placeholder="parent@email.com" /></Field>
-                  </>)}
+                  <Field label="Phone / WhatsApp"><Input value={addForm.phone} onChange={e => setAddForm({ ...addForm, phone: e.target.value })} placeholder="+1 555 000 0000" /></Field>
+                  <Field label="Email"><Input value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} placeholder="email@example.com" /></Field>
+                  <Field label="Guardian Name"><Input value={addForm.guardian_name} onChange={e => setAddForm({ ...addForm, guardian_name: e.target.value })} placeholder="Parent or guardian" /></Field>
+                  <Field label="Guardian Phone"><Input value={addForm.guardian_phone} onChange={e => setAddForm({ ...addForm, guardian_phone: e.target.value })} placeholder="+1 555 000 0000" /></Field>
+                  <Field label="Guardian Email"><Input value={addForm.guardian_email} onChange={e => setAddForm({ ...addForm, guardian_email: e.target.value })} placeholder="parent@email.com" /></Field>
                   <Field label="Join Date"><Input type="date" value={addForm.join_date} onChange={e => setAddForm({ ...addForm, join_date: e.target.value })} /></Field>
                 </div>
                 <Field label="Notes"><Textarea value={addForm.notes} onChange={e => setAddForm({ ...addForm, notes: e.target.value })} placeholder="Any notes…" /></Field>
@@ -667,7 +647,6 @@ export default function StudentsPage() {
                 )}
               </div>
               <div style={{ fontFamily: "var(--font-d)", fontSize: 18, fontWeight: 800, marginBottom: 3 }}>{selected.name}</div>
-              {selected.age && <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 10 }}>Age {selected.age}</div>}
               {selected.batches && (
                 <div style={{ display: "flex", gap: 5, justifyContent: "center", flexWrap: "wrap" }}>
                   {String(selected.batches).split(",").map((b, i) => (
@@ -728,27 +707,16 @@ export default function StudentsPage() {
                 </>
               ) : (
                 <>
-                  {(() => {
-                    const ea = Number(editForm.age);
-                    const eKnown = String(editForm.age ?? "").trim() !== "" && !isNaN(ea) && ea > 0;
-                    const eMinor = eKnown && ea <= 18;
-                    const eAdult = eKnown && ea > 18;
-                    return (<>
-                      <Field label="Full Name"><Input value={editForm.name || ""} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /></Field>
-                      <Field label="Age"><Input type="number" value={editForm.age || ""} onChange={e => setEditForm({ ...editForm, age: e.target.value })} placeholder="e.g. 12" min="0" max="99" /></Field>
-                      {(!eKnown || eAdult) && (<>
-                        <Field label="Phone / WhatsApp"><Input value={editForm.phone || ""} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} /></Field>
-                        <Field label="Email"><Input value={editForm.email || ""} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /></Field>
-                      </>)}
-                      {eMinor && (<>
-                        <Field label="Guardian Name"><Input value={editForm.guardian_name || ""} onChange={e => setEditForm({ ...editForm, guardian_name: e.target.value })} /></Field>
-                        <Field label="Guardian Phone"><Input value={editForm.guardian_phone || ""} onChange={e => setEditForm({ ...editForm, guardian_phone: e.target.value })} /></Field>
-                        <Field label="Guardian Email"><Input value={editForm.guardian_email || ""} onChange={e => setEditForm({ ...editForm, guardian_email: e.target.value })} /></Field>
-                      </>)}
-                      <Field label="Join Date"><Input type="date" value={(editForm.join_date || "").split("T")[0]} onChange={e => setEditForm({ ...editForm, join_date: e.target.value })} /></Field>
-                      <Field label="Notes"><Textarea value={editForm.notes || ""} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Any notes…" /></Field>
-                    </>);
-                  })()}
+                  <>
+                    <Field label="Full Name"><Input value={editForm.name || ""} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /></Field>
+                    <Field label="Phone / WhatsApp"><Input value={editForm.phone || ""} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} /></Field>
+                    <Field label="Email"><Input value={editForm.email || ""} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /></Field>
+                    <Field label="Guardian Name"><Input value={editForm.guardian_name || ""} onChange={e => setEditForm({ ...editForm, guardian_name: e.target.value })} /></Field>
+                    <Field label="Guardian Phone"><Input value={editForm.guardian_phone || ""} onChange={e => setEditForm({ ...editForm, guardian_phone: e.target.value })} /></Field>
+                    <Field label="Guardian Email"><Input value={editForm.guardian_email || ""} onChange={e => setEditForm({ ...editForm, guardian_email: e.target.value })} /></Field>
+                    <Field label="Join Date"><Input type="date" value={(editForm.join_date || "").split("T")[0]} onChange={e => setEditForm({ ...editForm, join_date: e.target.value })} /></Field>
+                    <Field label="Notes"><Textarea value={editForm.notes || ""} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Any notes…" /></Field>
+                  </>
 
                   {/* ── Batch Enrollment Picker ── */}
                   <div style={{ marginTop: 14 }}>
