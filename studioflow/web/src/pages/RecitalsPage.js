@@ -97,6 +97,7 @@ function useWindowWidth() {
 // Full-page Detail View
 // ─────────────────────────────────────────────────────────────────────────────
 export function RecitalDetail({ id, onBack, sid, onEdit }) {
+  const navigate = useNavigate();
   const [tab,              setTab]          = useState("overview");
   const [newTask,          setNewTask]      = useState("");
   const [newTaskAssignedTo, setNewTaskAssignedTo] = useState("");
@@ -277,9 +278,11 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
   const deleteMutation = useMutation({
     mutationFn: () => api.remove(sid, id),
     onSuccess: () => {
+      qc.removeQueries(["recital-detail", sid, id]);
+      qc.setQueryData(["recitals", sid], old => Array.isArray(old) ? old.filter(r => r.id !== id) : old);
       qc.invalidateQueries(["recitals", sid]);
       toast.success("Recital deleted");
-      onBack();
+      navigate('/recitals');
     },
     onError: () => toast.error("Failed to delete recital"),
   });
@@ -577,7 +580,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
           <div style={{ display:"flex", gap:8, flexShrink:0 }}>
             {/* ── Star / Featured toggle ── */}
             <button
-              title={recital.is_featured ? "Remove featured" : "Mark as featured on dashboard"}
+              title={recital.is_featured ? "Remove from featured" : "Mark as featured on dashboard"}
               onClick={() => {
                 const next = recital.is_featured ? 0 : 1;
                 api.update(sid, recital.id, {
@@ -595,15 +598,14 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
               style={{
                 display:"inline-flex", alignItems:"center", justifyContent:"center",
                 width: isMobile ? 36 : 40, height: isMobile ? 36 : 40,
-                borderRadius:10, border:"1.5px solid var(--border-visible)",
-                background: recital.is_featured ? "#FFF9C4" : "var(--surface)",
-                color: recital.is_featured ? "#F59E0B" : "var(--muted-foreground)",
-                cursor:"pointer", transition:"all .15s", flexShrink:0,
+                borderRadius:10, border:"1.5px solid var(--border)",
+                background:"var(--card)", cursor:"pointer",
+                color: recital.is_featured ? "#F59E0B" : "var(--muted)", transition:"all .15s", flexShrink:0,
               }}
-              onMouseEnter={e => e.currentTarget.style.background = recital.is_featured ? "#FFF176" : "var(--secondary)"}
-              onMouseLeave={e => e.currentTarget.style.background = recital.is_featured ? "#FFF9C4" : "var(--surface)"}
+              onMouseEnter={e => { e.currentTarget.style.background = "#FFFBEB"; e.currentTarget.style.borderColor = "#F59E0B"; e.currentTarget.style.color = "#F59E0B"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "var(--card)"; e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = recital.is_featured ? "#F59E0B" : "var(--muted)"; }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill={recital.is_featured ? "#F59E0B" : "none"} stroke={recital.is_featured ? "#F59E0B" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill={recital.is_featured ? "#F59E0B" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
               </svg>
             </button>
