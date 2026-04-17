@@ -28,6 +28,20 @@ const C = {
   createBtnHov: 'rgba(124,58,237,0.18)',
 };
 
+// ── Time options: 15-min increments for recital forms ─────────────────────────
+const TIME_OPTIONS = (() => {
+  const opts = [];
+  for (let h = 0; h < 24; h++) {
+    for (const m of [0, 15, 30, 45]) {
+      const val = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      const period = h < 12 ? 'AM' : 'PM';
+      const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      opts.push({ val, label: `${h12}:${String(m).padStart(2,'0')} ${period}` });
+    }
+  }
+  return opts;
+})();
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 const EVENT_TYPES = ["Class", "Recital", "Rehearsal", "Workshop", "Other"];
 const TYPE_COLORS = {
@@ -100,7 +114,7 @@ function DateTimePicker({ label, value, onChange }) {
     };
   }, [parsed]);
   const [cal, setCal]  = useState(() => { const d = parsed||new Date(); return { year:d.getFullYear(), month:d.getMonth() }; });
-  const [hour, setHour] = useState(() => parsed ? parsed.getHours() : 9);
+  const [hour, setHour] = useState(() => parsed ? parsed.getHours() : 18);
   const [minute, setMin] = useState(() => parsed ? Math.floor(parsed.getMinutes()/15)*15 : 0);
 
   useEffect(() => {
@@ -417,7 +431,7 @@ function SchoolHomePage() {
   const [showAddRecital, setShowAddRecital] = useState(false);
   const [studentForm, setStudentForm]       = useState(EMPTY_STUDENT);
   const [batchForm,   setBatchForm]         = useState(EMPTY_BATCH);
-  const [recitalForm, setRecitalForm]       = useState({ title:'', event_date:'', event_time:'', venue:'', description:'' });
+  const [recitalForm, setRecitalForm]       = useState({ title:'', event_date:'', event_time:'18:00', venue:'', description:'' });
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const createMenuRef = useRef(null);
 
@@ -511,7 +525,7 @@ function SchoolHomePage() {
       qc.invalidateQueries({ queryKey:["stats",sid] });
       toast.success("Recital created!");
       setShowAddRecital(false);
-      setRecitalForm({ title:'', event_date:'', event_time:'', venue:'', description:'' });
+      setRecitalForm({ title:'', event_date:'', event_time:'18:00', venue:'', description:'' });
     },
     onError: err => toast.error(err.error||"Failed to create recital"),
   });
@@ -542,8 +556,8 @@ function SchoolHomePage() {
   };
 
   const openAdd = () => {
-    const base = new Date(); base.setMinutes(0,0,0);
-    const end  = new Date(base); end.setHours(base.getHours()+1);
+    const base = new Date(); base.setHours(18,0,0,0);
+    const end  = new Date(base); end.setHours(19,0,0,0);
     setForm({...EMPTY_EVENT, start_datetime:toLocalInput(base), end_datetime:toLocalInput(end), duration:60});
     setModal({});
   };
@@ -674,8 +688,14 @@ function SchoolHomePage() {
                   onMouseEnter={e=>{e.currentTarget.style.background=C.surface;}}
                   onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}
                 >
-                  <span style={{width:36,height:36,borderRadius:10,background:color+"14",color,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:18}}>
-                    {label==="Create Event" ? "📅" : label==="Create Recital" ? "✨" : "👤"}
+                  <span style={{width:36,height:36,borderRadius:10,background:color+"14",color,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    {label==="Create Event" ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    ) : label==="Create Recital" ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    )}
                   </span>
                   {label}
                 </button>
@@ -799,22 +819,22 @@ function SchoolHomePage() {
       {isMobile && (
         <div style={{ display:'grid', gap:40, width:'100%', boxSizing:'border-box', minWidth:0 }}>
 
-        {/* Upcoming Recitals — featured large + 1 more, max 2 total */}
+        {/* Upcoming Recitals — row 1: 2-col grid tiles, row 2: featured full-width */}
         <div>
           <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>navigate('/recitals')} />
           {upcoming.length === 0
             ? <div style={{padding:"28px 20px",color:C.grayChate,fontSize:13,textAlign:"center",background:C.white,borderRadius:16,border:`1.5px solid ${C.border}`}}>No upcoming recitals</div>
             : <div>
-                {featuredRecital && (
-                  <div style={{ marginBottom: 10 }}>
-                    <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:featuredRecital.title}})} />
+                {upcomingGrid.slice(0, 2).length > 0 && (
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom: featuredRecital ? 10 : 0 }}>
+                    {upcomingGrid.slice(0, 2).map((r, i) => (
+                      <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />
+                    ))}
                   </div>
                 )}
-                {upcomingGrid.slice(0, featuredRecital ? 1 : 2).map((r,i) => (
-                  <div key={r.id} style={{ marginBottom: 10 }}>
-                    <RecitalImageCard r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:r.title}})} />
-                  </div>
-                ))}
+                {featuredRecital && (
+                  <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/recitals',{state:{openTitle:featuredRecital.title}})} />
+                )}
               </div>
           }
         </div>
@@ -928,12 +948,17 @@ function SchoolHomePage() {
 
       {/* ── Add Recital Modal ───────────────────────────────────────────── */}
       {showAddRecital && (
-        <Modal title="New Recital" onClose={()=>{setShowAddRecital(false);setRecitalForm({title:'',event_date:'',event_time:'',venue:'',description:''});}}>
+        <Modal title="New Recital" onClose={()=>{setShowAddRecital(false);setRecitalForm({title:'',event_date:'',event_time:'18:00',venue:'',description:''});}}>
           <div style={{height:4,background:"linear-gradient(90deg,#c4527a,#e8607a)",borderRadius:4,marginBottom:16}} />
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"0 16px"}}>
             <Field label="Recital Title *" style={{gridColumn:"1/-1"}}><Input value={recitalForm.title} onChange={e=>setRecitalForm({...recitalForm,title:e.target.value})} placeholder="e.g. Spring Showcase 2026" /></Field>
             <Field label="Date *"><Input type="date" value={recitalForm.event_date} onChange={e=>setRecitalForm({...recitalForm,event_date:e.target.value})} /></Field>
-            <Field label="Time"><Input type="time" value={recitalForm.event_time} onChange={e=>setRecitalForm({...recitalForm,event_time:e.target.value})} /></Field>
+            <Field label="Time">
+              <Select value={recitalForm.event_time} onChange={e=>setRecitalForm({...recitalForm,event_time:e.target.value})}>
+                <option value="">— No time —</option>
+                {TIME_OPTIONS.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
+              </Select>
+            </Field>
             <Field label="Venue" style={{gridColumn:"1/-1"}}><Input value={recitalForm.venue} onChange={e=>setRecitalForm({...recitalForm,venue:e.target.value})} placeholder="e.g. Riverside Auditorium" /></Field>
             <Field label="Notes" style={{gridColumn:"1/-1"}}><Textarea value={recitalForm.description} onChange={e=>setRecitalForm({...recitalForm,description:e.target.value})} placeholder="Any notes about the recital…" /></Field>
           </div>
@@ -941,7 +966,7 @@ function SchoolHomePage() {
             <Button onClick={()=>recitalSaveMutation.mutate(recitalForm)} disabled={!recitalForm.title||!recitalForm.event_date||recitalSaveMutation.isPending} style={{background:"#c4527a",borderColor:"#c4527a"}}>
               {recitalSaveMutation.isPending?"Creating…":"Create Recital"}
             </Button>
-            <Button variant="secondary" onClick={()=>{setShowAddRecital(false);setRecitalForm({title:'',event_date:'',event_time:'',venue:'',description:''});}}>Cancel</Button>
+            <Button variant="secondary" onClick={()=>{setShowAddRecital(false);setRecitalForm({title:'',event_date:'',event_time:'18:00',venue:'',description:''});}}>Cancel</Button>
           </div>
         </Modal>
       )}

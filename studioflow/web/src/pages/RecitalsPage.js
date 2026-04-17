@@ -11,7 +11,29 @@ import { Field, Input, Select, Textarea } from "../components/shared/Field";
 import SvgIcon from "../components/shared/SvgIcon";
 
 const RECITAL_COLOR = "#6a7fdb";
-const EMPTY = { title:"", event_date:"", venue:"", description:"" };
+const EMPTY = { title:"", event_date:"", event_time:"18:00", venue:"", description:"" };
+
+// ── Time options: 15-min increments for recital forms ────────────────────────
+const TIME_OPTIONS = (() => {
+  const opts = [];
+  for (let h = 0; h < 24; h++) {
+    for (const m of [0, 15, 30, 45]) {
+      const val = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      const period = h < 12 ? 'AM' : 'PM';
+      const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      opts.push({ val, label: `${h12}:${String(m).padStart(2,'0')} ${period}` });
+    }
+  }
+  return opts;
+})();
+
+function fmtRecitalTime(t) {
+  if (!t) return null;
+  if (/[ap]m/i.test(t)) return t; // already formatted legacy string
+  const [h, m] = t.split(':').map(Number);
+  if (isNaN(h)) return t;
+  return new Date(2000, 0, 1, h, m || 0).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+}
 
 // ── Image compression helper ──────────────────────────────────────────────────
 function compressImage(file) {
@@ -250,7 +272,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
     setEditForm({
       title:       recital?.title      || "",
       event_date:  recital?.event_date?.split("T")[0] || "",
-      event_time:  recital?.event_time || "",
+      event_time:  recital?.event_time || "18:00",
       venue:       recital?.venue      || "",
       description: recital?.description|| "",
     });
@@ -500,7 +522,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
 
   const META = [
     { icon:<CalIcon/>,   label:"Date",         value: fmtDate },
-    { icon:<ClockIcon/>, label:"Time",         value: recital.event_time || "7:00 PM" },
+    { icon:<ClockIcon/>, label:"Time",         value: fmtRecitalTime(recital.event_time) || "—" },
     { icon:<PinIcon/>,   label:"Location",     value: recital.venue || "Main Theater" },
     { icon:<UsersIcon/>, label:"Participants", value: "45 students" },
   ];
@@ -824,7 +846,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit }) {
                   <Input type="date" value={editForm.event_date} onChange={e => setEditForm(p=>({...p,event_date:e.target.value}))} />
                 </Field>
                 <Field label="Time">
-                  <Input value={editForm.event_time} onChange={e => setEditForm(p=>({...p,event_time:e.target.value}))} placeholder="e.g. 7:00 PM" />
+                  <Select value={editForm.event_time} onChange={e => setEditForm(p=>({...p,event_time:e.target.value}))}>
+                    <option value="">— No time —</option>
+                    {TIME_OPTIONS.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
+                  </Select>
                 </Field>
               </div>
               <Field label="Venue / Location">

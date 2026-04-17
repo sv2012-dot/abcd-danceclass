@@ -34,6 +34,28 @@ const EMPTY_FORM = {
   recurrence:"none", recurrence_end:"", color:"", notes:"",
 };
 
+// ── Time options for recital forms: 15-min increments, 12h display ──────────
+const TIME_OPTIONS = (() => {
+  const opts = [];
+  for (let h = 0; h < 24; h++) {
+    for (const m of [0, 15, 30, 45]) {
+      const val = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      const period = h < 12 ? 'AM' : 'PM';
+      const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      opts.push({ val, label: `${h12}:${String(m).padStart(2,'0')} ${period}` });
+    }
+  }
+  return opts;
+})();
+
+function fmtRecitalTime(t) {
+  if (!t) return null;
+  if (/[ap]m/i.test(t)) return t;
+  const [h, m] = t.split(':').map(Number);
+  if (isNaN(h)) return t;
+  return new Date(2000, 0, 1, h, m || 0).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
 const DURATION_OPTIONS = [
   { value:15,  label:"15 min" },
   { value:30,  label:"30 min" },
@@ -101,7 +123,7 @@ function DateTimePicker({ label, value, onChange, minDate }) {
   });
 
   // Time state
-  const [hour, setHour]     = useState(() => parsed ? parsed.getHours() : 9);
+  const [hour, setHour]     = useState(() => parsed ? parsed.getHours() : 18);
   const [minute, setMinute] = useState(() => parsed ? Math.floor(parsed.getMinutes()/15)*15 : 0);
 
   // Close on outside click
@@ -501,7 +523,7 @@ export default function SchedulePage() {
       toast.success("Recital created! Opening details…");
       setPanelMode('view');
       setDetailEvent(null);
-      setRecitalForm({ title:'', event_date:'', event_time:'', venue:'', description:'' });
+      setRecitalForm({ title:'', event_date:'', event_time:'18:00', venue:'', description:'' });
       navigate("/recitals", { state: { openTitle: created?.title } });
     },
     onError: err => toast.error(err?.error || "Failed to create recital"),
@@ -509,15 +531,15 @@ export default function SchedulePage() {
 
   // ── Open panel modes ──────────────────────────────────────────────────────
   const openAddRecital = () => {
-    setRecitalForm({ title:'', event_date:'', event_time:'', venue:'', description:'' });
+    setRecitalForm({ title:'', event_date:'', event_time:'18:00', venue:'', description:'' });
     setDetailEvent(null);
     setPanelMode('add-recital');
   };
 
   const openAdd = (prefillDate) => {
     const base = prefillDate ? new Date(prefillDate) : new Date();
-    base.setMinutes(0, 0, 0);
-    const end = new Date(base); end.setHours(base.getHours() + 1);
+    base.setHours(18, 0, 0, 0);
+    const end = new Date(base); end.setHours(19, 0, 0, 0);
     setForm({ ...EMPTY_FORM, start_datetime: toLocalInput(base), end_datetime: toLocalInput(end), duration: 60 });
     setDetailEvent(null);
     setPanelMode('add');
@@ -910,9 +932,6 @@ export default function SchedulePage() {
     );
   };
 
-  // ── Studio sidebar ───────────────────────────────────────────────────────
-  const unbookedStudio = events.filter(e => e.requires_studio && !e.studio_booked);
-
   // ── Render ───────────────────────────────────────────────────────────────
   // ── Inline recital detail view ────────────────────────────────────────────
   if (recitalDetailId) {
@@ -950,19 +969,6 @@ export default function SchedulePage() {
           {/* Events for selected day */}
           <MobileEventsList />
 
-          {/* Studio alert */}
-          {unbookedStudio.length > 0 && (
-            <div style={{marginTop:20,padding:"12px 16px",borderRadius:12,background:"#e05c6a08",border:"1.5px solid #e05c6a33",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-              <span style={{fontWeight:700,fontSize:12,color:"#e05c6a",flexShrink:0}}>⚠ Studio not booked:</span>
-              <div style={{display:"flex",gap:7,flexWrap:"wrap",flex:1}}>
-                {unbookedStudio.map(e => (
-                  <div key={e.id} onClick={()=>handleEventClick(e)} style={{fontSize:11,cursor:"pointer",padding:"4px 10px",borderRadius:20,background:"var(--card)",border:"1px solid #e05c6a44",fontWeight:600,color:"#e05c6a"}}>
-                    {e.title} · <span style={{fontWeight:400,color:"var(--muted)"}}>{fmtDate(e.start_datetime)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* FAB — add event */}
           {isAdmin && (
@@ -1072,19 +1078,6 @@ export default function SchedulePage() {
             view==="month" ? <MonthView /> : view==="week" ? <WeekView /> : <ListView />
           )}
 
-          {/* Studio booking alerts — inline banner */}
-          {unbookedStudio.length > 0 && (
-            <div style={{marginTop:18,padding:"12px 16px",borderRadius:12,background:"#e05c6a08",border:"1.5px solid #e05c6a33",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-              <span style={{fontWeight:700,fontSize:12,color:"#e05c6a",flexShrink:0}}>⚠ Studio not booked:</span>
-              <div style={{display:"flex",gap:7,flexWrap:"wrap",flex:1}}>
-                {unbookedStudio.map(e => (
-                  <div key={e.id} onClick={()=>handleEventClick(e)} style={{fontSize:11,cursor:"pointer",padding:"4px 10px",borderRadius:20,background:"var(--card)",border:"1px solid #e05c6a44",fontWeight:600,color:"#e05c6a"}}>
-                    {e.title} · <span style={{fontWeight:400,color:"var(--muted)"}}>{fmtDate(e.start_datetime)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           </Card>
         </div>
@@ -1286,11 +1279,10 @@ export default function SchedulePage() {
                     />
                   </Field>
                   <Field label="Time">
-                    <Input
-                      value={recitalForm.event_time}
-                      onChange={e => setRecitalForm(f => ({ ...f, event_time: e.target.value }))}
-                      placeholder="e.g. 7:00 PM"
-                    />
+                    <Select value={recitalForm.event_time} onChange={e => setRecitalForm(f => ({ ...f, event_time: e.target.value }))}>
+                      <option value="">— No time —</option>
+                      {TIME_OPTIONS.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
+                    </Select>
                   </Field>
                 </div>
                 <Field label="Venue / Location">
