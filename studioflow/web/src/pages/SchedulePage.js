@@ -580,8 +580,8 @@ export default function SchedulePage() {
         onMouseEnter={e => { e.currentTarget.style.opacity = "0.82"; }}
         onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
       >
-        {event.requires_studio && !compact && <span style={{flexShrink:0}} title="Studio required"><SvgIcon name="home" size={11} /></span>}
-        {!event.studio_booked && event.requires_studio && <span style={{flexShrink:0, color: compact ? "#fff" : "#e05c6a", fontWeight:800}} title="Not yet booked">!</span>}
+        {!!event.requires_studio && !compact && <span style={{flexShrink:0}} title="Studio required"><SvgIcon name="home" size={11} /></span>}
+        {!event.studio_booked && !!event.requires_studio && <span style={{flexShrink:0, color: compact ? "#fff" : "#e05c6a", fontWeight:800}} title="Not yet booked">!</span>}
         <span style={{overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1, minWidth:0}}>
           {compact ? "" : fmtTime(event.start_datetime)+" "}{event.title}
         </span>
@@ -771,7 +771,7 @@ export default function SchedulePage() {
                     </div>
                     <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
                       <Badge color={color}>{e.type}</Badge>
-                      {e.requires_studio && (
+                      {!!e.requires_studio && (
                         <Badge color={e.studio_booked?"#52c4a0":"#e05c6a"}>
                           {e.studio_booked ? "Studio ✓" : "Studio ⚠"}
                         </Badge>
@@ -1129,7 +1129,7 @@ export default function SchedulePage() {
                       <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, marginBottom:8, lineHeight:1.2 }}>{e.title}</div>
                       <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                         <Badge color={color}>{e.type}</Badge>
-                        {e.requires_studio && <Badge color={e.studio_booked?"#52c4a0":"#e05c6a"}>{e.studio_booked?"Studio ✓":"Studio ⚠"}</Badge>}
+                        {!!e.requires_studio && <Badge color={e.studio_booked?"#52c4a0":"#e05c6a"}>{e.studio_booked?"Studio ✓":"Studio ⚠"}</Badge>}
                       </div>
                     </div>
                   </div>
@@ -1163,7 +1163,7 @@ export default function SchedulePage() {
                     )}
                     {e.notes && <PDetailRow icon="file-text" label="Notes">{e.notes}</PDetailRow>}
                   </div>
-                  {e.requires_studio && (
+                  {!!e.requires_studio && (
                     <div style={{ padding:"12px 14px", borderRadius:10, background:e.studio_booked?"#52c4a008":"#e05c6a08", border:`1.5px solid ${e.studio_booked?"#52c4a033":"#e05c6a33"}`, marginBottom:20 }}>
                       <div style={{ fontSize:12, fontWeight:700, color:e.studio_booked?"#52c4a0":"#e05c6a" }}>
                         {e.studio_booked ? "✓ Studio booking confirmed" : "⚠ Studio booking needed"}
@@ -1173,7 +1173,7 @@ export default function SchedulePage() {
                   {isAdmin && (
                     <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
                       <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Event</button>
-                      {e.requires_studio && !e.studio_booked && (
+                      {!!e.requires_studio && !e.studio_booked && (
                         <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true,batch_ids:(e.batches||[]).map(b=>b.id)}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #52c4a0", background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="check-circle" size={14} color="#52c4a0" /> Mark Studio Booked</button>
                       )}
                       <button onClick={()=>{ if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="trash" size={14} color="#e05c6a" /> Delete Event</button>

@@ -410,8 +410,8 @@ function StudioCard({ studio, active, onSelect, onEdit, onRemove, onToggleFav })
             </div>
           )}
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 2 }}>
-            {studio.capacity && <div style={{ display: "flex", alignItems: "center", gap: 6 }}><SvgIcon name="users" size={13} color="var(--muted)" /><span style={{ fontSize: 13, color: "var(--muted)" }}>{studio.capacity} people</span></div>}
-            {studio.hourly_rate && <div style={{ display: "flex", alignItems: "center", gap: 6 }}><SvgIcon name="dollar-sign" size={13} color="var(--muted)" /><span style={{ fontSize: 13, color: "var(--muted)" }}>${Number(studio.hourly_rate).toFixed(0)}/hr</span></div>}
+            {!!studio.capacity && <div style={{ display: "flex", alignItems: "center", gap: 6 }}><SvgIcon name="users" size={13} color="var(--muted)" /><span style={{ fontSize: 13, color: "var(--muted)" }}>{studio.capacity} people</span></div>}
+            {!!studio.hourly_rate && <div style={{ display: "flex", alignItems: "center", gap: 6 }}><SvgIcon name="dollar-sign" size={13} color="var(--muted)" /><span style={{ fontSize: 13, color: "var(--muted)" }}>${Number(studio.hourly_rate).toFixed(0)}/hr</span></div>}
           </div>
           {studio.notes && (
             <p style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic", margin: "4px 0 0", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
@@ -632,17 +632,17 @@ export default function StudiosPage() {
                       </div>
                     </div>
                   )}
-                  {(s.capacity || s.hourly_rate) && (
+                  {!!(s.capacity || s.hourly_rate) && (
                     <div style={{ marginBottom: 18 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 8 }}>Venue Info</div>
                       <div style={{ display: "flex", gap: 12 }}>
-                        {s.capacity && (
+                        {!!s.capacity && (
                           <div style={{ flex: 1, background: "var(--surface)", borderRadius: 10, padding: "10px 14px", border: "1px solid var(--border)" }}>
                             <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>{s.capacity}</div>
                             <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Max capacity</div>
                           </div>
                         )}
-                        {s.hourly_rate && (
+                        {!!s.hourly_rate && (
                           <div style={{ flex: 1, background: "var(--surface)", borderRadius: 10, padding: "10px 14px", border: "1px solid var(--border)" }}>
                             <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>${Number(s.hourly_rate).toFixed(0)}</div>
                             <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Per hour</div>
