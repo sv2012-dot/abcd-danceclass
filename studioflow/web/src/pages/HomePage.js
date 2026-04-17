@@ -863,27 +863,37 @@ function SchoolHomePage() {
             ? <div style={{padding:"20px 16px",color:C.grayChate,fontSize:13,textAlign:"center"}}>All caught up!</div>
             : openTodos.map((todo) => {
                 const od = isOverdue(todo.due_date);
+                const toggle = () => {
+                  qc.setQueryData(["todos",sid], old => { if (!old?.todos) return old; return {...old,todos:old.todos.map(t=>t.id===todo.id?{...t,is_complete:1}:t)}; });
+                  todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid]));
+                };
+                const remove = (e) => {
+                  e.stopPropagation();
+                  todosApi.remove(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid]));
+                };
                 return (
-                  <div key={todo.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderTop:`1px solid ${C.border}`}}>
-                    <div onClick={()=>{
-                        qc.setQueryData(["todos",sid], old => { if (!old?.todos) return old; return {...old,todos:old.todos.map(t=>t.id===todo.id?{...t,is_complete:1}:t)}; });
-                        todosApi.toggle(sid,todo.id).then(()=>qc.invalidateQueries(["todos",sid]));
-                      }}
-                      style={{width:18,height:18,borderRadius:"50%",border:`2px solid var(--muted)`,background:"transparent",cursor:"pointer",flexShrink:0,transition:"all .15s"}}
+                  <div key={todo.id} onClick={toggle} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderTop:`1px solid ${C.border}`,cursor:"pointer"}}
+                    onMouseEnter={e=>{e.currentTarget.style.background="var(--surface)";}}
+                    onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}
+                  >
+                    <button type="button" onClick={e=>{e.stopPropagation();toggle();}}
+                      style={{width:20,height:20,borderRadius:"50%",border:`2px solid var(--muted)`,background:"transparent",cursor:"pointer",flexShrink:0,transition:"all .15s",padding:0,minWidth:20}}
                       onMouseEnter={e=>{e.currentTarget.style.borderColor=C.accentPurple;e.currentTarget.style.background=C.accentPurple+"15";}}
                       onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--muted)';e.currentTarget.style.background="transparent";}}
                     />
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:600,color:C.ebony,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{todo.title}</div>
+                      <div style={{fontSize:13,fontWeight:600,color: od ? '#e05c6a' : C.ebony,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{todo.title}</div>
                       <div style={{fontSize:11,color:C.boulder,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                         {todo.due_date ? `Due: ${fmtDue(todo.due_date)}` : ""}
                         {todo.assigned_to ? ` · Assigned to: ${todo.assigned_to}` : ""}
                       </div>
                     </div>
-                    <button onClick={()=>navigate("/todos")}
-                      style={{background:"none",border:"none",cursor:"pointer",color:C.grayChate,padding:4,display:"flex",alignItems:"center",flexShrink:0,transition:"color .15s"}}
-                      onMouseEnter={e=>{e.currentTarget.style.color=C.ebony;}} onMouseLeave={e=>{e.currentTarget.style.color=C.grayChate;}}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <button type="button" onClick={remove}
+                      style={{background:"none",border:"none",cursor:"pointer",color:"var(--muted)",padding:"6px 4px",display:"flex",alignItems:"center",flexShrink:0,transition:"color .15s"}}
+                      onMouseEnter={e=>{e.currentTarget.style.color="#ff3b30";}} onMouseLeave={e=>{e.currentTarget.style.color="var(--muted)";}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2"/>
+                      </svg>
                     </button>
                   </div>
                 );
