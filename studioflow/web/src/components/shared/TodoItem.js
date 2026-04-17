@@ -97,8 +97,10 @@ export const CalSmIcon = () => (
 
 /* ─── animated check circle ───────────────────────── */
 export const AnimatedCheckCircle = ({ visuallyComplete, animating, particles, onClick }) => (
-  <div style={{ position: 'relative', width: 20, height: 20, flexShrink: 0 }}>
-    {/* Confetti burst — real paper shapes with arc + flutter */}
+  /* Outer div is 44×44 so the tap target meets mobile guidelines, but the
+     visual circle stays 20×20 centred inside it. */
+  <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    {/* Confetti burst — anchored to the visual centre */}
     {animating && particles.map((p, i) => (
       <span key={i} style={{
         position: 'absolute', top: '50%', left: '50%',
@@ -114,17 +116,27 @@ export const AnimatedCheckCircle = ({ visuallyComplete, animating, particles, on
         pointerEvents: 'none', zIndex: 20, display: 'block',
       }} />
     ))}
-    {/* Circle button */}
+    {/* Invisible full-size tap button */}
     <button
       type="button"
       onClick={onClick}
       title={visuallyComplete ? 'Mark incomplete' : 'Mark complete'}
       style={{
+        position: 'absolute', inset: 0, borderRadius: '50%',
+        background: 'transparent', border: 'none',
+        cursor: 'pointer', padding: 0, zIndex: 2,
+        WebkitTapHighlightColor: 'transparent',
+      }}
+    />
+    {/* Visual circle — pointer-events off so clicks fall through to button */}
+    <div
+      style={{
         width: 20, height: 20, borderRadius: '50%',
         border: visuallyComplete ? '2px solid #34c759' : '2px solid var(--border)',
         background: visuallyComplete ? '#34c759' : 'var(--card)',
-        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        position: 'relative', zIndex: 1, padding: 0, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'relative', zIndex: 1, flexShrink: 0,
+        pointerEvents: 'none',
         ...(animating
           ? { animation: 'checkBounce 1.3s cubic-bezier(0.34,1.56,0.64,1) forwards' }
           : { transition: 'background .2s, border-color .2s' }),
@@ -143,7 +155,7 @@ export const AnimatedCheckCircle = ({ visuallyComplete, animating, particles, on
           <polyline points="20 6 9 17 4 12"/>
         </svg>
       )}
-    </button>
+    </div>
   </div>
 );
 
