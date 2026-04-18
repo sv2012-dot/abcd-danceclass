@@ -140,12 +140,13 @@ export default function LandingPageA() {
 
           {/* Headline */}
           <h1 style={{
-            fontSize: isMobile ? 'clamp(34px, 10vw, 52px)' : 'clamp(38px, 6.5vw, 76px)',
+            fontSize: isMobile ? 'clamp(28px, 9vw, 48px)' : 'clamp(38px, 6.5vw, 76px)',
             fontWeight:900, lineHeight:1.08,
             margin:'0 auto 20px', letterSpacing:'-.03em',
+            wordBreak:'break-word', overflowWrap:'break-word',
           }}>
             Every step,{' '}
-            <span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', display: isMobile ? 'block' : 'inline' }}>
+            <span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', display: isMobile ? 'block' : 'inline', wordBreak:'break-word' }}>
               beautifully organised.
             </span>
           </h1>

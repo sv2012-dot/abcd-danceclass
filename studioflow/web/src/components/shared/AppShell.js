@@ -174,9 +174,19 @@ export default function AppShell() {
   const isSuperAdmin = user?.role === 'superadmin';
   const schoolName   = school?.name || (isSuperAdmin ? 'ManchQ Platform' : 'Your Studio');
   const danceStyle   = school?.dance_style || '';
-  const city         = school?.city || '';
+  const city         = (school?.city || '').replace(/\b\w/g, c => c.toUpperCase());
   const brief        = [danceStyle, city].filter(Boolean).join(' · ') || 'Dance Studio';
   const handleLogout = () => { logout(); navigate('/login'); };
+
+  const DEMO_EMAILS  = ['teacher@manchq.com', 'parent@manchq.com'];
+  const isDemo       = DEMO_EMAILS.includes(user?.email);
+  const [showSplash, setShowSplash] = useState(() =>
+    isDemo && !localStorage.getItem('manchq_demo_dismissed')
+  );
+  const dismissSplash = () => {
+    localStorage.setItem('manchq_demo_dismissed', '1');
+    setShowSplash(false);
+  };
 
   // ── Sidebar content (shared between desktop & mobile drawer) ──────────────
   const SidebarContent = ({ showBrand = true }) => (
@@ -284,24 +294,55 @@ export default function AppShell() {
     </>
   );
 
+  // ── Demo splash overlay ────────────────────────────────────────────────────
+  const DemoSplash = showSplash ? (
+    <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.78)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, backdropFilter:'blur(6px)' }}>
+      <div style={{ background:'var(--card)', borderRadius:20, padding:32, maxWidth:420, width:'100%', boxShadow:'0 24px 64px rgba(0,0,0,0.5)', border:'1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18 }}>
+          <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#7C3AED,#DC4EFF)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          </div>
+          <h2 style={{ fontSize:19, fontWeight:800, margin:0, color:'var(--text)', lineHeight:1.2 }}>Welcome to the ManchQ Demo</h2>
+        </div>
+        <p style={{ fontSize:14, color:'var(--muted)', lineHeight:1.75, margin:'0 0 16px' }}>
+          You're exploring the <strong style={{color:'var(--text)'}}>public demo</strong> of ManchQ — a dance studio management platform. This account is shared and visible to anyone with the demo credentials.
+        </p>
+        <div style={{ background:'rgba(220,78,255,0.08)', border:'1.5px solid rgba(220,78,255,0.22)', borderRadius:10, padding:'12px 16px', marginBottom:22 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#DC4EFF', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:5 }}>Please note</div>
+          <div style={{ fontSize:13, color:'var(--text)', lineHeight:1.65 }}>
+            Do not enter any personal, sensitive, or confidential information. Anything added here may be seen by other demo users.
+          </div>
+        </div>
+        <button onClick={dismissSplash} style={{ width:'100%', padding:'13px', background:'linear-gradient(135deg,#7C3AED,#DC4EFF)', color:'#fff', border:'none', borderRadius:10, fontSize:15, fontWeight:700, cursor:'pointer', letterSpacing:'0.01em' }}>
+          Got it, let me explore →
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   // ── Desktop layout ─────────────────────────────────────────────────────────
   if (!isMobile) {
     return (
-      <div style={{ display:'flex', height:'100vh', overflow:'hidden' }}>
-        <aside style={{ width:SIDEBAR_W, background:'var(--sidebar)', display:'flex', flexDirection:'column', flexShrink:0, height:'100vh', borderRight:'1px solid var(--sidebar-border)' }}>
-          <SidebarContent />
-        </aside>
-        <main style={{ flex:1, overflowY:'auto', background: dashBg, transition:'background .3s' }}>
-          <div style={{ padding:'32px 36px', maxWidth:1340, margin:'0 auto' }}>
-            <Outlet />
-          </div>
-        </main>
-      </div>
+      <>
+        {DemoSplash}
+        <div style={{ display:'flex', height:'100vh', overflow:'hidden' }}>
+          <aside style={{ width:SIDEBAR_W, background:'var(--sidebar)', display:'flex', flexDirection:'column', flexShrink:0, height:'100vh', borderRight:'1px solid var(--sidebar-border)' }}>
+            <SidebarContent />
+          </aside>
+          <main style={{ flex:1, overflowY:'auto', background: dashBg, transition:'background .3s' }}>
+            <div style={{ padding:'32px 36px', maxWidth:1340, margin:'0 auto' }}>
+              <Outlet />
+            </div>
+          </main>
+        </div>
+      </>
     );
   }
 
   // ── Mobile layout ──────────────────────────────────────────────────────────
   return (
+    <>
+    {DemoSplash}
     <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden' }}>
 
       {/* Top bar */}
@@ -371,5 +412,6 @@ export default function AppShell() {
         </div>
       </main>
     </div>
+    </>
   );
 }

@@ -26,14 +26,14 @@ exports.get = async (req, res) => {
 
 exports.create = async (req, res) => {
   // event_time: e.g. "18:00" (stored as VARCHAR, formatted on client)
-  const { title, event_date, event_time, venue, status, description, tasks } = req.body;
+  const { title, event_date, event_time, venue, status, description, participant_count, tasks } = req.body;
   if (!title || !event_date) return res.status(400).json({ error: 'Title and event_date required' });
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     const [r] = await conn.query(
-      'INSERT INTO recitals (school_id,title,event_date,event_time,venue,status,description) VALUES (?,?,?,?,?,?,?)',
-      [req.params.schoolId, title, event_date, event_time||null, venue||null, status||'Planning', description||null]
+      'INSERT INTO recitals (school_id,title,event_date,event_time,venue,status,description,participant_count) VALUES (?,?,?,?,?,?,?,?)',
+      [req.params.schoolId, title, event_date, event_time||null, venue||null, status||'Planning', description||null, participant_count != null ? Number(participant_count) : null]
     );
     if (tasks && tasks.length) {
       const vals = tasks.map((t, i) => [r.insertId, t.text || t, 0, i]);
@@ -50,11 +50,11 @@ exports.create = async (req, res) => {
 };
 
 exports.update = async (req, res) => {
-  const { title, event_date, event_time, venue, status, description, is_featured } = req.body;
+  const { title, event_date, event_time, venue, status, description, is_featured, participant_count } = req.body;
   try {
     await pool.query(
-      'UPDATE recitals SET title=?,event_date=?,event_time=?,venue=?,status=?,description=?,is_featured=? WHERE id=? AND school_id=?',
-      [title, event_date, event_time||null, venue||null, status||'Planning', description||null, is_featured ? 1 : 0, req.params.id, req.params.schoolId]
+      'UPDATE recitals SET title=?,event_date=?,event_time=?,venue=?,status=?,description=?,is_featured=?,participant_count=? WHERE id=? AND school_id=?',
+      [title, event_date, event_time||null, venue||null, status||'Planning', description||null, is_featured ? 1 : 0, participant_count != null ? Number(participant_count) : null, req.params.id, req.params.schoolId]
     );
     const [rows] = await pool.query('SELECT * FROM recitals WHERE id = ?', [req.params.id]);
     res.json(rows[0]);

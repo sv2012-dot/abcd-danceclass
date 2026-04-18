@@ -285,6 +285,18 @@ const RECITAL_CARD_GRADS = [
   'linear-gradient(135deg,#1a0533 0%,#7c1d6f 100%)',
   'linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)',
 ];
+function fmtCardDate(dateStr) {
+  if (!dateStr) return null;
+  const [y,m,d] = dateStr.slice(0,10).split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m-1, d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+function fmtCardTime(t) {
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  if (isNaN(h)) return null;
+  return new Date(2000, 0, 1, h, m||0).toLocaleTimeString([], { hour:'numeric', minute:'2-digit', hour12:true });
+}
 // Compress an image File to a base64 data URL at max 900px wide
 function compressImage(file) {
   return new Promise((resolve, reject) => {
@@ -324,6 +336,8 @@ function RecitalImageCard({ r, index, onClick, schoolId, onPosterUpdate, canEdit
     setUploading(false);
   };
 
+  const cardMeta = [fmtCardDate(r.event_date), r.event_time && fmtCardTime(r.event_time), r.venue].filter(Boolean);
+
   return (
     <div onClick={onClick} style={{ position:'relative', height:190, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) top/cover no-repeat` : gradBg, transition:'transform .15s,box-shadow .15s' }}
       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';}}
@@ -332,7 +346,7 @@ function RecitalImageCard({ r, index, onClick, schoolId, onPosterUpdate, canEdit
       <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(0,0,0,.55) 0%,rgba(0,0,0,.10) 55%,transparent 100%)' }} />
       <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'14px' }}>
         <div style={{ fontSize:13, fontWeight:800, color:'#fff', textTransform:'uppercase', letterSpacing:'.03em', lineHeight:1.25 }}>{r.title}</div>
-        {r.venue && <div style={{ fontSize:11, color:'rgba(255,255,255,.65)', marginTop:4 }}>{r.venue}</div>}
+        {cardMeta.length > 0 && <div style={{ fontSize:10, color:'rgba(255,255,255,.6)', marginTop:4, lineHeight:1.4 }}>{cardMeta.join(' · ')}</div>}
       </div>
       {canEdit && (
         <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:10, right:10 }}>
@@ -374,7 +388,7 @@ function FeaturedRecitalCard({ r, onClick, schoolId, onPosterUpdate, canEdit }) 
       <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'20px 18px' }}>
         <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,.55)', textTransform:'uppercase', letterSpacing:'.14em', marginBottom:7 }}>Featured Recital</div>
         <div style={{ fontSize:16, fontWeight:800, color:'#fff', textTransform:'uppercase', lineHeight:1.2, letterSpacing:'.02em' }}>{r.title}</div>
-        {r.venue && <div style={{ fontSize:12, color:'rgba(255,255,255,.65)', marginTop:6 }}>{r.venue}</div>}
+        {(() => { const parts = [fmtCardDate(r.event_date), r.event_time && fmtCardTime(r.event_time), r.venue].filter(Boolean); return parts.length > 0 ? <div style={{ fontSize:12, color:'rgba(255,255,255,.65)', marginTop:6 }}>{parts.join(' · ')}</div> : null; })()}
       </div>
       {canEdit && (
         <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:10, right:10 }}>

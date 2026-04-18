@@ -77,7 +77,8 @@ async function patchTables() {
     await addColumnIfMissing('todos',    'assigned_to',  'VARCHAR(100) NULL');
     await addColumnIfMissing('recitals', 'is_featured',  'TINYINT(1) NOT NULL DEFAULT 0');
     await addColumnIfMissing('recitals', 'poster_url',   'MEDIUMTEXT NULL');
-    await addColumnIfMissing('recitals', 'event_time',   'VARCHAR(10) NULL');
+    await addColumnIfMissing('recitals', 'event_time',      'VARCHAR(10) NULL');
+    await addColumnIfMissing('recitals', 'participant_count', 'INT NULL');
 
     // Vendors table
     await pool.query(`
@@ -219,6 +220,75 @@ async function patchTables() {
       }
 
       console.log('  🎭 Demo school seeded: teacher@manchq.com / parent@manchq.com');
+    }
+
+    // ── Additional demo data (idempotent — runs on every boot) ──────────────
+    const [[demoSchool]] = await pool.query(
+      "SELECT id FROM schools WHERE email = 'teacher@manchq.com' LIMIT 1"
+    );
+    if (demoSchool) {
+      const dsid = demoSchool.id;
+
+      // 9 more students (Arjun already seeded above = 10 total)
+      const extraStudents = [
+        { name:'Priya Patel',   phone:'+1 555 100 0021', email:'priya@demo.com',   guardian_name:'Kavita Patel',    guardian_email:'kavita@demo.com'  },
+        { name:'Riya Sharma',   phone:'+1 555 100 0031', email:'riya@demo.com',    guardian_name:'Sunita Sharma',   guardian_email:'sunita@demo.com'  },
+        { name:'Ananya Nair',   phone:'+1 555 100 0041', email:'ananya@demo.com',  guardian_name:'Lakshmi Nair',    guardian_email:'lakshmi@demo.com' },
+        { name:'Meera Iyer',    phone:'+1 555 100 0051', email:'meera@demo.com',   guardian_name:'Priya Iyer',      guardian_email:'priyai@demo.com'  },
+        { name:'Diya Krishnan', phone:'+1 555 100 0061', email:'diya@demo.com',    guardian_name:'Geetha Krishnan', guardian_email:'geetha@demo.com'  },
+        { name:'Kavya Menon',   phone:'+1 555 100 0071', email:'kavya@demo.com',   guardian_name:'Smitha Menon',    guardian_email:'smitha@demo.com'  },
+        { name:'Aisha Reddy',   phone:'+1 555 100 0081', email:'aisha@demo.com',   guardian_name:'Sudha Reddy',     guardian_email:'sudha@demo.com'   },
+        { name:'Sara Thomas',   phone:'+1 555 100 0091', email:'sara@demo.com',    guardian_name:'Bindu Thomas',    guardian_email:'bindu@demo.com'   },
+        { name:'Tara Pillai',   phone:'+1 555 100 0101', email:'tara@demo.com',    guardian_name:'Usha Pillai',     guardian_email:'usha@demo.com'    },
+      ];
+      for (const stu of extraStudents) {
+        const [[ex]] = await pool.query(
+          'SELECT id FROM students WHERE school_id=? AND name=?', [dsid, stu.name]
+        );
+        if (!ex) {
+          await pool.query(
+            `INSERT INTO students (school_id, name, phone, email, guardian_name, guardian_email, join_date)
+             VALUES (?, ?, ?, ?, ?, ?, '2025-09-01')`,
+            [dsid, stu.name, stu.phone, stu.email, stu.guardian_name, stu.guardian_email]
+          );
+        }
+      }
+
+      // 2 more batches (Classical Foundations already seeded = 3 total)
+      const extraBatches = [
+        { name:'Advanced Classical', level:'Advanced', max_size:8  },
+        { name:'Junior Stars',       level:'Beginner', max_size:15 },
+      ];
+      for (const b of extraBatches) {
+        const [[ex]] = await pool.query(
+          'SELECT id FROM batches WHERE school_id=? AND name=?', [dsid, b.name]
+        );
+        if (!ex) {
+          await pool.query(
+            `INSERT INTO batches (school_id, name, dance_style, level, teacher_name, max_size)
+             VALUES (?, ?, 'Bharatanatyam', ?, 'Demo Teacher', ?)`,
+            [dsid, b.name, b.level, b.max_size]
+          );
+        }
+      }
+
+      // 2 more recitals (Annual Showcase 2026 already seeded = 3 total)
+      const extraRecitals = [
+        { title:'Spring Festival 2026', date:'2026-03-21', time:'17:00', venue:'Community Arts Center', status:'Planning',   desc:'Spring celebration showcasing student progress across all batches.' },
+        { title:'Winter Showcase 2025', date:'2025-12-20', time:'18:30', venue:'School Auditorium',     status:'Completed',  desc:'Our annual winter showcase featuring students from all batches.'   },
+      ];
+      for (const r of extraRecitals) {
+        const [[ex]] = await pool.query(
+          'SELECT id FROM recitals WHERE school_id=? AND title=?', [dsid, r.title]
+        );
+        if (!ex) {
+          await pool.query(
+            `INSERT INTO recitals (school_id, title, event_date, event_time, venue, status, description)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [dsid, r.title, r.date, r.time, r.venue, r.status, r.desc]
+          );
+        }
+      }
     }
 
     console.log('✅ patchTables complete');

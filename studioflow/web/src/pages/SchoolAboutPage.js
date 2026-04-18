@@ -438,7 +438,7 @@ export default function SchoolAboutPage() {
             <Eyebrow center>
               {editMode
                 ? <EText value={D.city} onChange={set('city')} style={{ fontSize: 12, fontWeight: 700, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--muted)' }} />
-                : <>{D.city}{D.city && D.city !== 'Your City' ? ', Washington' : ''}</>
+                : <>{D.city && D.city !== 'Your City' ? D.city.replace(/\b\w/g, c => c.toUpperCase()) : D.city}</>
               }
             </Eyebrow>
 

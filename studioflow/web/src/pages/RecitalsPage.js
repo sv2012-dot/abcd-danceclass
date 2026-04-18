@@ -291,11 +291,14 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
 
   const openInlineEdit = () => {
     setEditForm({
-      title:       recital?.title      || "",
-      event_date:  recital?.event_date?.split("T")[0] || "",
-      event_time:  recital?.event_time || "18:00",
-      venue:       recital?.venue      || "",
-      description: recital?.description|| "",
+      title:             recital?.title             || "",
+      event_date:        recital?.event_date?.split("T")[0] || "",
+      event_time:        recital?.event_time        || "18:00",
+      venue:             recital?.venue             || "",
+      description:       recital?.description       || "",
+      status:            recital?.status            || "Planning",
+      is_featured:       recital?.is_featured       ?? 0,
+      participant_count: recital?.participant_count != null ? String(recital.participant_count) : "",
     });
     setNewInfo("");
     setEditOpen(true);
@@ -557,7 +560,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
     { icon:<CalIcon/>,   label:"Date",         value: fmtDate },
     { icon:<ClockIcon/>, label:"Time",         value: fmtRecitalTime(recital.event_time) || "—" },
     { icon:<PinIcon/>,   label:"Location",     value: recital.venue || "Main Theater" },
-    { icon:<UsersIcon/>, label:"Participants", value: "45 students" },
+    { icon:<UsersIcon/>, label:"Participants", value: recital.participant_count != null ? `${recital.participant_count} students` : "—" },
   ];
 
   return (
@@ -598,13 +601,14 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
               onClick={() => {
                 const next = recital.is_featured ? 0 : 1;
                 api.update(sid, recital.id, {
-                  title:       recital.title,
-                  event_date:  (recital.event_date || '').slice(0, 10),
-                  event_time:  recital.event_time  || '',
-                  venue:       recital.venue       || '',
-                  status:      recital.status      || 'Planning',
-                  description: recital.description || '',
-                  is_featured: next,
+                  title:             recital.title,
+                  event_date:        (recital.event_date || '').slice(0, 10),
+                  event_time:        recital.event_time  || '',
+                  venue:             recital.venue       || '',
+                  status:            recital.status      || 'Planning',
+                  description:       recital.description || '',
+                  is_featured:       next,
+                  participant_count: recital.participant_count ?? null,
                 }).then(() => {
                   qc.setQueryData(["recital-detail", sid, id], old => old ? { ...old, is_featured: next } : old);
                   qc.invalidateQueries({ queryKey: ["recitals", sid] });
@@ -932,9 +936,14 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
                   </Select>
                 </Field>
               </div>
-              <Field label="Venue / Location">
-                <Input value={editForm.venue} onChange={e => setEditForm(p=>({...p,venue:e.target.value}))} placeholder="e.g. Main Theater" />
-              </Field>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:12 }}>
+                <Field label="Venue / Location">
+                  <Input value={editForm.venue} onChange={e => setEditForm(p=>({...p,venue:e.target.value}))} placeholder="e.g. Main Theater" />
+                </Field>
+                <Field label="Participants">
+                  <Input type="number" min="0" value={editForm.participant_count} onChange={e => setEditForm(p=>({...p,participant_count:e.target.value}))} placeholder="e.g. 24" />
+                </Field>
+              </div>
               {/* ── Description ── */}
               <div style={{ borderTop:"1px solid var(--border)", paddingTop:14 }}>
                 <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:".06em", color:"var(--muted)" }}>Overview</p>
