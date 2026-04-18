@@ -481,8 +481,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
       if (onDeleted) onDeleted(eventDateRef.current);
       else if (onBack) onBack();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, recital]);
+  }, [isLoading, recital]); // intentionally omit onDeleted/onBack/sid/id — they don't change
 
   // Seed poster from DB once recital loads
   useEffect(() => {
