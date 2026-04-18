@@ -662,7 +662,7 @@ function SchoolHomePage() {
       {isMobile && isAdmin && (
         <div ref={createMenuRef} style={{position:"relative",marginBottom:24,display:"flex",justifyContent:"flex-end"}}>
           <button onClick={()=>setCreateMenuOpen(o=>!o)} style={{
-            width:"30%",padding:"13px 20px",borderRadius:14,border:"none",
+            width:"50%",padding:"13px 20px",borderRadius:14,border:"none",
             background:C.accentGrad,color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",
             display:"flex",alignItems:"center",justifyContent:"center",gap:8,
             boxShadow:"0 4px 20px rgba(124,58,237,.3)",
