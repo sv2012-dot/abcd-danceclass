@@ -5,6 +5,7 @@
  * so it is safe to run on every startup across all MySQL versions (5.7+).
  */
 const { pool } = require('../database');
+const bcrypt = require('bcryptjs');
 
 /** Add a column only if it doesn't already exist — works on MySQL 5.7+ */
 async function addColumnIfMissing(table, column, definition) {
@@ -115,6 +116,109 @@ async function patchTables() {
         (1,'Pixel Perfect Events','Photographer','Rahul Gupta','+1 206 555 0107','rahul@pixelperfect.com',NULL,'@pixelperfectevents','$300–$600','Action shots during performances. Candid and posed portfolios.',0),
         (1,'Stage Light Co','Lighting','Amanda Cross','+1 253 555 0108','amanda@stagelightco.com','https://stagelightco.com',NULL,'$250–$700','Theatre-grade LED rigs with colour profiles for Indian classical performances.',0)
       `);
+    }
+
+    // ── Demo school for manchq.com accounts (idempotent) ────────────────────
+    const [[demoCheck]] = await pool.query(
+      "SELECT id FROM users WHERE email = 'teacher@manchq.com' LIMIT 1"
+    );
+    if (!demoCheck) {
+      const hash = pw => bcrypt.hashSync(pw, 10);
+
+      // School
+      const [demoSchoolRes] = await pool.query(
+        `INSERT INTO schools (name, owner_name, email, phone, city, dance_style)
+         VALUES ('Demo Academy', 'Demo Teacher', 'teacher@manchq.com', '+1 555 000 0001', 'San Francisco', 'Bharatanatyam')`
+      );
+      const demoSchoolId = demoSchoolRes.insertId;
+
+      // Admin / teacher account
+      await pool.query(
+        `INSERT INTO users (name, email, password, role, school_id)
+         VALUES ('Demo Teacher', 'teacher@manchq.com', ?, 'school_admin', ?)`,
+        [hash('School123!'), demoSchoolId]
+      );
+
+      // Student
+      const [stuRes] = await pool.query(
+        `INSERT INTO students (school_id, name, phone, email, guardian_name, guardian_email, guardian_phone, join_date, notes)
+         VALUES (?, 'Arjun Sharma', '+1 555 100 0011', 'arjun@demo.com',
+                 'Meena Sharma', 'parent@manchq.com', '+1 555 100 0012', '2025-09-01', 'Demo student')`,
+        [demoSchoolId]
+      );
+      const demoStudentId = stuRes.insertId;
+
+      // Parent account linked to student
+      const [parRes] = await pool.query(
+        `INSERT INTO users (name, email, password, role, school_id)
+         VALUES ('Meena Sharma', 'parent@manchq.com', ?, 'parent', ?)`,
+        [hash('Parent123!'), demoSchoolId]
+      );
+      await pool.query(
+        `INSERT IGNORE INTO parent_students (parent_id, student_id) VALUES (?, ?)`,
+        [parRes.insertId, demoStudentId]
+      );
+
+      // Batch
+      const [batchRes] = await pool.query(
+        `INSERT INTO batches (school_id, name, dance_style, level, teacher_name, max_size)
+         VALUES (?, 'Classical Foundations', 'Bharatanatyam', 'Beginner', 'Demo Teacher', 12)`,
+        [demoSchoolId]
+      );
+      const demoBatchId = batchRes.insertId;
+      await pool.query(
+        `INSERT INTO batch_students (batch_id, student_id) VALUES (?, ?)`,
+        [demoBatchId, demoStudentId]
+      );
+
+      // Weekly class schedule
+      await pool.query(
+        `INSERT INTO schedules (school_id, batch_id, day_of_week, start_time, end_time, room, frequency)
+         VALUES (?, ?, 'Sat', '10:00', '11:30', 'Studio A', 'Weekly')`,
+        [demoSchoolId, demoBatchId]
+      );
+
+      // Upcoming recital
+      const [recRes] = await pool.query(
+        `INSERT INTO recitals (school_id, title, event_date, event_time, venue, status, description, is_featured)
+         VALUES (?, 'Annual Showcase 2026', '2026-06-14', '18:00',
+                 'City Arts Theater', 'Rehearsals',
+                 'Our annual year-end showcase featuring students from all batches.', 1)`,
+        [demoSchoolId]
+      );
+      const demoRecitalId = recRes.insertId;
+      const recitalTasks = [
+        ['Book venue', 1], ['Send parent invitations', 1],
+        ['Confirm costume orders', 0], ['Arrange sound system', 0],
+        ['Schedule dress rehearsal', 0], ['Print programs', 0],
+      ];
+      for (const [text, done] of recitalTasks) {
+        await pool.query(
+          `INSERT INTO recital_tasks (recital_id, task_text, is_done) VALUES (?, ?, ?)`,
+          [demoRecitalId, text, done]
+        );
+      }
+
+      // A few upcoming class events on the calendar
+      const classEvents = [
+        ['Classical Foundations — Class', '2026-04-19T10:00', '2026-04-19T11:30'],
+        ['Classical Foundations — Class', '2026-04-26T10:00', '2026-04-26T11:30'],
+        ['Annual Showcase Rehearsal',     '2026-05-03T10:00', '2026-05-03T12:00'],
+        ['Classical Foundations — Class', '2026-05-10T10:00', '2026-05-10T11:30'],
+      ];
+      for (const [title, start, end] of classEvents) {
+        const [evRes] = await pool.query(
+          `INSERT INTO events (school_id, title, type, start_datetime, end_datetime, location)
+           VALUES (?, ?, 'Class', ?, ?, 'Studio A')`,
+          [demoSchoolId, title, start, end]
+        );
+        await pool.query(
+          `INSERT IGNORE INTO event_batches (event_id, batch_id) VALUES (?, ?)`,
+          [evRes.insertId, demoBatchId]
+        );
+      }
+
+      console.log('  🎭 Demo school seeded: teacher@manchq.com / parent@manchq.com');
     }
 
     console.log('✅ patchTables complete');

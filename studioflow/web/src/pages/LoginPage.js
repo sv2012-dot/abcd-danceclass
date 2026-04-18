@@ -44,19 +44,21 @@ export default function LoginPage() {
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <div style={{ marginBottom: 14, display:'flex', justifyContent:'center' }}>
-            <div style={{ width:72, height:72, borderRadius:'50%', background:'linear-gradient(135deg,#c4527a 0%,#9b59b6 100%)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 24px rgba(196,82,122,0.35)' }}>
-              <svg width="42" height="42" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10.8 1.4 L12 0.2 L13.2 1.4" stroke="rgba(255,255,255,0.7)" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="12" cy="3.4" r="2.1" fill="white"/>
-                <path d="M12 5.5 L12 12.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M12 8 L17.2 4.8 L18.8 3.4" stroke="white" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M12 8 L6.8 11.2 L5.2 12.8" stroke="white" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M12 12.5 L16.5 16.5 L16.5 21" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M12 12.5 L7.5 16.5 L7.5 21" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M5 22 L19 22" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
-                <path d="M7 23.5 L17 23.5" stroke="rgba(255,255,255,0.5)" strokeWidth="0.8" strokeLinecap="round"/>
-              </svg>
-            </div>
+            <button onClick={() => navigate('/')} style={{ background:'none', border:'none', cursor:'pointer', padding:0, borderRadius:'50%', display:'flex' }} title="Go to homepage">
+              <div style={{ width:72, height:72, borderRadius:'50%', background:'linear-gradient(135deg,#c4527a 0%,#9b59b6 100%)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 24px rgba(196,82,122,0.35)' }}>
+                <svg width="42" height="42" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10.8 1.4 L12 0.2 L13.2 1.4" stroke="rgba(255,255,255,0.7)" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx="12" cy="3.4" r="2.1" fill="white"/>
+                  <path d="M12 5.5 L12 12.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M12 8 L17.2 4.8 L18.8 3.4" stroke="white" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 8 L6.8 11.2 L5.2 12.8" stroke="white" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 12.5 L16.5 16.5 L16.5 21" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 12.5 L7.5 16.5 L7.5 21" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M5 22 L19 22" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
+                  <path d="M7 23.5 L17 23.5" stroke="rgba(255,255,255,0.5)" strokeWidth="0.8" strokeLinecap="round"/>
+                </svg>
+              </div>
+            </button>
           </div>
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 28, color: '#fff', marginBottom: 6, letterSpacing: '-0.5px' }}>ManchQ</h1>
           <p style={{ color: '#888', fontSize: 13, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Dance School Management</p>
@@ -118,9 +120,21 @@ export default function LoginPage() {
 
           {/* Demo hint */}
           <div style={{ marginTop: 20, padding: 14, background: 'var(--surface)', borderRadius: 10, fontSize: 12, color: 'var(--muted)', borderLeft: '3px solid var(--border)' }}>
-            <div style={{ fontWeight: 700, marginBottom: 6, color: 'var(--text)' }}>Test accounts</div>
-            <div style={{ marginBottom: 2 }}>sv@gmail.com / School123! <span style={{color:'var(--muted)'}}>(Nritya Vahini)</span></div>
-            <div>parent@rhythmgrace.com / Parent123!</div>
+            <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text)' }}>Demo Accounts</div>
+            {[
+              { label: 'teacher@manchq.com', pw: 'School123!', note: 'Demo Academy' },
+              { label: 'parent@manchq.com',  pw: 'Parent123!', note: 'Parent view'  },
+            ].map(({ label, pw, note }) => (
+              <button key={label} type="button" onClick={() => setForm({ email: label, password: pw })}
+                style={{ display:'block', width:'100%', textAlign:'left', background:'none', border:'none', cursor:'pointer', padding:'4px 0', color:'var(--muted)', fontSize:12, lineHeight:1.5 }}
+                onMouseEnter={e => e.currentTarget.style.color = 'var(--text)'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--muted)'}
+              >
+                <span style={{ color:'var(--text)', fontWeight:600 }}>{label}</span>
+                {' / '}{pw}
+                <span style={{ marginLeft:6, opacity:0.6 }}>({note})</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>

@@ -601,13 +601,14 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
                 api.update(sid, recital.id, {
                   title:       recital.title,
                   event_date:  (recital.event_date || '').slice(0, 10),
+                  event_time:  recital.event_time  || '',
                   venue:       recital.venue       || '',
                   status:      recital.status      || 'Planning',
                   description: recital.description || '',
                   is_featured: next,
                 }).then(() => {
-                  qc.invalidateQueries(["recital-detail", sid, id]);
-                  qc.invalidateQueries(["recitals", sid]);
+                  qc.setQueryData(["recital-detail", sid, id], old => old ? { ...old, is_featured: next } : old);
+                  qc.invalidateQueries({ queryKey: ["recitals", sid] });
                 });
               }}
               style={{
