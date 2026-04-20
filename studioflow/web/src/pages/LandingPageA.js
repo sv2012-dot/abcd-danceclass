@@ -358,7 +358,8 @@ export default function LandingPageA() {
           Manch<span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>Q</span>
         </div>
         <div style={{ fontSize:12, color:'#374151' }}>
-          © {new Date().getFullYear()} ManchQ · Made with ♥ for dance studios.
+          © {new Date().getFullYear()} ManchQ · Made with ♥ for dance studios. ·{' '}
+          <a href="mailto:support@manchq.com" style={{ color:'#6a7fdb', textDecoration:'none' }}>support@manchq.com</a>
         </div>
       </footer>
     </div>

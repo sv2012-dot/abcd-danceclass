@@ -290,6 +290,7 @@ export default function AppShell() {
       <div style={{ padding:'12px 16px 16px', borderTop:'1px solid var(--sidebar-border)' }}>
         <div style={{ fontSize:13, fontWeight:700, color:'var(--sidebar-foreground)' }}>ManchQ</div>
         <div style={{ fontSize:10, color:'var(--sidebar-muted)', letterSpacing:'0.08em', textTransform:'uppercase', marginTop:2, fontWeight:500 }}>Your dance studio manager</div>
+        <a href="mailto:support@manchq.com" style={{ fontSize:10, color:'var(--sidebar-muted)', textDecoration:'none', marginTop:5, display:'block' }}>support@manchq.com</a>
       </div>
     </>
   );
@@ -402,7 +403,7 @@ export default function AppShell() {
           <footer style={{ borderTop:'1px solid var(--sidebar-border)', padding:'14px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'var(--sidebar)', flexShrink:0 }}>
             <div>
               <div style={{ fontSize:13, fontWeight:700, color:'var(--sidebar-foreground)' }}>ManchQ</div>
-              <div style={{ fontSize:10, color:'var(--sidebar-muted)', letterSpacing:'0.08em', textTransform:'uppercase', marginTop:2, fontWeight:500 }}>Your dance studio manager</div>
+              <a href="mailto:support@manchq.com" style={{ fontSize:10, color:'var(--sidebar-muted)', textDecoration:'none', display:'block', marginTop:2 }}>support@manchq.com</a>
             </div>
             <div style={{ textAlign:'right' }}>
               <div style={{ fontSize:10, color:'var(--sidebar-muted)', textTransform:'uppercase', letterSpacing:'0.07em', fontWeight:600, marginBottom:2 }}>Signed in as</div>

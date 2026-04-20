@@ -116,7 +116,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
   const [volunteerForm,  setVolunteerForm]  = useState(EMPTY_VOL);
 
   // Program schedule state
-  const EMPTY_PROG = { time:"", duration:"", title:"", performers:"", music_url:"", music_name:"", music_data:"", mc_notes:"", lighting_notes:"" };
+  const EMPTY_PROG = { time:"", duration:"", title:"", performers:"", music_url:"", mc_notes:"", lighting_notes:"" };
   const [programItems,   setProgramItems]   = useState([]);
   const [progModal,      setProgModal]      = useState(null); // null=closed, {}=new, {id,...}=edit
   const [progForm,       setProgForm]       = useState(EMPTY_PROG);
@@ -393,34 +393,17 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
 
   // ── Program schedule helpers ─────────────────────────────────────────────
   const persistProgram = (list) => {
-    // Strip music_data before storing if too large (>4 MB)
-    const safe = list.map(p => {
-      if (p.music_data && p.music_data.length > 4_000_000) {
-        toast("Music file too large to persist — it will be available until you leave the page.", { icon:"⚠️" });
-        return { ...p, music_data:"" };
-      }
-      return p;
-    });
     setProgramItems(list);
-    try { localStorage.setItem(PROGRAM_KEY, JSON.stringify(safe)); } catch { /* quota exceeded */ }
+    try { localStorage.setItem(PROGRAM_KEY, JSON.stringify(list)); } catch { /* quota exceeded */ }
   };
 
   const openAddProg  = () => { setProgForm(EMPTY_PROG); setProgModal({}); };
   const openEditProg = (p) => {
     setProgForm({ time:p.time||"", duration:p.duration||"", title:p.title||"", performers:p.performers||p.group||"",
-      music_url:p.music_url||"", music_name:p.music_name||"", music_data:p.music_data||"",
-      mc_notes:p.mc_notes||"", lighting_notes:p.lighting_notes||"" });
+      music_url:p.music_url||"", mc_notes:p.mc_notes||"", lighting_notes:p.lighting_notes||"" });
     setProgModal(p);
   };
 
-  const handleMusicUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { toast.error("File exceeds 10 MB. Use an external URL instead."); return; }
-    const reader = new FileReader();
-    reader.onload = () => setProgForm(p => ({ ...p, music_data:reader.result, music_name:file.name, music_url:"" }));
-    reader.readAsDataURL(file);
-  };
 
   const saveProg = () => {
     if (!progForm.title.trim()) { toast.error("Title is required"); return; }
@@ -1025,7 +1008,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
                   </div>
                 )}
                 {programItems.map((p, i) => {
-                  const hasMusic   = p.music_data || p.music_url;
+                  const hasMusic   = !!p.music_url;
                   const mcExpanded = expandedNotes.has(p.id);
                   const ltExpanded = expandedLight.has(p.id);
                   return (
@@ -1056,13 +1039,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
                         )}
                         {hasMusic && (
                           <div style={{ padding:"10px 12px", borderRadius:8, background:"var(--surface)", border:"1px solid var(--border)" }}>
-                            <div style={{ fontSize:11, fontWeight:700, color:"var(--text)", marginBottom:6, display:"flex", alignItems:"center", gap:5 }}>
-                              <SvgIcon name="music" size={11} color="#6a7fdb" />{p.music_name || "Music Track"}
+                            <div style={{ fontSize:11, fontWeight:700, color:"var(--muted)", marginBottom:4, display:"flex", alignItems:"center", gap:5 }}>
+                              <SvgIcon name="music" size={11} color="#6a7fdb" />Music
                             </div>
-                            {p.music_data && <audio controls src={p.music_data} style={{ width:"100%", height:32 }} />}
-                            {p.music_url && !p.music_data && (
-                              <a href={p.music_url} target="_blank" rel="noopener noreferrer" style={{ fontSize:12, color:"#6a7fdb", textDecoration:"none", fontWeight:600 }}>▶ Open / Play</a>
-                            )}
+                            <a href={p.music_url} target="_blank" rel="noopener noreferrer" style={{ fontSize:12, color:"#6a7fdb", textDecoration:"none", fontWeight:600, wordBreak:"break-all" }}>▶ Open / Play</a>
                           </div>
                         )}
                         {p.mc_notes && (
@@ -1131,7 +1111,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
                       </td></tr>
                     )}
                     {programItems.map((p, i) => {
-                      const hasMusic   = p.music_data || p.music_url;
+                      const hasMusic   = !!p.music_url;
                       const mcExpanded = expandedNotes.has(p.id);
                       const ltExpanded = expandedLight.has(p.id);
                       const rowBg = i % 2 === 0 ? "var(--card)" : "var(--surface)";
@@ -1176,22 +1156,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
                           {/* Music */}
                           <td style={{ padding:"12px 12px", borderRight:"1px solid var(--border)" }}>
                             {hasMusic ? (
-                              <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
-                                <div style={{ fontSize:11, fontWeight:700, color:"#333", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:128 }}>
-                                  <SvgIcon name="music" size={11} color="#333" style={{marginRight:4}} />{p.music_name || "Track"}
-                                </div>
-                                {p.music_data && (
-                                  <audio controls src={p.music_data} style={{ width:"100%", maxWidth:128, height:26 }} />
-                                )}
-                                {p.music_url && !p.music_data && (
-                                  <a href={p.music_url} target="_blank" rel="noopener noreferrer"
-                                    style={{ fontSize:11, color:"#6a7fdb", textDecoration:"none", fontWeight:600 }}>▶ Open / Play</a>
-                                )}
-                                {p.music_data && (
-                                  <a href={p.music_data} download={p.music_name||"music"}
-                                    style={{ fontSize:11, color:"var(--muted)", textDecoration:"none" }}>⬇ Download</a>
-                                )}
-                              </div>
+                              <a href={p.music_url} target="_blank" rel="noopener noreferrer"
+                                style={{ fontSize:11, color:"#6a7fdb", textDecoration:"none", fontWeight:600, display:"inline-flex", alignItems:"center", gap:4 }}>
+                                <SvgIcon name="music" size={11} color="#6a7fdb" />Open / Play
+                              </a>
                             ) : <span style={{ fontSize:11, color:"var(--border)" }}>—</span>}
                           </td>
                           {/* MC Notes */}
@@ -1282,33 +1250,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
 
                   {/* Music section */}
                   <Field label="Music">
-                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                      {progForm.music_data ? (
-                        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderRadius:8, background:"var(--surface)", border:"1px solid var(--border)" }}>
-                          <span style={{ fontSize:12, flex:1, fontWeight:600, color:"#333", display:"inline-flex", alignItems:"center" }}><SvgIcon name="music" size={11} color="#333" style={{marginRight:4}} />{progForm.music_name}</span>
-                          <button onClick={() => setProgForm(p=>({...p,music_data:"",music_name:""}))} style={{
-                            fontSize:11, color:"#e05c6a", background:"none", border:"1px solid #fecaca",
-                            borderRadius:6, padding:"3px 8px", cursor:"pointer",
-                          }}>Remove</button>
-                        </div>
-                      ) : (
-                        <label style={{
-                          display:"flex", alignItems:"center", gap:8, padding:"10px 14px",
-                          borderRadius:8, border:"1.5px dashed var(--border)", cursor:"pointer",
-                          fontSize:12, color:"var(--muted)", background:"var(--surface)",
-                        }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                          Upload audio file (MP3, WAV — max 10 MB)
-                          <input type="file" accept="audio/*" style={{ display:"none" }} onChange={handleMusicUpload} />
-                        </label>
-                      )}
-                      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                        <div style={{ flex:1, height:1, background:"var(--border)" }}/>
-                        <span style={{ fontSize:11, color:"var(--muted)" }}>or paste a URL</span>
-                        <div style={{ flex:1, height:1, background:"var(--border)" }}/>
-                      </div>
-                      <Input value={progForm.music_url} onChange={e => setProgForm(p=>({...p,music_url:e.target.value,music_data:"",music_name:""}))}
-                        placeholder="https://drive.google.com/... or SoundCloud link" disabled={!!progForm.music_data} />
+                    <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                      <Input value={progForm.music_url} onChange={e => setProgForm(p=>({...p,music_url:e.target.value}))}
+                        placeholder="YouTube, Spotify, Google Drive, or SoundCloud link" />
+                      <div style={{ fontSize:11, color:"var(--muted)" }}>Paste a shareable URL — YouTube, Spotify, Google Drive, SoundCloud, or any public audio link.</div>
                     </div>
                   </Field>
 
@@ -1340,8 +1285,8 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
 
             {/* ── Sign Up Genius integration banner ── */}
             <div style={{
-              borderRadius:12, border:"1.5px solid #e8e2ff",
-              background:"linear-gradient(135deg, #f5f2ff 0%, #fff 100%)",
+              borderRadius:12, border:"1.5px solid var(--border)",
+              background:"var(--surface)",
               padding:"18px 20px", marginBottom:22,
             }}>
               <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom: sugUrl && !editingUrl ? 14 : 10 }}>
@@ -1409,7 +1354,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
                     placeholder="https://www.signupgenius.com/go/your-signup-link"
                     style={{
                       flex:1, padding:"9px 14px",
-                      border:"1.5px solid #c9b8ff", borderRadius:9,
+                      border:"1.5px solid var(--border)", borderRadius:9,
                       fontSize:13, background:"var(--card)",
                       color:"var(--text)", outline:"none", fontFamily:"inherit",
                     }}
@@ -1900,7 +1845,8 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
           <div>
             {/* ── Uber-style confirmation status banner ── */}
             <div style={{
-              display:"flex", alignItems:"center", justifyContent:"space-between",
+              display:"flex", flexDirection: isMobile ? "column" : "row",
+              alignItems: isMobile ? "stretch" : "center", justifyContent:"space-between",
               padding: isMobile ? "16px 18px" : "18px 24px",
               borderRadius:14, marginBottom:24,
               background: venueConfirmed ? "linear-gradient(135deg,#52c4a015,#52c4a008)" : "linear-gradient(135deg,#f4a04115,#f4a04108)",
@@ -1937,12 +1883,14 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
                   toast.success(next ? "Venue marked as confirmed!" : "Venue marked as unconfirmed");
                 }}
                 style={{
-                  padding: isMobile ? "8px 14px" : "10px 20px",
+                  padding: isMobile ? "10px 14px" : "10px 20px",
                   borderRadius:10, border:"none", cursor:"pointer",
                   background: venueConfirmed ? "#52c4a0" : "#f4a041",
                   color:"#fff", fontWeight:700,
-                  fontSize: isMobile ? 12 : 13,
-                  transition:"all .2s", flexShrink:0, marginLeft:12,
+                  fontSize: isMobile ? 13 : 13,
+                  transition:"all .2s", flexShrink:0,
+                  marginLeft: isMobile ? 0 : 12, marginTop: isMobile ? 14 : 0,
+                  width: isMobile ? "100%" : "auto",
                   boxShadow: `0 2px 10px ${venueConfirmed ? "#52c4a050" : "#f4a04150"}`,
                 }}
                 onMouseEnter={e => e.currentTarget.style.opacity = ".88"}
