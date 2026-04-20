@@ -549,131 +549,277 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
   return (
     <div style={{ minHeight:"100%" }}>
 
-      {/* ── Back navigation ───────────────────────────────────────────── */}
-      <div style={{ marginBottom:22 }}>
-        <button onClick={onBack} style={{
-          display:"inline-flex", alignItems:"center", gap:7,
-          background:"none", border:"none", cursor:"pointer",
-          color:"var(--muted)", fontSize:13, fontWeight:600, padding:0,
-          transition:"color .15s", lineHeight:1,
-        }}
-          onMouseEnter={e => e.currentTarget.style.color = "var(--text)"}
-          onMouseLeave={e => e.currentTarget.style.color = "var(--muted)"}
-        >
-          <ArrowLeft /> Back to Events
-        </button>
-      </div>
+      {/* ══════════════════════════════════════════════════════════════════
+           MOBILE: Netflix-style hero — poster + title overlay + actions
+           Desktop: classic back-nav + header strip
+         ══════════════════════════════════════════════════════════════════ */}
 
-      {/* ── Event header (full-width) ──────────────────────────────────── */}
-      <div style={{ marginBottom:26 }}>
-        <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap", marginBottom:isMobile ? 16 : 22 }}>
-          <div style={{ flex:1, minWidth:0 }}>
-            <h1 style={{ fontFamily:"var(--font-d)", fontSize: isMobile ? 22 : 30, fontWeight:900, margin:0, marginBottom:10, lineHeight:1.2 }}>
-              {recital.title}
-            </h1>
-            <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
-              <span style={{ fontSize:12, background:"#6a7fdb22", color:"#6a7fdb", borderRadius:20, padding:"4px 12px", fontWeight:700 }}>
-                Performance
-              </span>
-            </div>
-          </div>
-          <div style={{ display:"flex", gap:8, flexShrink:0 }}>
-            {/* ── Star / Featured toggle ── */}
-            <button
-              title={recital.is_featured ? "Remove from featured" : "Mark as featured on dashboard"}
-              onClick={() => {
-                const next = recital.is_featured ? 0 : 1;
-                api.update(sid, recital.id, {
-                  title:             recital.title,
-                  event_date:        (recital.event_date || '').slice(0, 10),
-                  event_time:        recital.event_time  || '',
-                  venue:             recital.venue       || '',
-                  status:            recital.status      || 'Planning',
-                  description:       recital.description || '',
-                  is_featured:       next,
-                  participant_count: recital.participant_count ?? null,
-                }).then(() => {
-                  qc.setQueryData(["recital-detail", sid, id], old => old ? { ...old, is_featured: next } : old);
-                  qc.invalidateQueries({ queryKey: ["recitals", sid] });
-                });
-              }}
-              style={{
-                display:"inline-flex", alignItems:"center", justifyContent:"center",
-                width: isMobile ? 36 : 40, height: isMobile ? 36 : 40,
-                borderRadius:10, border:"1.5px solid var(--border)",
-                background:"var(--card)", cursor:"pointer",
-                color: recital.is_featured ? "#F59E0B" : "var(--muted)", transition:"all .15s", flexShrink:0,
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#FFFBEB"; e.currentTarget.style.borderColor = "#F59E0B"; e.currentTarget.style.color = "#F59E0B"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "var(--card)"; e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = recital.is_featured ? "#F59E0B" : "var(--muted)"; }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill={recital.is_featured ? "#F59E0B" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-              </svg>
-            </button>
+      {isMobile ? (
+        <>
+          {/* ── Full-bleed hero banner ── */}
+          <div style={{
+            position:"relative",
+            minHeight: poster ? 180 : 260,
+            margin:"-20px -16px 0",
+            overflow:"hidden",
+            background: poster ? "#000" : "linear-gradient(135deg,#1a1035 0%,#2d1b69 100%)",
+          }}>
+            {/* Poster image — natural size so both portrait and landscape fill correctly */}
+            {poster && (
+              <img src={poster} alt={recital.title}
+                style={{ width:"100%", height:"auto", display:"block" }} />
+            )}
+            {/* Gradient overlay bottom → top */}
+            <div style={{ position:"absolute", inset:0, background:"linear-gradient(to top, rgba(0,0,0,.82) 0%, rgba(0,0,0,.18) 55%, transparent 100%)" }} />
 
-            {/* ── Edit Event ── */}
-            <button onClick={openInlineEdit} style={{
-              display:"inline-flex", alignItems:"center", gap:6,
-              padding: isMobile ? "8px 12px" : "9px 18px",
-              borderRadius:10, border:"1.5px solid var(--border)",
-              background:"var(--card)", cursor:"pointer",
-              fontSize: isMobile ? 12 : 13, fontWeight:600,
-              color:"var(--text)", transition:"all .15s",
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = "var(--surface)"}
-              onMouseLeave={e => e.currentTarget.style.background = "var(--card)"}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-              {isMobile ? "Edit" : "Edit Event"}
-            </button>
+            {/* Top row: back pill + action buttons */}
+            <div style={{ position:"absolute", top:0, left:0, right:0, padding:"16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:10 }}>
+              {/* Back */}
+              <button onClick={onBack} style={{
+                display:"flex", alignItems:"center", gap:6,
+                padding:"7px 14px", borderRadius:20,
+                background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)",
+                border:"1px solid rgba(255,255,255,.22)",
+                color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer",
+              }}>
+                <ArrowLeft /> Back
+              </button>
 
-            {/* ── Delete Recital ── */}
-            <button onClick={() => setConfirmDelete(true)} style={{
-              display:"inline-flex", alignItems:"center", justifyContent:"center",
-              width: isMobile ? 36 : 40, height: isMobile ? 36 : 40,
-              borderRadius:10, border:"1.5px solid var(--border)",
-              background:"var(--card)", cursor:"pointer",
-              color:"var(--muted)", transition:"all .15s", flexShrink:0,
-            }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#fff0ee"; e.currentTarget.style.borderColor = "#ff3b30"; e.currentTarget.style.color = "#ff3b30"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "var(--card)"; e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--muted)"; }}
-              title="Delete recital"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                <path d="M10 11v6M14 11v6"/>
-                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Metadata strip — full width */}
-        <div style={{
-          display:"grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap:0,
-          background:"var(--border)", borderRadius:14, overflow:"hidden",
-          border:"1px solid var(--border)",
-        }}>
-          {META.map((m, i) => (
-            <div key={m.label} style={{
-              background:"var(--card)", padding: isMobile ? "14px 16px" : "16px 22px",
-              borderRight: isMobile ? (i % 2 === 0 ? "1px solid var(--border)" : "none") : (i < META.length-1 ? "1px solid var(--border)" : "none"),
-              borderBottom: isMobile && i < 2 ? "1px solid var(--border)" : "none",
-            }}>
-              <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7, color:"var(--muted)" }}>
-                {m.icon}
-                <span style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".07em" }}>{m.label}</span>
+              {/* Right: photo · star · delete */}
+              <div style={{ display:"flex", gap:8 }}>
+                {/* Photo upload / change */}
+                <label style={{
+                  width:34, height:34, borderRadius:"50%", cursor:"pointer",
+                  background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)",
+                  border:"1px solid rgba(255,255,255,.22)",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                }}>
+                  {posterSaving
+                    ? <span style={{ fontSize:11, color:"rgba(255,255,255,.7)" }}>…</span>
+                    : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.85)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  }
+                  <input type="file" accept="image/*" style={{ display:"none" }} onChange={handlePosterUpload} />
+                </label>
+                {/* Star / Featured */}
+                <button
+                  onClick={() => {
+                    const next = recital.is_featured ? 0 : 1;
+                    api.update(sid, recital.id, {
+                      title: recital.title, event_date: (recital.event_date||'').slice(0,10),
+                      event_time: recital.event_time||'', venue: recital.venue||'',
+                      status: recital.status||'Planning', description: recital.description||'',
+                      is_featured: next, participant_count: recital.participant_count ?? null,
+                    }).then(() => {
+                      qc.setQueryData(["recital-detail", sid, id], old => old ? {...old, is_featured: next} : old);
+                      qc.invalidateQueries({ queryKey: ["recitals", sid] });
+                    });
+                  }}
+                  style={{
+                    width:34, height:34, borderRadius:"50%", cursor:"pointer",
+                    background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)",
+                    border:"1px solid rgba(255,255,255,.22)",
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24"
+                    fill={recital.is_featured ? "#F59E0B" : "none"}
+                    stroke={recital.is_featured ? "#F59E0B" : "rgba(255,255,255,.85)"}
+                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                </button>
+                {/* Delete */}
+                <button onClick={() => setConfirmDelete(true)} style={{
+                  width:34, height:34, borderRadius:"50%", cursor:"pointer",
+                  background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)",
+                  border:"1px solid rgba(255,255,255,.22)",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.75)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                    <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                  </svg>
+                </button>
               </div>
-              <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
             </div>
-          ))}
-        </div>
-      </div>
+
+            {/* Bottom: title + meta chips */}
+            <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"0 18px 20px", zIndex:10 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,.5)", textTransform:"uppercase", letterSpacing:".14em", marginBottom:6 }}>Performance</div>
+              <h1 style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:900, color:"#fff", margin:"0 0 10px", lineHeight:1.2 }}>
+                {recital.title}
+              </h1>
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"center" }}>
+                {fmtDate !== "—" && (
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:11, color:"rgba(255,255,255,.72)", fontWeight:500 }}>
+                    <CalIcon />{fmtDate}
+                  </span>
+                )}
+                {fmtRecitalTime(recital.event_time) && (
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:11, color:"rgba(255,255,255,.72)", fontWeight:500 }}>
+                    <ClockIcon />{fmtRecitalTime(recital.event_time)}
+                  </span>
+                )}
+                {recital.venue && (
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:11, color:"rgba(255,255,255,.72)", fontWeight:500 }}>
+                    <PinIcon />{recital.venue}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Edit Event CTA ── */}
+          <button onClick={openInlineEdit} style={{
+            display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+            width:"100%", padding:"13px", borderRadius:12, border:"none",
+            background:"linear-gradient(135deg,#7C3AED,#D946EF)",
+            boxShadow:"0 2px 12px rgba(124,58,237,.28)",
+            color:"#fff", fontWeight:700, fontSize:14, cursor:"pointer",
+            margin:"16px 0 20px",
+          }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Edit Event Details
+          </button>
+
+          {/* ── Metadata strip ── */}
+          <div style={{
+            display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:0,
+            background:"var(--border)", borderRadius:14, overflow:"hidden",
+            border:"1px solid var(--border)", marginBottom:22,
+          }}>
+            {META.map((m, i) => (
+              <div key={m.label} style={{
+                background:"var(--card)", padding:"14px 16px",
+                borderRight: i % 2 === 0 ? "1px solid var(--border)" : "none",
+                borderBottom: i < 2 ? "1px solid var(--border)" : "none",
+              }}>
+                <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7, color:"var(--muted)" }}>
+                  {m.icon}
+                  <span style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".07em" }}>{m.label}</span>
+                </div>
+                <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* ── Back navigation ── */}
+          <div style={{ marginBottom:22 }}>
+            <button onClick={onBack} style={{
+              display:"inline-flex", alignItems:"center", gap:7,
+              background:"none", border:"none", cursor:"pointer",
+              color:"var(--muted)", fontSize:13, fontWeight:600, padding:0,
+              transition:"color .15s", lineHeight:1,
+            }}
+              onMouseEnter={e => e.currentTarget.style.color = "var(--text)"}
+              onMouseLeave={e => e.currentTarget.style.color = "var(--muted)"}
+            >
+              <ArrowLeft /> Back to Events
+            </button>
+          </div>
+
+          {/* ── Event header (full-width) ── */}
+          <div style={{ marginBottom:26 }}>
+            <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap", marginBottom:22 }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <h1 style={{ fontFamily:"var(--font-d)", fontSize:30, fontWeight:900, margin:0, marginBottom:10, lineHeight:1.2 }}>
+                  {recital.title}
+                </h1>
+                <span style={{ fontSize:12, background:"#6a7fdb22", color:"#6a7fdb", borderRadius:20, padding:"4px 12px", fontWeight:700 }}>
+                  Performance
+                </span>
+              </div>
+              <div style={{ display:"flex", gap:8, flexShrink:0 }}>
+                {/* Star */}
+                <button
+                  title={recital.is_featured ? "Remove from featured" : "Mark as featured on dashboard"}
+                  onClick={() => {
+                    const next = recital.is_featured ? 0 : 1;
+                    api.update(sid, recital.id, {
+                      title: recital.title, event_date: (recital.event_date||'').slice(0,10),
+                      event_time: recital.event_time||'', venue: recital.venue||'',
+                      status: recital.status||'Planning', description: recital.description||'',
+                      is_featured: next, participant_count: recital.participant_count ?? null,
+                    }).then(() => {
+                      qc.setQueryData(["recital-detail", sid, id], old => old ? {...old, is_featured: next} : old);
+                      qc.invalidateQueries({ queryKey: ["recitals", sid] });
+                    });
+                  }}
+                  style={{
+                    display:"inline-flex", alignItems:"center", justifyContent:"center",
+                    width:40, height:40, borderRadius:10, border:"1.5px solid var(--border)",
+                    background:"var(--card)", cursor:"pointer",
+                    color: recital.is_featured ? "#F59E0B" : "var(--muted)", transition:"all .15s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background="#FFFBEB"; e.currentTarget.style.borderColor="#F59E0B"; e.currentTarget.style.color="#F59E0B"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background="var(--card)"; e.currentTarget.style.borderColor="var(--border)"; e.currentTarget.style.color=recital.is_featured?"#F59E0B":"var(--muted)"; }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill={recital.is_featured?"#F59E0B":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                </button>
+                {/* Edit */}
+                <button onClick={openInlineEdit} style={{
+                  display:"inline-flex", alignItems:"center", gap:6,
+                  padding:"9px 18px", borderRadius:10, border:"1.5px solid var(--border)",
+                  background:"var(--card)", cursor:"pointer", fontSize:13, fontWeight:600,
+                  color:"var(--text)", transition:"all .15s",
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background="var(--surface)"}
+                  onMouseLeave={e => e.currentTarget.style.background="var(--card)"}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                  Edit Event
+                </button>
+                {/* Delete */}
+                <button onClick={() => setConfirmDelete(true)} style={{
+                  display:"inline-flex", alignItems:"center", justifyContent:"center",
+                  width:40, height:40, borderRadius:10, border:"1.5px solid var(--border)",
+                  background:"var(--card)", cursor:"pointer",
+                  color:"var(--muted)", transition:"all .15s",
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.background="#fff0ee"; e.currentTarget.style.borderColor="#ff3b30"; e.currentTarget.style.color="#ff3b30"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background="var(--card)"; e.currentTarget.style.borderColor="var(--border)"; e.currentTarget.style.color="var(--muted)"; }}
+                  title="Delete recital"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                    <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Metadata strip */}
+            <div style={{
+              display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:0,
+              background:"var(--border)", borderRadius:14, overflow:"hidden",
+              border:"1px solid var(--border)",
+            }}>
+              {META.map((m, i) => (
+                <div key={m.label} style={{
+                  background:"var(--card)", padding:"16px 22px",
+                  borderRight: i < META.length-1 ? "1px solid var(--border)" : "none",
+                }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7, color:"var(--muted)" }}>
+                    {m.icon}
+                    <span style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".07em" }}>{m.label}</span>
+                  </div>
+                  <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── Tab bar ───────────────────────────────────────────────────── */}
       <div style={{
@@ -721,18 +867,15 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
 
         {/* ── OVERVIEW ── */}
         {tab === "overview" && (
-          /* Bleed the wrapper to the container's padding edges so poster
-             can sit flush on top / right / bottom. overflow:hidden + matching
-             borderRadius clips everything to the card's rounded corners.      */
           <div style={{
             display:"flex", alignItems:"stretch",
-            flexDirection: isMobile ? "column" : "row",
-            margin: isMobile ? "-18px -16px -18px -16px" : "-28px -32px -28px -32px",
-            overflow:"hidden", borderRadius:16,
+            flexDirection:"row",
+            margin: isMobile ? 0 : "-28px -32px -28px -32px",
+            overflow:"hidden", borderRadius: isMobile ? 0 : 16,
           }}>
 
-            {/* Left: description + important info — re-apply the original padding */}
-            <div style={{ flex:1, minWidth:0, padding: isMobile ? "18px 16px" : "28px 32px" }}>
+            {/* Left: description + important info */}
+            <div style={{ flex:1, minWidth:0, padding: isMobile ? 0 : "28px 32px" }}>
               <SectionHead title="Event Overview" sub="General information and description" />
 
               {recital.description && (
@@ -754,8 +897,8 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
               )}
             </div>
 
-            {/* Right: Event Poster — edge-to-edge on top / right / bottom */}
-            <div
+            {/* Right: Event Poster — desktop only (mobile has hero at top) */}
+            {!isMobile && <div
               onMouseEnter={() => setPosterHover(true)}
               onMouseLeave={() => setPosterHover(false)}
               style={{
@@ -870,7 +1013,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
                   </button>
                 </div>
               )}
-            </div>
+            </div>}
 
           </div>
         )}

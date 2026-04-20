@@ -331,11 +331,13 @@ export default function SchedulePage() {
     }
     // If navigated here with goToDate (e.g. back from recital detail), jump to that month
     if (location.state?.goToDate) {
-      const d = new Date(location.state.goToDate);
+      // Parse as local date (not UTC) to avoid off-by-one day across timezones
+      const [yr, mo, dy] = (location.state.goToDate || '').split('-').map(Number);
+      const d = new Date(yr, mo - 1, dy);
       if (!isNaN(d)) { setCursor(d); setSelectedDay(d); }
       window.history.replaceState({}, '');
     }
-  }, []); // eslint-disable-line
+  }, [location.key]); // eslint-disable-line
 
 
   // Recitals are the single source of truth for Recital-type events.
