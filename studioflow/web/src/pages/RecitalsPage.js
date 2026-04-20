@@ -765,14 +765,17 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
                 borderLeft: isMobile ? "none" : "1px solid var(--border)",
                 borderTop: isMobile ? "1px solid var(--border)" : "none",
                 background: (poster || instaUrl) ? "#000" : "var(--surface)",
-                minHeight: isMobile ? 200 : 320,
+                minHeight: isMobile ? (poster ? 0 : 200) : 320,
               }}
             >
               {/* ── Uploaded image ── */}
               {poster && (
                 <>
                   <img src={poster} alt="Event poster"
-                    style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", position:"absolute", inset:0 }} />
+                    style={isMobile
+                      ? { width:"100%", height:"auto", display:"block" }
+                      : { width:"100%", height:"100%", objectFit:"cover", display:"block", position:"absolute", inset:0 }
+                    } />
                   {posterHover && (
                     <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,.52)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10, zIndex:2 }}>
                       <label style={{ padding:"8px 18px", borderRadius:8, background:"rgba(255,255,255,.92)", fontSize:12, fontWeight:700, cursor:"pointer", color:"#333", display:"flex", alignItems:"center", gap:6 }}>
@@ -994,9 +997,9 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
         {/* ── PROGRAM SCHEDULE ── */}
         {tab === "program" && (
           <div>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
+            <div style={{ display:"flex", flexDirection: isMobile ? "column" : "row", justifyContent:"space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: isMobile ? 12 : 0, marginBottom:20 }}>
               <SectionHead title="Program Schedule" sub="Performance timeline and running order" />
-              <Button size="sm" onClick={openAddProg}>Add Number</Button>
+              <Button size="sm" onClick={openAddProg} style={{ width: isMobile ? "100%" : "auto" }}>Add Number</Button>
             </div>
 
             {/* ── MOBILE: card-per-row ── */}
@@ -1278,9 +1281,9 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
         {/* ── PARENT VOLUNTEERS ── */}
         {tab === "volunteers" && (
           <div>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
+            <div style={{ display:"flex", flexDirection: isMobile ? "column" : "row", justifyContent:"space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: isMobile ? 12 : 0, marginBottom:20 }}>
               <SectionHead title="Parent Volunteers" sub="Volunteer coordinators and helpers for the event" />
-              <Button size="sm" onClick={openAddVolunteer}>Add Volunteer</Button>
+              <Button size="sm" onClick={openAddVolunteer} style={{ width: isMobile ? "100%" : "auto" }}>Add Volunteer</Button>
             </div>
 
             {/* ── Sign Up Genius integration banner ── */}
@@ -1518,9 +1521,9 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted }) {
         {/* ── VENDORS ── */}
         {tab === "vendors" && (
           <div>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
+            <div style={{ display:"flex", flexDirection: isMobile ? "column" : "row", justifyContent:"space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: isMobile ? 12 : 0, marginBottom:20 }}>
               <SectionHead title="Vendors" sub="Service providers and contractors for the event" />
-              <Button size="sm" onClick={openAddVendor}>Add Vendor</Button>
+              <Button size="sm" onClick={openAddVendor} style={{ width: isMobile ? "100%" : "auto" }}>Add Vendor</Button>
             </div>
 
             {vendors.length === 0 ? (
