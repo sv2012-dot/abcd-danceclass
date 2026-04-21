@@ -879,7 +879,9 @@ function SchoolHomePage() {
                     </div>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontWeight:700,fontSize:13,color:C.ebony,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title}</div>
-                      <div style={{color:C.boulder,fontSize:11,marginTop:2}}>{fmtTime(e.start_datetime)}{e.location?" · "+e.location:""}</div>
+                      <div style={{color:C.boulder,fontSize:11,marginTop:2}}>
+                        {[!isNaN(d) && d.toLocaleString("default",{weekday:"short"}), fmtTime(e.start_datetime), e.location||""].filter(Boolean).join(" · ")}
+                      </div>
                     </div>
                     <Badge color={color}>{e.type}</Badge>
                   </div>
