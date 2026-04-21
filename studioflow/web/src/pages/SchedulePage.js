@@ -530,6 +530,27 @@ export default function SchedulePage() {
     onError: err => toast.error(err.error || "Failed"),
   });
 
+  const duplicateMutation = useMutation({
+    mutationFn: (e) => api.create(sid, {
+      title: e.title + " (Copy)",
+      type: e.type,
+      start_datetime: e.start_datetime,
+      end_datetime: e.end_datetime,
+      location: e.location || "",
+      notes: e.notes || "",
+      color: e.color || "",
+      recurrence: "none",
+      requires_studio: !!e.requires_studio,
+      studio_booked: false,
+      batch_ids: (e.batches || []).map(b => b.id),
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["events"], exact: false });
+      toast.success("Event duplicated!");
+    },
+    onError: err => toast.error(err.error || "Failed"),
+  });
+
   // ── Recital quick-create mutation ─────────────────────────────────────────
   const recitalSaveMutation = useMutation({
     mutationFn: data => recitalApi.create(sid, data),
@@ -1121,7 +1142,8 @@ export default function SchedulePage() {
           display:"flex", flexDirection:"column",
           boxShadow: isMobile ? "0 -4px 32px rgba(0,0,0,.14)" : "-6px 0 32px rgba(0,0,0,.09)",
         }}>
-          {/* Panel header */}
+          {/* Panel header — hidden on mobile view (replaced by Netflix hero) */}
+          {!(isMobile && panelMode === 'view' && detailEvent) && (
           <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
             <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em" }}>
               {panelMode === 'add' ? "New Event" : panelMode === 'edit' ? "Edit Event" : panelMode === 'add-recital' ? "New Recital" : "Event Details"}
@@ -1129,6 +1151,7 @@ export default function SchedulePage() {
             <button onClick={() => { setDetailEvent(null); setPanelMode('view'); }}
               style={{ background:"none", border:"none", cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6, display:"flex", alignItems:"center" }}><SvgIcon name="x" size={18} /></button>
           </div>
+          )}
 
           {/* ── VIEW mode: event hero + details ── */}
           {panelMode === 'view' && detailEvent && (() => {
@@ -1136,19 +1159,56 @@ export default function SchedulePage() {
             const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
             return (
               <>
-                {/* Event hero */}
-                <div style={{ padding:"22px 22px 18px", borderBottom:"1px solid var(--border)", flexShrink:0, background:"var(--surface)" }}>
-                  <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:12 }}>
-                    <div style={{ width:6, height:48, borderRadius:3, background:color, flexShrink:0, marginTop:2 }} />
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, marginBottom:8, lineHeight:1.2 }}>{e.title}</div>
+                {/* Event hero — Netflix style on mobile, classic on desktop */}
+                {isMobile ? (
+                  <div style={{ background:"linear-gradient(160deg,#1a1035 0%,#2a1a55 100%)", flexShrink:0, overflow:"hidden" }}>
+                    <div style={{ height:4, background:color }} />
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 16px" }}>
+                      <button onClick={() => { setDetailEvent(null); setPanelMode('view'); }} style={{
+                        display:"flex", alignItems:"center", gap:6, padding:"7px 14px", borderRadius:20,
+                        background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)",
+                        border:"1px solid rgba(255,255,255,.22)",
+                        color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer",
+                      }}>
+                        ← Close
+                      </button>
+                      {isAdmin && (
+                        <div style={{ display:"flex", gap:8 }}>
+                          <button onClick={() => openEdit(e)} title="Edit event" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+                            <SvgIcon name="pencil" size={15} color="rgba(255,255,255,.85)" />
+                          </button>
+                          <button onClick={() => duplicateMutation.mutate(e)} title="Duplicate event" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+                            <SvgIcon name="copy" size={15} color="rgba(255,255,255,.85)" />
+                          </button>
+                          <button onClick={() => { if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} title="Delete event" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+                            <SvgIcon name="trash" size={15} color="rgba(255,255,255,.75)" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding:"4px 16px 22px" }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,.5)", textTransform:"uppercase", letterSpacing:".14em", marginBottom:6 }}>Event</div>
+                      <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"#fff", marginBottom:10, lineHeight:1.2 }}>{e.title}</div>
                       <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                        <Badge color={color}>{e.type}</Badge>
-                        {!!e.requires_studio && <Badge color={e.studio_booked?"#52c4a0":"#e05c6a"}>{e.studio_booked?"Studio ✓":"Studio ⚠"}</Badge>}
+                        <span style={{ fontSize:11, color:"rgba(255,255,255,.85)", fontWeight:600, background:"rgba(0,0,0,.35)", border:"1px solid rgba(255,255,255,.2)", borderRadius:20, padding:"3px 10px" }}>{e.type}</span>
+                        {!!e.requires_studio && <span style={{ fontSize:11, color:"rgba(255,255,255,.85)", fontWeight:600, background:e.studio_booked?"rgba(82,196,160,.25)":"rgba(224,92,106,.25)", border:`1px solid ${e.studio_booked?"rgba(82,196,160,.5)":"rgba(224,92,106,.5)"}`, borderRadius:20, padding:"3px 10px" }}>{e.studio_booked?"Studio ✓":"Studio ⚠"}</span>}
                       </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div style={{ padding:"22px 22px 18px", borderBottom:"1px solid var(--border)", flexShrink:0, background:"var(--surface)" }}>
+                    <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:12 }}>
+                      <div style={{ width:6, height:48, borderRadius:3, background:color, flexShrink:0, marginTop:2 }} />
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, marginBottom:8, lineHeight:1.2 }}>{e.title}</div>
+                        <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                          <Badge color={color}>{e.type}</Badge>
+                          {!!e.requires_studio && <Badge color={e.studio_booked?"#52c4a0":"#e05c6a"}>{e.studio_booked?"Studio ✓":"Studio ⚠"}</Badge>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {/* Scrollable body */}
                 <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
                   <div style={{ display:"grid", gap:14, marginBottom:20 }}>
@@ -1185,13 +1245,14 @@ export default function SchedulePage() {
                       </div>
                     </div>
                   )}
-                  {isAdmin && (
+                  {isAdmin && (!isMobile || (!!e.requires_studio && !e.studio_booked)) && (
                     <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
-                      <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Event</button>
+                      {!isMobile && <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Event</button>}
+                      {!isMobile && <button onClick={() => duplicateMutation.mutate(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--border)", background:"var(--surface)", color:"var(--text)", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="copy" size={14} /> Duplicate Event</button>}
                       {!!e.requires_studio && !e.studio_booked && (
                         <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true,batch_ids:(e.batches||[]).map(b=>b.id)}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #52c4a0", background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="check-circle" size={14} color="#52c4a0" /> Mark Studio Booked</button>
                       )}
-                      <button onClick={()=>{ if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="trash" size={14} color="#e05c6a" /> Delete Event</button>
+                      {!isMobile && <button onClick={()=>{ if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="trash" size={14} color="#e05c6a" /> Delete Event</button>}
                     </div>
                   )}
                 </div>
