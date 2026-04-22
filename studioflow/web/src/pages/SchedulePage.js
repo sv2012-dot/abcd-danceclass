@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { events as api, batches as batchesApi, recitals as recitalApi, studios as studiosApi } from "../api";
+import { events as api, batches as batchesApi, recitals as recitalApi, studios as studiosApi, schedules as schedulesApi } from "../api";
 import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
@@ -429,7 +429,13 @@ export default function SchedulePage() {
 
   const { data: studioRooms=[] } = useQuery({
     queryKey: ["studios", sid],
-    queryFn:  () => studiosApi.list(sid).then(r => r.studios || []),
+    queryFn:  () => studiosApi.list(sid).then(r => Array.isArray(r) ? r : (r.studios || [])),
+    enabled:  !!sid,
+  });
+
+  const { data: allSchedules=[] } = useQuery({
+    queryKey: ["schedules", sid],
+    queryFn:  () => schedulesApi.list(sid),
     enabled:  !!sid,
   });
 
@@ -446,11 +452,47 @@ export default function SchedulePage() {
     _recitalId:     r.id,
   })), [recitalsList]);
 
-  // Merge: non-Recital events from events table + recitals from recitals table
-  // Merge strategy:
-  // - Recitals from recitals table (_isRecital) are authoritative
-  // - Legacy Recital-type events in the events table that have NO matching recital record
-  //   are kept visible so nothing disappears; clicking them auto-creates the recital record
+  // Convert batch schedules (recurring weekly slots) → calendar event instances
+  const SCHED_DOW = { Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6, Sun:0 };
+  const SCHED_COLORS = ["#e8607a","#6a7fdb","#f4a041","#52c4a0","#b47fe8","#e87a52"];
+  const scheduleEvents = useMemo(() => {
+    if (!allSchedules.length || !batches.length) return [];
+    const rangeFrom = new Date(view === "list" ? listFrom : from);
+    const rangeTo   = new Date(view === "list" ? listTo   : to);
+    const result = [];
+    for (const sch of allSchedules) {
+      const batch = batches.find(b => String(b.id) === String(sch.batch_id));
+      if (!batch) continue;
+      const dow = SCHED_DOW[sch.day_of_week];
+      if (dow === undefined) continue;
+      const batchIdx = batches.indexOf(batch);
+      const color = SCHED_COLORS[batchIdx % SCHED_COLORS.length];
+      // Advance to first matching weekday at or after rangeFrom
+      const cur = new Date(rangeFrom);
+      const diff = ((dow - cur.getDay()) + 7) % 7;
+      cur.setDate(cur.getDate() + diff);
+      while (cur <= rangeTo) {
+        const ds = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
+        result.push({
+          id:             `sched_${sch.id}_${ds}`,
+          title:          batch.name,
+          type:           "Class",
+          start_datetime: `${ds}T${sch.start_time || "00:00"}`,
+          end_datetime:   `${ds}T${sch.end_time   || "01:00"}`,
+          location:       sch.room || "",
+          batches:        [{ id: batch.id, name: batch.name, student_count: batch.student_count }],
+          color,
+          _isSchedule:    true,
+          _scheduleId:    sch.id,
+          _batchId:       batch.id,
+        });
+        cur.setDate(cur.getDate() + 7);
+      }
+    }
+    return result;
+  }, [allSchedules, batches, view, from, to, listFrom, listTo]); // eslint-disable-line
+
+  // Merge: explicit events + recitals + batch schedule instances
   const events = useMemo(() => {
     const recitalTitles = new Set(
       recitalsList.map(r => r.title?.toLowerCase().trim()).filter(Boolean)
@@ -459,7 +501,16 @@ export default function SchedulePage() {
     const fromEventsTable = rawEvents.filter(e =>
       e.type !== "Recital" || !recitalTitles.has(e.title?.toLowerCase().trim())
     );
-    const combined = [...fromEventsTable, ...recitalEvents];
+    // Suppress schedule events where a real event already covers the same batch+day
+    const realBatchDayKeys = new Set(
+      fromEventsTable.flatMap(e =>
+        (e.batches || []).map(b => `${b.id}_${(e.start_datetime||'').slice(0,10)}`)
+      )
+    );
+    const filteredScheduleEvents = scheduleEvents.filter(se =>
+      !realBatchDayKeys.has(`${se._batchId}_${se.start_datetime.slice(0,10)}`)
+    );
+    const combined = [...fromEventsTable, ...recitalEvents, ...filteredScheduleEvents];
     return combined.filter(e => {
       if (filterType !== "All" && e.type !== filterType) return false;
       if (studioOnly && !e.requires_studio) return false;
@@ -469,7 +520,7 @@ export default function SchedulePage() {
       }
       return true;
     });
-  }, [rawEvents, recitalEvents, recitalsList, filterType, studioOnly, filterBatch]);
+  }, [rawEvents, recitalEvents, recitalsList, scheduleEvents, filterType, studioOnly, filterBatch]);
 
   // If navigated with openEventId (e.g. from dashboard THIS WEEK row), jump to date + open panel
   const pendingEventIdRef = useRef(null);
@@ -566,7 +617,8 @@ export default function SchedulePage() {
     const base = prefillDate ? new Date(prefillDate) : new Date();
     base.setHours(18, 0, 0, 0);
     const end = new Date(base); end.setHours(19, 0, 0, 0);
-    setForm({ ...EMPTY_FORM, start_datetime: toLocalInput(base), end_datetime: toLocalInput(end), duration: 60 });
+    const favStudio = studioRooms.find(s => s.is_favorite);
+    setForm({ ...EMPTY_FORM, start_datetime: toLocalInput(base), end_datetime: toLocalInput(end), duration: 60, location: favStudio?.name || "" });
     setDetailEvent(null);
     setPanelMode('add');
   };
@@ -1175,7 +1227,7 @@ export default function SchedulePage() {
                       }}>
                         ← Close
                       </button>
-                      {isAdmin && (
+                      {isAdmin && !e._isSchedule && (
                         <div style={{ display:"flex", gap:8 }}>
                           <button onClick={() => openEdit(e)} title="Edit event" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
                             <SvgIcon name="pencil" size={15} color="rgba(255,255,255,.85)" />
@@ -1238,6 +1290,12 @@ export default function SchedulePage() {
                     )}
                     {e.notes && <PDetailRow icon="file-text" label="Notes">{e.notes}</PDetailRow>}
                   </div>
+                  {e._isSchedule && (
+                    <div style={{ padding:"10px 14px", borderRadius:10, background:"var(--surface)", border:"1px solid var(--border)", marginBottom:16, display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+                      <span style={{ fontSize:12, color:"var(--muted)" }}>↻ Recurring — managed in Batches</span>
+                      <button onClick={()=>{ setDetailEvent(null); setPanelMode('view'); navigate("/batches"); }} style={{ fontSize:12, fontWeight:700, color:"var(--accent)", background:"none", border:"none", cursor:"pointer", padding:0 }}>Go to Batches →</button>
+                    </div>
+                  )}
                   {!!e.requires_studio && (
                     <div style={{ padding:"12px 14px", borderRadius:10, background:e.studio_booked?"#52c4a008":"#e05c6a08", border:`1.5px solid ${e.studio_booked?"#52c4a033":"#e05c6a33"}`, marginBottom:20 }}>
                       <div style={{ fontSize:12, fontWeight:700, color:e.studio_booked?"#52c4a0":"#e05c6a" }}>
@@ -1245,7 +1303,7 @@ export default function SchedulePage() {
                       </div>
                     </div>
                   )}
-                  {isAdmin && (!isMobile || (!!e.requires_studio && !e.studio_booked)) && (
+                  {isAdmin && !e._isSchedule && (!isMobile || (!!e.requires_studio && !e.studio_booked)) && (
                     <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
                       {!isMobile && <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Event</button>}
                       {!!e.requires_studio && !e.studio_booked && (
@@ -1305,16 +1363,17 @@ export default function SchedulePage() {
                   <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Location / Room</div>
                   {studioRooms.length > 0 && (
                     <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:8}}>
-                      {studioRooms.map(s => {
+                      {[...studioRooms].sort((a,b) => (b.is_favorite?1:0)-(a.is_favorite?1:0)).map(s => {
                         const active = form.location === s.name;
                         return (
                           <button key={s.id} type="button" onClick={() => setForm(f => ({ ...f, location: active ? "" : s.name }))} style={{
                             display:"inline-flex",alignItems:"center",gap:5,
                             padding:"5px 13px",borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:700,
-                            border:`1.5px solid ${active?"var(--accent)":"var(--border)"}`,
-                            background:active?"var(--accent)":"transparent",
-                            color:active?"#fff":"var(--muted)",transition:"all .12s",
+                            border:`1.5px solid ${active?"var(--accent)":s.is_favorite?"#F59E0B":"var(--border)"}`,
+                            background:active?"var(--accent)":s.is_favorite?"#FFFBEB":"transparent",
+                            color:active?"#fff":s.is_favorite?"#B45309":"var(--muted)",transition:"all .12s",
                           }}>
+                            {s.is_favorite && !active && <span style={{fontSize:11}}>★</span>}
                             {active && <span>✓</span>}
                             {s.name}
                           </button>
