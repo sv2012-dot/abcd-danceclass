@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { events as api, batches as batchesApi, recitals as recitalApi } from "../api";
+import { events as api, batches as batchesApi, recitals as recitalApi, studios as studiosApi } from "../api";
 import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
@@ -393,6 +393,7 @@ export default function SchedulePage() {
 
   // Filters
   const [filterType, setFilterType] = useState("All");
+  const [filterBatch, setFilterBatch] = useState(null); // batch id or null
   const [studioOnly, setStudioOnly] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [selectedDay, setSelectedDay] = useState(today);
@@ -426,6 +427,12 @@ export default function SchedulePage() {
     enabled:  !!sid,
   });
 
+  const { data: studioRooms=[] } = useQuery({
+    queryKey: ["studios", sid],
+    queryFn:  () => studiosApi.list(sid).then(r => r.studios || []),
+    enabled:  !!sid,
+  });
+
   // Convert recitals → calendar event objects (recitals table is single source of truth)
   const recitalEvents = useMemo(() => recitalsList.map(r => ({
     id:             `recital_${r.id}`,
@@ -456,9 +463,13 @@ export default function SchedulePage() {
     return combined.filter(e => {
       if (filterType !== "All" && e.type !== filterType) return false;
       if (studioOnly && !e.requires_studio) return false;
+      if (filterBatch !== null) {
+        const bids = (e.batches || []).map(b => b.id);
+        if (!bids.includes(filterBatch) && !bids.includes(String(filterBatch))) return false;
+      }
       return true;
     });
-  }, [rawEvents, recitalEvents, recitalsList, filterType, studioOnly]);
+  }, [rawEvents, recitalEvents, recitalsList, filterType, studioOnly, filterBatch]);
 
   // If navigated with openEventId (e.g. from dashboard THIS WEEK row), jump to date + open panel
   const pendingEventIdRef = useRef(null);
@@ -526,27 +537,6 @@ export default function SchedulePage() {
       toast.success("Event deleted");
       setDetailEvent(null);
       setPanelMode('view');
-    },
-    onError: err => toast.error(err.error || "Failed"),
-  });
-
-  const duplicateMutation = useMutation({
-    mutationFn: (e) => api.create(sid, {
-      title: e.title + " (Copy)",
-      type: e.type,
-      start_datetime: e.start_datetime,
-      end_datetime: e.end_datetime,
-      location: e.location || "",
-      notes: e.notes || "",
-      color: e.color || "",
-      recurrence: "none",
-      requires_studio: !!e.requires_studio,
-      studio_booked: false,
-      batch_ids: (e.batches || []).map(b => b.id),
-    }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["events"], exact: false });
-      toast.success("Event duplicated!");
     },
     onError: err => toast.error(err.error || "Failed"),
   });
@@ -1067,6 +1057,19 @@ export default function SchedulePage() {
               border:`1.5px solid ${studioOnly?"#e05c6a":"var(--border)"}`,
               background:studioOnly?"#e05c6a22":"transparent",color:studioOnly?"#e05c6a":"var(--muted)",
             }}><SvgIcon name="home" size={11} style={{marginRight:5}} /> Studio needed</button>
+            {batches.length > 0 && <>
+              <div style={{width:1,height:16,background:"var(--border)",margin:"0 2px"}} />
+              {batches.map(b => {
+                const active = filterBatch === b.id || filterBatch === String(b.id);
+                return (
+                  <button key={b.id} onClick={()=>setFilterBatch(active ? null : b.id)} style={{
+                    padding:"4px 12px",borderRadius:20,border:`1.5px solid ${active?"#6a7fdb":"var(--border)"}`,
+                    fontSize:11,fontWeight:700,cursor:"pointer",
+                    background:active?"#6a7fdb22":"transparent",color:active?"#6a7fdb":"var(--muted)",
+                  }}>{b.name}</button>
+                );
+              })}
+            </>}
 
             {/* Legend link */}
             <div style={{position:"relative",marginLeft:4}}>
@@ -1177,9 +1180,6 @@ export default function SchedulePage() {
                           <button onClick={() => openEdit(e)} title="Edit event" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
                             <SvgIcon name="pencil" size={15} color="rgba(255,255,255,.85)" />
                           </button>
-                          <button onClick={() => duplicateMutation.mutate(e)} title="Duplicate event" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-                            <SvgIcon name="copy" size={15} color="rgba(255,255,255,.85)" />
-                          </button>
                           <button onClick={() => { if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} title="Delete event" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
                             <SvgIcon name="trash" size={15} color="rgba(255,255,255,.75)" />
                           </button>
@@ -1248,7 +1248,6 @@ export default function SchedulePage() {
                   {isAdmin && (!isMobile || (!!e.requires_studio && !e.studio_booked)) && (
                     <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
                       {!isMobile && <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Event</button>}
-                      {!isMobile && <button onClick={() => duplicateMutation.mutate(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--border)", background:"var(--surface)", color:"var(--text)", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="copy" size={14} /> Duplicate Event</button>}
                       {!!e.requires_studio && !e.studio_booked && (
                         <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true,batch_ids:(e.batches||[]).map(b=>b.id)}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #52c4a0", background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="check-circle" size={14} color="#52c4a0" /> Mark Studio Booked</button>
                       )}
@@ -1302,9 +1301,29 @@ export default function SchedulePage() {
                     {DURATION_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
                   </Select>
                 </Field>
-                <Field label="Location / Room" style={{gridColumn:"1/-1"}}>
-                  <Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder="e.g. Studio A" />
-                </Field>
+                <div style={{gridColumn:"1/-1", marginBottom:12}}>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Location / Room</div>
+                  {studioRooms.length > 0 && (
+                    <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:8}}>
+                      {studioRooms.map(s => {
+                        const active = form.location === s.name;
+                        return (
+                          <button key={s.id} type="button" onClick={() => setForm(f => ({ ...f, location: active ? "" : s.name }))} style={{
+                            display:"inline-flex",alignItems:"center",gap:5,
+                            padding:"5px 13px",borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:700,
+                            border:`1.5px solid ${active?"var(--accent)":"var(--border)"}`,
+                            background:active?"var(--accent)":"transparent",
+                            color:active?"#fff":"var(--muted)",transition:"all .12s",
+                          }}>
+                            {active && <span>✓</span>}
+                            {s.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder={studioRooms.length > 0 ? "Or type a custom location…" : "e.g. Studio A"} />
+                </div>
                 <Field label="Repeat">
                   <Select value={form.recurrence} onChange={e=>setForm({...form,recurrence:e.target.value})} disabled={panelMode === 'edit'}>
                     <option value="none">No repeat</option>
