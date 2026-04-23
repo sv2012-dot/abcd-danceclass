@@ -71,6 +71,22 @@ async function patchTables() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    // Schedule exceptions — one row per cancelled/skipped recurring slot
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS schedule_exceptions (
+        id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        school_id      INT UNSIGNED NOT NULL,
+        schedule_id    INT UNSIGNED NOT NULL,
+        exception_date DATE         NOT NULL,
+        created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_school   (school_id),
+        INDEX idx_schedule (schedule_id),
+        UNIQUE KEY uq_exc (schedule_id, exception_date),
+        FOREIGN KEY (school_id)   REFERENCES schools(id)   ON DELETE CASCADE,
+        FOREIGN KEY (schedule_id) REFERENCES schedules(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     // Column patches — uses INFORMATION_SCHEMA so they work on MySQL 5.7+
     await addColumnIfMissing('schools',  'profile_json', 'LONGTEXT NULL');
     await addColumnIfMissing('students', 'avatar',       'VARCHAR(100) NULL');
@@ -79,6 +95,7 @@ async function patchTables() {
     await addColumnIfMissing('recitals', 'poster_url',   'MEDIUMTEXT NULL');
     await addColumnIfMissing('recitals', 'event_time',      'VARCHAR(10) NULL');
     await addColumnIfMissing('recitals', 'participant_count', 'INT NULL');
+    await addColumnIfMissing('studios',  'is_quick_add',  'TINYINT(1) NOT NULL DEFAULT 0');
 
     // Vendors table
     await pool.query(`

@@ -16,12 +16,12 @@ router.get('/', async (req, res) => {
 // POST /api/schools/:schoolId/studios
 router.post('/', async (req, res) => {
   try {
-    const { name, address, city, state, zip, phone, email, website, capacity, hourly_rate, notes, is_favorite } = req.body;
+    const { name, address, city, state, zip, phone, email, website, capacity, hourly_rate, notes, is_favorite, is_quick_add } = req.body;
     if (!name) return res.status(400).json({ error: 'Name required' });
     const [r] = await pool.query(
-      `INSERT INTO studios (school_id, name, address, city, state, zip, phone, email, website, capacity, hourly_rate, notes, is_favorite)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [req.params.schoolId, name, address||null, city||null, state||'WA', zip||null, phone||null, email||null, website||null, capacity||null, hourly_rate||null, notes||null, is_favorite?1:0]
+      `INSERT INTO studios (school_id, name, address, city, state, zip, phone, email, website, capacity, hourly_rate, notes, is_favorite, is_quick_add)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [req.params.schoolId, name, address||null, city||null, state||null, zip||null, phone||null, email||null, website||null, capacity||null, hourly_rate||null, notes||null, is_favorite?1:0, is_quick_add?1:0]
     );
     const [rows] = await pool.query('SELECT * FROM studios WHERE id = ?', [r.insertId]);
     res.status(201).json({ studio: rows[0] });
@@ -31,13 +31,14 @@ router.post('/', async (req, res) => {
 // PUT /api/schools/:schoolId/studios/:id
 router.put('/:id', async (req, res) => {
   try {
-    const { name, address, city, state, zip, phone, email, website, capacity, hourly_rate, notes, is_favorite } = req.body;
+    const { name, address, city, state, zip, phone, email, website, capacity, hourly_rate, notes, is_favorite, is_quick_add } = req.body;
     await pool.query(
       `UPDATE studios SET name=COALESCE(?,name), address=?, city=?, state=?, zip=?, phone=?, email=?, website=?,
-       capacity=?, hourly_rate=?, notes=?, is_favorite=COALESCE(?,is_favorite)
+       capacity=?, hourly_rate=?, notes=?, is_favorite=COALESCE(?,is_favorite), is_quick_add=COALESCE(?,is_quick_add)
        WHERE id=? AND school_id=?`,
       [name, address||null, city||null, state||null, zip||null, phone||null, email||null, website||null,
        capacity||null, hourly_rate||null, notes||null, is_favorite!=null?Number(is_favorite):null,
+       is_quick_add!=null?Number(is_quick_add):null,
        req.params.id, req.params.schoolId]
     );
     const [rows] = await pool.query('SELECT * FROM studios WHERE id = ?', [req.params.id]);

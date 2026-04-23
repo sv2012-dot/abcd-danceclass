@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { events as api, batches as batchesApi, recitals as recitalApi, studios as studiosApi, schedules as schedulesApi } from "../api";
+import { events as api, batches as batchesApi, recitals as recitalApi, studios as studiosApi, schedules as schedulesApi, scheduleExceptions as exceptionsApi } from "../api";
 import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
@@ -428,14 +428,20 @@ export default function SchedulePage() {
   });
 
   const { data: studioRooms=[] } = useQuery({
-    queryKey: ["studios", sid],
-    queryFn:  () => studiosApi.list(sid).then(r => Array.isArray(r) ? r : (r.studios || [])),
+    queryKey: ["studio-rooms", sid],
+    queryFn:  () => studiosApi.list(sid).then(r => (r && r.studios) ? r.studios : (Array.isArray(r) ? r : [])),
     enabled:  !!sid,
   });
 
   const { data: allSchedules=[] } = useQuery({
     queryKey: ["schedules", sid],
     queryFn:  () => schedulesApi.list(sid),
+    enabled:  !!sid,
+  });
+
+  const { data: allExceptions=[] } = useQuery({
+    queryKey: ["schedule-exceptions", sid],
+    queryFn:  () => exceptionsApi.list(sid),
     enabled:  !!sid,
   });
 
@@ -454,43 +460,44 @@ export default function SchedulePage() {
 
   // Convert batch schedules (recurring weekly slots) → calendar event instances
   const SCHED_DOW = { Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6, Sun:0 };
-  const SCHED_COLORS = ["#e8607a","#6a7fdb","#f4a041","#52c4a0","#b47fe8","#e87a52"];
   const scheduleEvents = useMemo(() => {
     if (!allSchedules.length || !batches.length) return [];
     const rangeFrom = new Date(view === "list" ? listFrom : from);
     const rangeTo   = new Date(view === "list" ? listTo   : to);
+    // Build a set of skipped dates: "scheduleId_YYYY-MM-DD"
+    const exceptionKeys = new Set(allExceptions.map(ex => `${ex.schedule_id}_${ex.exception_date}`));
     const result = [];
     for (const sch of allSchedules) {
       const batch = batches.find(b => String(b.id) === String(sch.batch_id));
       if (!batch) continue;
       const dow = SCHED_DOW[sch.day_of_week];
       if (dow === undefined) continue;
-      const batchIdx = batches.indexOf(batch);
-      const color = SCHED_COLORS[batchIdx % SCHED_COLORS.length];
       // Advance to first matching weekday at or after rangeFrom
       const cur = new Date(rangeFrom);
       const diff = ((dow - cur.getDay()) + 7) % 7;
       cur.setDate(cur.getDate() + diff);
       while (cur <= rangeTo) {
         const ds = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
-        result.push({
-          id:             `sched_${sch.id}_${ds}`,
-          title:          batch.name,
-          type:           "Class",
-          start_datetime: `${ds}T${sch.start_time || "00:00"}`,
-          end_datetime:   `${ds}T${sch.end_time   || "01:00"}`,
-          location:       sch.room || "",
-          batches:        [{ id: batch.id, name: batch.name, student_count: batch.student_count }],
-          color,
-          _isSchedule:    true,
-          _scheduleId:    sch.id,
-          _batchId:       batch.id,
-        });
+        // Skip cancelled instances
+        if (!exceptionKeys.has(`${sch.id}_${ds}`)) {
+          result.push({
+            id:             `sched_${sch.id}_${ds}`,
+            title:          batch.name,
+            type:           "Class",
+            start_datetime: `${ds}T${sch.start_time || "00:00"}`,
+            end_datetime:   `${ds}T${sch.end_time   || "01:00"}`,
+            location:       sch.room || "",
+            batches:        [{ id: batch.id, name: batch.name, student_count: batch.student_count }],
+            _isSchedule:    true,
+            _scheduleId:    sch.id,
+            _batchId:       batch.id,
+          });
+        }
         cur.setDate(cur.getDate() + 7);
       }
     }
     return result;
-  }, [allSchedules, batches, view, from, to, listFrom, listTo]); // eslint-disable-line
+  }, [allSchedules, allExceptions, batches, view, from, to, listFrom, listTo]); // eslint-disable-line
 
   // Merge: explicit events + recitals + batch schedule instances
   const events = useMemo(() => {
@@ -577,6 +584,17 @@ export default function SchedulePage() {
           qc.invalidateQueries({ queryKey: ["recitals", sid] });
         } catch { /* non-fatal — user can still click to create later */ }
       }
+      // Auto-persist free-text location as a quick-add studio if it's new
+      if (submittedData?.location) {
+        const loc = submittedData.location.trim();
+        const alreadyExists = studioRooms.some(s => s.name.toLowerCase() === loc.toLowerCase());
+        if (!alreadyExists) {
+          studiosApi.create(sid, { name: loc, is_quick_add: 1 }).then(() => {
+            qc.invalidateQueries({ queryKey: ["studio-rooms", sid] });
+            qc.invalidateQueries({ queryKey: ["studios", sid] });
+          }).catch(() => {});
+        }
+      }
     },
     onError: err => toast.error(err.error || "Failed"),
   });
@@ -591,6 +609,34 @@ export default function SchedulePage() {
     },
     onError: err => toast.error(err.error || "Failed"),
   });
+
+  const skipMutation = useMutation({
+    mutationFn: ({ scheduleId, date }) => exceptionsApi.create(sid, { schedule_id: scheduleId, exception_date: date }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["schedule-exceptions", sid] });
+      setDetailEvent(null);
+      setPanelMode('view');
+      toast.success("Class skipped for this date");
+    },
+    onError: err => toast.error(err?.error || "Failed to skip class"),
+  });
+
+  const openOverride = (e) => {
+    const base = new Date(e.start_datetime);
+    const end  = new Date(e.end_datetime);
+    setForm({
+      ...EMPTY_FORM,
+      title:          e.title,
+      type:           "Class",
+      batch_ids:      [e._batchId],
+      start_datetime: toLocalInput(base),
+      end_datetime:   toLocalInput(end),
+      duration:       Math.max(15, Math.round((end - base) / 60000)),
+      location:       e.location || "",
+    });
+    setDetailEvent(null);
+    setPanelMode('add');
+  };
 
   // ── Recital quick-create mutation ─────────────────────────────────────────
   const recitalSaveMutation = useMutation({
@@ -657,7 +703,7 @@ export default function SchedulePage() {
 
   // ── Event card ───────────────────────────────────────────────────────────
   const EventPill = ({ event, compact }) => {
-    const color = event.color || TYPE_COLORS[event.type] || "#8a7a9a";
+    const color = TYPE_COLORS[event.type] || "#8a7a9a";
     return (
       <div
         onClick={e => { e.stopPropagation(); handleEventClick(event); }}
@@ -796,7 +842,7 @@ export default function SchedulePage() {
                 }}
               >
                 {dayEvs.map(e => {
-                  const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
+                  const color = TYPE_COLORS[e.type] || "#8a7a9a";
                   const noStudio = e.requires_studio && !e.studio_booked;
                   return (
                     <div key={e.id}
@@ -855,7 +901,7 @@ export default function SchedulePage() {
             </div>
             <div style={{display:"grid",gap:7}}>
               {grouped[date].sort((a,b)=>a.start_datetime.localeCompare(b.start_datetime)).map(e => {
-                const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
+                const color = TYPE_COLORS[e.type] || "#8a7a9a";
                 return (
                   <Card key={e.id} onClick={()=>handleEventClick(e)} style={{display:"flex",alignItems:"center",gap:13,padding:13,cursor:"pointer",borderLeft:`4px solid ${color}`}}>
                     <div style={{minWidth:60,textAlign:"center"}}>
@@ -938,7 +984,7 @@ export default function SchedulePage() {
                   {dayEvs.slice(0,3).map((e,j) => (
                     <div key={j} style={{
                       width:5,height:5,borderRadius:"50%",
-                      background:e.color||TYPE_COLORS[e.type]||"#8a7a9a",
+                      background:TYPE_COLORS[e.type]||"#8a7a9a",
                       flexShrink:0,
                     }} />
                   ))}
@@ -966,7 +1012,7 @@ export default function SchedulePage() {
         ) : (
           <div style={{display:"flex",flexDirection:"column"}}>
             {dayEvents.map((e,idx) => {
-              const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
+              const color = TYPE_COLORS[e.type] || "#8a7a9a";
               const hasTime = e.start_datetime && e.start_datetime.length > 10;
               return (
                 <div key={e.id} onClick={() => handleEventClick(e)} style={{
@@ -1211,7 +1257,7 @@ export default function SchedulePage() {
           {/* ── VIEW mode: event hero + details ── */}
           {panelMode === 'view' && detailEvent && (() => {
             const e = detailEvent;
-            const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
+            const color = TYPE_COLORS[e.type] || "#8a7a9a";
             return (
               <>
                 {/* Event hero — Netflix style on mobile, classic on desktop */}
@@ -1291,9 +1337,25 @@ export default function SchedulePage() {
                     {e.notes && <PDetailRow icon="file-text" label="Notes">{e.notes}</PDetailRow>}
                   </div>
                   {e._isSchedule && (
-                    <div style={{ padding:"10px 14px", borderRadius:10, background:"var(--surface)", border:"1px solid var(--border)", marginBottom:16, display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
-                      <span style={{ fontSize:12, color:"var(--muted)" }}>↻ Recurring — managed in Batches</span>
-                      <button onClick={()=>{ setDetailEvent(null); setPanelMode('view'); navigate("/batches"); }} style={{ fontSize:12, fontWeight:700, color:"var(--accent)", background:"none", border:"none", cursor:"pointer", padding:0 }}>Go to Batches →</button>
+                    <div style={{ padding:"12px 14px", borderRadius:10, background:"var(--surface)", border:"1px solid var(--border)", marginBottom:16 }}>
+                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                        <span style={{ fontSize:12, color:"var(--muted)", fontWeight:600 }}>↻ Recurring class</span>
+                        <button onClick={()=>{ setDetailEvent(null); setPanelMode('view'); navigate("/batches"); }} style={{ fontSize:11, fontWeight:700, color:"var(--accent)", background:"none", border:"none", cursor:"pointer", padding:0 }}>Manage in Batches →</button>
+                      </div>
+                      {isAdmin && (
+                        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                          <button onClick={() => openOverride(e)} style={{ flex:1, padding:"7px 12px", borderRadius:8, border:"1.5px solid var(--accent)", background:"transparent", color:"var(--accent)", cursor:"pointer", fontSize:12, fontWeight:700 }}>
+                            Edit this class
+                          </button>
+                          <button
+                            onClick={() => { if (window.confirm("Skip this class on " + fmtDate(e.start_datetime) + "?")) skipMutation.mutate({ scheduleId: e._scheduleId, date: e.start_datetime.slice(0,10) }); }}
+                            disabled={skipMutation.isPending}
+                            style={{ flex:1, padding:"7px 12px", borderRadius:8, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:12, fontWeight:700 }}
+                          >
+                            {skipMutation.isPending ? "Skipping…" : "Skip this class"}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                   {!!e.requires_studio && (
@@ -1361,8 +1423,9 @@ export default function SchedulePage() {
                 </Field>
                 <div style={{gridColumn:"1/-1", marginBottom:12}}>
                   <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Location / Room</div>
+                  <Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder={studioRooms.length > 0 ? "Or type a custom location…" : "e.g. Studio A"} />
                   {studioRooms.length > 0 && (
-                    <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:8}}>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:7,marginTop:8}}>
                       {[...studioRooms].sort((a,b) => (b.is_favorite?1:0)-(a.is_favorite?1:0)).map(s => {
                         const active = form.location === s.name;
                         return (
@@ -1373,7 +1436,7 @@ export default function SchedulePage() {
                             background:active?"var(--accent)":s.is_favorite?"#FFFBEB":"transparent",
                             color:active?"#fff":s.is_favorite?"#B45309":"var(--muted)",transition:"all .12s",
                           }}>
-                            {s.is_favorite && !active && <span style={{fontSize:11}}>★</span>}
+                            {!!s.is_favorite && !active && <span style={{fontSize:11}}>★</span>}
                             {active && <span>✓</span>}
                             {s.name}
                           </button>
@@ -1381,7 +1444,6 @@ export default function SchedulePage() {
                       })}
                     </div>
                   )}
-                  <Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder={studioRooms.length > 0 ? "Or type a custom location…" : "e.g. Studio A"} />
                 </div>
                 <Field label="Repeat">
                   <Select value={form.recurrence} onChange={e=>setForm({...form,recurrence:e.target.value})} disabled={panelMode === 'edit'}>

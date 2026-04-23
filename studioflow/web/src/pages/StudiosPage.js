@@ -473,7 +473,7 @@ export default function StudiosPage() {
     if (!form?.name) return;
     setSaving(true);
     try {
-      const payload = { ...form, capacity: form.capacity ? Number(form.capacity) : null, hourly_rate: form.hourly_rate ? Number(form.hourly_rate) : null, is_favorite: form.is_favorite ? 1 : 0 };
+      const payload = { ...form, capacity: form.capacity ? Number(form.capacity) : null, hourly_rate: form.hourly_rate ? Number(form.hourly_rate) : null, is_favorite: form.is_favorite ? 1 : 0, is_quick_add: 0 };
       if (panelMode === 'edit' && selected?.id) {
         await api.update(sid, selected.id, payload);
         toast.success("Studio updated");
@@ -523,18 +523,41 @@ export default function StudiosPage() {
           <Button onClick={() => { setSelected(null); setPanelMode('add'); setAddPhase('search'); setAddQuery(''); setAddResults([]); setAddSearchErr(null); }}>Add Studio</Button>
         </Card>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 18 }}>
-          {list.map(s => (
-            <StudioCard
-              key={s.id} studio={s}
-              active={selected?.id === s.id}
-              onSelect={st => { setSelected(st); setPanelMode('view'); }}
-              onEdit={st => { setSelected(st); setPanelMode('edit'); setEditForm({ ...st, is_favorite: !!st.is_favorite, capacity: st.capacity ?? "", hourly_rate: st.hourly_rate ?? "" }); }}
-              onRemove={id => removeMutation.mutate(id)}
-              onToggleFav={handleToggleFav}
-            />
-          ))}
-        </div>
+        <>
+          {/* Quick-add notice — locations typed in Events that haven't been fully set up */}
+          {list.some(s => s.is_quick_add) && (
+            <div style={{ marginBottom: 20, padding: "14px 18px", borderRadius: 12, background: "var(--surface)", border: "1.5px solid #fde047" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>
+                📍 {list.filter(s => s.is_quick_add).length} location{list.filter(s => s.is_quick_add).length > 1 ? "s" : ""} added from Events
+              </div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
+                These were typed as locations when creating events. Tap to add address, capacity, and other details.
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {list.filter(s => s.is_quick_add).map(s => (
+                  <button key={s.id}
+                    onClick={() => { setSelected(s); setPanelMode('edit'); setEditForm({ ...s, is_favorite: !!s.is_favorite, is_quick_add: 0, capacity: s.capacity ?? "", hourly_rate: s.hourly_rate ?? "" }); }}
+                    style={{ padding: "6px 14px", borderRadius: 20, border: "1.5px solid #fde047", background: "#fefce8", color: "#854d0e", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    + {s.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 18 }}>
+            {list.filter(s => !s.is_quick_add).map(s => (
+              <StudioCard
+                key={s.id} studio={s}
+                active={selected?.id === s.id}
+                onSelect={st => { setSelected(st); setPanelMode('view'); }}
+                onEdit={st => { setSelected(st); setPanelMode('edit'); setEditForm({ ...st, is_favorite: !!st.is_favorite, is_quick_add: 0, capacity: st.capacity ?? "", hourly_rate: st.hourly_rate ?? "" }); }}
+                onRemove={id => removeMutation.mutate(id)}
+                onToggleFav={handleToggleFav}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {/* ── Mobile backdrop ── */}

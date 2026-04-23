@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { recitals as recitalApi, students as studentApi, batches as batchApi, events as eventApi, todos as todoApi, schools as schoolsApi } from '../api';
+import { recitals as recitalApi, students as studentApi, batches as batchApi, events as eventApi, todos as todoApi, schools as schoolsApi, schedules as schedulesApi, scheduleExceptions as exceptionsApi } from '../api';
 import Card from '../components/shared/Card';
 import Badge from '../components/shared/Badge';
 import Button, { BTN_GRAD } from '../components/shared/Button';
@@ -328,6 +328,16 @@ export default function DashboardPage() {
     },
     enabled: !!sid,
   });
+  const { data: scheduleList = [] } = useQuery({
+    queryKey: ['schedules', sid],
+    queryFn:  () => schedulesApi.list(sid),
+    enabled:  !!sid,
+  });
+  const { data: exceptionList = [] } = useQuery({
+    queryKey: ['schedule-exceptions', sid],
+    queryFn:  () => exceptionsApi.list(sid),
+    enabled:  !!sid,
+  });
 
   // ── Mutations ─────────────────────────────────────────────────────────────────
   const addTodo = useMutation({
@@ -362,7 +372,44 @@ export default function DashboardPage() {
       return yr && new Date(yr, mo-1, dy) >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
     })
     .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
-  const upcomingEvents = (eventList || [])
+  // Generate upcoming instances from recurring schedules (next 60 days)
+  const scheduleInstances = (() => {
+    if (!scheduleList.length) return [];
+    const DOW = { Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6, Sun:0 };
+    const exceptionKeys = new Set(exceptionList.map(ex => `${ex.schedule_id}_${ex.exception_date}`));
+    const realBatchDayKeys = new Set(
+      (eventList || []).flatMap(e => (e.batches || []).map(b => `${b.id}_${(e.start_datetime||'').slice(0,10)}`))
+    );
+    const rangeFrom = new Date(now); rangeFrom.setHours(0, 0, 0, 0);
+    const rangeTo   = new Date(Date.now() + 60 * 86400000);
+    const result = [];
+    for (const sch of scheduleList) {
+      const batch = batchList.find(b => String(b.id) === String(sch.batch_id));
+      if (!batch) continue;
+      const dow = DOW[sch.day_of_week];
+      if (dow === undefined) continue;
+      const cur = new Date(rangeFrom);
+      const diff = ((dow - cur.getDay()) + 7) % 7;
+      cur.setDate(cur.getDate() + diff);
+      while (cur <= rangeTo) {
+        const ds = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
+        if (!exceptionKeys.has(`${sch.id}_${ds}`) && !realBatchDayKeys.has(`${batch.id}_${ds}`)) {
+          result.push({
+            id: `sched_${sch.id}_${ds}`,
+            title: batch.name,
+            type: 'Class',
+            start_datetime: `${ds}T${sch.start_time || '00:00'}`,
+            end_datetime:   `${ds}T${sch.end_time   || '01:00'}`,
+            location: sch.room || '',
+          });
+        }
+        cur.setDate(cur.getDate() + 7);
+      }
+    }
+    return result;
+  })();
+
+  const upcomingEvents = [...(eventList || []), ...scheduleInstances]
     .filter(e => new Date(e.start_datetime) >= now)
     .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
   const thisWeekEvents = upcomingEvents.filter(e => (new Date(e.start_datetime) - now) / 86400000 <= 7);
@@ -407,7 +454,7 @@ export default function DashboardPage() {
       <Widget title="Upcoming Classes" onViewAll={() => navigate('/schedule')}>
         {upcomingEvents.length === 0
           ? <div style={{ padding: '28px 18px', color: C.grayChate, fontSize: 13, textAlign: 'center' }}>No upcoming events</div>
-          : upcomingEvents.slice(0, 4).map(e => <EventRow key={e.id} e={e} />)
+          : upcomingEvents.slice(0, 5).map(e => <EventRow key={e.id} e={e} />)
         }
       </Widget>
 

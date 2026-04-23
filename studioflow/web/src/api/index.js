@@ -41,6 +41,12 @@ export const schedules = {
   remove: (schoolId, id) => api.delete(`/schools/${schoolId}/schedules/${id}`),
 };
 
+export const scheduleExceptions = {
+  list:   (schoolId)        => api.get(`/schools/${schoolId}/schedules/exceptions`),
+  create: (schoolId, data)  => api.post(`/schools/${schoolId}/schedules/exceptions`, data),
+  remove: (schoolId, id)    => api.delete(`/schools/${schoolId}/schedules/exceptions/${id}`),
+};
+
 export const recitals = {
   list: (schoolId) => api.get(`/schools/${schoolId}/recitals`),
   get: (schoolId, id) => api.get(`/schools/${schoolId}/recitals/${id}`),
