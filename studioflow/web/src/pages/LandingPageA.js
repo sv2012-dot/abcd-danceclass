@@ -37,8 +37,12 @@ const IC = {
   heart:    ['M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'],
   arrow:    ['M5 12h14','M12 5l7 7-7 7'],
   check:    ['M20 6L9 17l-5-5'],
+  lock:     ['M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z','M7 11V7a5 5 0 0 1 10 0v4'],
+  shield:   ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'],
+  phone:    ['M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z'],
 };
 
+// ── Data ───────────────────────────────────────────────────────────────────────
 const FEATURES = [
   { ic:'calendar', title:'Smart Scheduling',     desc:'Plan classes, rehearsals and recitals in one elegant calendar. Recurrence, studio booking and colour-coding built right in.' },
   { ic:'student',  title:'Student Profiles',     desc:'Track every student — attendance, progress, guardian contacts — always at your fingertips, never lost in a spreadsheet.' },
@@ -58,6 +62,40 @@ const TRUST = [
   { ic:'student',  label:'Student tracking', sub:'profiles, attendance & guardians' },
   { ic:'calendar', label:'Class scheduling', sub:'smart calendar with recurrence'   },
   { ic:'recital',  label:'Recital hub',      sub:'from planning to curtain call'    },
+];
+
+const PROVIDERS = [
+  { emoji:'📸', title:'Photographers',     desc:'Freeze every leap, every expression, every curtain call — forever.' },
+  { emoji:'🎬', title:'Videographers',     desc:'Every performance preserved so families can relive it for years to come.' },
+  { emoji:'👗', title:'Costume Designers', desc:'Bringing characters and cultural traditions to life, one stitch at a time.' },
+  { emoji:'💄', title:'Makeup Artists',    desc:'Stage-ready from the very first note all the way to the final bow.' },
+  { emoji:'🎵', title:'Sound & AV',        desc:'Crystal-clear sound so nothing ever distracts from the dance itself.' },
+  { emoji:'🌸', title:'Florists & Décor',  desc:'Spaces and stages that set exactly the right scene for every show.' },
+];
+
+const PRIVACY_PILLARS = [
+  {
+    ic: 'lock',
+    title: 'We never read your data',
+    body: "Your student records, class notes and financial data are yours. We run the platform — we don't look inside it. Ever.",
+  },
+  {
+    ic: 'shield',
+    title: 'We never sell your data',
+    body: "No advertising. No data brokers. No profiling. Your studio's information stays with you — not with us, not with anyone else.",
+  },
+  {
+    ic: 'heart',
+    title: 'Trust is our foundation',
+    body: "Every product decision starts with one question: does this serve our users? We built ManchQ on that principle and we intend to keep it that way.",
+  },
+];
+
+const MOBILE_BULLETS = [
+  'Full calendar and scheduling on any phone',
+  'Add and edit events with a single tap',
+  'Parent portal works in any browser — no app to install',
+  'Same great experience on desktop, tablet and mobile',
 ];
 
 // ── Nav ────────────────────────────────────────────────────────────────────────
@@ -84,8 +122,9 @@ function NavBar({ onLogin, isMobile }) {
       </div>
       <div style={{ display:'flex', gap:8, alignItems:'center' }}>
         {!isMobile && <>
-          <a href="#features" style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px' }}>Features</a>
-          <a href="#why"      style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px' }}>Why us</a>
+          <a href="#features"   style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px' }}>Features</a>
+          <a href="#why"        style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px' }}>Why us</a>
+          <a href="#community"  style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px' }}>Community</a>
         </>}
         <button onClick={onLogin} style={{
           padding: isMobile ? '8px 18px' : '9px 22px',
@@ -101,6 +140,34 @@ function NavBar({ onLogin, isMobile }) {
         >Log in →</button>
       </div>
     </nav>
+  );
+}
+
+// ── Phone frame component ──────────────────────────────────────────────────────
+function PhoneFrame({ src, alt, width = 180 }) {
+  return (
+    <div style={{
+      width, flexShrink: 0,
+      borderRadius: 28,
+      border: '2px solid rgba(255,255,255,0.14)',
+      background: '#0a0810',
+      overflow: 'hidden',
+      boxShadow: '0 24px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)',
+    }}>
+      {/* Notch */}
+      <div style={{ height: 22, background: '#0a0810', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+        <div style={{ width: 52, height: 7, background: 'rgba(255,255,255,0.12)', borderRadius: 99 }} />
+      </div>
+      <img
+        src={src} alt={alt}
+        loading="lazy"
+        style={{ width: '100%', display: 'block', objectFit: 'cover', objectPosition: 'top', maxHeight: 360 }}
+      />
+      {/* Home bar */}
+      <div style={{ height: 18, background: '#0a0810', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+        <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.18)', borderRadius: 99 }} />
+      </div>
+    </div>
   );
 }
 
@@ -226,15 +293,12 @@ export default function LandingPageA() {
             </p>
           </div>
 
-          {/* Desktop: tight grid-wall. Mobile: spaced cards */}
           {isMobile ? (
             <div style={{ display:'grid', gap:12 }}>
               {FEATURES.map(({ ic, title, desc }) => (
                 <div key={title} style={{
-                  background:'rgba(255,255,255,0.03)',
-                  border:'1px solid rgba(255,255,255,0.08)',
-                  borderRadius:16, padding:'24px 20px',
-                  display:'flex', gap:16, alignItems:'flex-start',
+                  background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)',
+                  borderRadius:16, padding:'24px 20px', display:'flex', gap:16, alignItems:'flex-start',
                 }}>
                   <div style={{ color:MAGENTA, flexShrink:0, marginTop:2 }}>
                     <Icon paths={IC[ic]} size={22} stroke={MAGENTA} sw={1.5} />
@@ -251,8 +315,7 @@ export default function LandingPageA() {
               {FEATURES.map(({ ic, title, desc }) => (
                 <div key={title} style={{
                   background:'rgba(255,255,255,0.025)', padding:'36px 30px',
-                  borderRight:'1px solid rgba(255,255,255,0.05)',
-                  borderBottom:'1px solid rgba(255,255,255,0.05)',
+                  borderRight:'1px solid rgba(255,255,255,0.05)', borderBottom:'1px solid rgba(255,255,255,0.05)',
                   transition:'background .2s',
                 }}
                   onMouseEnter={e=>{ e.currentTarget.style.background='rgba(124,58,237,0.14)'; }}
@@ -270,6 +333,90 @@ export default function LandingPageA() {
         </div>
       </section>
 
+      {/* ── Mobile Showcase ────────────────────────────────────────────── */}
+      <section id="mobile" style={{ padding: isMobile ? '64px 20px 48px' : '96px 24px 80px', borderTop:'1px solid rgba(255,255,255,0.05)', overflow:'hidden' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+
+          {/* Headline */}
+          <div style={{ textAlign:'center', marginBottom: isMobile ? 40 : 60 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:MAGENTA, textTransform:'uppercase', letterSpacing:'.1em', marginBottom:12 }}>Works on every device</div>
+            <h2 style={{ fontSize: isMobile ? 'clamp(24px,7vw,34px)' : 'clamp(28px,4vw,46px)', fontWeight:900, margin:'0 0 14px', letterSpacing:'-.02em' }}>
+              Your studio,{' '}
+              <span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>in your pocket.</span>
+            </h2>
+            <p style={{ fontSize: isMobile ? 14 : 16, color:'#6B7280', maxWidth:560, margin:'0 auto', lineHeight:1.75 }}>
+              Designed mobile-first from day one. Add events from the car park, check today's classes at the school gate,
+              approve studio bookings mid-commute. No app to download — it runs beautifully in any browser.
+            </p>
+          </div>
+
+          {isMobile ? (
+            /* Mobile: single phone frame centred */
+            <div style={{ display:'flex', justifyContent:'center', marginBottom:36 }}>
+              <PhoneFrame src="/screenshots/screen-mobile-dashboard.PNG" alt="ManchQ mobile dashboard" width={240} />
+            </div>
+          ) : (
+            /* Desktop: browser frame with two phones overlapping at the bottom */
+            <div style={{ position:'relative', maxWidth:900, margin:'0 auto', paddingBottom:130 }}>
+              {/* Browser / desktop frame */}
+              <div style={{
+                borderRadius:14, border:'1px solid rgba(255,255,255,0.12)',
+                overflow:'hidden', boxShadow:'0 30px 90px rgba(0,0,0,0.65)',
+              }}>
+                {/* Chrome bar */}
+                <div style={{ height:36, background:'#0f0c1a', display:'flex', alignItems:'center', padding:'0 16px', gap:6, flexShrink:0 }}>
+                  <div style={{ width:11, height:11, borderRadius:'50%', background:'#FF5F57', flexShrink:0 }} />
+                  <div style={{ width:11, height:11, borderRadius:'50%', background:'#FEBC2E', flexShrink:0 }} />
+                  <div style={{ width:11, height:11, borderRadius:'50%', background:'#28C840', flexShrink:0 }} />
+                  <div style={{ flex:1, height:20, background:'rgba(255,255,255,0.06)', borderRadius:6, marginLeft:10, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.25)', letterSpacing:'.02em' }}>app.manchq.com</span>
+                  </div>
+                </div>
+                <img
+                  src="/screenshots/screen-desktop.PNG"
+                  alt="ManchQ on desktop"
+                  loading="lazy"
+                  style={{ width:'100%', display:'block', maxHeight:480, objectFit:'cover', objectPosition:'top' }}
+                />
+              </div>
+
+              {/* Phone left — dashboard */}
+              <div style={{ position:'absolute', bottom:0, left:60 }}>
+                <PhoneFrame src="/screenshots/screen-mobile-dashboard.PNG" alt="ManchQ mobile dashboard" width={185} />
+              </div>
+
+              {/* Phone right — recital cover */}
+              <div style={{ position:'absolute', bottom:0, right:60 }}>
+                <PhoneFrame src="/screenshots/screen-mobile-recital-cover.PNG" alt="ManchQ recital view" width={185} />
+              </div>
+            </div>
+          )}
+
+          {/* Feature bullets */}
+          <div style={{
+            display:'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)',
+            gap: isMobile ? 12 : 14,
+            maxWidth: isMobile ? '100%' : 700,
+            margin: isMobile ? '0 auto' : '48px auto 0',
+          }}>
+            {MOBILE_BULLETS.map(b => (
+              <div key={b} style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <div style={{
+                  width:22, height:22, borderRadius:99,
+                  background:'rgba(124,58,237,0.15)', border:'1px solid rgba(124,58,237,0.35)',
+                  display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+                }}>
+                  <Icon paths={IC.check} size={12} stroke={MAGENTA} sw={2.5} />
+                </div>
+                <span style={{ fontSize: isMobile ? 13 : 14, color:'#D1D5DB', lineHeight:1.5 }}>{b}</span>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      </section>
+
       {/* ── Benefits ───────────────────────────────────────────────────── */}
       <section id="why" style={{ padding: isMobile ? '64px 20px' : '88px 24px', background:'rgba(255,255,255,0.018)' }}>
         <div style={{ maxWidth:860, margin:'0 auto' }}>
@@ -284,8 +431,7 @@ export default function LandingPageA() {
           <div style={{ display:'grid', gap:12 }}>
             {BENEFITS.map(({ heading, body }, i) => (
               <div key={heading} style={{
-                background:'rgba(255,255,255,0.025)',
-                border:'1px solid rgba(255,255,255,0.07)',
+                background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.07)',
                 borderRadius:18, padding: isMobile ? '22px 20px' : '28px 32px',
                 display:'flex', alignItems:'flex-start', gap: isMobile ? 16 : 22,
                 transition:'background .2s, border-color .2s',
@@ -307,6 +453,157 @@ export default function LandingPageA() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── Community ──────────────────────────────────────────────────── */}
+      <section id="community" style={{ padding: isMobile ? '64px 20px' : '96px 24px', borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+
+          {/* Headline */}
+          <div style={{ textAlign:'center', marginBottom: isMobile ? 40 : 60 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:MAGENTA, textTransform:'uppercase', letterSpacing:'.1em', marginBottom:12 }}>Your extended team</div>
+            <h2 style={{ fontSize: isMobile ? 'clamp(24px,7vw,34px)' : 'clamp(28px,4vw,46px)', fontWeight:900, margin:'0 0 14px', letterSpacing:'-.02em' }}>
+              A community built{' '}
+              <span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>around dance.</span>
+            </h2>
+            <p style={{ fontSize: isMobile ? 14 : 16, color:'#6B7280', maxWidth:580, margin:'0 auto', lineHeight:1.78 }}>
+              Running a recital takes more than great choreography. ManchQ connects you with a trusted
+              network of photographers, videographers, costume designers, makeup artists and more —
+              all as passionate about dance as you are.
+            </p>
+          </div>
+
+          {/* Provider grid */}
+          <div style={{
+            display:'grid',
+            gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)',
+            gap: isMobile ? 12 : 16,
+            marginBottom: isMobile ? 24 : 32,
+          }}>
+            {PROVIDERS.map(({ emoji, title, desc }) => (
+              <div key={title} style={{
+                background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)',
+                borderRadius:16, padding: isMobile ? '20px 16px' : '28px 24px',
+                transition:'background .2s, border-color .2s, transform .2s',
+              }}
+                onMouseEnter={e=>{ e.currentTarget.style.background='rgba(124,58,237,0.10)'; e.currentTarget.style.borderColor='rgba(124,58,237,0.28)'; e.currentTarget.style.transform='translateY(-2px)'; }}
+                onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.07)'; e.currentTarget.style.transform='none'; }}
+              >
+                <div style={{ fontSize: isMobile ? 28 : 34, marginBottom: isMobile ? 10 : 14, lineHeight:1 }}>{emoji}</div>
+                <div style={{ fontWeight:800, fontSize: isMobile ? 14 : 16, color:'#fff', marginBottom: isMobile ? 5 : 7 }}>{title}</div>
+                <div style={{ fontSize: isMobile ? 12 : 13, color:'#6B7280', lineHeight:1.65 }}>{desc}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Parent volunteer highlight strip */}
+          <div style={{
+            padding: isMobile ? '20px 20px' : '26px 36px',
+            borderRadius:18,
+            background:'rgba(124,58,237,0.08)',
+            border:'1.5px solid rgba(124,58,237,0.22)',
+            display:'flex', alignItems: isMobile ? 'flex-start' : 'center',
+            gap: isMobile ? 16 : 24,
+            flexDirection: isMobile ? 'column' : 'row',
+          }}>
+            <div style={{ fontSize: isMobile ? 32 : 44, lineHeight:1, flexShrink:0 }}>👨‍👩‍👧</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:800, fontSize: isMobile ? 15 : 18, color:'#fff', marginBottom:6 }}>
+                Parent volunteers — a first-class feature
+              </div>
+              <div style={{ fontSize: isMobile ? 13 : 14, color:'#6B7280', lineHeight:1.72 }}>
+                Your biggest fans deserve their own space too. ManchQ lets you assign volunteer roles,
+                coordinate availability and keep everyone in the loop — all within the same platform,
+                no separate tools required.
+              </div>
+            </div>
+            <button onClick={goLogin} style={{
+              flexShrink:0, padding:'10px 22px', borderRadius:10, border:'none',
+              background:BTN_GRAD, color:'#fff', fontWeight:700, fontSize:13,
+              cursor:'pointer', whiteSpace:'nowrap',
+              boxShadow:'0 2px 14px rgba(124,58,237,0.4)',
+              transition:'transform .15s',
+            }}
+              onMouseEnter={e=>e.currentTarget.style.transform='translateY(-1px)'}
+              onMouseLeave={e=>e.currentTarget.style.transform='none'}
+            >
+              See how it works →
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── Trust & Privacy ────────────────────────────────────────────── */}
+      <section id="trust" style={{ padding: isMobile ? '64px 20px' : '96px 24px', background:'rgba(255,255,255,0.018)', position:'relative', overflow:'hidden' }}>
+        {/* Shield watermark */}
+        <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', opacity:0.028, pointerEvents:'none', userSelect:'none' }}>
+          <svg width={isMobile ? 320 : 520} height={isMobile ? 320 : 520} viewBox="0 0 24 24" fill="white" stroke="none">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+
+        <div style={{ maxWidth:1000, margin:'0 auto', position:'relative' }}>
+
+          {/* Headline */}
+          <div style={{ textAlign:'center', marginBottom: isMobile ? 40 : 64 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:MAGENTA, textTransform:'uppercase', letterSpacing:'.1em', marginBottom:12 }}>Privacy & trust</div>
+            <h2 style={{ fontSize: isMobile ? 'clamp(24px,7vw,34px)' : 'clamp(28px,4vw,46px)', fontWeight:900, margin:'0 0 14px', letterSpacing:'-.02em' }}>
+              Your data is{' '}
+              <span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>sacred.</span>
+            </h2>
+            <p style={{ fontSize: isMobile ? 14 : 16, color:'#6B7280', maxWidth:520, margin:'0 auto', lineHeight:1.75 }}>
+              We built ManchQ on a single primary tenet — trust. Every decision we make, every line
+              of code we write, starts and ends there.
+            </p>
+          </div>
+
+          {/* Three pillars */}
+          <div style={{
+            display:'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)',
+            gap: isMobile ? 16 : 20,
+            marginBottom: isMobile ? 40 : 56,
+          }}>
+            {PRIVACY_PILLARS.map(({ ic, title, body }) => (
+              <div key={title} style={{
+                background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.07)',
+                borderRadius:18, padding: isMobile ? '24px 20px' : '32px 28px',
+                display:'flex', flexDirection:'column', gap:16,
+              }}>
+                {/* Icon circle */}
+                <div style={{
+                  width:48, height:48, borderRadius:14,
+                  background:'rgba(124,58,237,0.15)', border:'1px solid rgba(124,58,237,0.28)',
+                  display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+                }}>
+                  <Icon paths={IC[ic]} size={22} stroke={MAGENTA} sw={1.6} />
+                </div>
+                <div>
+                  <div style={{ fontWeight:800, fontSize: isMobile ? 15 : 17, color:'#fff', marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize: isMobile ? 13 : 14, color:'#6B7280', lineHeight:1.72 }}>{body}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Closing quote */}
+          <div style={{
+            textAlign:'center', padding: isMobile ? '28px 20px' : '36px 40px',
+            borderRadius:18, border:'1px solid rgba(255,255,255,0.06)',
+            background:'rgba(255,255,255,0.018)',
+          }}>
+            <div style={{ fontSize: isMobile ? 22 : 28, marginBottom:16 }}>🤝</div>
+            <p style={{
+              fontSize: isMobile ? 15 : 18, color:'#9CA3AF',
+              fontStyle:'italic', maxWidth:580, margin:'0 auto', lineHeight:1.82,
+            }}>
+              "You've trusted us with your students, your schedules, and your studio's story.
+              <br />We don't take that lightly — and we never will."
+            </p>
+          </div>
+
         </div>
       </section>
 
