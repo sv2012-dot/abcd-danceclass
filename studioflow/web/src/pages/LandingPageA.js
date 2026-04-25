@@ -27,6 +27,7 @@ function Icon({ paths, size = 24, stroke = 'currentColor', sw = 1.6 }) {
 }
 
 const IC = {
+  // navigation / feature icons
   calendar: ['M8 2v4','M16 2v4','M3 10h18','M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z'],
   student:  ['M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10z','M2 20c0-4 4.5-7 10-7s10 3 10 7'],
   recital:  ['M9 18V5l12-2v13','M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M18 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
@@ -39,7 +40,13 @@ const IC = {
   check:    ['M20 6L9 17l-5-5'],
   lock:     ['M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z','M7 11V7a5 5 0 0 1 10 0v4'],
   shield:   ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'],
-  phone:    ['M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z'],
+  // community provider icons
+  camera:   ['M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z','M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+  video:    ['M23 7l-7 5 7 5V7z','M3 7h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z'],
+  scissors: ['M6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M20 4L8.12 15.88','M14.47 14.48L20 20','M8.12 8.12L12 12'],
+  star:     'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+  speaker:  ['M11 5L6 9H2v6h4l5 4V5z','M19.07 4.93a10 10 0 0 1 0 14.14','M15.54 8.46a5 5 0 0 1 0 7.07'],
+  sun:      ['M12 2v2','M12 20v2','M4.93 4.93l1.41 1.41','M17.66 17.66l1.41 1.41','M2 12h2','M20 12h2','M6.34 17.66l-1.41 1.41','M19.07 4.93l-1.41 1.41','M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z'],
 };
 
 // ── Data ───────────────────────────────────────────────────────────────────────
@@ -65,30 +72,18 @@ const TRUST = [
 ];
 
 const PROVIDERS = [
-  { emoji:'📸', title:'Photographers',     desc:'Freeze every leap, every expression, every curtain call — forever.' },
-  { emoji:'🎬', title:'Videographers',     desc:'Every performance preserved so families can relive it for years to come.' },
-  { emoji:'👗', title:'Costume Designers', desc:'Bringing characters and cultural traditions to life, one stitch at a time.' },
-  { emoji:'💄', title:'Makeup Artists',    desc:'Stage-ready from the very first note all the way to the final bow.' },
-  { emoji:'🎵', title:'Sound & AV',        desc:'Crystal-clear sound so nothing ever distracts from the dance itself.' },
-  { emoji:'🌸', title:'Florists & Décor',  desc:'Spaces and stages that set exactly the right scene for every show.' },
+  { ic:'camera',   title:'Photographers',     desc:'Freeze every leap, every expression, every curtain call — forever.' },
+  { ic:'video',    title:'Videographers',     desc:'Every performance preserved so families can relive it for years to come.' },
+  { ic:'scissors', title:'Costume Designers', desc:'Bringing characters and cultural traditions to life, one stitch at a time.' },
+  { ic:'star',     title:'Makeup Artists',    desc:'Stage-ready from the very first note all the way to the final bow.' },
+  { ic:'speaker',  title:'Sound & AV',        desc:'Crystal-clear sound so nothing ever distracts from the dance itself.' },
+  { ic:'sun',      title:'Florists & Décor',  desc:'Spaces and stages that set exactly the right scene for every show.' },
 ];
 
 const PRIVACY_PILLARS = [
-  {
-    ic: 'lock',
-    title: 'We never read your data',
-    body: "Your student records, class notes and financial data are yours. We run the platform — we don't look inside it. Ever.",
-  },
-  {
-    ic: 'shield',
-    title: 'We never sell your data',
-    body: "No advertising. No data brokers. No profiling. Your studio's information stays with you — not with us, not with anyone else.",
-  },
-  {
-    ic: 'heart',
-    title: 'Trust is our foundation',
-    body: "Every product decision starts with one question: does this serve our users? We built ManchQ on that principle and we intend to keep it that way.",
-  },
+  { ic:'lock',   title:'We never read your data',  body:"Your student records, class notes and financial data are yours. We run the platform — we don't look inside it. Ever." },
+  { ic:'shield', title:'We never sell your data',  body:"No advertising. No data brokers. No profiling. Your studio's information stays with you — not with us, not with anyone else." },
+  { ic:'heart',  title:'Trust is our foundation',  body:"Every product decision starts with one question: does this serve our users? We built ManchQ on that principle and we intend to keep it that way." },
 ];
 
 const MOBILE_BULLETS = [
@@ -144,7 +139,7 @@ function NavBar({ onLogin, isMobile }) {
 }
 
 // ── Phone frame component ──────────────────────────────────────────────────────
-function PhoneFrame({ src, alt, width = 180 }) {
+function PhoneFrame({ src, alt, width = 180, maxImgHeight = 360 }) {
   return (
     <div style={{
       width, flexShrink: 0,
@@ -152,20 +147,21 @@ function PhoneFrame({ src, alt, width = 180 }) {
       border: '2px solid rgba(255,255,255,0.14)',
       background: '#0a0810',
       overflow: 'hidden',
-      boxShadow: '0 24px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)',
+      boxShadow: '0 20px 50px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.04)',
+      display: 'flex', flexDirection: 'column',
     }}>
       {/* Notch */}
-      <div style={{ height: 22, background: '#0a0810', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
-        <div style={{ width: 52, height: 7, background: 'rgba(255,255,255,0.12)', borderRadius: 99 }} />
+      <div style={{ height:22, background:'#0a0810', display:'flex', justifyContent:'center', alignItems:'center', flexShrink:0 }}>
+        <div style={{ width:52, height:7, background:'rgba(255,255,255,0.12)', borderRadius:99 }} />
       </div>
       <img
         src={src} alt={alt}
         loading="lazy"
-        style={{ width: '100%', display: 'block', objectFit: 'cover', objectPosition: 'top', maxHeight: 360 }}
+        style={{ width:'100%', display:'block', objectFit:'cover', objectPosition:'top', maxHeight: maxImgHeight, flexShrink:0 }}
       />
       {/* Home bar */}
-      <div style={{ height: 18, background: '#0a0810', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
-        <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.18)', borderRadius: 99 }} />
+      <div style={{ height:18, background:'#0a0810', display:'flex', justifyContent:'center', alignItems:'center', flexShrink:0 }}>
+        <div style={{ width:40, height:4, background:'rgba(255,255,255,0.18)', borderRadius:99 }} />
       </div>
     </div>
   );
@@ -334,11 +330,11 @@ export default function LandingPageA() {
       </section>
 
       {/* ── Mobile Showcase ────────────────────────────────────────────── */}
-      <section id="mobile" style={{ padding: isMobile ? '64px 20px 48px' : '96px 24px 80px', borderTop:'1px solid rgba(255,255,255,0.05)', overflow:'hidden' }}>
-        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+      <section id="mobile" style={{ padding: isMobile ? '64px 20px 48px' : '96px 24px 80px', borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ maxWidth:1060, margin:'0 auto' }}>
 
           {/* Headline */}
-          <div style={{ textAlign:'center', marginBottom: isMobile ? 40 : 60 }}>
+          <div style={{ textAlign:'center', marginBottom: isMobile ? 40 : 56 }}>
             <div style={{ fontSize:11, fontWeight:700, color:MAGENTA, textTransform:'uppercase', letterSpacing:'.1em', marginBottom:12 }}>Works on every device</div>
             <h2 style={{ fontSize: isMobile ? 'clamp(24px,7vw,34px)' : 'clamp(28px,4vw,46px)', fontWeight:900, margin:'0 0 14px', letterSpacing:'-.02em' }}>
               Your studio,{' '}
@@ -351,44 +347,68 @@ export default function LandingPageA() {
           </div>
 
           {isMobile ? (
-            /* Mobile: single phone frame centred */
-            <div style={{ display:'flex', justifyContent:'center', marginBottom:36 }}>
-              <PhoneFrame src="/screenshots/screen-mobile-dashboard.PNG" alt="ManchQ mobile dashboard" width={240} />
+            /* ── Mobile view: two phones side by side ── */
+            <div style={{ display:'flex', justifyContent:'center', gap:14, marginBottom:36 }}>
+              <PhoneFrame
+                src="/screenshots/screen-mobile-dashboard.PNG"
+                alt="ManchQ mobile dashboard"
+                width={148}
+                maxImgHeight={310}
+              />
+              <PhoneFrame
+                src="/screenshots/screen-mobile-recital-cover.PNG"
+                alt="ManchQ recital view"
+                width={148}
+                maxImgHeight={310}
+              />
             </div>
           ) : (
-            /* Desktop: browser frame with two phones overlapping at the bottom */
-            <div style={{ position:'relative', maxWidth:900, margin:'0 auto', paddingBottom:130 }}>
-              {/* Browser / desktop frame */}
-              <div style={{
-                borderRadius:14, border:'1px solid rgba(255,255,255,0.12)',
-                overflow:'hidden', boxShadow:'0 30px 90px rgba(0,0,0,0.65)',
-              }}>
-                {/* Chrome bar */}
-                <div style={{ height:36, background:'#0f0c1a', display:'flex', alignItems:'center', padding:'0 16px', gap:6, flexShrink:0 }}>
-                  <div style={{ width:11, height:11, borderRadius:'50%', background:'#FF5F57', flexShrink:0 }} />
-                  <div style={{ width:11, height:11, borderRadius:'50%', background:'#FEBC2E', flexShrink:0 }} />
-                  <div style={{ width:11, height:11, borderRadius:'50%', background:'#28C840', flexShrink:0 }} />
-                  <div style={{ flex:1, height:20, background:'rgba(255,255,255,0.06)', borderRadius:6, marginLeft:10, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.25)', letterSpacing:'.02em' }}>app.manchq.com</span>
+            /* ── Desktop view: phone | browser frame | phone (flex row) ── */
+            <div style={{ display:'flex', alignItems:'center', gap:20 }}>
+
+              {/* Left phone */}
+              <PhoneFrame
+                src="/screenshots/screen-mobile-dashboard.PNG"
+                alt="ManchQ mobile dashboard"
+                width={158}
+                maxImgHeight={380}
+              />
+
+              {/* Browser / desktop frame — takes remaining space */}
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{
+                  borderRadius:14,
+                  border:'1px solid rgba(255,255,255,0.12)',
+                  overflow:'hidden',
+                  boxShadow:'0 30px 90px rgba(0,0,0,0.65)',
+                }}>
+                  {/* Chrome bar */}
+                  <div style={{ height:36, background:'#0f0c1a', display:'flex', alignItems:'center', padding:'0 14px', gap:6, flexShrink:0 }}>
+                    <div style={{ width:10, height:10, borderRadius:'50%', background:'#FF5F57', flexShrink:0 }} />
+                    <div style={{ width:10, height:10, borderRadius:'50%', background:'#FEBC2E', flexShrink:0 }} />
+                    <div style={{ width:10, height:10, borderRadius:'50%', background:'#28C840', flexShrink:0 }} />
+                    <div style={{ flex:1, height:20, background:'rgba(255,255,255,0.06)', borderRadius:6, marginLeft:10, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', letterSpacing:'.02em' }}>app.manchq.com</span>
+                    </div>
                   </div>
+                  {/* Desktop screenshot — note: lowercase .png to match file on disk */}
+                  <img
+                    src="/screenshots/screen-desktop.png"
+                    alt="ManchQ on desktop"
+                    loading="lazy"
+                    style={{ width:'100%', display:'block', maxHeight:420, objectFit:'cover', objectPosition:'top' }}
+                  />
                 </div>
-                <img
-                  src="/screenshots/screen-desktop.PNG"
-                  alt="ManchQ on desktop"
-                  loading="lazy"
-                  style={{ width:'100%', display:'block', maxHeight:480, objectFit:'cover', objectPosition:'top' }}
-                />
               </div>
 
-              {/* Phone left — dashboard */}
-              <div style={{ position:'absolute', bottom:0, left:60 }}>
-                <PhoneFrame src="/screenshots/screen-mobile-dashboard.PNG" alt="ManchQ mobile dashboard" width={185} />
-              </div>
+              {/* Right phone */}
+              <PhoneFrame
+                src="/screenshots/screen-mobile-recital-cover.PNG"
+                alt="ManchQ recital view"
+                width={158}
+                maxImgHeight={380}
+              />
 
-              {/* Phone right — recital cover */}
-              <div style={{ position:'absolute', bottom:0, right:60 }}>
-                <PhoneFrame src="/screenshots/screen-mobile-recital-cover.PNG" alt="ManchQ recital view" width={185} />
-              </div>
             </div>
           )}
 
@@ -397,8 +417,8 @@ export default function LandingPageA() {
             display:'grid',
             gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)',
             gap: isMobile ? 12 : 14,
-            maxWidth: isMobile ? '100%' : 700,
-            margin: isMobile ? '0 auto' : '48px auto 0',
+            maxWidth: isMobile ? '100%' : 680,
+            margin: isMobile ? '0 auto' : '44px auto 0',
           }}>
             {MOBILE_BULLETS.map(b => (
               <div key={b} style={{ display:'flex', alignItems:'center', gap:12 }}>
@@ -481,7 +501,7 @@ export default function LandingPageA() {
             gap: isMobile ? 12 : 16,
             marginBottom: isMobile ? 24 : 32,
           }}>
-            {PROVIDERS.map(({ emoji, title, desc }) => (
+            {PROVIDERS.map(({ ic, title, desc }) => (
               <div key={title} style={{
                 background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)',
                 borderRadius:16, padding: isMobile ? '20px 16px' : '28px 24px',
@@ -490,7 +510,16 @@ export default function LandingPageA() {
                 onMouseEnter={e=>{ e.currentTarget.style.background='rgba(124,58,237,0.10)'; e.currentTarget.style.borderColor='rgba(124,58,237,0.28)'; e.currentTarget.style.transform='translateY(-2px)'; }}
                 onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.07)'; e.currentTarget.style.transform='none'; }}
               >
-                <div style={{ fontSize: isMobile ? 28 : 34, marginBottom: isMobile ? 10 : 14, lineHeight:1 }}>{emoji}</div>
+                {/* Icon circle */}
+                <div style={{
+                  width: isMobile ? 38 : 46, height: isMobile ? 38 : 46,
+                  borderRadius:12,
+                  background:'rgba(124,58,237,0.14)', border:'1px solid rgba(124,58,237,0.28)',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  marginBottom: isMobile ? 12 : 16, flexShrink:0,
+                }}>
+                  <Icon paths={IC[ic]} size={isMobile ? 18 : 22} stroke={MAGENTA} sw={1.5} />
+                </div>
                 <div style={{ fontWeight:800, fontSize: isMobile ? 14 : 16, color:'#fff', marginBottom: isMobile ? 5 : 7 }}>{title}</div>
                 <div style={{ fontSize: isMobile ? 12 : 13, color:'#6B7280', lineHeight:1.65 }}>{desc}</div>
               </div>
@@ -499,7 +528,7 @@ export default function LandingPageA() {
 
           {/* Parent volunteer highlight strip */}
           <div style={{
-            padding: isMobile ? '20px 20px' : '26px 36px',
+            padding: isMobile ? '20px' : '26px 36px',
             borderRadius:18,
             background:'rgba(124,58,237,0.08)',
             border:'1.5px solid rgba(124,58,237,0.22)',
@@ -507,7 +536,15 @@ export default function LandingPageA() {
             gap: isMobile ? 16 : 24,
             flexDirection: isMobile ? 'column' : 'row',
           }}>
-            <div style={{ fontSize: isMobile ? 32 : 44, lineHeight:1, flexShrink:0 }}>👨‍👩‍👧</div>
+            {/* Icon replaces emoji */}
+            <div style={{
+              width: isMobile ? 44 : 54, height: isMobile ? 44 : 54,
+              borderRadius:14,
+              background:'rgba(124,58,237,0.18)', border:'1px solid rgba(124,58,237,0.32)',
+              display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+            }}>
+              <Icon paths={IC.parent} size={isMobile ? 22 : 27} stroke={MAGENTA} sw={1.5} />
+            </div>
             <div style={{ flex:1 }}>
               <div style={{ fontWeight:800, fontSize: isMobile ? 15 : 18, color:'#fff', marginBottom:6 }}>
                 Parent volunteers — a first-class feature
@@ -572,7 +609,6 @@ export default function LandingPageA() {
                 borderRadius:18, padding: isMobile ? '24px 20px' : '32px 28px',
                 display:'flex', flexDirection:'column', gap:16,
               }}>
-                {/* Icon circle */}
                 <div style={{
                   width:48, height:48, borderRadius:14,
                   background:'rgba(124,58,237,0.15)', border:'1px solid rgba(124,58,237,0.28)',
@@ -594,7 +630,9 @@ export default function LandingPageA() {
             borderRadius:18, border:'1px solid rgba(255,255,255,0.06)',
             background:'rgba(255,255,255,0.018)',
           }}>
-            <div style={{ fontSize: isMobile ? 22 : 28, marginBottom:16 }}>🤝</div>
+            <div style={{ display:'flex', justifyContent:'center', marginBottom:16, color:MAGENTA }}>
+              <Icon paths={IC.heart} size={isMobile ? 32 : 40} stroke={MAGENTA} sw={1.4} />
+            </div>
             <p style={{
               fontSize: isMobile ? 15 : 18, color:'#9CA3AF',
               fontStyle:'italic', maxWidth:580, margin:'0 auto', lineHeight:1.82,
@@ -655,7 +693,7 @@ export default function LandingPageA() {
           Manch<span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>Q</span>
         </div>
         <div style={{ fontSize:12, color:'#374151' }}>
-          © {new Date().getFullYear()} ManchQ · Made with ♥ for dance studios. ·{' '}
+          © {new Date().getFullYear()} ManchQ · Made with care for dance studios. ·{' '}
           <a href="mailto:support@manchq.com" style={{ color:'#6a7fdb', textDecoration:'none' }}>support@manchq.com</a>
         </div>
       </footer>
