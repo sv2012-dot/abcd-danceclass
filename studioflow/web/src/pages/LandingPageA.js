@@ -316,60 +316,43 @@ export default function LandingPageA() {
             /* ── Mobile view: two phone screenshots side by side ── */
             <div style={{ display:'flex', justifyContent:'center', gap:12, marginBottom:36 }}>
               <img
-                src="/screenshots/screen-mobile-dashboard.PNG"
+                src="/screenshots/screen-mobile-dashboard.png"
                 alt="ManchQ mobile dashboard"
                 loading="lazy"
                 style={{ width:'calc(50% - 6px)', maxWidth:180, height:'auto', display:'block' }}
               />
               <img
-                src="/screenshots/screen-mobile-recital-cover.PNG"
+                src="/screenshots/screen-mobile-recital-cover.png"
                 alt="ManchQ recital view"
                 loading="lazy"
                 style={{ width:'calc(50% - 6px)', maxWidth:180, height:'auto', display:'block' }}
               />
             </div>
           ) : (
-            /* ── Desktop view: phone screenshot | browser frame | phone screenshot ── */
+            /* ── Desktop view: phone | laptop mockup | phone ── */
             <div style={{ display:'flex', alignItems:'center', gap:20 }}>
 
               {/* Left phone screenshot */}
               <img
-                src="/screenshots/screen-mobile-dashboard.PNG"
+                src="/screenshots/screen-mobile-dashboard.png"
                 alt="ManchQ mobile dashboard"
                 loading="lazy"
                 style={{ width:195, height:'auto', display:'block', flexShrink:0 }}
               />
 
-              {/* Browser / desktop frame — takes remaining space */}
+              {/* Desktop — laptop frame is built into the image */}
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{
-                  borderRadius:14,
-                  border:'1px solid rgba(255,255,255,0.12)',
-                  overflow:'hidden',
-                  boxShadow:'0 30px 90px rgba(0,0,0,0.65)',
-                }}>
-                  {/* Chrome bar */}
-                  <div style={{ height:36, background:'#0f0c1a', display:'flex', alignItems:'center', padding:'0 14px', gap:6, flexShrink:0 }}>
-                    <div style={{ width:10, height:10, borderRadius:'50%', background:'#FF5F57', flexShrink:0 }} />
-                    <div style={{ width:10, height:10, borderRadius:'50%', background:'#FEBC2E', flexShrink:0 }} />
-                    <div style={{ width:10, height:10, borderRadius:'50%', background:'#28C840', flexShrink:0 }} />
-                    <div style={{ flex:1, height:20, background:'rgba(255,255,255,0.06)', borderRadius:6, marginLeft:10, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', letterSpacing:'.02em' }}>app.manchq.com</span>
-                    </div>
-                  </div>
-                  {/* Desktop screenshot */}
-                  <img
-                    src="/screenshots/screen-desktop.png"
-                    alt="ManchQ on desktop"
-                    loading="lazy"
-                    style={{ width:'100%', display:'block', maxHeight:420, objectFit:'cover', objectPosition:'top' }}
-                  />
-                </div>
+                <img
+                  src="/screenshots/manchq-desktop-dashboard-1.png"
+                  alt="ManchQ on desktop"
+                  loading="lazy"
+                  style={{ width:'100%', height:'auto', display:'block' }}
+                />
               </div>
 
               {/* Right phone screenshot */}
               <img
-                src="/screenshots/screen-mobile-recital-cover.PNG"
+                src="/screenshots/screen-mobile-recital-cover.png"
                 alt="ManchQ recital view"
                 loading="lazy"
                 style={{ width:195, height:'auto', display:'block', flexShrink:0 }}
