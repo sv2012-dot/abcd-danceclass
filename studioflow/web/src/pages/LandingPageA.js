@@ -94,6 +94,14 @@ const MOBILE_BULLETS = [
   'Same great experience on desktop, tablet and mobile',
 ];
 
+// ── Smooth scroll helper ───────────────────────────────────────────────────────
+function scrollToSection(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const top = el.getBoundingClientRect().top + window.scrollY - 68; // 60px nav + 8px gap
+  window.scrollTo({ top, behavior: 'smooth' });
+}
+
 // ── Nav ────────────────────────────────────────────────────────────────────────
 function NavBar({ onLogin, isMobile }) {
   const [scrolled, setScrolled] = useState(false);
@@ -118,9 +126,9 @@ function NavBar({ onLogin, isMobile }) {
       </div>
       <div style={{ display:'flex', gap:8, alignItems:'center' }}>
         {!isMobile && <>
-          <a href="#features"   style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px' }}>Features</a>
-          <a href="#why"        style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px' }}>Why us</a>
-          <a href="#community"  style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px' }}>Community</a>
+          <a href="#features"  onClick={e => { e.preventDefault(); scrollToSection('features');  }} style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px', cursor:'pointer' }}>Features</a>
+          <a href="#why"       onClick={e => { e.preventDefault(); scrollToSection('why');       }} style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px', cursor:'pointer' }}>Why us</a>
+          <a href="#community" onClick={e => { e.preventDefault(); scrollToSection('community'); }} style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px', cursor:'pointer' }}>Community</a>
         </>}
         <button onClick={onLogin} style={{
           padding: isMobile ? '8px 18px' : '9px 22px',
