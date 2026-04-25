@@ -33,7 +33,8 @@ const IC = {
   recital:  ['M9 18V5l12-2v13','M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M18 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
   todo:     ['M9 11l3 3L22 4','M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'],
   studio:   ['M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z','M9 22V12h6v10'],
-  parent:   ['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2','M23 21v-2a4 4 0 0 0-3-3.87','M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+  // fix: circle path starts at top (y=3) so it stays within the 24x24 viewBox
+  parent:   ['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2','M23 21v-2a4 4 0 0 0-3-3.87','M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z'],
   dance:    ['M12 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z','M9 8l-3 6h4l1 8','M15 8l3 6h-4l-1 8','M9 14l6-2'],
   heart:    ['M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'],
   arrow:    ['M5 12h14','M12 5l7 7-7 7'],
@@ -138,35 +139,6 @@ function NavBar({ onLogin, isMobile }) {
   );
 }
 
-// ── Phone frame component ──────────────────────────────────────────────────────
-function PhoneFrame({ src, alt, width = 180, maxImgHeight = 360 }) {
-  return (
-    <div style={{
-      width, flexShrink: 0,
-      borderRadius: 28,
-      border: '2px solid rgba(255,255,255,0.14)',
-      background: '#0a0810',
-      overflow: 'hidden',
-      boxShadow: '0 20px 50px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.04)',
-      display: 'flex', flexDirection: 'column',
-    }}>
-      {/* Notch */}
-      <div style={{ height:22, background:'#0a0810', display:'flex', justifyContent:'center', alignItems:'center', flexShrink:0 }}>
-        <div style={{ width:52, height:7, background:'rgba(255,255,255,0.12)', borderRadius:99 }} />
-      </div>
-      <img
-        src={src} alt={alt}
-        loading="lazy"
-        style={{ width:'100%', display:'block', objectFit:'cover', objectPosition:'top', maxHeight: maxImgHeight, flexShrink:0 }}
-      />
-      {/* Home bar */}
-      <div style={{ height:18, background:'#0a0810', display:'flex', justifyContent:'center', alignItems:'center', flexShrink:0 }}>
-        <div style={{ width:40, height:4, background:'rgba(255,255,255,0.18)', borderRadius:99 }} />
-      </div>
-    </div>
-  );
-}
-
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function LandingPageA() {
   const navigate = useNavigate();
@@ -189,27 +161,21 @@ export default function LandingPageA() {
         <div style={{ position:'absolute', bottom:'5%', right: isMobile ? '-10%' : '8%', width:300, height:300, background:'radial-gradient(circle, rgba(220,78,255,0.12) 0%, transparent 70%)', pointerEvents:'none' }} />
 
         <div style={{ position:'relative', width:'100%', maxWidth:820 }}>
-          {/* Pill tag */}
-          <div style={{
-            display:'inline-flex', alignItems:'center', gap:8,
-            background:'rgba(124,58,237,0.1)', border:'1px solid rgba(124,58,237,0.28)',
-            borderRadius:99, padding: isMobile ? '5px 14px' : '6px 18px',
-            fontSize: isMobile ? 11 : 12, fontWeight:700, color:'#C084FC',
-            marginBottom: isMobile ? 22 : 30, letterSpacing:'.06em', textTransform:'uppercase',
-          }}>
-            <Icon paths={IC.dance} size={13} stroke="#C084FC" sw={1.8} />
-            {isMobile ? 'For dance studios' : 'Made for dance studios, by people who love dance'}
-          </div>
-
-          {/* Headline */}
+          {/* Headline — paddingBottom on the gradient span prevents WebkitBackgroundClip
+              from cropping the bottom of the last wrapped line */}
           <h1 style={{
             fontSize: isMobile ? 'clamp(28px, 9vw, 48px)' : 'clamp(38px, 6.5vw, 76px)',
-            fontWeight:900, lineHeight:1.08,
+            fontWeight:900, lineHeight:1.12,
             margin:'0 auto 20px', letterSpacing:'-.03em',
             wordBreak:'break-word', overflowWrap:'break-word',
           }}>
             Every step,{' '}
-            <span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', display: isMobile ? 'block' : 'inline', wordBreak:'break-word' }}>
+            <span style={{
+              background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+              display: isMobile ? 'block' : 'inline',
+              wordBreak:'break-word',
+              paddingBottom:'0.15em',   // prevents gradient clip on last wrapped line
+            }}>
               beautifully organised.
             </span>
           </h1>
@@ -347,31 +313,31 @@ export default function LandingPageA() {
           </div>
 
           {isMobile ? (
-            /* ── Mobile view: two phones side by side ── */
-            <div style={{ display:'flex', justifyContent:'center', gap:14, marginBottom:36 }}>
-              <PhoneFrame
+            /* ── Mobile view: two phone screenshots side by side ── */
+            <div style={{ display:'flex', justifyContent:'center', gap:12, marginBottom:36 }}>
+              <img
                 src="/screenshots/screen-mobile-dashboard.PNG"
                 alt="ManchQ mobile dashboard"
-                width={148}
-                maxImgHeight={310}
+                loading="lazy"
+                style={{ width:'calc(50% - 6px)', maxWidth:180, height:'auto', display:'block' }}
               />
-              <PhoneFrame
+              <img
                 src="/screenshots/screen-mobile-recital-cover.PNG"
                 alt="ManchQ recital view"
-                width={148}
-                maxImgHeight={310}
+                loading="lazy"
+                style={{ width:'calc(50% - 6px)', maxWidth:180, height:'auto', display:'block' }}
               />
             </div>
           ) : (
-            /* ── Desktop view: phone | browser frame | phone (flex row) ── */
+            /* ── Desktop view: phone screenshot | browser frame | phone screenshot ── */
             <div style={{ display:'flex', alignItems:'center', gap:20 }}>
 
-              {/* Left phone */}
-              <PhoneFrame
+              {/* Left phone screenshot */}
+              <img
                 src="/screenshots/screen-mobile-dashboard.PNG"
                 alt="ManchQ mobile dashboard"
-                width={158}
-                maxImgHeight={380}
+                loading="lazy"
+                style={{ width:195, height:'auto', display:'block', flexShrink:0 }}
               />
 
               {/* Browser / desktop frame — takes remaining space */}
@@ -391,7 +357,7 @@ export default function LandingPageA() {
                       <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', letterSpacing:'.02em' }}>app.manchq.com</span>
                     </div>
                   </div>
-                  {/* Desktop screenshot — note: lowercase .png to match file on disk */}
+                  {/* Desktop screenshot */}
                   <img
                     src="/screenshots/screen-desktop.png"
                     alt="ManchQ on desktop"
@@ -401,12 +367,12 @@ export default function LandingPageA() {
                 </div>
               </div>
 
-              {/* Right phone */}
-              <PhoneFrame
+              {/* Right phone screenshot */}
+              <img
                 src="/screenshots/screen-mobile-recital-cover.PNG"
                 alt="ManchQ recital view"
-                width={158}
-                maxImgHeight={380}
+                loading="lazy"
+                style={{ width:195, height:'auto', display:'block', flexShrink:0 }}
               />
 
             </div>
@@ -510,7 +476,6 @@ export default function LandingPageA() {
                 onMouseEnter={e=>{ e.currentTarget.style.background='rgba(124,58,237,0.10)'; e.currentTarget.style.borderColor='rgba(124,58,237,0.28)'; e.currentTarget.style.transform='translateY(-2px)'; }}
                 onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.07)'; e.currentTarget.style.transform='none'; }}
               >
-                {/* Icon circle */}
                 <div style={{
                   width: isMobile ? 38 : 46, height: isMobile ? 38 : 46,
                   borderRadius:12,
@@ -536,7 +501,6 @@ export default function LandingPageA() {
             gap: isMobile ? 16 : 24,
             flexDirection: isMobile ? 'column' : 'row',
           }}>
-            {/* Icon replaces emoji */}
             <div style={{
               width: isMobile ? 44 : 54, height: isMobile ? 44 : 54,
               borderRadius:14,
@@ -574,12 +538,7 @@ export default function LandingPageA() {
 
       {/* ── Trust & Privacy ────────────────────────────────────────────── */}
       <section id="trust" style={{ padding: isMobile ? '64px 20px' : '96px 24px', background:'rgba(255,255,255,0.018)', position:'relative', overflow:'hidden' }}>
-        {/* Shield watermark */}
-        <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', opacity:0.028, pointerEvents:'none', userSelect:'none' }}>
-          <svg width={isMobile ? 320 : 520} height={isMobile ? 320 : 520} viewBox="0 0 24 24" fill="white" stroke="none">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-        </div>
+        {/* shield watermark removed */}
 
         <div style={{ maxWidth:1000, margin:'0 auto', position:'relative' }}>
 
@@ -588,7 +547,7 @@ export default function LandingPageA() {
             <div style={{ fontSize:11, fontWeight:700, color:MAGENTA, textTransform:'uppercase', letterSpacing:'.1em', marginBottom:12 }}>Privacy & trust</div>
             <h2 style={{ fontSize: isMobile ? 'clamp(24px,7vw,34px)' : 'clamp(28px,4vw,46px)', fontWeight:900, margin:'0 0 14px', letterSpacing:'-.02em' }}>
               Your data is{' '}
-              <span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>sacred.</span>
+              <span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>secured.</span>
             </h2>
             <p style={{ fontSize: isMobile ? 14 : 16, color:'#6B7280', maxWidth:520, margin:'0 auto', lineHeight:1.75 }}>
               We built ManchQ on a single primary tenet — trust. Every decision we make, every line
@@ -653,13 +612,13 @@ export default function LandingPageA() {
             <Icon paths={IC.heart} size={isMobile ? 36 : 44} stroke={MAGENTA} sw={1.4} />
           </div>
           <h2 style={{ fontSize: isMobile ? 'clamp(26px,8vw,40px)' : 'clamp(30px,5vw,54px)', fontWeight:900, margin:'0 0 16px', lineHeight:1.15, letterSpacing:'-.03em' }}>
-            Ready to spend more time<br />
+            Less admin.{' '}
             <span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
-              doing what you love?
+              More dance.
             </span>
           </h2>
           <p style={{ fontSize: isMobile ? 15 : 17, color:'#6B7280', margin:'0 0 36px', lineHeight:1.75 }}>
-            Join studio owners who've traded spreadsheet chaos for something that actually feels good to use.
+            Everything your studio needs. None of what it doesn't.
           </p>
           <button onClick={goLogin} style={{
             padding: isMobile ? '16px 36px' : '18px 48px',
