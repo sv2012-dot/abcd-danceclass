@@ -313,19 +313,13 @@ export default function LandingPageA() {
           </div>
 
           {isMobile ? (
-            /* ── Mobile view: two phone screenshots side by side ── */
-            <div style={{ display:'flex', justifyContent:'center', gap:12, marginBottom:36 }}>
+            /* ── Mobile view: single dashboard screenshot centred ── */
+            <div style={{ display:'flex', justifyContent:'center', marginBottom:36 }}>
               <img
                 src="/screenshots/screen-mobile-dashboard.png"
                 alt="ManchQ mobile dashboard"
                 loading="lazy"
-                style={{ width:'calc(50% - 6px)', maxWidth:180, height:'auto', display:'block' }}
-              />
-              <img
-                src="/screenshots/screen-mobile-recital-cover.png"
-                alt="ManchQ recital view"
-                loading="lazy"
-                style={{ width:'calc(50% - 6px)', maxWidth:180, height:'auto', display:'block' }}
+                style={{ width:'72%', maxWidth:260, height:'auto', display:'block' }}
               />
             </div>
           ) : (
