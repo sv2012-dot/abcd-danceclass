@@ -314,7 +314,7 @@ export default function DashboardPage() {
   if (user?.role === 'superadmin') return <SuperAdminDash />;
 
   // ── Queries ──────────────────────────────────────────────────────────────────
-  const { data: recitalList  = [] } = useQuery({ queryKey: ['recitals',  sid], queryFn: () => recitalApi.list(sid), enabled: !!sid });
+  const { data: recitalList  = [] } = useQuery({ queryKey: ['recitals',  sid], queryFn: () => recitalApi.list(sid), enabled: !!sid, staleTime: 0 });
   const { data: studentList  = [] } = useQuery({ queryKey: ['students',  sid], queryFn: () => studentApi.list(sid), enabled: !!sid });
   const { data: batchList    = [] } = useQuery({ queryKey: ['batches',   sid], queryFn: () => batchApi.list(sid),   enabled: !!sid });
   const { data: todoRaw } = useQuery({ queryKey: ['todos', sid], queryFn: () => todoApi.list(sid), enabled: !!sid });
@@ -412,7 +412,23 @@ export default function DashboardPage() {
   const upcomingEvents = [...(eventList || []), ...scheduleInstances]
     .filter(e => new Date(e.start_datetime) >= now)
     .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
-  const thisWeekEvents = upcomingEvents.filter(e => (new Date(e.start_datetime) - now) / 86400000 <= 7);
+
+  // "This Week" uses start-of-today so classes that already started today still appear
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(todayStart); weekEnd.setDate(weekEnd.getDate() + 7);
+  const thisWeekEvents = [...(eventList || []), ...scheduleInstances]
+    .filter(e => { const d = new Date(e.start_datetime); return d >= todayStart && d < weekEnd; })
+    .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
+
+  // All recitals sorted: upcoming soonest first, then past most-recent first
+  const sortedRecitals = [...recitalList].sort((a, b) => {
+    const ta = new Date(a.event_date).getTime(), tb = new Date(b.event_date).getTime();
+    const td = todayStart.getTime();
+    const au = ta >= td, bu = tb >= td;
+    if (au !== bu) return au ? -1 : 1;
+    return au ? ta - tb : tb - ta;
+  });
+
   const openTodos = todoList.filter(t => !t.is_complete);
 
   const dateStr = now.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
@@ -504,7 +520,7 @@ export default function DashboardPage() {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, width: '100%' }}>
       <StatCard label="Students" value={studentList.length}           icon={<IconStudents />} accentColor={C.accentPurple}  isMobile={isMobile} />
       <StatCard label="Batches"  value={batchList.length}             icon={<IconBatches  />} accentColor="#0EA5E9"           isMobile={isMobile} />
-      <StatCard label="Recitals" value={upcomingRecitals.length}      icon={<IconRecitals />} accentColor={C.accentMagenta}  isMobile={isMobile} />
+      <StatCard label="Recitals" value={recitalList.length}            icon={<IconRecitals />} accentColor={C.accentMagenta}  isMobile={isMobile} />
     </div>
   );
 
@@ -629,19 +645,19 @@ export default function DashboardPage() {
           <div style={{ background: C.white, borderRadius: 16, border: `1.5px solid ${C.border}`, overflow: 'hidden', marginBottom: 36 }}>
             {thisWeekEvents.length === 0
               ? <div style={{ padding: '28px 20px', color: C.grayChate, fontSize: 13, textAlign: 'center' }}>No events this week</div>
-              : thisWeekEvents.slice(0, 5).map(e => <WeekEventRow key={e.id} e={e} />)
+              : thisWeekEvents.map(e => <WeekEventRow key={e.id} e={e} />)
             }
           </div>
 
-          {/* UPCOMING RECITALS */}
-          <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={() => navigate('/recitals')} />
-          {upcomingRecitals.length === 0 ? (
+          {/* ALL RECITALS — upcoming first, then most-recent past */}
+          <SectionTitle first="ALL" accent="RECITALS" onViewAll={() => navigate('/recitals')} />
+          {sortedRecitals.length === 0 ? (
             <div style={{ padding: '28px 20px', color: C.grayChate, fontSize: 13, textAlign: 'center', background: C.white, borderRadius: 16, border: `1.5px solid ${C.border}` }}>
-              No upcoming recitals
+              No recitals yet
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-              {upcomingRecitals.slice(0, 3).map((r, i) => (
+              {sortedRecitals.slice(0, 6).map((r, i) => (
                 <RecitalCard key={r.id} r={r} index={i} onClick={() => navigate('/recitals')} />
               ))}
             </div>
@@ -650,11 +666,11 @@ export default function DashboardPage() {
 
         {/* ── Right column ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-          {/* Featured Recital */}
-          {upcomingRecitals[0] && (
+          {/* Featured Recital — nearest upcoming, or most recent if none upcoming */}
+          {sortedRecitals[0] && (
             <div>
               <SectionTitle first="FEATURED" accent="RECITAL" />
-              <FeaturedRecitalCard r={upcomingRecitals[0]} onClick={() => navigate('/recitals')} />
+              <FeaturedRecitalCard r={sortedRecitals[0]} onClick={() => navigate('/recitals')} />
             </div>
           )}
 
