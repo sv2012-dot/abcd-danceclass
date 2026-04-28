@@ -1158,39 +1158,41 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                 )}
               </div>
 
-              {/* Important Information - Editable */}
+              {/* Important Information - Unified edit mode like Description */}
               <div>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
                   <h3 style={{ fontSize:15, fontWeight:700, margin:0 }}>Important Information</h3>
+                  {overviewEditing !== 'info' && <button onClick={() => { setOverviewEditing('info'); setOverviewForm({...overviewForm, info: infoItems.join('\n')}); }} style={{ fontSize:12, color:"var(--accent)", background:"none", border:"none", cursor:"pointer", fontWeight:600 }}>Edit</button>}
                 </div>
-                <ul style={{ margin:0, padding:"0 0 0 18px", display:"flex", flexDirection:"column", gap:9, marginBottom:16 }}>
-                  {infoItems.map((item, i) => (
-                    <li key={i} style={{ fontSize:13, color:"var(--muted)", lineHeight:1.5, display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
-                      {editingInfoIdx === i ? (
-                        <input type="text" value={item} onChange={e => setInfoItems(prev => prev.map((x, idx) => idx === i ? e.target.value : x))} style={{ flex:1, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:13 }} autoFocus />
-                      ) : (
-                        <span style={{ flex:1 }}>{item}</span>
-                      )}
-                      <div style={{ display:"flex", gap:6, whiteSpace:"nowrap" }}>
-                        {editingInfoIdx === i ? (
-                          <>
-                            <button onClick={() => updateInfoItem(i, item)} style={{ fontSize:10, padding:"2px 6px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:3, cursor:"pointer" }}>Save</button>
-                            <button onClick={() => setEditingInfoIdx(null)} style={{ fontSize:10, padding:"2px 6px", background:"var(--surface)", border:"1px solid var(--border)", borderRadius:3, cursor:"pointer" }}>Cancel</button>
-                          </>
-                        ) : (
-                          <>
-                            <button onClick={() => setEditingInfoIdx(i)} style={{ fontSize:10, color:"var(--muted)", background:"none", border:"none", cursor:"pointer" }}>Edit</button>
-                            <button onClick={() => deleteInfoItem(i)} style={{ fontSize:10, color:"#ff3b30", background:"none", border:"none", cursor:"pointer" }}>Delete</button>
-                          </>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-                <div style={{ display:"flex", gap:8 }}>
-                  <input type="text" value={newInfoInput} onChange={e => setNewInfoInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addInfoItem()} placeholder="Add new item..." style={{ flex:1, padding:"6px 10px", borderRadius:6, border:"1px solid var(--border)", fontSize:13, color:"var(--text)", background:"var(--surface)" }} />
-                  <button onClick={addInfoItem} style={{ padding:"6px 14px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:6, fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>Add Item</button>
-                </div>
+                {overviewEditing === 'info' ? (
+                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    <textarea value={overviewForm.info || ''} onChange={e => setOverviewForm({...overviewForm, info: e.target.value})} placeholder="Add items (one per line)..." style={{ padding:"10px", borderRadius:6, border:"1px solid var(--border)", fontSize:13, color:"var(--text)", background:"var(--surface)", minHeight:120, fontFamily:"inherit" }} />
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button onClick={async () => {
+                        try {
+                          const newItems = overviewForm.info?.trim().split('\n').filter(line => line.trim()) || [];
+                          setInfoItems(newItems);
+                          localStorage.setItem(INFO_KEY, JSON.stringify(newItems));
+                          setOverviewEditing(null);
+                          toast.success("Important information updated");
+                        } catch (e) {
+                          toast.error("Failed to save");
+                        }
+                      }} style={{ padding:"6px 14px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:6, fontSize:12, fontWeight:600, cursor:"pointer" }}>Save</button>
+                      <button onClick={() => setOverviewEditing(null)} style={{ padding:"6px 14px", background:"var(--surface)", border:"1px solid var(--border)", color:"var(--text)", borderRadius:6, fontSize:12, fontWeight:600, cursor:"pointer" }}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <ul style={{ margin:0, padding:"0 0 0 18px", display:"flex", flexDirection:"column", gap:9, marginBottom:0 }}>
+                    {infoItems.length === 0 ? (
+                      <p style={{ color:"var(--muted)", fontSize:14, margin:0 }}>No important information added yet. Click Edit to add items.</p>
+                    ) : (
+                      infoItems.map((item, i) => (
+                        <li key={i} style={{ fontSize:13, color:"var(--text)", lineHeight:1.5 }}>{item}</li>
+                      ))
+                    )}
+                  </ul>
+                )}
               </div>
             </div>
 

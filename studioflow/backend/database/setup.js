@@ -118,9 +118,13 @@ async function setup() {
     school_id   INT UNSIGNED NOT NULL,
     title       VARCHAR(180) NOT NULL,
     event_date  DATE NOT NULL,
+    event_time  VARCHAR(5) NULL,
     venue       VARCHAR(180) NULL,
     status      ENUM('Planning','Confirmed','Rehearsals','Completed','Cancelled') NOT NULL DEFAULT 'Planning',
     description TEXT NULL,
+    poster_url  LONGTEXT NULL,
+    is_featured TINYINT(1) NOT NULL DEFAULT 0,
+    participant_count INT UNSIGNED NULL,
     created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE
