@@ -348,17 +348,6 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     updateMutation.mutate(editForm);
   };
 
-  const addInfoItem = () => {
-    const v = newInfo.trim();
-    if (!v) return;
-    setInfoItems(p => [...p, v]);
-    setNewInfo("");
-  };
-
-  const removeInfoItem = (i) => setInfoItems(p => p.filter((_, idx) => idx !== i));
-
-  const editInfoItem = (i, val) => setInfoItems(p => p.map((x, idx) => idx === i ? val : x));
-
   const saveMetaField = async (field) => {
     try {
       setMetaSaving(true);
