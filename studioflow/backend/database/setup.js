@@ -136,6 +136,22 @@ async function setup() {
     FOREIGN KEY (recital_id) REFERENCES recitals(id) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+  CREATE TABLE IF NOT EXISTS recital_participants (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    recital_id      INT UNSIGNED NOT NULL,
+    school_id       INT UNSIGNED NOT NULL,
+    email           VARCHAR(180) NOT NULL,
+    student_id      INT UNSIGNED NULL,
+    is_guest        TINYINT(1) NOT NULL DEFAULT 0,
+    rsvp_status     ENUM('Pending','Confirmed','Declined','No Response') NOT NULL DEFAULT 'Pending',
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (recital_id) REFERENCES recitals(id) ON DELETE CASCADE,
+    FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL,
+    UNIQUE KEY uq_recital_email (recital_id, email)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
   CREATE TABLE IF NOT EXISTS fee_plans (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     school_id   INT UNSIGNED NOT NULL,
@@ -220,7 +236,7 @@ async function setup() {
   const parentPw   = await bcrypt.hash('Parent123!', 12);
 
   // ── Seed Schools ──────────────────────────────────────────
-  await conn.query(`DELETE FROM parent_students; DELETE FROM student_fees; DELETE FROM fee_plans; DELETE FROM recital_tasks; DELETE FROM recitals; DELETE FROM schedules; DELETE FROM batch_students; DELETE FROM batches; DELETE FROM students; DELETE FROM users; DELETE FROM schools;`);
+  await conn.query(`DELETE FROM parent_students; DELETE FROM student_fees; DELETE FROM fee_plans; DELETE FROM recital_participants; DELETE FROM recital_tasks; DELETE FROM recitals; DELETE FROM schedules; DELETE FROM batch_students; DELETE FROM batches; DELETE FROM students; DELETE FROM users; DELETE FROM schools;`);
   await conn.query(`ALTER TABLE schools   AUTO_INCREMENT = 1`);
   await conn.query(`ALTER TABLE users     AUTO_INCREMENT = 1`);
   await conn.query(`ALTER TABLE students  AUTO_INCREMENT = 1`);
@@ -228,6 +244,7 @@ async function setup() {
   await conn.query(`ALTER TABLE schedules AUTO_INCREMENT = 1`);
   await conn.query(`ALTER TABLE recitals  AUTO_INCREMENT = 1`);
   await conn.query(`ALTER TABLE recital_tasks AUTO_INCREMENT = 1`);
+  await conn.query(`ALTER TABLE recital_participants AUTO_INCREMENT = 1`);
   await conn.query(`ALTER TABLE fee_plans AUTO_INCREMENT = 1`);
   await conn.query(`ALTER TABLE student_fees AUTO_INCREMENT = 1`);
 

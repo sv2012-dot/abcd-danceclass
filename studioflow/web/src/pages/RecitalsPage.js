@@ -596,7 +596,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     { id:"overview",   label:"Overview",          shortLabel:"Overview",  icon:"home"        },
     { id:"program",    label:"Program Schedule",  shortLabel:"Program",   icon:"list"        },
     { id:"venue",      label:"Venue",             shortLabel:"Venue",     icon:"map-pin"     },
-    { id:"volunteers", label:"Parent Volunteers", shortLabel:"Helpers",   icon:"users"       },
+    { id:"invitees",   label:"Invitees",          shortLabel:"Invitees",  icon:"users"       },
     { id:"vendors",    label:"Vendors",           shortLabel:"Vendors",   icon:"package"     },
     { id:"tasks",      label:`To-Dos${recitalTodos.length ? ` (${done}/${recitalTodos.length})` : ""}`, shortLabel:"To-Dos", icon:"check-circle" },
   ];
@@ -1593,8 +1593,8 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
           </div>
         )}
 
-        {/* ── PARENT VOLUNTEERS ── */}
-        {tab === "volunteers" && (
+        {/* ── INVITEES ── */}
+        {tab === "invitees" && (
           <div>
             <div style={{ display:"flex", flexDirection: isMobile ? "column" : "row", justifyContent:"space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: isMobile ? 12 : 0, marginBottom:20 }}>
               <SectionHead title="Parent Volunteers" sub="Volunteer coordinators and helpers for the event" />
