@@ -19,8 +19,21 @@ async function migrate() {
   try {
     await conn.query(`USE \`${dbName}\``);
 
+    // Make event_date nullable to support TBD
+    console.log('Updating event_date column to be nullable...');
+    try {
+      await conn.query(`ALTER TABLE recitals MODIFY COLUMN event_date DATE NULL`);
+      console.log('✓ Updated event_date to be nullable');
+    } catch (e) {
+      if (e.code === 'ER_BAD_FIELD_ERROR' || e.code === 'ER_DUP_FIELDNAME') {
+        console.log('✓ event_date column already correct');
+      } else {
+        throw e;
+      }
+    }
+
     // Add missing columns to recitals table
-    console.log('Adding missing columns to recitals table...');
+    console.log('\nAdding missing columns to recitals table...');
     try {
       await conn.query(`ALTER TABLE recitals ADD COLUMN event_time VARCHAR(5) NULL`);
       console.log('✓ Added event_time column');

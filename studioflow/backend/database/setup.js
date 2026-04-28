@@ -117,7 +117,7 @@ async function setup() {
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     school_id   INT UNSIGNED NOT NULL,
     title       VARCHAR(180) NOT NULL,
-    event_date  DATE NOT NULL,
+    event_date  DATE NULL,
     event_time  VARCHAR(5) NULL,
     venue       VARCHAR(180) NULL,
     status      ENUM('Planning','Confirmed','Rehearsals','Completed','Cancelled') NOT NULL DEFAULT 'Planning',

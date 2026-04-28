@@ -904,7 +904,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                       </>
                     )}
                     <button onClick={e => { e.stopPropagation(); saveMetaField(m.id); }} disabled={metaSaving} style={{ padding:"2px 8px", fontSize:11, background:"var(--accent)", color:"#fff", border:"none", borderRadius:4, cursor:"pointer", opacity: metaSaving ? 0.6 : 1 }}>Save</button>
-                    <button onClick={e => { e.stopPropagation(); setMetaEditing(null); }} style={{ padding:"2px 8px", fontSize:11, background:"var(--border)", border:"none", borderRadius:4, cursor:"pointer" }}>Cancel</button>
+                    <button onClick={e => { e.stopPropagation(); setMetaEditing(null); }} style={{ padding:"2px 8px", fontSize:11, background:"var(--surface)", color:"var(--text)", border:"1px solid var(--border)", borderRadius:4, cursor:"pointer" }}>Cancel</button>
                   </div>
                 ) : (
                   <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
@@ -1068,7 +1068,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                         </>
                       )}
                       <button onClick={e => { e.stopPropagation(); saveMetaField(m.id); }} disabled={metaSaving} style={{ padding:"2px 6px", fontSize:10, background:"var(--accent)", color:"#fff", border:"none", borderRadius:4, cursor:"pointer", opacity: metaSaving ? 0.6 : 1, whiteSpace:"nowrap" }}>Save</button>
-                      <button onClick={e => { e.stopPropagation(); setMetaEditing(null); }} style={{ padding:"2px 6px", fontSize:10, background:"var(--border)", border:"none", borderRadius:4, cursor:"pointer", whiteSpace:"nowrap" }}>✕</button>
+                      <button onClick={e => { e.stopPropagation(); setMetaEditing(null); }} style={{ padding:"2px 6px", fontSize:10, background:"var(--surface)", color:"var(--text)", border:"1px solid var(--border)", borderRadius:4, cursor:"pointer", whiteSpace:"nowrap" }}>✕</button>
                     </div>
                   ) : (
                     <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
