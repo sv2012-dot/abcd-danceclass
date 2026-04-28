@@ -153,6 +153,7 @@ export default function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BP);
   const [hoveredNav, setHoveredNav] = useState(null);
+  const canHover = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches;
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < MOBILE_BP);
@@ -223,15 +224,15 @@ export default function AppShell() {
             key={item.to}
             to={item.to}
             end={item.to === '/'}
-            onMouseEnter={() => setHoveredNav(item.to)}
-            onMouseLeave={() => setHoveredNav(null)}
+            onMouseEnter={canHover ? () => setHoveredNav(item.to) : undefined}
+            onMouseLeave={canHover ? () => setHoveredNav(null) : undefined}
             style={({ isActive }) => ({
               display:'flex', alignItems:'center', gap:12, width:'100%',
               padding:'12px 14px', borderRadius:10, border:'none', marginBottom:4,
               fontSize:14, fontWeight: isActive ? 600 : 500,
               color: isActive ? 'var(--sidebar-foreground)' : 'var(--sidebar-foreground)',
-              opacity: isActive ? 1 : hoveredNav === item.to ? 1 : 0.72,
-              background: isActive ? 'rgba(124,58,237,0.09)' : hoveredNav === item.to ? 'rgba(124,58,237,0.09)' : 'transparent',
+              opacity: isActive ? 1 : (canHover && hoveredNav === item.to) ? 1 : canHover ? 0.72 : 1,
+              background: isActive ? 'rgba(124,58,237,0.09)' : (canHover && hoveredNav === item.to) ? 'rgba(124,58,237,0.09)' : 'transparent',
               boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
               cursor:'pointer', textDecoration:'none', transition:'background .15s, opacity .15s',
               boxSizing:'border-box',

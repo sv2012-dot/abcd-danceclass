@@ -840,7 +840,7 @@ function SchoolHomePage() {
 
       {/* ── Mobile: stacked cards ── */}
       {isMobile && (
-        <div style={{ display:'grid', gap:24, width:'100%', boxSizing:'border-box', minWidth:0, padding:'0 16px' }}>
+        <div style={{ display:'grid', gap:24, width:'100%', boxSizing:'border-box', minWidth:0 }}>
 
         {/* Upcoming Recitals — row 1: 2-col grid tiles, row 2: featured full-width */}
         <div>
@@ -924,7 +924,7 @@ function SchoolHomePage() {
 
       {/* ── Mobile: stats at bottom ── */}
       {isMobile && stats && (
-        <div style={{marginTop:24, padding:'0 16px'}}>
+        <div style={{marginTop:24}}>
           <div style={{fontSize:10,fontWeight:700,color:C.grayChate,textTransform:"uppercase",letterSpacing:".1em",marginBottom:10}}>Studio Overview</div>
           {statsBlock}
         </div>
