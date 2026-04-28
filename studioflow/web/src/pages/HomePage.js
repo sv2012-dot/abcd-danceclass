@@ -84,6 +84,10 @@ const EMPTY_BATCH   = { name:"", dance_style:"", level:"Beginner", teacher_name:
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const pad = n => String(n).padStart(2,"0");
+const supportsHover = () => window.matchMedia('(hover: hover)').matches;
+const conditionalHover = (onEnter, onLeave) => supportsHover()
+  ? { onMouseEnter: onEnter, onMouseLeave: onLeave }
+  : {};
 function fmtTime(dt) {
   if (!dt) return "";
   return new Date(dt).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit", hour12:true });
@@ -261,8 +265,10 @@ function ThisWeekRow({ e, onNavigate }) {
   const col = TYPE_COLORS[e.type] || C.accentPurple;
   return (
     <div onClick={onNavigate} style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 20px', borderBottom:`1px solid ${C.border}`, cursor:'pointer', transition:'background .1s' }}
-      onMouseEnter={ev=>ev.currentTarget.style.background=C.surface}
-      onMouseLeave={ev=>ev.currentTarget.style.background='transparent'}
+      {...conditionalHover(
+        ev=>ev.currentTarget.style.background=C.surface,
+        ev=>ev.currentTarget.style.background='transparent'
+      )}
     >
       <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
         <div style={{ width:3, height:44, borderRadius:99, background:col, flexShrink:0 }} />
@@ -339,7 +345,7 @@ function RecitalImageCard({ r, index, onClick, schoolId, onPosterUpdate, canEdit
   const cardMeta = [fmtCardDate(r.event_date), r.event_time && fmtCardTime(r.event_time), r.venue].filter(Boolean);
 
   return (
-    <div onClick={onClick} style={{ position:'relative', height:190, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) top/cover no-repeat` : gradBg, transition:'transform .15s,box-shadow .15s' }}
+    <div onClick={onClick} style={{ position:'relative', width:'100%', height:190, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) top/cover no-repeat` : gradBg, transition:'transform .15s,box-shadow .15s', boxSizing:'border-box' }}
       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';}}
       onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}
     >
@@ -380,7 +386,7 @@ function FeaturedRecitalCard({ r, onClick, schoolId, onPosterUpdate, canEdit }) 
   };
 
   return (
-    <div onClick={onClick} style={{ position:'relative', height:280, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) top/cover no-repeat` : RECITAL_CARD_GRADS[0], transition:'transform .15s,box-shadow .15s' }}
+    <div onClick={onClick} style={{ position:'relative', width:'100%', height:280, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) top/cover no-repeat` : RECITAL_CARD_GRADS[0], transition:'transform .15s,box-shadow .15s', boxSizing:'border-box' }}
       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';}}
       onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}
     >
@@ -866,8 +872,10 @@ function SchoolHomePage() {
                 return (
                   <div key={e.id} onClick={()=>navigate("/schedule",{state:{openEventId:e.id,eventDate:e.start_datetime}})}
                     style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderTop:`1px solid ${C.border}`,cursor:"pointer",transition:"background .1s"}}
-                    onMouseEnter={ev=>{ev.currentTarget.style.background=C.surface;}}
-                    onMouseLeave={ev=>{ev.currentTarget.style.background="transparent";}}
+                    {...conditionalHover(
+                      ev=>{ev.currentTarget.style.background=C.surface;},
+                      ev=>{ev.currentTarget.style.background="transparent";}
+                    )}
                   >
                     {/* Left-bar date block */}
                     <div style={{display:"flex",alignItems:"stretch",gap:8,flexShrink:0}}>
