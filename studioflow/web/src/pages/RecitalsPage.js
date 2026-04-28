@@ -1367,20 +1367,36 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                   <Input type="date" value={editForm.event_date} onChange={e => setEditForm(p=>({...p,event_date:e.target.value}))} />
                 </Field>
                 <Field label="Time">
-                  <Select value={editForm.event_time} onChange={e => setEditForm(p=>({...p,event_time:e.target.value}))}>
-                    <option value="">— No time —</option>
-                    {TIME_OPTIONS.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-                  </Select>
+                  <div style={{ display:"flex", gap:10 }}>
+                    <Select value={editForm.event_time ? editForm.event_time.split(':')[0] : ''} onChange={e => {
+                      const h = e.target.value;
+                      if (!h) {
+                        setEditForm(p=>({...p,event_time:''}));
+                      } else {
+                        const m = editForm.event_time?.split(':')[1] || '00';
+                        setEditForm(p=>({...p,event_time:`${String(h).padStart(2,'0')}:${m}`}));
+                      }
+                    }} style={{ flex:1 }}>
+                      <option value="">— No time —</option>
+                      {Array.from({length:24}, (_, i) => <option key={i} value={String(i).padStart(2,'0')}>{i < 12 ? (i === 0 ? 12 : i) : (i === 12 ? 12 : i - 12)} {i < 12 ? 'AM' : 'PM'}</option>)}
+                    </Select>
+                    <Select value={editForm.event_time ? editForm.event_time.split(':')[1] : ''} onChange={e => {
+                      const m = e.target.value;
+                      const h = editForm.event_time?.split(':')[0] || '00';
+                      setEditForm(p=>({...p,event_time:`${h}:${m}`}));
+                    }} style={{ flex:0.8 }}>
+                      <option value="">—</option>
+                      <option value="00">:00</option>
+                      <option value="15">:15</option>
+                      <option value="30">:30</option>
+                      <option value="45">:45</option>
+                    </Select>
+                  </div>
                 </Field>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:12 }}>
-                <Field label="Venue / Location">
-                  <Input value={editForm.venue} onChange={e => setEditForm(p=>({...p,venue:e.target.value}))} placeholder="e.g. Main Theater" />
-                </Field>
-                <Field label="Participants">
-                  <Input type="number" min="0" value={editForm.participant_count} onChange={e => setEditForm(p=>({...p,participant_count:e.target.value}))} placeholder="e.g. 24" />
-                </Field>
-              </div>
+              <Field label="Venue / Location">
+                <Input value={editForm.venue} onChange={e => setEditForm(p=>({...p,venue:e.target.value}))} placeholder="e.g. Main Theater" />
+              </Field>
               {/* ── Description ── */}
               <div style={{ borderTop:"1px solid var(--border)", paddingTop:14 }}>
                 <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:".06em", color:"var(--muted)" }}>Overview</p>
@@ -1388,51 +1404,6 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                   <Textarea rows={3} value={editForm.description} onChange={e => setEditForm(p=>({...p,description:e.target.value}))}
                     placeholder="Brief description of the event…" />
                 </Field>
-              </div>
-
-              {/* ── Important Information bullets ── */}
-              <div>
-                <p style={{ margin:"0 0 10px", fontSize:13, fontWeight:700, color:"var(--text)" }}>Important Information</p>
-                <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:10 }}>
-                  {infoItems.map((item, i) => (
-                    <div key={i} style={{ display:"flex", gap:8, alignItems:"center" }}>
-                      <input
-                        value={item}
-                        onChange={e => editInfoItem(i, e.target.value)}
-                        style={{
-                          flex:1, padding:"7px 11px", borderRadius:8, fontSize:13,
-                          border:"1px solid var(--border)", background:"var(--surface)",
-                          color:"var(--text)", outline:"none",
-                        }}
-                      />
-                      <button onClick={() => removeInfoItem(i)} title="Remove" style={{
-                        width:28, height:28, borderRadius:6, border:"1px solid #fecaca",
-                        background:"none", cursor:"pointer", color:"#e05c6a", flexShrink:0,
-                        display:"flex", alignItems:"center", justifyContent:"center",
-                      }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                {/* Add new bullet */}
-                <div style={{ display:"flex", gap:8 }}>
-                  <input
-                    value={newInfo}
-                    onChange={e => setNewInfo(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addInfoItem(); } }}
-                    placeholder="Add a bullet point…"
-                    style={{
-                      flex:1, padding:"7px 11px", borderRadius:8, fontSize:13,
-                      border:"1.5px dashed var(--border)", background:"var(--surface)",
-                      color:"var(--text)", outline:"none",
-                    }}
-                  />
-                  <button onClick={addInfoItem} style={{
-                    padding:"7px 14px", borderRadius:8, fontSize:12, fontWeight:700,
-                    border:"1px solid var(--border)", background:"none", cursor:"pointer", color:"var(--muted)",
-                  }}>+ Add</button>
-                </div>
               </div>
             </div>
 
