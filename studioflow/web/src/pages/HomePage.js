@@ -849,7 +849,7 @@ function SchoolHomePage() {
             ? <div style={{padding:"28px 20px",color:C.grayChate,fontSize:13,textAlign:"center",background:C.white,borderRadius:16,border:`1.5px solid ${C.border}`}}>No upcoming recitals</div>
             : <div style={{ minWidth:0 }}>
                 {upcomingGrid.slice(0, 2).length > 0 && (
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom: featuredRecital ? 16 : 0, minWidth:0 }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gridAutoRows:190, gap:16, marginBottom: featuredRecital ? 16 : 0, minWidth:0 }}>
                     {upcomingGrid.slice(0, 2).map((r, i) => (
                       <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/schedule',{state:{recitalId:r.id,from:'dashboard'}})} />
                     ))}
