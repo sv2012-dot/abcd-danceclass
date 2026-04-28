@@ -19,11 +19,12 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('sf_token');
+    const token = sessionStorage.getItem('sf_token') || localStorage.getItem('sf_token');
     if (token) {
       authApi.me()
         .then(data => { setUser(data.user); persistSchool(data.school); })
         .catch(() => {
+          sessionStorage.removeItem('sf_token');
           localStorage.removeItem('sf_token');
           localStorage.removeItem('sf_user');
           localStorage.removeItem('sf_school');
@@ -36,7 +37,7 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const data = await authApi.login({ email, password });
-    localStorage.setItem('sf_token', data.token);
+    sessionStorage.setItem('sf_token', data.token);
     localStorage.setItem('sf_user', JSON.stringify(data.user));
     setUser(data.user);
     // Fetch school immediately after login so sidebar shows the name right away
@@ -48,6 +49,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    sessionStorage.removeItem('sf_token');
     localStorage.removeItem('sf_token');
     localStorage.removeItem('sf_user');
     localStorage.removeItem('sf_school');

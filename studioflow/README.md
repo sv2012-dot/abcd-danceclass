@@ -114,7 +114,7 @@ App runs on `http://localhost:3000`.
 
 | Role          | Email                       | Password     |
 |---------------|-----------------------------|--------------|
-| Super Admin   | admin@studioflow.app        | ChangeMe123! |
+| Super Admin   | admin@studioflow.app        | Admin123! |
 | School Admin  | priya@rhythmgrace.com       | School123!   | (Swapna) |
 | School Admin  | marcus@urbangroove.com      | School123!   |
 | Teacher       | teacher@rhythmgrace.com     | Teacher123!  |

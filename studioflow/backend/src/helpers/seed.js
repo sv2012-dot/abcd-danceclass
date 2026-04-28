@@ -14,7 +14,7 @@ async function seed() {
     `, [
       process.env.SUPERADMIN_NAME || 'Super Admin',
       process.env.SUPERADMIN_EMAIL || 'admin@studioflow.app',
-      hash(process.env.SUPERADMIN_PASSWORD || 'ChangeMe123!')
+      hash(process.env.SUPERADMIN_PASSWORD || 'Admin123!')
     ]);
 
     // ── School 1 ───────────────────────────────────────────
@@ -182,7 +182,7 @@ async function seed() {
 
     console.log('✅ Seed complete!');
     console.log('');
-    console.log('  Super Admin:  admin@studioflow.app  /  ChangeMe123!');
+    console.log('  Super Admin:  admin@studioflow.app  /  Admin123!');
     console.log('  School 1:     priya@rhythmgrace.com /  Admin123!');
     console.log('  School 2:     marcus@urbangroove.com / Admin123!');
     console.log('  Parents:      meera@email.com / carmen@email.com / sarah@email.com  →  Parent123!');

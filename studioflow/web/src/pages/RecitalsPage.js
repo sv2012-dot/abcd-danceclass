@@ -153,6 +153,11 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
   const [venueEditing,   setVenueEditing]   = useState(false);
   const [venueForm,      setVenueForm]      = useState(EMPTY_VENUE);
 
+  // Inline metadata editing
+  const [metaEditing,    setMetaEditing]    = useState(null); // null or field name: 'date', 'time', 'venue', 'participants'
+  const [metaForm,       setMetaForm]       = useState({});
+  const [metaSaving,     setMetaSaving]     = useState(false);
+
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768;
   const qc = useQueryClient();
@@ -341,6 +346,31 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
   const removeInfoItem = (i) => setInfoItems(p => p.filter((_, idx) => idx !== i));
 
   const editInfoItem = (i, val) => setInfoItems(p => p.map((x, idx) => idx === i ? val : x));
+
+  const saveMetaField = async (field) => {
+    try {
+      setMetaSaving(true);
+      const updates = {
+        title: recital.title,
+        event_date: field === 'date' ? (metaForm.date || null) : (recital.event_date||'').slice(0,10),
+        event_time: field === 'time' ? (metaForm.time || null) : recital.event_time||'',
+        venue: field === 'venue' ? (metaForm.venue || null) : recital.venue||'',
+        status: recital.status||'Planning',
+        description: recital.description||'',
+        is_featured: recital.is_featured??0,
+        participant_count: field === 'participants' ? (metaForm.participants ? Number(metaForm.participants) : null) : recital.participant_count??null,
+      };
+      await api.update(sid, id, updates);
+      qc.invalidateQueries({ queryKey: ["recital-detail", sid, id] });
+      setMetaEditing(null);
+      setMetaForm({});
+      toast.success(`${field} updated`);
+    } catch {
+      toast.error(`Failed to update ${field}`);
+    } finally {
+      setMetaSaving(false);
+    }
+  };
 
   // ── Poster helpers ────────────────────────────────────────────────────────
   const handlePosterUpload = async (e) => {
@@ -558,11 +588,19 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     { id:"tasks",      label:`To-Dos${recitalTodos.length ? ` (${done}/${recitalTodos.length})` : ""}`, shortLabel:"To-Dos", icon:"check-circle" },
   ];
 
+  const getMetaValue = (field) => {
+    if (field === 'date') return recital.event_date ? (recital.event_date||'').slice(0,10) : null;
+    if (field === 'time') return recital.event_time || null;
+    if (field === 'venue') return recital.venue || null;
+    if (field === 'participants') return recital.participant_count;
+    return null;
+  };
+
   const META = [
-    { icon:<CalIcon/>,   label:"Date",         value: fmtDate },
-    { icon:<ClockIcon/>, label:"Time",         value: fmtRecitalTime(recital.event_time) || "—" },
-    { icon:<PinIcon/>,   label:"Location",     value: recital.venue || "Main Theater" },
-    { icon:<UsersIcon/>, label:"Participants", value: recital.participant_count != null ? `${recital.participant_count} students` : "—" },
+    { id: 'date', icon:<CalIcon/>,   label:"Date",         value: fmtDate === "—" ? "TBD" : fmtDate, raw: getMetaValue('date') },
+    { id: 'time', icon:<ClockIcon/>, label:"Time",         value: fmtRecitalTime(recital.event_time) || "TBD", raw: getMetaValue('time') },
+    { id: 'venue', icon:<PinIcon/>,   label:"Location",     value: recital.venue || "TBD", raw: getMetaValue('venue') },
+    { id: 'participants', icon:<UsersIcon/>, label:"Participants", value: recital.participant_count != null ? `${recital.participant_count} students` : "TBD", raw: getMetaValue('participants') },
   ];
 
   return (
@@ -722,16 +760,55 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
             border:"1px solid var(--border)", marginBottom:22,
           }}>
             {META.map((m, i) => (
-              <div key={m.label} style={{
+              <div key={m.id} style={{
                 background:"var(--card)", padding:"14px 16px",
                 borderRight: i % 2 === 0 ? "1px solid var(--border)" : "none",
                 borderBottom: i < 2 ? "1px solid var(--border)" : "none",
-              }}>
+                position:"relative",
+                cursor:"pointer",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background="var(--surface)"}
+              onMouseLeave={e => e.currentTarget.style.background="var(--card)"}
+              onClick={() => {
+                setMetaForm({ [m.id]: m.raw });
+                setMetaEditing(m.id);
+              }}
+              >
                 <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7, color:"var(--muted)" }}>
                   {m.icon}
                   <span style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".07em" }}>{m.label}</span>
                 </div>
-                <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
+                {metaEditing === m.id ? (
+                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                    {m.id === 'date' && (
+                      <>
+                        <input type="date" value={metaForm.date || ''} onChange={e => setMetaForm(f => ({...f, date: e.target.value}))} style={{ flex:1, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:13 }} />
+                        <button onClick={e => { e.stopPropagation(); setMetaForm({date: null}); }} style={{ padding:"2px 8px", fontSize:11, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:4, cursor:"pointer" }}>TBD</button>
+                      </>
+                    )}
+                    {m.id === 'time' && (
+                      <>
+                        <select value={metaForm.time || ''} onChange={e => setMetaForm(f => ({...f, time: e.target.value}))} style={{ flex:1, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:13 }}>
+                          <option value="">TBD</option>
+                          {TIME_OPTIONS.map(t => <option key={t.val} value={t.val}>{t.label}</option>)}
+                        </select>
+                      </>
+                    )}
+                    {m.id === 'venue' && (
+                      <input type="text" placeholder="e.g. Lincoln Center" value={metaForm.venue || ''} onChange={e => setMetaForm(f => ({...f, venue: e.target.value}))} style={{ flex:1, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:13 }} />
+                    )}
+                    {m.id === 'participants' && (
+                      <>
+                        <input type="number" min="0" placeholder="Count" value={metaForm.participants || ''} onChange={e => setMetaForm(f => ({...f, participants: e.target.value}))} style={{ flex:1, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:13 }} />
+                        <button onClick={e => { e.stopPropagation(); setMetaForm({participants: null}); }} style={{ padding:"2px 8px", fontSize:11, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:4, cursor:"pointer" }}>TBD</button>
+                      </>
+                    )}
+                    <button onClick={e => { e.stopPropagation(); saveMetaField(m.id); }} disabled={metaSaving} style={{ padding:"2px 8px", fontSize:11, background:"var(--accent)", color:"#fff", border:"none", borderRadius:4, cursor:"pointer", opacity: metaSaving ? 0.6 : 1 }}>Save</button>
+                    <button onClick={e => { e.stopPropagation(); setMetaEditing(null); }} style={{ padding:"2px 8px", fontSize:11, background:"var(--border)", border:"none", borderRadius:4, cursor:"pointer" }}>Cancel</button>
+                  </div>
+                ) : (
+                  <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
+                )}
               </div>
             ))}
           </div>
@@ -850,15 +927,52 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
               border:"1px solid var(--border)",
             }}>
               {META.map((m, i) => (
-                <div key={m.label} style={{
+                <div key={m.id} style={{
                   background:"var(--card)", padding:"16px 22px",
                   borderRight: i < META.length-1 ? "1px solid var(--border)" : "none",
-                }}>
+                  position:"relative",
+                  cursor:"pointer",
+                }}
+                onMouseEnter={e => !metaEditing && (e.currentTarget.style.background="var(--surface)")}
+                onMouseLeave={e => !metaEditing && (e.currentTarget.style.background="var(--card)")}
+                onClick={() => {
+                  setMetaForm({ [m.id]: m.raw });
+                  setMetaEditing(m.id);
+                }}
+                >
                   <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7, color:"var(--muted)" }}>
                     {m.icon}
                     <span style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".07em" }}>{m.label}</span>
                   </div>
-                  <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
+                  {metaEditing === m.id ? (
+                    <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
+                      {m.id === 'date' && (
+                        <>
+                          <input type="date" value={metaForm.date || ''} onChange={e => setMetaForm(f => ({...f, date: e.target.value}))} style={{ flex:1, minWidth:100, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:12 }} />
+                          <button onClick={e => { e.stopPropagation(); setMetaForm({date: null}); }} style={{ padding:"2px 6px", fontSize:10, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:4, cursor:"pointer", whiteSpace:"nowrap" }}>TBD</button>
+                        </>
+                      )}
+                      {m.id === 'time' && (
+                        <select value={metaForm.time || ''} onChange={e => setMetaForm(f => ({...f, time: e.target.value}))} style={{ flex:1, minWidth:100, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:12 }}>
+                          <option value="">TBD</option>
+                          {TIME_OPTIONS.map(t => <option key={t.val} value={t.val}>{t.label}</option>)}
+                        </select>
+                      )}
+                      {m.id === 'venue' && (
+                        <input type="text" placeholder="Venue" value={metaForm.venue || ''} onChange={e => setMetaForm(f => ({...f, venue: e.target.value}))} style={{ flex:1, minWidth:100, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:12 }} />
+                      )}
+                      {m.id === 'participants' && (
+                        <>
+                          <input type="number" min="0" placeholder="Count" value={metaForm.participants || ''} onChange={e => setMetaForm(f => ({...f, participants: e.target.value}))} style={{ flex:1, minWidth:60, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:12 }} />
+                          <button onClick={e => { e.stopPropagation(); setMetaForm({participants: null}); }} style={{ padding:"2px 6px", fontSize:10, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:4, cursor:"pointer", whiteSpace:"nowrap" }}>TBD</button>
+                        </>
+                      )}
+                      <button onClick={e => { e.stopPropagation(); saveMetaField(m.id); }} disabled={metaSaving} style={{ padding:"2px 6px", fontSize:10, background:"var(--accent)", color:"#fff", border:"none", borderRadius:4, cursor:"pointer", opacity: metaSaving ? 0.6 : 1, whiteSpace:"nowrap" }}>Save</button>
+                      <button onClick={e => { e.stopPropagation(); setMetaEditing(null); }} style={{ padding:"2px 6px", fontSize:10, background:"var(--border)", border:"none", borderRadius:4, cursor:"pointer", whiteSpace:"nowrap" }}>✕</button>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
+                  )}
                 </div>
               ))}
             </div>
