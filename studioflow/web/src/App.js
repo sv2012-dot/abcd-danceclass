@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import HomePage from './pages/HomePage';
 import StudentsPage from './pages/StudentsPage';
 import BatchesPage from './pages/BatchesPage';
@@ -47,6 +48,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/landing-c" element={<LandingPageC />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route path="/" element={<RootGuard />}>
         <Route index element={<HomePage />} />
         <Route path="students" element={<RequireAuth roles={['superadmin','school_admin','teacher']}><StudentsPage /></RequireAuth>} />
