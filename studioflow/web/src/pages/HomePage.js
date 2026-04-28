@@ -346,8 +346,10 @@ function RecitalImageCard({ r, index, onClick, schoolId, onPosterUpdate, canEdit
 
   return (
     <div onClick={onClick} style={{ position:'relative', width:'100%', height:190, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) top/cover no-repeat` : gradBg, transition:'transform .15s,box-shadow .15s', boxSizing:'border-box' }}
-      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';}}
-      onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}
+      {...conditionalHover(
+        e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';},
+        e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}
+      )}
     >
       <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(0,0,0,.55) 0%,rgba(0,0,0,.10) 55%,transparent 100%)' }} />
       <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'14px' }}>
@@ -387,8 +389,10 @@ function FeaturedRecitalCard({ r, onClick, schoolId, onPosterUpdate, canEdit }) 
 
   return (
     <div onClick={onClick} style={{ position:'relative', width:'100%', height:280, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) top/cover no-repeat` : RECITAL_CARD_GRADS[0], transition:'transform .15s,box-shadow .15s', boxSizing:'border-box' }}
-      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';}}
-      onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}
+      {...conditionalHover(
+        e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';},
+        e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}
+      )}
     >
       <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(0,0,0,.60) 0%,rgba(0,0,0,.15) 55%,transparent 100%)' }} />
       <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'20px 18px' }}>
