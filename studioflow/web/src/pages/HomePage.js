@@ -836,7 +836,7 @@ function SchoolHomePage() {
 
       {/* ── Mobile: stacked cards ── */}
       {isMobile && (
-        <div style={{ display:'grid', gap:24, width:'100%', boxSizing:'border-box', minWidth:0 }}>
+        <div style={{ display:'grid', gap:24, width:'100%', boxSizing:'border-box', minWidth:0, padding:'0 16px' }}>
 
         {/* Upcoming Recitals — row 1: 2-col grid tiles, row 2: featured full-width */}
         <div>
