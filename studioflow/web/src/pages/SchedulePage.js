@@ -322,11 +322,13 @@ export default function SchedulePage() {
 
   // Inline recital detail state
   const [recitalDetailId, setRecitalDetailId] = useState(null);
+  const [recitalFrom, setRecitalFrom] = useState(null);
 
   // If navigated here with a recitalId in state (e.g. from dashboard), open it directly
   useEffect(() => {
     if (location.state?.recitalId) {
       setRecitalDetailId(location.state.recitalId);
+      setRecitalFrom(location.state?.from || null);
       window.history.replaceState({}, '');
     }
     // If navigated here with goToDate (e.g. back from recital detail), jump to that month
@@ -1063,7 +1065,7 @@ export default function SchedulePage() {
       <RecitalDetail
         id={recitalDetailId}
         sid={sid}
-        onBack={() => setRecitalDetailId(null)}
+        onBack={() => { if (recitalFrom === 'dashboard') { navigate('/'); } else { setRecitalDetailId(null); } }}
         onEdit={() => {}}
         onDeleted={(eventDate) => {
           if (eventDate) {

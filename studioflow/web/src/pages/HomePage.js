@@ -800,7 +800,7 @@ function SchoolHomePage() {
               {upcoming.length === 0
                 ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center', background:C.white, borderRadius:16, border:`1.5px solid ${C.border}` }}>No upcoming recitals</div>
                 : <div style={{ display:'grid', gridTemplateColumns: isDesktop ? 'repeat(3,minmax(0,1fr))' : 'repeat(2,minmax(0,1fr))', gap:12 }}>
-                    {upcomingGrid.map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/schedule',{state:{recitalId:r.id}})} />)}
+                    {upcomingGrid.map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/schedule',{state:{recitalId:r.id,from:'dashboard'}})} />)}
                   </div>
               }
               {/* Desktop: stats below recitals */}
@@ -840,18 +840,18 @@ function SchoolHomePage() {
 
       {/* ── Mobile: stacked cards ── */}
       {isMobile && (
-        <div style={{ display:'grid', gap:24, width:'100%', boxSizing:'border-box', minWidth:0 }}>
+        <div style={{ display:'grid', gap:24, width:'100%', maxWidth:'100%', boxSizing:'border-box', minWidth:0, overflow:'hidden' }}>
 
         {/* Upcoming Recitals — row 1: 2-col grid tiles, row 2: featured full-width */}
-        <div>
+        <div style={{ minWidth:0, overflow:'hidden' }}>
           <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>navigate('/schedule')} />
           {upcoming.length === 0
             ? <div style={{padding:"28px 20px",color:C.grayChate,fontSize:13,textAlign:"center",background:C.white,borderRadius:16,border:`1.5px solid ${C.border}`}}>No upcoming recitals</div>
-            : <div>
+            : <div style={{ minWidth:0 }}>
                 {upcomingGrid.slice(0, 2).length > 0 && (
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom: featuredRecital ? 10 : 0 }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom: featuredRecital ? 16 : 0, minWidth:0 }}>
                     {upcomingGrid.slice(0, 2).map((r, i) => (
-                      <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/schedule',{state:{recitalId:r.id}})} />
+                      <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>navigate('/schedule',{state:{recitalId:r.id,from:'dashboard'}})} />
                     ))}
                   </div>
                 )}
@@ -863,7 +863,7 @@ function SchoolHomePage() {
         </div>
 
         {/* Upcoming Classes */}
-        <Card padding={0} style={{display:"flex",flexDirection:"column"}}>
+        <Card padding={0} style={{display:"flex",flexDirection:"column",minWidth:0,overflow:'hidden'}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px"}}>
             <div style={{fontSize:11,fontWeight:700,color:C.grayChate,textTransform:"uppercase",letterSpacing:".1em"}}>Upcoming Classes</div>
             <button onClick={()=>navigate("/schedule")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.accentPurple,fontWeight:600,padding:0}}>View All</button>
@@ -903,7 +903,7 @@ function SchoolHomePage() {
         </Card>
 
         {/* To-Dos */}
-        <Card padding={0} style={{display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <Card padding={0} style={{display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px"}}>
             <div style={{fontSize:11,fontWeight:700,color:C.grayChate,textTransform:"uppercase",letterSpacing:".1em"}}>To-Do</div>
             <button onClick={()=>navigate("/todos")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.accentPurple,fontWeight:600,padding:0}}>Add To-do</button>
