@@ -920,7 +920,7 @@ function SchoolHomePage() {
 
       {/* ── Mobile: stats at bottom ── */}
       {isMobile && stats && (
-        <div style={{marginTop:24}}>
+        <div style={{marginTop:24, padding:'0 16px'}}>
           <div style={{fontSize:10,fontWeight:700,color:C.grayChate,textTransform:"uppercase",letterSpacing:".1em",marginBottom:10}}>Studio Overview</div>
           {statsBlock}
         </div>
