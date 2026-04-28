@@ -158,6 +158,12 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
   const [metaForm,       setMetaForm]       = useState({});
   const [metaSaving,     setMetaSaving]     = useState(false);
 
+  // Participants state
+  const [participants,   setParticipants]   = useState([]);
+  const [participantModal, setParticipantModal] = useState(null); // null=closed, {}=new, {id,...}=edit
+  const [participantForm, setParticipantForm] = useState({});
+  const PARTICIPANTS_KEY = `participants_${id}`;
+
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768;
   const qc = useQueryClient();
@@ -562,6 +568,44 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     if (!newTask.trim()) return;
     createTodoMut.mutate({ title: newTask.trim(), assigned_to: newTaskAssignedTo.trim() });
   };
+
+  // Participants queries and mutations
+  useEffect(() => {
+    if (sid && id) {
+      api.listParticipants(sid, id)
+        .then(data => setParticipants(data))
+        .catch(() => setParticipants([]));
+    }
+  }, [sid, id]);
+
+  const addParticipantMut = useMutation({
+    mutationFn: (data) => api.addParticipant(sid, id, data),
+    onSuccess: (newPart) => {
+      setParticipants(prev => [...prev, newPart]);
+      setParticipantModal(null);
+      setParticipantForm({});
+      toast.success("Participant added");
+    },
+    onError: (err) => toast.error(err.error || "Failed to add participant"),
+  });
+
+  const updateParticipantMut = useMutation({
+    mutationFn: ({ participantId, rsvp_status }) => api.updateParticipantRsvp(sid, id, participantId, rsvp_status),
+    onSuccess: (updated) => {
+      setParticipants(prev => prev.map(p => p.id === updated.id ? updated : p));
+      toast.success("RSVP status updated");
+    },
+    onError: () => toast.error("Failed to update RSVP status"),
+  });
+
+  const deleteParticipantMut = useMutation({
+    mutationFn: (participantId) => api.deleteParticipant(sid, id, participantId),
+    onSuccess: (_, participantId) => {
+      setParticipants(prev => prev.filter(p => p.id !== participantId));
+      toast.success("Participant removed");
+    },
+    onError: () => toast.error("Failed to remove participant"),
+  });
 
   // Click-outside-to-cancel for inline metadata editing
   useEffect(() => {
@@ -1596,9 +1640,71 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
         {/* ── INVITEES ── */}
         {tab === "invitees" && (
           <div>
+            {/* Participants Section */}
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ display:"flex", flexDirection: isMobile ? "column" : "row", justifyContent:"space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: isMobile ? 12 : 0, marginBottom:20 }}>
+                <SectionHead title="Participants" sub="Attendees and RSVP status" />
+                <Button size="sm" onClick={() => { setParticipantForm({}); setParticipantModal({}); }} style={{ width: isMobile ? "100%" : "auto" }}>Add Participant</Button>
+              </div>
+
+              {participants.length === 0 ? (
+                <div style={{ color:"var(--muted)", fontSize:13, padding:"20px", textAlign:"center", background:"var(--surface)", borderRadius:12 }}>No participants yet</div>
+              ) : (
+                <div style={{ overflowX:"auto" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+                    <thead>
+                      <tr style={{ borderBottom:"1px solid var(--border)" }}>
+                        <th style={{ padding:"12px", textAlign:"left", fontWeight:700, color:"var(--muted)" }}>Email</th>
+                        <th style={{ padding:"12px", textAlign:"left", fontWeight:700, color:"var(--muted)" }}>Guest</th>
+                        <th style={{ padding:"12px", textAlign:"left", fontWeight:700, color:"var(--muted)" }}>RSVP Status</th>
+                        <th style={{ padding:"12px", textAlign:"center", fontWeight:700, color:"var(--muted)" }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {participants.map(p => (
+                        <tr key={p.id} style={{ borderBottom:"1px solid var(--border)" }}>
+                          <td style={{ padding:"12px", color:"var(--text)" }}>{p.email}</td>
+                          <td style={{ padding:"12px", color:"var(--muted)" }}>{p.is_guest ? "Yes" : "No"}</td>
+                          <td style={{ padding:"12px" }}>
+                            <select value={p.rsvp_status} onChange={e => updateParticipantMut.mutate({ participantId: p.id, rsvp_status: e.target.value })} style={{ padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:12, cursor:"pointer", background:"var(--card)", color:"var(--text)" }}>
+                              <option value="Pending">Pending</option>
+                              <option value="Confirmed">Confirmed</option>
+                              <option value="Declined">Declined</option>
+                              <option value="No Response">No Response</option>
+                            </select>
+                          </td>
+                          <td style={{ padding:"12px", textAlign:"center" }}>
+                            <button onClick={() => deleteParticipantMut.mutate(p.id)} style={{ padding:"4px 8px", fontSize:11, background:"#ff3b30", color:"#fff", border:"none", borderRadius:4, cursor:"pointer" }}>Remove</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {participantModal !== null && (
+                <Modal title={participantModal?.id ? "Edit Participant" : "Add Participant"} onClose={() => { setParticipantModal(null); setParticipantForm({}); }}>
+                  <Field label="Email">
+                    <Input type="email" value={participantForm.email || ''} onChange={e => setParticipantForm(f => ({...f, email: e.target.value}))} placeholder="participant@example.com" />
+                  </Field>
+                  <Field label="Guest">
+                    <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", marginBottom:20 }}>
+                      <input type="checkbox" checked={participantForm.is_guest || false} onChange={e => setParticipantForm(f => ({...f, is_guest: e.target.checked}))} style={{ cursor:"pointer" }} />
+                      <span>External guest (not a school contact)</span>
+                    </label>
+                  </Field>
+                  <div style={{ display:"flex", gap:10, marginTop:20 }}>
+                    <Button variant="secondary" onClick={() => { setParticipantModal(null); setParticipantForm({}); }} style={{ flex:1 }}>Cancel</Button>
+                    <Button onClick={() => addParticipantMut.mutate(participantForm)} disabled={!participantForm.email || addParticipantMut.isPending} style={{ flex:1 }}>Add Participant</Button>
+                  </div>
+                </Modal>
+              )}
+            </div>
+
             <div style={{ display:"flex", flexDirection: isMobile ? "column" : "row", justifyContent:"space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: isMobile ? 12 : 0, marginBottom:20 }}>
-              <SectionHead title="Parent Volunteers" sub="Volunteer coordinators and helpers for the event" />
-              <Button size="sm" onClick={openAddVolunteer} style={{ width: isMobile ? "100%" : "auto" }}>Add Volunteer</Button>
+              <SectionHead title="Helpers" sub="Volunteer coordinators and helpers for the event" />
+              <Button size="sm" onClick={openAddVolunteer} style={{ width: isMobile ? "100%" : "auto" }}>Add Helper</Button>
             </div>
 
             {/* ── Sign Up Genius integration banner ── */}

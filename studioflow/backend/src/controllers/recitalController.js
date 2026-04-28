@@ -121,3 +121,58 @@ exports.deleteTask = async (req, res) => {
     res.json({ message: 'Task deleted' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
+
+// ── Participants (Invitees) ────────────────────────────────────────────────────
+
+exports.listParticipants = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM recital_participants WHERE recital_id = ? AND school_id = ? ORDER BY created_at DESC',
+      [req.params.id, req.params.schoolId]
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.addParticipant = async (req, res) => {
+  const { email, student_id, is_guest } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+  try {
+    const [r] = await pool.query(
+      'INSERT INTO recital_participants (recital_id, school_id, email, student_id, is_guest, rsvp_status) VALUES (?,?,?,?,?,?)',
+      [req.params.id, req.params.schoolId, email.toLowerCase(), student_id || null, is_guest ? 1 : 0, 'Pending']
+    );
+    const [rows] = await pool.query('SELECT * FROM recital_participants WHERE id = ?', [r.insertId]);
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      res.status(400).json({ error: 'This email is already added to the recital' });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
+  }
+};
+
+exports.updateParticipantRsvp = async (req, res) => {
+  const { rsvp_status } = req.body;
+  if (!rsvp_status) return res.status(400).json({ error: 'rsvp_status required' });
+  try {
+    await pool.query(
+      'UPDATE recital_participants SET rsvp_status = ?, updated_at = NOW() WHERE id = ? AND recital_id = ? AND school_id = ?',
+      [rsvp_status, req.params.participantId, req.params.id, req.params.schoolId]
+    );
+    const [rows] = await pool.query('SELECT * FROM recital_participants WHERE id = ?', [req.params.participantId]);
+    if (!rows[0]) return res.status(404).json({ error: 'Participant not found' });
+    res.json(rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.deleteParticipant = async (req, res) => {
+  try {
+    await pool.query(
+      'DELETE FROM recital_participants WHERE id = ? AND recital_id = ? AND school_id = ?',
+      [req.params.participantId, req.params.id, req.params.schoolId]
+    );
+    res.json({ message: 'Participant removed' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
