@@ -164,6 +164,12 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
   const [participantForm, setParticipantForm] = useState({});
   const PARTICIPANTS_KEY = `participants_${id}`;
 
+  // Overview section inline editing
+  const [overviewEditing, setOverviewEditing] = useState(null); // 'description' or 'info' or null
+  const [overviewForm,    setOverviewForm]    = useState({});
+  const [newInfoInput,    setNewInfoInput]    = useState("");
+  const [editingInfoIdx,  setEditingInfoIdx]  = useState(null); // for editing existing info item
+
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768;
   const qc = useQueryClient();
@@ -606,6 +612,54 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     },
     onError: () => toast.error("Failed to remove participant"),
   });
+
+  // Overview inline editing handlers
+  const saveDescription = () => {
+    if (!overviewForm.description?.trim()) {
+      toast.error("Description cannot be empty");
+      return;
+    }
+    api.update(sid, id, {
+      title: recital.title,
+      event_date: (recital.event_date||'').slice(0,10),
+      event_time: recital.event_time||'',
+      venue: recital.venue||'',
+      status: recital.status||'Planning',
+      description: overviewForm.description,
+      is_featured: recital.is_featured??0,
+      participant_count: recital.participant_count??null,
+    }).then(() => {
+      qc.setQueryData(["recital-detail", sid, id], old => old ? {...old, description: overviewForm.description} : old);
+      setOverviewEditing(null);
+      setOverviewForm({});
+      toast.success("Description updated");
+    }).catch(() => toast.error("Failed to save description"));
+  };
+
+  const addInfoItem = () => {
+    const v = newInfoInput.trim();
+    if (!v) { toast.error("Info cannot be empty"); return; }
+    const newItems = [...infoItems, v];
+    setInfoItems(newItems);
+    localStorage.setItem(INFO_KEY, JSON.stringify(newItems));
+    setNewInfoInput("");
+    toast.success("Item added");
+  };
+
+  const updateInfoItem = (idx, val) => {
+    const newItems = infoItems.map((x, i) => i === idx ? val : x);
+    setInfoItems(newItems);
+    localStorage.setItem(INFO_KEY, JSON.stringify(newItems));
+    setEditingInfoIdx(null);
+    toast.success("Item updated");
+  };
+
+  const deleteInfoItem = (idx) => {
+    const newItems = infoItems.filter((_, i) => i !== idx);
+    setInfoItems(newItems);
+    localStorage.setItem(INFO_KEY, JSON.stringify(newItems));
+    toast.success("Item removed");
+  };
 
   // Click-outside-to-cancel for inline metadata editing
   useEffect(() => {
@@ -1094,23 +1148,61 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
             <div style={{ flex:1, minWidth:0, padding: isMobile ? 0 : "28px 32px" }}>
               <SectionHead title="Event Overview" sub="General information and description" />
 
-              {recital.description && (
-                <>
-                  <h3 style={{ fontSize:15, fontWeight:700, margin:"0 0 8px" }}>Description</h3>
-                  <p style={{ color:"var(--muted)", fontSize:14, lineHeight:1.75, margin:"0 0 28px" }}>{recital.description}</p>
-                </>
-              )}
+              {/* Description - Editable */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                  <h3 style={{ fontSize:15, fontWeight:700, margin:0 }}>Description</h3>
+                  {overviewEditing !== 'description' && (
+                    <button onClick={() => { setOverviewForm({description: recital.description || ''}); setOverviewEditing('description'); }} style={{ fontSize:11, background:"none", border:"none", color:"var(--accent)", cursor:"pointer", fontWeight:600 }}>Edit</button>
+                  )}
+                </div>
+                {overviewEditing === 'description' ? (
+                  <div>
+                    <textarea value={overviewForm.description || ''} onChange={e => setOverviewForm(f => ({...f, description: e.target.value}))} style={{ width:"100%", minHeight:120, padding:10, borderRadius:6, border:"1px solid var(--border)", fontSize:14, color:"var(--text)", background:"var(--surface)", fontFamily:"inherit" }} />
+                    <div style={{ display:"flex", gap:8, marginTop:12 }}>
+                      <button onClick={saveDescription} style={{ padding:"6px 16px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:6, fontSize:12, fontWeight:600, cursor:"pointer" }}>Save</button>
+                      <button onClick={() => { setOverviewEditing(null); setOverviewForm({}); }} style={{ padding:"6px 16px", background:"var(--surface)", border:"1px solid var(--border)", borderRadius:6, fontSize:12, fontWeight:600, cursor:"pointer" }}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ color:"var(--muted)", fontSize:14, lineHeight:1.75, margin:0 }}>{recital.description || "No description added yet. Click Edit to add one."}</p>
+                )}
+              </div>
 
-              {infoItems.length > 0 && (
-                <>
-                  <h3 style={{ fontSize:15, fontWeight:700, margin:"0 0 12px" }}>Important Information</h3>
-                  <ul style={{ margin:0, padding:"0 0 0 18px", display:"flex", flexDirection:"column", gap:9 }}>
-                    {infoItems.map((item, i) => (
-                      <li key={i} style={{ fontSize:13, color:"var(--muted)", lineHeight:1.5 }}>{item}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
+              {/* Important Information - Editable */}
+              <div>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+                  <h3 style={{ fontSize:15, fontWeight:700, margin:0 }}>Important Information</h3>
+                </div>
+                <ul style={{ margin:0, padding:"0 0 0 18px", display:"flex", flexDirection:"column", gap:9, marginBottom:16 }}>
+                  {infoItems.map((item, i) => (
+                    <li key={i} style={{ fontSize:13, color:"var(--muted)", lineHeight:1.5, display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+                      {editingInfoIdx === i ? (
+                        <input type="text" value={item} onChange={e => setInfoItems(prev => prev.map((x, idx) => idx === i ? e.target.value : x))} style={{ flex:1, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:13 }} autoFocus />
+                      ) : (
+                        <span style={{ flex:1 }}>{item}</span>
+                      )}
+                      <div style={{ display:"flex", gap:6, whiteSpace:"nowrap" }}>
+                        {editingInfoIdx === i ? (
+                          <>
+                            <button onClick={() => updateInfoItem(i, item)} style={{ fontSize:10, padding:"2px 6px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:3, cursor:"pointer" }}>Save</button>
+                            <button onClick={() => setEditingInfoIdx(null)} style={{ fontSize:10, padding:"2px 6px", background:"var(--surface)", border:"1px solid var(--border)", borderRadius:3, cursor:"pointer" }}>Cancel</button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => setEditingInfoIdx(i)} style={{ fontSize:10, color:"var(--muted)", background:"none", border:"none", cursor:"pointer" }}>Edit</button>
+                            <button onClick={() => deleteInfoItem(i)} style={{ fontSize:10, color:"#ff3b30", background:"none", border:"none", cursor:"pointer" }}>Delete</button>
+                          </>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <div style={{ display:"flex", gap:8 }}>
+                  <input type="text" value={newInfoInput} onChange={e => setNewInfoInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addInfoItem()} placeholder="Add new item..." style={{ flex:1, padding:"6px 10px", borderRadius:6, border:"1px solid var(--border)", fontSize:13, color:"var(--text)", background:"var(--surface)" }} />
+                  <button onClick={addInfoItem} style={{ padding:"6px 14px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:6, fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>Add Item</button>
+                </div>
+              </div>
             </div>
 
             {/* Right: Event Poster — desktop only (mobile has hero at top) */}
