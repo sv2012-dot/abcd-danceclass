@@ -640,6 +640,10 @@ export default function LandingPageA() {
           © {new Date().getFullYear()} ManchQ · Made with care for dance studios. ·{' '}
           <a href="mailto:support@manchq.com" style={{ color:'#6a7fdb', textDecoration:'none' }}>support@manchq.com</a>
         </div>
+        <div style={{ fontSize:12, display:'flex', gap:16 }}>
+          <a href="/privacy" style={{ color:'#6a7fdb', textDecoration:'none' }}>Privacy Policy</a>
+          <a href="/terms" style={{ color:'#6a7fdb', textDecoration:'none' }}>Terms of Service</a>
+        </div>
       </footer>
     </div>
   );
