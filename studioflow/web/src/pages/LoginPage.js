@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
+import GoogleSignIn from '../components/GoogleSignIn';
 import toast from 'react-hot-toast';
 
 const inputStyle = {
@@ -38,25 +40,38 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', padding: 20 }}>
-      <div style={{ width: '100%', maxWidth: 400 }}>
+    <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', padding: 20 }}>
+        <div style={{ width: '100%', maxWidth: 400 }}>
 
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <div style={{ marginBottom: 14, display:'flex', justifyContent:'center' }}>
-            <button onClick={() => navigate('/')} style={{ background:'none', border:'none', cursor:'pointer', padding:0, borderRadius:'50%', display:'flex' }} title="Go to homepage">
-              <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ width:80, height:80, borderRadius:'50%', display:'block' }} />
-            </button>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 36 }}>
+            <div style={{ marginBottom: 14, display:'flex', justifyContent:'center' }}>
+              <button onClick={() => navigate('/')} style={{ background:'none', border:'none', cursor:'pointer', padding:0, borderRadius:'50%', display:'flex' }} title="Go to homepage">
+                <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ width:80, height:80, borderRadius:'50%', display:'block' }} />
+              </button>
+            </div>
+            <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 28, color: '#fff', marginBottom: 6, letterSpacing: '-0.5px' }}>ManchQ</h1>
+            <p style={{ color: '#888', fontSize: 13, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Dance School Management</p>
           </div>
-          <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 28, color: '#fff', marginBottom: 6, letterSpacing: '-0.5px' }}>ManchQ</h1>
-          <p style={{ color: '#888', fontSize: 13, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Dance School Management</p>
-        </div>
 
-        {/* Card */}
-        <div style={{ background: 'var(--card)', borderRadius: 16, padding: 32, boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 24, color: 'var(--text)' }}>Sign in to your account</h2>
+          {/* Card */}
+          <div style={{ background: 'var(--card)', borderRadius: 16, padding: 32, boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 24, color: 'var(--text)' }}>Sign in to your account</h2>
 
-          <form onSubmit={handle}>
+            {/* Google Sign In */}
+            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
+              <GoogleSignIn />
+            </div>
+
+            {/* Divider */}
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24, gap: 12 }}>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
+              <span style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 700 }}>Or</span>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
+            </div>
+
+            <form onSubmit={handle}>
             {/* Email */}
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>Email</label>
@@ -106,26 +121,32 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo hint */}
-          <div style={{ marginTop: 20, padding: 14, background: 'var(--surface)', borderRadius: 10, fontSize: 12, color: 'var(--muted)', borderLeft: '3px solid var(--border)' }}>
-            <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text)' }}>Demo Accounts</div>
-            {[
-              { label: 'teacher@manchq.com', pw: 'School123!', note: 'Demo Academy' },
-              { label: 'parent@manchq.com',  pw: 'Parent123!', note: 'Parent view'  },
-            ].map(({ label, pw, note }) => (
-              <button key={label} type="button" onClick={() => setForm({ email: label, password: pw })}
-                style={{ display:'block', width:'100%', textAlign:'left', background:'none', border:'none', cursor:'pointer', padding:'4px 0', color:'var(--muted)', fontSize:12, lineHeight:1.5 }}
-                onMouseEnter={e => e.currentTarget.style.color = 'var(--text)'}
-                onMouseLeave={e => e.currentTarget.style.color = 'var(--muted)'}
-              >
-                <span style={{ color:'var(--text)', fontWeight:600 }}>{label}</span>
-                {' / '}{pw}
-                <span style={{ marginLeft:6, opacity:0.6 }}>({note})</span>
-              </button>
-            ))}
+            {/* Demo hint */}
+            <div style={{ marginTop: 20, padding: 14, background: 'var(--surface)', borderRadius: 10, fontSize: 12, color: 'var(--muted)', borderLeft: '3px solid var(--border)' }}>
+              <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text)' }}>Demo Accounts</div>
+              {[
+                { label: 'teacher@manchq.com', pw: 'School123!', note: 'Demo Academy' },
+                { label: 'parent@manchq.com',  pw: 'Parent123!', note: 'Parent view'  },
+              ].map(({ label, pw, note }) => (
+                <button key={label} type="button" onClick={() => setForm({ email: label, password: pw })}
+                  style={{ display:'block', width:'100%', textAlign:'left', background:'none', border:'none', cursor:'pointer', padding:'4px 0', color:'var(--muted)', fontSize:12, lineHeight:1.5 }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--text)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--muted)'}
+                >
+                  <span style={{ color:'var(--text)', fontWeight:600 }}>{label}</span>
+                  {' / '}{pw}
+                  <span style={{ marginLeft:6, opacity:0.6 }}>({note})</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Register link */}
+            <div style={{ marginTop: 24, textAlign: 'center', fontSize: 14, color: 'var(--muted)' }}>
+              Don't have a school? <button onClick={() => navigate('/register')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6a7fdb', fontWeight: 700, padding: 0, textDecoration: 'underline' }}>Register here</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </GoogleOAuthProvider>
   );
 }

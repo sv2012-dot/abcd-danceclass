@@ -17,6 +17,8 @@ import VendorsPage from './pages/VendorsPage';
 import RecitalsPage from './pages/RecitalsPage';
 import LandingPageA from './pages/LandingPageA';
 import LandingPageC from './pages/LandingPageC';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
 import AppShell from './components/shared/AppShell';
 
 const LOADING = (
@@ -47,6 +49,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/landing-c" element={<LandingPageC />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/" element={<RootGuard />}>

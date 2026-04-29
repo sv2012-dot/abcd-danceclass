@@ -8,7 +8,7 @@ import { Field, Input, Textarea } from "../components/shared/Field";
 export default function RegisterPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, login } = useAuth();
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
@@ -76,7 +76,7 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const response = await fetch("/api/auth/register", {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -95,13 +95,15 @@ export default function RegisterPage() {
 
       const data = await response.json();
 
-      // Log in the user with the returned token
+      // Store authentication data
       sessionStorage.setItem("sf_token", data.token);
       localStorage.setItem("sf_user", JSON.stringify(data.user));
-      localStorage.setItem("sf_school", JSON.stringify(data.school));
+      if (data.school) {
+        localStorage.setItem("sf_school", JSON.stringify(data.school));
+      }
 
-      // Update auth context
-      login(data.user, data.school, data.token);
+      // Reload to pick up new auth state
+      window.location.href = `/`;
 
       toast.success("School registered successfully!");
       navigate(`/dashboard/${data.school.id}/settings`);

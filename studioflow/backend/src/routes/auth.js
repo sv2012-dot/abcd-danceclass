@@ -3,6 +3,8 @@ const c = require('../controllers/authController');
 const { auth } = require('../middleware/auth');
 
 router.post('/login',           c.login);
+router.post('/google',          c.googleLogin);
+router.post('/register',        c.registerSchool);
 router.get('/me',               auth(), c.me);
 router.put('/change-password',  auth(), c.changePassword);
 
