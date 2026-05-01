@@ -215,6 +215,12 @@ export default function SchoolsPage() {
     onError: err => toast.error(err?.error || 'Restore failed'),
   });
 
+  const toggleActiveMutation = useMutation({
+    mutationFn: s => schoolsApi.update(s.id, { ...s, is_active: s.is_active ? 0 : 1 }),
+    onSuccess: (_, s) => { qc.invalidateQueries(['schools']); toast.success(s.is_active ? 'School deactivated' : 'School activated'); },
+    onError: err => toast.error(err?.error || 'Update failed'),
+  });
+
   const field = (key, label, type='text', placeholder='') => (
     <div style={{ marginBottom:14 }}>
       <label style={{ display:'block', fontSize:11, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--muted)', marginBottom:5 }}>{label}</label>
@@ -235,10 +241,24 @@ export default function SchoolsPage() {
           <div style={{ width:56, height:56, borderRadius:14, background: schoolGradient(detailSchool.name), display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:800, color:'#fff', flexShrink:0 }}>
             {initials(detailSchool.name)}
           </div>
-          <div>
+          <div style={{ flex:1 }}>
             <h1 style={{ fontFamily:'var(--font-d)', fontSize:24, marginBottom:2 }}>{detailSchool.name}</h1>
             <div style={{ fontSize:13, color:'var(--muted)' }}>{[detailSchool.dance_style, detailSchool.city].filter(Boolean).join(' · ')}</div>
           </div>
+          <button
+            onClick={() => toggleActiveMutation.mutate(detailSchool)}
+            disabled={toggleActiveMutation.isPending}
+            title={detailSchool.is_active ? 'Deactivate school' : 'Activate school'}
+            style={{
+              display:'flex', alignItems:'center', gap:8, padding:'8px 16px', borderRadius:20, cursor:'pointer', border:'none', fontWeight:700, fontSize:13, flexShrink:0, transition:'opacity .15s',
+              background: detailSchool.is_active ? 'rgba(76,175,80,0.15)' : 'rgba(239,83,80,0.15)',
+              color:      detailSchool.is_active ? '#4caf50'              : '#ef5350',
+              opacity: toggleActiveMutation.isPending ? 0.6 : 1,
+            }}
+          >
+            <span style={{ width:8, height:8, borderRadius:'50%', background: detailSchool.is_active ? '#4caf50' : '#ef5350', display:'inline-block' }} />
+            {detailSchool.is_active ? 'Active' : 'Inactive'}
+          </button>
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:16, marginBottom:32 }}>
           {[
@@ -262,7 +282,6 @@ export default function SchoolsPage() {
               ['Phone',            detailSchool.phone],
               ['City',             detailSchool.city],
               ['Dance Style',      detailSchool.dance_style],
-              ['Status',           detailSchool.is_active ? 'Active' : 'Inactive'],
               ['Created on',       fmt(detailSchool.created_at)],
               ['Admin last login',  fmt(detailSchool.admin_last_login)],
             ].map(([k, v]) => (

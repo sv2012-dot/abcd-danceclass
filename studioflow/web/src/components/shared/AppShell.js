@@ -107,7 +107,6 @@ const NAV_ITEMS = {
   superadmin: [
     { to:'/', label:'Dashboard', icon:'dashboard' },
     { to:'/schools', label:'Schools', icon:'schools' },
-    { to:'/about', label:'About', icon:'about' },
   ],
   school_admin: [
     { to:'/', label:'Dashboard', icon:'dashboard' },
