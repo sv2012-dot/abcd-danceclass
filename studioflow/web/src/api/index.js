@@ -11,6 +11,8 @@ export const schools = {
   get: (id) => api.get(`/schools/${id}`),
   create: (data) => api.post('/schools', data),
   update: (id, data) => api.put(`/schools/${id}`, data),
+  softDelete: (id, password) => api.delete(`/schools/${id}`, { data: { password } }),
+  restore: (id) => api.post(`/schools/${id}/restore`),
   stats: (id) => api.get(`/schools/${id}/stats`),
   resetAdminPassword: (id, password) => api.post(`/schools/${id}/reset-admin-password`, { password }),
 };

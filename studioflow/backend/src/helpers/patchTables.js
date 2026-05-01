@@ -96,6 +96,7 @@ async function patchTables() {
     await addColumnIfMissing('recitals', 'event_time',      'VARCHAR(10) NULL');
     await addColumnIfMissing('recitals', 'participant_count', 'INT NULL');
     await addColumnIfMissing('studios',  'is_quick_add',  'TINYINT(1) NOT NULL DEFAULT 0');
+    await addColumnIfMissing('schools',  'deleted_at',    'DATETIME NULL DEFAULT NULL');
 
     // Vendors table
     await pool.query(`

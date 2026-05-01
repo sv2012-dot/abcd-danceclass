@@ -7,9 +7,10 @@ exports.list = async (req, res) => {
       SELECT s.*,
         COUNT(DISTINCT st.id) as student_count,
         COUNT(DISTINCT b.id)  as batch_count,
-        u.id    as admin_id,
-        u.name  as admin_name,
-        u.email as admin_email
+        u.id         as admin_id,
+        u.name       as admin_name,
+        u.email      as admin_email,
+        u.last_login as admin_last_login
       FROM schools s
       LEFT JOIN students st ON st.school_id = s.id AND st.is_active = 1
       LEFT JOIN batches  b  ON b.school_id  = s.id AND b.is_active  = 1
@@ -18,6 +19,49 @@ exports.list = async (req, res) => {
       ORDER BY s.created_at DESC
     `);
     res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.softDelete = async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'Password required' });
+  try {
+    const [admins] = await pool.query('SELECT * FROM users WHERE id = ? AND role = "superadmin"', [req.user.id]);
+    if (!admins[0] || !bcrypt.compareSync(password, admins[0].password)) {
+      return res.status(401).json({ error: 'Incorrect password' });
+    }
+    const [schools] = await pool.query('SELECT * FROM schools WHERE id = ? AND deleted_at IS NULL', [req.params.id]);
+    if (!schools[0]) return res.status(404).json({ error: 'School not found' });
+
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.query('UPDATE schools SET deleted_at = NOW(), is_active = 0 WHERE id = ?', [req.params.id]);
+      await conn.query('UPDATE users SET is_active = 0 WHERE school_id = ?', [req.params.id]);
+      await conn.commit();
+      res.json({ ok: true });
+    } catch (err) { await conn.rollback(); throw err; }
+    finally { conn.release(); }
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+exports.restore = async (req, res) => {
+  try {
+    const [schools] = await pool.query('SELECT * FROM schools WHERE id = ? AND deleted_at IS NOT NULL', [req.params.id]);
+    if (!schools[0]) return res.status(404).json({ error: 'School not found or not deleted' });
+
+    const daysSince = (Date.now() - new Date(schools[0].deleted_at).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSince > 30) return res.status(400).json({ error: 'Restore window has expired (30 days)' });
+
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.query('UPDATE schools SET deleted_at = NULL, is_active = 1 WHERE id = ?', [req.params.id]);
+      await conn.query('UPDATE users SET is_active = 1 WHERE school_id = ?', [req.params.id]);
+      await conn.commit();
+      res.json({ ok: true });
+    } catch (err) { await conn.rollback(); throw err; }
+    finally { conn.release(); }
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
