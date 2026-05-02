@@ -56,7 +56,7 @@ function compressImage(file) {
 }
 
 // ── Cover crop modal ─────────────────────────────────────────────────────────
-// Zero-dependency canvas cropper. Enforces 4:3 → saves at 800×600, 78% JPEG.
+// Zero-dependency canvas cropper. Enforces 3:4 → saves at 600×800, 78% JPEG.
 function CoverCropModal({ file, onConfirm, onCancel }) {
   const canvasRef = useRef(null);
   const imgRef    = useRef(null);
@@ -65,14 +65,14 @@ function CoverCropModal({ file, onConfirm, onCancel }) {
   const [saving, setSaving] = useState(false);
   const isMob = typeof window !== 'undefined' && window.innerWidth < 768;
 
-  // Canvas / crop window dimensions
-  const CW    = isMob ? Math.min(window.innerWidth - 0, 420) : 540;
-  const CH    = Math.round(CW * 0.84);
-  const PAD   = isMob ? 12 : 20;
+  // Canvas / crop window dimensions — portrait 3:4
+  const CW    = isMob ? Math.min(window.innerWidth, 420) : 400;
+  const PAD   = isMob ? 16 : 20;
   const CROPW = CW - PAD * 2;
-  const CROPH = Math.round(CROPW * 3 / 4);     // 4:3 ratio
+  const CROPH = Math.round(CROPW * 4 / 3);     // 3:4 portrait ratio
+  const CH    = CROPH + PAD * 2;
   const CROPX = PAD;
-  const CROPY = Math.round((CH - CROPH) / 2);
+  const CROPY = PAD;
 
   const draw = () => {
     const canvas = canvasRef.current;
@@ -101,6 +101,23 @@ function CoverCropModal({ file, onConfirm, onCancel }) {
       ctx.lineTo(CROPX + CROPW * n / 3, CROPY + CROPH);
       ctx.moveTo(CROPX, CROPY + CROPH * n / 3);
       ctx.lineTo(CROPX + CROPW, CROPY + CROPH * n / 3);
+    });
+    ctx.stroke();
+    // Corner bracket handles — L-shaped, bright white
+    const ARM = 20; // arm length in px
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'square';
+    ctx.beginPath();
+    [
+      [CROPX,          CROPY,          1,  1],  // top-left
+      [CROPX + CROPW,  CROPY,         -1,  1],  // top-right
+      [CROPX,          CROPY + CROPH,  1, -1],  // bottom-left
+      [CROPX + CROPW,  CROPY + CROPH, -1, -1],  // bottom-right
+    ].forEach(([x, y, dx, dy]) => {
+      ctx.moveTo(x + dx * ARM, y);
+      ctx.lineTo(x, y);
+      ctx.lineTo(x, y + dy * ARM);
     });
     ctx.stroke();
   };
@@ -213,9 +230,9 @@ function CoverCropModal({ file, onConfirm, onCancel }) {
     const srcW = CROPW / scale;
     const srcH = CROPH / scale;
     const out  = document.createElement('canvas');
-    out.width  = 800;
-    out.height = 600;   // 4:3 at target resolution
-    out.getContext('2d').drawImage(img, srcX, srcY, srcW, srcH, 0, 0, 800, 600);
+    out.width  = 600;
+    out.height = 800;   // 3:4 portrait at target resolution
+    out.getContext('2d').drawImage(img, srcX, srcY, srcW, srcH, 0, 0, 600, 800);
     onConfirm(out.toDataURL('image/jpeg', 0.78));
   };
 
@@ -243,11 +260,11 @@ function CoverCropModal({ file, onConfirm, onCancel }) {
         onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE}
       />
 
-      {/* 4:3 badge */}
+      {/* 3:4 badge */}
       {ready && (
         <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:10 }}>
-          <span style={{ background:'rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.55)', fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, letterSpacing:'.06em' }}>4 : 3</span>
-          <span style={{ color:'rgba(255,255,255,0.35)', fontSize:10 }}>800 × 600 px</span>
+          <span style={{ background:'rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.55)', fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, letterSpacing:'.06em' }}>3 : 4</span>
+          <span style={{ color:'rgba(255,255,255,0.35)', fontSize:10 }}>600 × 800 px</span>
         </div>
       )}
 
@@ -935,9 +952,9 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
             overflow:"hidden",
             background: poster ? "#000" : "linear-gradient(135deg,#1a1035 0%,#2d1b69 100%)",
           }}>
-            {/* Cover photo — locked 4:3 so hero height is always consistent */}
+            {/* Cover photo — locked 3:4 so hero height is always consistent */}
             {poster
-              ? <div style={{ width:"100%", paddingTop:"75%", position:"relative" }}>
+              ? <div style={{ width:"100%", paddingTop:"133.33%", position:"relative" }}>
                   <img src={poster} alt={recital.title}
                     style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
                 </div>
