@@ -167,11 +167,34 @@ export default function LandingPageA() {
         textAlign:'center', padding: isMobile ? '100px 20px 60px' : '120px 24px 80px',
         position:'relative', overflow:'hidden',
       }}>
-        {/* Glow blobs */}
-        <div style={{ position:'absolute', top:'15%', left:'50%', transform:'translateX(-50%)', width: isMobile ? 400 : 700, height: isMobile ? 400 : 700, background:'radial-gradient(circle, rgba(124,58,237,0.22) 0%, transparent 68%)', pointerEvents:'none' }} />
-        <div style={{ position:'absolute', bottom:'5%', right: isMobile ? '-10%' : '8%', width:300, height:300, background:'radial-gradient(circle, rgba(220,78,255,0.12) 0%, transparent 70%)', pointerEvents:'none' }} />
+        {/* Full-bleed video background */}
+        <video
+          autoPlay muted loop playsInline
+          style={{
+            position:'absolute', inset:0,
+            width:'100%', height:'100%',
+            objectFit:'cover',
+            filter:'blur(7px)',
+            transform:'scale(1.06)',   /* prevents white blur edges */
+            zIndex:0,
+          }}
+        >
+          <source src="/ManchQ-hero-bg.mp4" type="video/mp4" />
+        </video>
 
-        <div style={{ position:'relative', width:'100%', maxWidth:820 }}>
+        {/* Dark gradient overlay — protects text at top, centre and bottom */}
+        <div style={{
+          position:'absolute', inset:0, zIndex:1,
+          background:`linear-gradient(to bottom,
+            rgba(8,6,15,0.92) 0%,
+            rgba(8,6,15,0.62) 22%,
+            rgba(8,6,15,0.58) 50%,
+            rgba(8,6,15,0.68) 78%,
+            rgba(8,6,15,0.94) 100%)`,
+          pointerEvents:'none',
+        }} />
+
+        <div style={{ position:'relative', zIndex:2, width:'100%', maxWidth:820 }}>
           {/* Headline — paddingBottom on the gradient span prevents WebkitBackgroundClip
               from cropping the bottom of the last wrapped line */}
           <h1 style={{
@@ -233,23 +256,23 @@ export default function LandingPageA() {
           </div>
         </div>
 
-        {/* Trust row */}
-        <div style={{
-          position:'relative', display:'flex',
-          gap: isMobile ? 32 : 64,
-          marginTop: isMobile ? 60 : 88,
+        {/* Trust row — desktop/tablet only; mobile hero ends at the CTA buttons */}
+        {!isMobile && <div style={{
+          position:'relative', zIndex:2, display:'flex',
+          gap: 64,
+          marginTop: 88,
           flexWrap:'wrap', justifyContent:'center',
         }}>
           {TRUST.map(({ ic, label, sub }) => (
             <div key={label} style={{ textAlign:'center' }}>
               <div style={{ display:'flex', justifyContent:'center', marginBottom:8, color:MAGENTA }}>
-                <Icon paths={IC[ic]} size={isMobile ? 22 : 26} stroke={MAGENTA} sw={1.5} />
+                <Icon paths={IC[ic]} size={26} stroke={MAGENTA} sw={1.5} />
               </div>
-              <div style={{ fontWeight:800, fontSize: isMobile ? 13 : 14, color:'#fff' }}>{label}</div>
+              <div style={{ fontWeight:800, fontSize:14, color:'#fff' }}>{label}</div>
               <div style={{ fontSize:11, color:'#4B5563', marginTop:2 }}>{sub}</div>
             </div>
           ))}
-        </div>
+        </div>}
       </section>
 
       {/* ── Features ───────────────────────────────────────────────────── */}
