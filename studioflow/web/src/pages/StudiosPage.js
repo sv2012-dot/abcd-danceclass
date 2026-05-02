@@ -5,6 +5,7 @@ import { studios as api } from "../api";
 import toast from "react-hot-toast";
 import Card, { CARD_TOKENS as CT } from "../components/shared/Card";
 import Button from "../components/shared/Button";
+import Modal from "../components/shared/Modal";
 import { Field, Input, Textarea } from "../components/shared/Field";
 import SvgIcon from "../components/shared/SvgIcon";
 
