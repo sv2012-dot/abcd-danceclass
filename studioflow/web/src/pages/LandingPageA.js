@@ -121,8 +121,11 @@ function NavBar({ onLogin, isMobile }) {
       padding: isMobile ? '0 20px' : '0 48px', height:60,
       display:'flex', alignItems:'center', justifyContent:'space-between',
     }}>
-      <div style={{ fontWeight:900, fontSize:19, letterSpacing:'-.02em', color:'#fff' }}>
-        Manch<span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>Q</span>
+      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ height:26, width:26, display:'block', flexShrink:0 }} />
+        <span style={{ fontWeight:900, fontSize:19, letterSpacing:'-.02em', color:'#fff' }}>
+          Manch<span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>Q</span>
+        </span>
       </div>
       <div style={{ display:'flex', gap:8, alignItems:'center' }}>
         {!isMobile && <>
