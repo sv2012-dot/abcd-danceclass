@@ -636,8 +636,11 @@ export default function LandingPageA() {
         alignItems:'center', justifyContent:'space-between',
         gap:10, textAlign: isMobile ? 'center' : 'left',
       }}>
-        <div style={{ fontWeight:900, fontSize:17 }}>
-          Manch<span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>Q</span>
+        <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+          <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ height:30, width:30, display:'block', flexShrink:0 }} />
+          <span style={{ fontWeight:900, fontSize:17 }}>
+            Manch<span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>Q</span>
+          </span>
         </div>
         <div style={{ fontSize:12, color:'#374151' }}>
           © {new Date().getFullYear()} ManchQ · Made with care for dance studios. ·{' '}
