@@ -671,16 +671,9 @@ function SchoolHomePage() {
   ) : null;
 
   return (
-    <div style={{ width:'100%', minWidth:0, boxSizing:'border-box', ...(isMobile && { paddingTop:24, paddingBottom:24 }) }}>
+    <div style={{ width:'100%', minWidth:0, boxSizing:'border-box', ...(isMobile && { paddingTop:12, paddingBottom:24 }) }}>
 
       {/* Stats row moved below upcoming recitals on desktop */}
-
-      {/* ── Greeting ── */}
-      <div style={{marginBottom:isMobile?24:20}}>
-        <p style={{fontFamily:"var(--font-b)",fontSize:13,fontWeight:400,color:C.boulder}}>
-          <span style={{fontWeight:600,color:C.ebony}}>{greeting}, {user?.name?.split(" ")[0]}!</span>{' · '}{todayStr}
-        </p>
-      </div>
 
       {/* ── Mobile: consolidated Create button ── */}
       {isMobile && isAdmin && (
@@ -779,6 +772,13 @@ function SchoolHomePage() {
           >View Schedule →</button>
         </div>
       )}
+
+      {/* ── Greeting ── */}
+      <div style={{marginBottom:isMobile?16:20}}>
+        <p style={{fontFamily:"var(--font-b)",fontSize:13,fontWeight:400,color:C.boulder}}>
+          <span style={{fontWeight:600,color:C.ebony}}>{greeting}, {user?.name?.split(" ")[0]}!</span>{' · '}{todayStr}
+        </p>
+      </div>
 
       {/* ── Tablet + Desktop: full-feature layout ── */}
       {!isMobile && (
