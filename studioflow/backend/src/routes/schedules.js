@@ -15,7 +15,7 @@ router.get('/exceptions', auth(), async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/exceptions', auth('superadmin', 'school_admin'), async (req, res) => {
+router.post('/exceptions', auth('superadmin', 'school_admin', 'teacher'), async (req, res) => {
   const { schedule_id, exception_date } = req.body;
   if (!schedule_id || !exception_date) return res.status(400).json({ error: 'schedule_id and exception_date required' });
   try {
@@ -27,7 +27,7 @@ router.post('/exceptions', auth('superadmin', 'school_admin'), async (req, res) 
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.delete('/exceptions/:id', auth('superadmin', 'school_admin'), async (req, res) => {
+router.delete('/exceptions/:id', auth('superadmin', 'school_admin', 'teacher'), async (req, res) => {
   try {
     await pool.query(
       'DELETE FROM schedule_exceptions WHERE id = ? AND school_id = ?',

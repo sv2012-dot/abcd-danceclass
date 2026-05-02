@@ -467,7 +467,14 @@ export default function SchedulePage() {
     const rangeFrom = new Date(view === "list" ? listFrom : from);
     const rangeTo   = new Date(view === "list" ? listTo   : to);
     // Build a set of skipped dates: "scheduleId_YYYY-MM-DD"
-    const exceptionKeys = new Set(allExceptions.map(ex => `${ex.schedule_id}_${ex.exception_date}`));
+    // Normalise exception_date — mysql2 may return DATE as a JS Date object or
+    // as a full ISO string; slice to "YYYY-MM-DD" so it matches the ds key.
+    const fmtExcDate = (d) => {
+      if (!d) return '';
+      if (d instanceof Date) return d.toISOString().slice(0, 10);
+      return String(d).slice(0, 10);
+    };
+    const exceptionKeys = new Set(allExceptions.map(ex => `${ex.schedule_id}_${fmtExcDate(ex.exception_date)}`));
     const result = [];
     for (const sch of allSchedules) {
       const batch = batches.find(b => String(b.id) === String(sch.batch_id));
