@@ -141,7 +141,7 @@ function CoverCropModal({ file, onConfirm, onCancel }) {
     };
     img.onerror = () => { URL.revokeObjectURL(url); onCancel(); };
     img.src = url;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line
 
   // Mouse — desktop
   const onMD = e => { stRef.current.dragging = true; stRef.current.lastX = e.clientX; stRef.current.lastY = e.clientY; };
