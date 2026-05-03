@@ -215,6 +215,12 @@ export default function SchoolsPage() {
     onError: err => toast.error(err?.error || 'Restore failed'),
   });
 
+  const seedMutation = useMutation({
+    mutationFn: id => schoolsApi.seedSample(id),
+    onSuccess: () => { qc.invalidateQueries(['schools']); toast.success('Sample data seeded! 2 batches, 4 students, 4 recitals & 5 todos added.'); },
+    onError: err => toast.error(err?.error || 'Seed failed'),
+  });
+
   const toggleActiveMutation = useMutation({
     mutationFn: s => schoolsApi.update(s.id, { ...s, is_active: s.is_active ? 0 : 1 }),
     onSuccess: (_, s) => { qc.invalidateQueries(['schools']); toast.success(s.is_active ? 'School deactivated' : 'School activated'); },
@@ -293,12 +299,26 @@ export default function SchoolsPage() {
             ))}
           </div>
         </div>
-        <button
-          onClick={() => setDeleteTarget({ school: detailSchool, stats })}
-          style={{ background:`${RED}15`, border:`1px solid ${RED}40`, color:RED, borderRadius:9, padding:'10px 20px', fontSize:14, fontWeight:700, cursor:'pointer' }}
-        >
-          Delete this school…
-        </button>
+        <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:0 }}>
+          <button
+            onClick={() => {
+              if (window.confirm(`Seed sample data into "${detailSchool.name}"? This will add 2 batches, 4 students, 4 recitals and 5 todos.`)) {
+                seedMutation.mutate(detailSchool.id);
+              }
+            }}
+            disabled={seedMutation.isPending}
+            style={{ background:'rgba(124,58,237,0.12)', border:'1px solid rgba(124,58,237,0.3)', color:'#a78bfa', borderRadius:9, padding:'10px 20px', fontSize:14, fontWeight:700, cursor:'pointer', opacity: seedMutation.isPending ? 0.6 : 1, display:'flex', alignItems:'center', gap:7 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            {seedMutation.isPending ? 'Seeding…' : 'Seed sample data'}
+          </button>
+          <button
+            onClick={() => setDeleteTarget({ school: detailSchool, stats })}
+            style={{ background:`${RED}15`, border:`1px solid ${RED}40`, color:RED, borderRadius:9, padding:'10px 20px', fontSize:14, fontWeight:700, cursor:'pointer' }}
+          >
+            Delete this school…
+          </button>
+        </div>
 
         {deleteTarget && (
           <DeleteModal school={deleteTarget.school} stats={deleteTarget.stats}
@@ -404,12 +424,22 @@ export default function SchoolsPage() {
                     {school.admin_email && <CopyButton value={school.admin_email} />}
                   </div>
                 </div>
-                <button
-                  onClick={e => { e.stopPropagation(); setResetTarget(school.id); setResetPw(''); }}
-                  style={{ background:'rgba(255,193,7,0.15)', border:'1px solid rgba(255,193,7,0.3)', color:'#ffc107', borderRadius:7, padding:'6px 12px', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:5, flexShrink:0 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                  Reset Password
-                </button>
+                <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+                  <button
+                    onClick={e => { e.stopPropagation(); if (window.confirm(`Seed sample data into "${school.name}"?`)) seedMutation.mutate(school.id); }}
+                    disabled={seedMutation.isPending}
+                    title="Seed sample data"
+                    style={{ background:'rgba(124,58,237,0.12)', border:'1px solid rgba(124,58,237,0.3)', color:'#a78bfa', borderRadius:7, padding:'6px 10px', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    Seed
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); setResetTarget(school.id); setResetPw(''); }}
+                    style={{ background:'rgba(255,193,7,0.15)', border:'1px solid rgba(255,193,7,0.3)', color:'#ffc107', borderRadius:7, padding:'6px 12px', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:5 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Reset Password
+                  </button>
+                </div>
               </div>
             </div>
           ))}

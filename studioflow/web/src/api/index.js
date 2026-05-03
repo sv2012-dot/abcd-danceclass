@@ -15,6 +15,7 @@ export const schools = {
   restore: (id) => api.post(`/schools/${id}/restore`),
   stats: (id) => api.get(`/schools/${id}/stats`),
   resetAdminPassword: (id, password) => api.post(`/schools/${id}/reset-admin-password`, { password }),
+  seedSample: (id) => api.post(`/schools/${id}/seed-sample`),
 };
 
 export const students = {

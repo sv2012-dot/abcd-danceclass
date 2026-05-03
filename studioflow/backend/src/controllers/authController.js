@@ -123,25 +123,42 @@ exports.googleLogin = async (req, res) => {
   }
 };
 
-// ── Seed helper — runs inside the registration transaction ──────────────────
-async function seedDummyData(conn, schoolId, danceStyle) {
+// ── Seed helper — runs AFTER commit using pool directly (never blocks registration) ──
+async function seedDummyData(schoolId, danceStyle) {
   const ds      = danceStyle || 'Classical Dance';
   const today   = new Date();
   const addDays = n => { const d = new Date(today); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 
-  // 2 batches
-  const [b1] = await conn.query(
-    'INSERT INTO batches (school_id, name, dance_style, level, teacher_name, max_size, cover_url) VALUES (?,?,?,?,?,?,?)',
-    [schoolId, 'Morning Beginners', ds, 'Beginner', 'Your Name', 12,
-     '/seeds/Gemini_Generated_Image_pglg7zpglg7zpglg.png']
-  );
-  const [b2] = await conn.query(
-    'INSERT INTO batches (school_id, name, dance_style, level, teacher_name, max_size, cover_url) VALUES (?,?,?,?,?,?,?)',
-    [schoolId, 'Evening Intermediate', ds, 'Intermediate', 'Your Name', 10,
-     '/seeds/Gemini_Generated_Image_uq97ywuq97ywuq97.png']
-  );
-  const batch1Id = b1.insertId;
-  const batch2Id = b2.insertId;
+  // 2 batches (cover_url added via patchTables — INSERT safely without it if missing)
+  let batch1Id, batch2Id;
+  try {
+    const [b1] = await pool.query(
+      'INSERT INTO batches (school_id, name, dance_style, level, teacher_name, max_size, cover_url) VALUES (?,?,?,?,?,?,?)',
+      [schoolId, 'Morning Beginners', ds, 'Beginner', 'Your Name', 12,
+       '/seeds/Gemini_Generated_Image_pglg7zpglg7zpglg.png']
+    );
+    batch1Id = b1.insertId;
+  } catch {
+    const [b1] = await pool.query(
+      'INSERT INTO batches (school_id, name, dance_style, level, teacher_name, max_size) VALUES (?,?,?,?,?,?)',
+      [schoolId, 'Morning Beginners', ds, 'Beginner', 'Your Name', 12]
+    );
+    batch1Id = b1.insertId;
+  }
+  try {
+    const [b2] = await pool.query(
+      'INSERT INTO batches (school_id, name, dance_style, level, teacher_name, max_size, cover_url) VALUES (?,?,?,?,?,?,?)',
+      [schoolId, 'Evening Intermediate', ds, 'Intermediate', 'Your Name', 10,
+       '/seeds/Gemini_Generated_Image_uq97ywuq97ywuq97.png']
+    );
+    batch2Id = b2.insertId;
+  } catch {
+    const [b2] = await pool.query(
+      'INSERT INTO batches (school_id, name, dance_style, level, teacher_name, max_size) VALUES (?,?,?,?,?,?)',
+      [schoolId, 'Evening Intermediate', ds, 'Intermediate', 'Your Name', 10]
+    );
+    batch2Id = b2.insertId;
+  }
 
   // 4 students (2 per batch)
   const students = [
@@ -151,11 +168,11 @@ async function seedDummyData(conn, schoolId, danceStyle) {
     { name:'Ananya Singh',  guardian:'Kavita Singh',  phone:'9800000004', batch: batch2Id },
   ];
   for (const s of students) {
-    const [sr] = await conn.query(
+    const [sr] = await pool.query(
       'INSERT INTO students (school_id, name, guardian_name, guardian_phone, join_date) VALUES (?,?,?,?,?)',
       [schoolId, s.name, s.guardian, s.phone, today.toISOString().slice(0, 10)]
     );
-    await conn.query(
+    await pool.query(
       'INSERT INTO batch_students (batch_id, student_id) VALUES (?,?)',
       [s.batch, sr.insertId]
     );
@@ -169,13 +186,13 @@ async function seedDummyData(conn, schoolId, danceStyle) {
     { batch: batch2Id, day: 'Thu', start: '18:00', end: '19:00' },
   ];
   for (const s of schedules) {
-    await conn.query(
+    await pool.query(
       'INSERT INTO schedules (school_id, batch_id, day_of_week, start_time, end_time) VALUES (?,?,?,?,?)',
       [schoolId, s.batch, s.day, s.start, s.end]
     );
   }
 
-  // 4 recitals spread over the next ~2 months
+  // 4 recitals — try with poster_url (patchTables column), fall back without
   const recitals = [
     { title:'Annual Day Showcase',    days:14, poster:'/seeds/Gemini_Generated_Image_fx3w4cfx3w4cfx3w.png' },
     { title:'Mid-Season Performance', days:28, poster:'/seeds/Gemini_Generated_Image_8n8ni8n8ni8n8ni8-2.png' },
@@ -183,10 +200,17 @@ async function seedDummyData(conn, schoolId, danceStyle) {
     { title:'Year-End Recital',       days:56, poster:'/seeds/Gemini_Generated_Image_al11y9al11y9al11.png' },
   ];
   for (const r of recitals) {
-    await conn.query(
-      'INSERT INTO recitals (school_id, title, event_date, status, poster_url) VALUES (?,?,?,?,?)',
-      [schoolId, r.title, addDays(r.days), 'Planning', r.poster]
-    );
+    try {
+      await pool.query(
+        'INSERT INTO recitals (school_id, title, event_date, status, poster_url) VALUES (?,?,?,?,?)',
+        [schoolId, r.title, addDays(r.days), 'Planning', r.poster]
+      );
+    } catch {
+      await pool.query(
+        'INSERT INTO recitals (school_id, title, event_date, status) VALUES (?,?,?,?)',
+        [schoolId, r.title, addDays(r.days), 'Planning']
+      );
+    }
   }
 
   // 5 to-do items
@@ -198,9 +222,15 @@ async function seedDummyData(conn, schoolId, danceStyle) {
     'Share the parent portal link with guardians',
   ];
   for (const title of todos) {
-    await conn.query('INSERT INTO todos (school_id, title) VALUES (?,?)', [schoolId, title]);
+    await pool.query(
+      'INSERT INTO todos (school_id, user_id, title) VALUES (?,NULL,?)',
+      [schoolId, title]
+    );
   }
 }
+
+// Exported so superadmin can trigger it on demand
+exports.seedSampleData = seedDummyData;
 
 // Register School (Self-Service)
 exports.registerSchool = async (req, res) => {
@@ -241,10 +271,12 @@ exports.registerSchool = async (req, res) => {
 
     const userId = userResult.insertId;
 
-    // Seed sample data so the school isn't empty on first login
-    await seedDummyData(conn, schoolId, danceStyle);
-
     await conn.commit();
+
+    // Seed sample data after commit — non-blocking, never fails registration
+    seedDummyData(schoolId, danceStyle).catch(err =>
+      console.warn('Seed sample data skipped:', err.message)
+    );
     const user = {
       id: userId,
       name: ownerName,
