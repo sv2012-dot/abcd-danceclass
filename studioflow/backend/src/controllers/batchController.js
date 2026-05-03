@@ -58,6 +58,21 @@ exports.remove = async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
+exports.uploadCover = async (req, res) => {
+  const { cover_url } = req.body;
+  // Accept a data URL, an empty string (clear), or null
+  if (cover_url && !String(cover_url).startsWith('data:image/')) {
+    return res.status(400).json({ error: 'cover_url must be a data: image URL or empty' });
+  }
+  try {
+    await pool.query(
+      'UPDATE batches SET cover_url = ? WHERE id = ? AND school_id = ?',
+      [cover_url || null, req.params.id, req.params.schoolId]
+    );
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
 exports.enroll = async (req, res) => {
   const { student_ids } = req.body;
   if (!Array.isArray(student_ids)) return res.status(400).json({ error: 'student_ids array required' });

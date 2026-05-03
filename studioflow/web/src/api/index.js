@@ -34,6 +34,7 @@ export const batches = {
   update: (schoolId, id, data) => api.put(`/schools/${schoolId}/batches/${id}`, data),
   remove: (schoolId, id) => api.delete(`/schools/${schoolId}/batches/${id}`),
   enroll: (schoolId, id, student_ids) => api.put(`/schools/${schoolId}/batches/${id}/enroll`, { student_ids }),
+  uploadCover: (schoolId, id, cover_url) => api.patch(`/schools/${schoolId}/batches/${id}/cover`, { cover_url }),
 };
 
 export const schedules = {
