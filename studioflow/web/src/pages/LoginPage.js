@@ -60,7 +60,7 @@ export default function LoginPage() {
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 24, color: 'var(--text)' }}>Sign in to your account</h2>
 
             {/* Google Sign In */}
-            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
+            <div style={{ marginBottom: 24 }}>
               <GoogleSignIn />
             </div>
 

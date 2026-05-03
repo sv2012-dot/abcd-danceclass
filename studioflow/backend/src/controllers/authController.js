@@ -59,22 +59,40 @@ exports.changePassword = async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
-// Google OAuth Login
+// Google OAuth Login — accepts either an ID-token credential or an access_token
 exports.googleLogin = async (req, res) => {
-  const { credential } = req.body;
-  if (!credential) return res.status(400).json({ error: 'Google credential token required' });
+  const { credential, access_token } = req.body;
+  if (!credential && !access_token) {
+    return res.status(400).json({ error: 'Google credential or access token required' });
+  }
+
+  let email, name, picture;
 
   try {
-    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
-    // Verify the token
-    const ticket = await client.verifyIdToken({
-      idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-
-    const googleUser = ticket.getPayload();
-    const { email, name, picture } = googleUser;
+    if (credential) {
+      // Legacy ID-token flow (GoogleLogin component)
+      const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+      const ticket = await client.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      email   = payload.email;
+      name    = payload.name;
+      picture = payload.picture;
+    } else {
+      // Access-token flow (custom button via useGoogleLogin)
+      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${access_token}` },
+      });
+      if (!userInfoRes.ok) {
+        return res.status(401).json({ error: 'Invalid Google access token' });
+      }
+      const userInfo = await userInfoRes.json();
+      email   = userInfo.email;
+      name    = userInfo.name;
+      picture = userInfo.picture;
+    }
 
     // Check if user already exists
     const [existingUser] = await pool.query(
@@ -83,36 +101,106 @@ exports.googleLogin = async (req, res) => {
     );
 
     if (existingUser[0]) {
-      // Existing user - return token
       const user = existingUser[0];
       await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
-
       const token = signToken(user);
-
-      // Fetch school info if user has one
       let school = null;
       if (user.school_id) {
         const [sr] = await pool.query('SELECT id, name, city, dance_style FROM schools WHERE id = ?', [user.school_id]);
         school = sr[0] || null;
       }
-
       return res.json({ token, user, school });
     }
 
-    // New user - return user data and flag for registration
+    // New user — return user data and flag for registration
     res.status(201).json({
       requiresRegistration: true,
-      googleData: {
-        name,
-        email: email.toLowerCase(),
-        picture,
-      },
+      googleData: { name, email: email.toLowerCase(), picture },
     });
   } catch (error) {
     console.error('Google login error:', error);
     res.status(401).json({ error: 'Invalid Google token' });
   }
 };
+
+// ── Seed helper — runs inside the registration transaction ──────────────────
+async function seedDummyData(conn, schoolId, danceStyle) {
+  const ds      = danceStyle || 'Classical Dance';
+  const today   = new Date();
+  const addDays = n => { const d = new Date(today); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+
+  // 2 batches
+  const [b1] = await conn.query(
+    'INSERT INTO batches (school_id, name, dance_style, level, teacher_name, max_size, cover_url) VALUES (?,?,?,?,?,?,?)',
+    [schoolId, 'Morning Beginners', ds, 'Beginner', 'Your Name', 12,
+     '/seeds/Gemini_Generated_Image_pglg7zpglg7zpglg.png']
+  );
+  const [b2] = await conn.query(
+    'INSERT INTO batches (school_id, name, dance_style, level, teacher_name, max_size, cover_url) VALUES (?,?,?,?,?,?,?)',
+    [schoolId, 'Evening Intermediate', ds, 'Intermediate', 'Your Name', 10,
+     '/seeds/Gemini_Generated_Image_uq97ywuq97ywuq97.png']
+  );
+  const batch1Id = b1.insertId;
+  const batch2Id = b2.insertId;
+
+  // 4 students (2 per batch)
+  const students = [
+    { name:'Aarav Sharma',  guardian:'Priya Sharma',  phone:'9800000001', batch: batch1Id },
+    { name:'Diya Nair',     guardian:'Meena Nair',    phone:'9800000002', batch: batch1Id },
+    { name:'Rohan Patel',   guardian:'Suresh Patel',  phone:'9800000003', batch: batch2Id },
+    { name:'Ananya Singh',  guardian:'Kavita Singh',  phone:'9800000004', batch: batch2Id },
+  ];
+  for (const s of students) {
+    const [sr] = await conn.query(
+      'INSERT INTO students (school_id, name, guardian_name, guardian_phone, join_date) VALUES (?,?,?,?,?)',
+      [schoolId, s.name, s.guardian, s.phone, today.toISOString().slice(0, 10)]
+    );
+    await conn.query(
+      'INSERT INTO batch_students (batch_id, student_id) VALUES (?,?)',
+      [s.batch, sr.insertId]
+    );
+  }
+
+  // Schedules — Mon/Wed for batch 1, Tue/Thu for batch 2
+  const schedules = [
+    { batch: batch1Id, day: 'Mon', start: '09:00', end: '10:00' },
+    { batch: batch1Id, day: 'Wed', start: '09:00', end: '10:00' },
+    { batch: batch2Id, day: 'Tue', start: '18:00', end: '19:00' },
+    { batch: batch2Id, day: 'Thu', start: '18:00', end: '19:00' },
+  ];
+  for (const s of schedules) {
+    await conn.query(
+      'INSERT INTO schedules (school_id, batch_id, day_of_week, start_time, end_time) VALUES (?,?,?,?,?)',
+      [schoolId, s.batch, s.day, s.start, s.end]
+    );
+  }
+
+  // 4 recitals spread over the next ~2 months
+  const recitals = [
+    { title:'Annual Day Showcase',    days:14, poster:'/seeds/Gemini_Generated_Image_fx3w4cfx3w4cfx3w.png' },
+    { title:'Mid-Season Performance', days:28, poster:'/seeds/Gemini_Generated_Image_8n8ni8n8ni8n8ni8-2.png' },
+    { title:'Guest Artist Workshop',  days:42, poster:'/seeds/Kathak-poster.png' },
+    { title:'Year-End Recital',       days:56, poster:'/seeds/Gemini_Generated_Image_al11y9al11y9al11.png' },
+  ];
+  for (const r of recitals) {
+    await conn.query(
+      'INSERT INTO recitals (school_id, title, event_date, status, poster_url) VALUES (?,?,?,?,?)',
+      [schoolId, r.title, addDays(r.days), 'Planning', r.poster]
+    );
+  }
+
+  // 5 to-do items
+  const todos = [
+    'Set up your fee plans',
+    'Add remaining students to batches',
+    'Customize batch schedules',
+    'Upload batch cover photos',
+    'Share the parent portal link with guardians',
+  ];
+  for (const title of todos) {
+    await conn.query('INSERT INTO todos (school_id, title) VALUES (?,?)', [schoolId, title]);
+  }
+}
 
 // Register School (Self-Service)
 exports.registerSchool = async (req, res) => {
@@ -151,9 +239,12 @@ exports.registerSchool = async (req, res) => {
       [ownerName, ownerEmail.toLowerCase(), hashedPassword, 'school_admin', schoolId]
     );
 
-    await conn.commit();
-
     const userId = userResult.insertId;
+
+    // Seed sample data so the school isn't empty on first login
+    await seedDummyData(conn, schoolId, danceStyle);
+
+    await conn.commit();
     const user = {
       id: userId,
       name: ownerName,

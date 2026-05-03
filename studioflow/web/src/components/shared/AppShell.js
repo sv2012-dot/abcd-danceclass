@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import SvgIcon from './SvgIcon';
+import OnboardingWizard from './OnboardingWizard';
 
 // ── Classical Dance Icon ───────────────────────────────────────────────────────
 // Bharatanatyam dancer: aramandi stance, hasta mudra arm, crown ornament, stage
@@ -188,6 +189,12 @@ export default function AppShell() {
     setShowSplash(false);
   };
 
+  // Onboarding wizard — shown once to new school_admin accounts (not demo)
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (!user?.school_id || user.role !== 'school_admin' || isDemo) return false;
+    return !localStorage.getItem(`manchq_onboarded_${user.school_id}`);
+  });
+
   // ── Sidebar content (shared between desktop & mobile drawer) ──────────────
   const SidebarContent = ({ showBrand = true }) => (
     <>
@@ -326,6 +333,12 @@ export default function AppShell() {
     return (
       <>
         {DemoSplash}
+        {showOnboarding && (
+          <OnboardingWizard
+            schoolId={user?.school_id}
+            onDismiss={() => setShowOnboarding(false)}
+          />
+        )}
         <div style={{ display:'flex', height:'100vh', overflow:'hidden' }}>
           <aside style={{ width:SIDEBAR_W, background:'var(--sidebar)', display:'flex', flexDirection:'column', flexShrink:0, height:'100vh', borderRight:'1px solid var(--sidebar-border)' }}>
             <SidebarContent />
@@ -344,6 +357,12 @@ export default function AppShell() {
   return (
     <>
     {DemoSplash}
+    {showOnboarding && (
+      <OnboardingWizard
+        schoolId={user?.school_id}
+        onDismiss={() => setShowOnboarding(false)}
+      />
+    )}
     <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden' }}>
 
       {/* Top bar */}

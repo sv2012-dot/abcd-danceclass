@@ -31,11 +31,11 @@ function BatchCoverCropModal({ file, onConfirm, onCancel }) {
   const [saving, setSaving] = useState(false);
   const isMob = typeof window !== 'undefined' && window.innerWidth < 768;
 
-  // Canvas / crop window dimensions — landscape 4:3
+  // Canvas / crop window dimensions — landscape 16:9
   const CW    = isMob ? Math.min(window.innerWidth, 420) : 480;
   const PAD   = isMob ? 14 : 20;
   const CROPW = CW - PAD * 2;
-  const CROPH = Math.round(CROPW * 3 / 4);  // 4:3 landscape ratio
+  const CROPH = Math.round(CROPW * 9 / 16);  // 16:9 landscape ratio
   const CH    = CROPH + PAD * 2;
   const CROPX = PAD;
   const CROPY = PAD;
@@ -166,10 +166,10 @@ function BatchCoverCropModal({ file, onConfirm, onCancel }) {
     const { scale, ox, oy } = stRef.current;
     const out = document.createElement('canvas');
     out.width  = 800;
-    out.height = 600;  // 4:3 landscape at target resolution
+    out.height = 450;  // 16:9 landscape at target resolution
     out.getContext('2d').drawImage(imgRef.current,
       (CROPX - ox) / scale, (CROPY - oy) / scale, CROPW / scale, CROPH / scale,
-      0, 0, 800, 600
+      0, 0, 800, 450
     );
     onConfirm(out.toDataURL('image/jpeg', 0.78));
   };
@@ -198,8 +198,8 @@ function BatchCoverCropModal({ file, onConfirm, onCancel }) {
 
       {ready && (
         <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:10 }}>
-          <span style={{ background:'rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.55)', fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, letterSpacing:'.06em' }}>4 : 3</span>
-          <span style={{ color:'rgba(255,255,255,0.35)', fontSize:10 }}>800 × 600 px</span>
+          <span style={{ background:'rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.55)', fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, letterSpacing:'.06em' }}>16 : 9</span>
+          <span style={{ color:'rgba(255,255,255,0.35)', fontSize:10 }}>800 × 450 px</span>
         </div>
       )}
 
@@ -421,9 +421,9 @@ export default function BatchesPage() {
                   ...(active ? { border: `${CT.borderWidth} solid ${color}`, boxShadow: `0 0 0 3px ${color}22` } : {}),
                 }}
               >
-                {/* ── Cover thumbnail — 4:3 ── */}
+                {/* ── Cover thumbnail — 16:9 ── */}
                 {b.cover_url ? (
-                  <div style={{ position:"relative", paddingTop:"75%", overflow:"hidden", flexShrink:0 }}>
+                  <div style={{ position:"relative", paddingTop:"56.25%", overflow:"hidden", flexShrink:0 }}>
                     <img src={b.cover_url} alt={b.name}
                       style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
                     <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:color }} />
@@ -431,7 +431,7 @@ export default function BatchesPage() {
                 ) : (
                   <div style={{ height:4, background:color, flexShrink:0 }} />
                 )}
-                <div style={{ padding:"14px 18px 14px", flex: 1 }}>
+                <div style={{ padding:"11px 16px 12px", flex: 1 }}>
                   <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8, marginBottom:4 }}>
                     <div style={{ fontWeight:700, fontSize:15, lineHeight:1.3, color:"var(--foreground)" }}>{b.name}</div>
                     {!b.cover_url && <div style={{ width:10, height:10, borderRadius:"50%", background:color, flexShrink:0, marginTop:4 }} />}
@@ -553,7 +553,7 @@ export default function BatchesPage() {
               {activeBatch.cover_url ? (
                 /* ── Has cover photo ── */
                 <>
-                  <div style={{ position:"relative", paddingTop:"75%", overflow:"hidden", background:"var(--surface)" }}>
+                  <div style={{ position:"relative", paddingTop:"56.25%", overflow:"hidden", background:"var(--surface)" }}>
                     <img src={activeBatch.cover_url} alt={activeBatch.name}
                       style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
                     {/* Gradient so text is readable over the photo */}
@@ -624,7 +624,7 @@ export default function BatchesPage() {
 
           {/* ── VIEW mode: scrollable body ── */}
           {panelMode === "view" && activeBatch && (
-            <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
+            <div style={{ flex:1, overflowY:"auto", padding:"14px 18px" }}>
               {/* Class Schedule */}
               <PSection title="Class Schedule">
                 <div style={{ display:"flex", gap:3, marginBottom:12 }}>
@@ -661,7 +661,7 @@ export default function BatchesPage() {
                     </div>
                   ) : (
                     <>
-                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:10 }}>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:5, marginBottom:10 }}>
                         {detailStudents.map(s => (
                           <div key={s.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 9px", borderRadius:8, background:"var(--surface)" }}>
                             <div style={{ width:28, height:28, borderRadius:"50%", background:`hsl(${s.name.charCodeAt(0)*7%360},55%,68%)`, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, color:"#fff", fontSize:12, flexShrink:0 }}>{s.name[0]}</div>
@@ -739,7 +739,7 @@ export default function BatchesPage() {
                 <Field label="Batch Name *">
                   <Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="e.g. Junior Ballet" />
                 </Field>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:"0 16px" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:"0" }}>
                   <Field label="Dance Style"><Input value={form.dance_style} onChange={e=>setForm({...form,dance_style:e.target.value})} placeholder="e.g. Ballet" /></Field>
                   <Field label="Level"><Select value={form.level} onChange={e=>setForm({...form,level:e.target.value})}>{LEVELS.map(l=><option key={l}>{l}</option>)}</Select></Field>
                   <Field label="Instructor Name"><Input value={form.teacher_name} onChange={e=>setForm({...form,teacher_name:e.target.value})} placeholder="e.g. Swapna Varma" /></Field>

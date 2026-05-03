@@ -214,7 +214,7 @@ export default function LandingPageA() {
             </span>
           </h1>
 
-          <p style={{ fontSize: isMobile ? 16 : 18, color:'#9CA3AF', maxWidth:540, margin:'0 auto 40px', lineHeight:1.75, padding: isMobile ? '0 4px' : 0 }}>
+          <p style={{ fontSize: isMobile ? 16 : 18, color:'#fff', maxWidth:540, margin:'0 auto 40px', lineHeight:1.75, padding: isMobile ? '0 4px' : 0 }}>
             You built your studio on passion. ManchQ makes sure the admin
             never gets in the way — scheduling, students and recitals, all in one place.
           </p>
@@ -251,7 +251,7 @@ export default function LandingPageA() {
             </a>
           </div>
 
-          <div style={{ marginTop:16, fontSize:13, color:'#374151' }}>
+          <div style={{ marginTop:16, fontSize:13, color:'#9CA3AF' }}>
             No credit card required · Set up in minutes
           </div>
         </div>
@@ -269,7 +269,7 @@ export default function LandingPageA() {
                 <Icon paths={IC[ic]} size={26} stroke={MAGENTA} sw={1.5} />
               </div>
               <div style={{ fontWeight:800, fontSize:14, color:'#fff' }}>{label}</div>
-              <div style={{ fontSize:11, color:'#4B5563', marginTop:2 }}>{sub}</div>
+              <div style={{ fontSize:11, color:'#D1D5DB', marginTop:2 }}>{sub}</div>
             </div>
           ))}
         </div>}
@@ -645,7 +645,7 @@ export default function LandingPageA() {
           >
             Get started with ManchQ →
           </button>
-          <div style={{ marginTop:18, fontSize:13, color:'#374151' }}>
+          <div style={{ marginTop:18, fontSize:13, color:'#9CA3AF' }}>
             No credit card required · Set up in minutes
           </div>
         </div>
