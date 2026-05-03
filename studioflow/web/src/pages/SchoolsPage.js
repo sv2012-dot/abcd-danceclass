@@ -277,12 +277,13 @@ export default function SchoolsPage() {
           <h2 style={{ fontSize:15, fontWeight:700, marginBottom:18 }}>School Details</h2>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 32px' }}>
             {[
-              ['Owner / Director', detailSchool.owner_name],
-              ['Email',            detailSchool.email],
-              ['Phone',            detailSchool.phone],
-              ['City',             detailSchool.city],
-              ['Dance Style',      detailSchool.dance_style],
-              ['Created on',       fmt(detailSchool.created_at)],
+              ['Owner / Director',  detailSchool.owner_name],
+              ['Contact Email',     detailSchool.email],
+              ['Phone',             detailSchool.phone],
+              ['City',              detailSchool.city],
+              ['Dance Style',       detailSchool.dance_style],
+              ['Admin Login Email', detailSchool.admin_email],
+              ['Created on',        fmt(detailSchool.created_at)],
               ['Admin last login',  fmt(detailSchool.admin_last_login)],
             ].map(([k, v]) => (
               <div key={k} style={{ paddingBottom:10, borderBottom:'1px solid var(--border)' }}>
@@ -350,6 +351,28 @@ export default function SchoolsPage() {
                     color:      school.is_active ? '#4caf50'              : '#ef5350' }}>
                     {school.is_active ? 'Active' : 'Inactive'}
                   </span>
+                </div>
+
+                {/* Signup details — owner, email, phone */}
+                <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:12 }}>
+                  {school.owner_name && (
+                    <div style={{ display:'flex', alignItems:'center', gap:7, fontSize:12, color:'var(--muted)' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{school.owner_name}</span>
+                    </div>
+                  )}
+                  {school.email && (
+                    <div style={{ display:'flex', alignItems:'center', gap:7, fontSize:12, color:'var(--muted)' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                      <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{school.email}</span>
+                    </div>
+                  )}
+                  {school.phone && (
+                    <div style={{ display:'flex', alignItems:'center', gap:7, fontSize:12, color:'var(--muted)' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.61 4.86 2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.88 17z"/></svg>
+                      <span>{school.phone}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>

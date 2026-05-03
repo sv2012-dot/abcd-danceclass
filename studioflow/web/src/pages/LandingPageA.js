@@ -174,8 +174,8 @@ export default function LandingPageA() {
             position:'absolute', inset:0,
             width:'100%', height:'100%',
             objectFit:'cover',
-            filter:'blur(7px)',
-            transform:'scale(1.06)',   /* prevents white blur edges */
+            filter:'blur(3px)',
+            transform:'scale(1.04)',   /* prevents white blur edges */
             zIndex:0,
           }}
         >
@@ -186,11 +186,11 @@ export default function LandingPageA() {
         <div style={{
           position:'absolute', inset:0, zIndex:1,
           background:`linear-gradient(to bottom,
-            rgba(8,6,15,0.96) 0%,
-            rgba(8,6,15,0.78) 22%,
-            rgba(8,6,15,0.72) 50%,
-            rgba(8,6,15,0.80) 78%,
-            rgba(8,6,15,0.97) 100%)`,
+            rgba(8,6,15,0.92) 0%,
+            rgba(8,6,15,0.62) 22%,
+            rgba(8,6,15,0.58) 50%,
+            rgba(8,6,15,0.68) 78%,
+            rgba(8,6,15,0.94) 100%)`,
           pointerEvents:'none',
         }} />
 
