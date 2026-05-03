@@ -24,7 +24,7 @@ const TYPE_COLORS = {
   Other:     "#8a7a9a",
 };
 
-const DAYS  = ["Mo","Tu","We","Th","Fr","Sa","Su"];
+const DAYS  = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 const MONTHS = ["January","February","March","April","May","June",
                 "July","August","September","October","November","December"];
 
@@ -94,7 +94,7 @@ function computeEndFromDuration(startStr, durationMins) {
 
 // ── DateTimePicker component ─────────────────────────────────────────────────
 const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const DAYS_SHORT   = ["Mo","Tu","We","Th","Fr","Sa","Su"];
+const DAYS_SHORT   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 
 function DateTimePicker({ label, value, onChange, minDate }) {
   const [open, setOpen] = useState(false);
@@ -155,8 +155,8 @@ function DateTimePicker({ label, value, onChange, minDate }) {
 
   const confirm = () => setOpen(false);
 
-  // Build calendar grid (week starts Monday: Mon=0 … Sun=6)
-  const firstDow = (new Date(cal.year, cal.month, 1).getDay() + 6) % 7;
+  // Build calendar grid (week starts Sunday: Sun=0 … Sat=6)
+  const firstDow = new Date(cal.year, cal.month, 1).getDay();
   const daysInMo = new Date(cal.year, cal.month+1, 0).getDate();
   const cells = [];
   for (let i = 0; i < firstDow; i++) cells.push(null);
@@ -406,11 +406,11 @@ export default function SchedulePage() {
     if (view === "month") {
       return { from: new Date(y, m-1, 20).toISOString(), to: new Date(y, m+2, 10).toISOString() };
     }
-    // week view: Monday 00:00 – Sunday 23:59:59
+    // week view: Sunday 00:00 – Saturday 23:59:59
     const dow = cursor.getDay();
-    const mon = new Date(cursor); mon.setDate(cursor.getDate() - ((dow+6)%7)); mon.setHours(0,0,0,0);
-    const sun = new Date(mon);    sun.setDate(mon.getDate() + 6);              sun.setHours(23,59,59,999);
-    return { from: mon.toISOString(), to: sun.toISOString() };
+    const sun = new Date(cursor); sun.setDate(cursor.getDate() - dow);         sun.setHours(0,0,0,0);
+    const sat = new Date(sun);    sat.setDate(sun.getDate() + 6);              sat.setHours(23,59,59,999);
+    return { from: sun.toISOString(), to: sat.toISOString() };
   }, [cursor, view]);
 
   // Wide range for list view (~4 months window)
@@ -705,9 +705,9 @@ export default function SchedulePage() {
     ? `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`
     : (() => {
         const dow = cursor.getDay();
-        const mon = new Date(cursor); mon.setDate(cursor.getDate() - ((dow+6)%7));
-        const sun = new Date(mon);    sun.setDate(mon.getDate() + 6);
-        return `${mon.toLocaleDateString([],{month:"short",day:"numeric"})} – ${sun.toLocaleDateString([],{month:"short",day:"numeric",year:"numeric"})}`;
+        const sun = new Date(cursor); sun.setDate(cursor.getDate() - dow);
+        const sat = new Date(sun);    sat.setDate(sun.getDate() + 6);
+        return `${sun.toLocaleDateString([],{month:"short",day:"numeric"})} – ${sat.toLocaleDateString([],{month:"short",day:"numeric",year:"numeric"})}`;
       })();
 
   // ── Event card ───────────────────────────────────────────────────────────
@@ -747,7 +747,7 @@ export default function SchedulePage() {
   // ── Month grid ───────────────────────────────────────────────────────────
   const MonthView = () => {
     const y = cursor.getFullYear(), m = cursor.getMonth();
-    const firstDay = (startOfMonth(y, m).getDay() + 6) % 7; // Mon=0 … Sun=6
+    const firstDay = startOfMonth(y, m).getDay(); // Sun=0 … Sat=6
     const totalDays = daysInMonth(y, m);
     const cells = [];
     for (let i = 0; i < firstDay; i++) cells.push(null);
@@ -814,8 +814,8 @@ export default function SchedulePage() {
   // ── Week view ────────────────────────────────────────────────────────────
   const WeekView = () => {
     const dow = cursor.getDay();
-    const mon = new Date(cursor); mon.setDate(cursor.getDate() - ((dow+6)%7));
-    const weekDays = Array.from({length:7}, (_,i) => { const d=new Date(mon); d.setDate(mon.getDate()+i); return d; });
+    const sun = new Date(cursor); sun.setDate(cursor.getDate() - dow);
+    const weekDays = Array.from({length:7}, (_,i) => { const d=new Date(sun); d.setDate(sun.getDate()+i); return d; });
     const eventsOnDay = (date) => {
       const str = date.toISOString().slice(0,10);
       return events.filter(e => e.start_datetime?.slice(0,10) === str)
@@ -945,7 +945,7 @@ export default function SchedulePage() {
   // ── Mobile Month View ────────────────────────────────────────────────────
   const MobileMonthView = () => {
     const y = cursor.getFullYear(), m = cursor.getMonth();
-    const firstDay = (startOfMonth(y, m).getDay() + 6) % 7; // Mon=0 … Sun=6
+    const firstDay = startOfMonth(y, m).getDay(); // Sun=0 … Sat=6
     const totalDays = daysInMonth(y, m);
     const cells = [];
     for (let i = 0; i < firstDay; i++) cells.push(null);

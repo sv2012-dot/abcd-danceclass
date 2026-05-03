@@ -88,16 +88,17 @@ async function patchTables() {
     `);
 
     // Column patches — uses INFORMATION_SCHEMA so they work on MySQL 5.7+
-    await addColumnIfMissing('schools',  'profile_json', 'LONGTEXT NULL');
-    await addColumnIfMissing('students', 'avatar',       'VARCHAR(100) NULL');
-    await addColumnIfMissing('todos',    'assigned_to',  'VARCHAR(100) NULL');
-    await addColumnIfMissing('recitals', 'is_featured',  'TINYINT(1) NOT NULL DEFAULT 0');
-    await addColumnIfMissing('recitals', 'poster_url',   'MEDIUMTEXT NULL');
-    await addColumnIfMissing('recitals', 'event_time',      'VARCHAR(10) NULL');
-    await addColumnIfMissing('recitals', 'participant_count', 'INT NULL');
-    await addColumnIfMissing('studios',  'is_quick_add',  'TINYINT(1) NOT NULL DEFAULT 0');
-    await addColumnIfMissing('schools',  'deleted_at',    'DATETIME NULL DEFAULT NULL');
-    await addColumnIfMissing('batches',  'cover_url',     'MEDIUMTEXT NULL');
+    await addColumnIfMissing('schools',   'profile_json',      'LONGTEXT NULL');
+    await addColumnIfMissing('students',  'avatar',            'VARCHAR(100) NULL');
+    await addColumnIfMissing('todos',     'assigned_to',       'VARCHAR(100) NULL');
+    await addColumnIfMissing('recitals',  'is_featured',       'TINYINT(1) NOT NULL DEFAULT 0');
+    await addColumnIfMissing('recitals',  'poster_url',        'MEDIUMTEXT NULL');
+    await addColumnIfMissing('recitals',  'event_time',        'VARCHAR(10) NULL');
+    await addColumnIfMissing('recitals',  'participant_count', 'INT NULL');
+    await addColumnIfMissing('studios',   'is_quick_add',      'TINYINT(1) NOT NULL DEFAULT 0');
+    await addColumnIfMissing('schools',   'deleted_at',        'DATETIME NULL DEFAULT NULL');
+    await addColumnIfMissing('batches',   'cover_url',         'MEDIUMTEXT NULL');
+    await addColumnIfMissing('schedules', 'is_active',         'TINYINT(1) NOT NULL DEFAULT 1');
 
     // Vendors table
     await pool.query(`
