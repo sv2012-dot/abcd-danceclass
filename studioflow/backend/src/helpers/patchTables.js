@@ -23,6 +23,22 @@ async function addColumnIfMissing(table, column, definition) {
   }
 }
 
+/** Ensure an existing column is nullable — fixes old schemas where it was NOT NULL */
+async function ensureColumnNullable(table, column, fullDefinition) {
+  const [rows] = await pool.query(
+    `SELECT IS_NULLABLE
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME   = ?
+       AND COLUMN_NAME  = ?`,
+    [table, column]
+  );
+  if (rows[0] && rows[0].IS_NULLABLE === 'NO') {
+    await pool.query(`ALTER TABLE \`${table}\` MODIFY COLUMN \`${column}\` ${fullDefinition}`);
+    console.log(`  ✏️  Made ${table}.${column} nullable`);
+  }
+}
+
 async function patchTables() {
   try {
     await pool.query(`
@@ -88,6 +104,7 @@ async function patchTables() {
     `);
 
     // Column patches — uses INFORMATION_SCHEMA so they work on MySQL 5.7+
+    await ensureColumnNullable('todos', 'user_id', 'INT UNSIGNED NULL');
     await addColumnIfMissing('schools',   'profile_json',      'LONGTEXT NULL');
     await addColumnIfMissing('students',  'avatar',            'VARCHAR(100) NULL');
     await addColumnIfMissing('todos',     'assigned_to',       'VARCHAR(100) NULL');

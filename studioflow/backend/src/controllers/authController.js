@@ -223,7 +223,7 @@ async function seedDummyData(schoolId, danceStyle) {
   ];
   for (const title of todos) {
     await pool.query(
-      'INSERT INTO todos (school_id, user_id, title) VALUES (?,NULL,?)',
+      'INSERT INTO todos (school_id, title) VALUES (?,?)',
       [schoolId, title]
     );
   }
