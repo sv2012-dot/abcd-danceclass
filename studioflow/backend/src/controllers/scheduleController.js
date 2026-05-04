@@ -5,7 +5,7 @@ exports.list = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT sc.*, b.name as batch_name, b.dance_style, b.level
       FROM schedules sc JOIN batches b ON b.id = sc.batch_id
-      WHERE sc.school_id = ? AND sc.is_active = 1
+      WHERE sc.school_id = ?
       ORDER BY FIELD(sc.day_of_week,'Mon','Tue','Wed','Thu','Fri','Sat','Sun'), sc.start_time
     `, [req.params.schoolId]);
     res.json(rows);
