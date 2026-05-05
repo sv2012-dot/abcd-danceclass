@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -376,19 +376,21 @@ export default function DashboardPage() {
     })
     .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
   // Generate upcoming instances from recurring schedules (next 60 days)
-  const scheduleInstances = (() => {
+  // useMemo ensures this recomputes whenever scheduleList, exceptionList, or
+  // eventList change — the previous inline IIFE didn't guarantee recomputation
+  // after async data arrived, causing "No events this week" on the dashboard.
+  const scheduleInstances = useMemo(() => {
     if (!scheduleList.length) return [];
     const DOW = { Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6, Sun:0 };
     const exceptionKeys = new Set(exceptionList.map(ex => `${ex.schedule_id}_${ex.exception_date}`));
     const realBatchDayKeys = new Set(
       (eventList || []).flatMap(e => (e.batches || []).map(b => `${b.id}_${(e.start_datetime||'').slice(0,10)}`))
     );
-    const rangeFrom = new Date(now); rangeFrom.setHours(0, 0, 0, 0);
+    const rangeFrom = new Date(); rangeFrom.setHours(0, 0, 0, 0);
     const rangeTo   = new Date(Date.now() + 60 * 86400000);
     const result = [];
     for (const sch of scheduleList) {
-      // batch_name is already in the schedule response (JOIN in scheduleController)
-      // so we don't need batchList at all — avoids stale-cache lookup failures
+      // batch_name comes from the JOIN in scheduleController — no batchList lookup needed
       const batchName = sch.batch_name;
       if (!batchName) continue;
       const dow = DOW[sch.day_of_week];
@@ -412,7 +414,7 @@ export default function DashboardPage() {
       }
     }
     return result;
-  })();
+  }, [scheduleList, exceptionList, eventList]);
 
   const upcomingEvents = [...(eventList || []), ...scheduleInstances]
     .filter(e => new Date(e.start_datetime) >= now)
