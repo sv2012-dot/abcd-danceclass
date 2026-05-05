@@ -316,7 +316,7 @@ export default function DashboardPage() {
   // ── Queries ──────────────────────────────────────────────────────────────────
   const { data: recitalList  = [] } = useQuery({ queryKey: ['recitals',  sid], queryFn: () => recitalApi.list(sid), enabled: !!sid, staleTime: 0 });
   const { data: studentList  = [] } = useQuery({ queryKey: ['students',  sid], queryFn: () => studentApi.list(sid), enabled: !!sid });
-  const { data: batchList    = [] } = useQuery({ queryKey: ['batches',   sid], queryFn: () => batchApi.list(sid),   enabled: !!sid, staleTime: 0 });
+  const { data: batchList    = [] } = useQuery({ queryKey: ['batches',   sid], queryFn: () => batchApi.list(sid),   enabled: !!sid, staleTime: 0  });
   const { data: todoRaw } = useQuery({ queryKey: ['todos', sid], queryFn: () => todoApi.list(sid), enabled: !!sid });
   const todoList = Array.isArray(todoRaw) ? todoRaw : (todoRaw?.todos || []);
   const { data: eventList    = [] } = useQuery({
@@ -377,15 +377,14 @@ export default function DashboardPage() {
     .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
   // Generate upcoming instances from recurring schedules (next 60 days)
   const scheduleInstances = useMemo(() => {
-    // DEBUG — remove once events show correctly on dashboard
-    console.log('[Dashboard:scheduleInstances] scheduleList.length =', scheduleList.length,
-      scheduleList[0]
-        ? `| first: ${scheduleList[0].day_of_week} batch_name="${scheduleList[0].batch_name}" batch_id=${scheduleList[0].batch_id}`
-        : '| (empty — query still loading)');
-
-    if (!scheduleList.length) return [];
+    if (!scheduleList.length || !batchList.length) return [];
+    const fmtDate = (d) => {
+      if (!d) return '';
+      if (d instanceof Date) return d.toISOString().slice(0, 10);
+      return String(d).slice(0, 10);
+    };
     const DOW = { Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6, Sun:0 };
-    const exceptionKeys = new Set(exceptionList.map(ex => `${ex.schedule_id}_${ex.exception_date}`));
+    const exceptionKeys = new Set(exceptionList.map(ex => `${ex.schedule_id}_${fmtDate(ex.exception_date)}`));
     const realBatchDayKeys = new Set(
       (eventList || []).flatMap(e => (e.batches || []).map(b => `${b.id}_${(e.start_datetime||'').slice(0,10)}`))
     );
@@ -393,17 +392,10 @@ export default function DashboardPage() {
     const rangeTo   = new Date(Date.now() + 60 * 86400000);
     const result = [];
     for (const sch of scheduleList) {
-      // batch_name comes from the JOIN in scheduleController — no batchList lookup needed
-      const batchName = sch.batch_name;
-      if (!batchName) {
-        console.log('[Dashboard:scheduleInstances] SKIP — missing batch_name on schedule id', sch.id, sch);
-        continue;
-      }
+      const batch = batchList.find(b => String(b.id) === String(sch.batch_id));
+      if (!batch) continue;
       const dow = DOW[sch.day_of_week];
-      if (dow === undefined) {
-        console.log('[Dashboard:scheduleInstances] SKIP — unknown day_of_week:', sch.day_of_week, 'on schedule id', sch.id);
-        continue;
-      }
+      if (dow === undefined) continue;
       const cur = new Date(rangeFrom);
       const diff = ((dow - cur.getDay()) + 7) % 7;
       cur.setDate(cur.getDate() + diff);
@@ -412,7 +404,7 @@ export default function DashboardPage() {
         if (!exceptionKeys.has(`${sch.id}_${ds}`) && !realBatchDayKeys.has(`${sch.batch_id}_${ds}`)) {
           result.push({
             id: `sched_${sch.id}_${ds}`,
-            title: batchName,
+            title: batch.name,
             type: 'Class',
             start_datetime: `${ds}T${sch.start_time || '00:00'}`,
             end_datetime:   `${ds}T${sch.end_time   || '01:00'}`,
@@ -422,9 +414,8 @@ export default function DashboardPage() {
         cur.setDate(cur.getDate() + 7);
       }
     }
-    console.log('[Dashboard:scheduleInstances] Generated', result.length, 'instances. First:', result[0]?.start_datetime);
     return result;
-  }, [scheduleList, exceptionList, eventList]);
+  }, [scheduleList, exceptionList, eventList, batchList]);
 
   const upcomingEvents = [...(eventList || []), ...scheduleInstances]
     .filter(e => new Date(e.start_datetime) >= now)
@@ -436,29 +427,6 @@ export default function DashboardPage() {
   const thisWeekEvents = [...(eventList || []), ...scheduleInstances]
     .filter(e => { const d = new Date(e.start_datetime); return d >= todayStart && d < weekEnd; })
     .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
-
-  // DEBUG — remove once confirmed working
-  console.log('[Dashboard] thisWeekEvents:', thisWeekEvents.length,
-    '| todayStart:', todayStart.toISOString(), '| weekEnd:', weekEnd.toISOString(),
-    '| scheduleInstances total:', scheduleInstances.length);
-
-  // VISIBLE DEBUG PANEL — renders on-screen so we can read state without DevTools
-  const _debugPanel = (
-    <div style={{
-      position: 'fixed', bottom: 12, right: 12, zIndex: 9999,
-      background: '#1e1b4b', color: '#a5b4fc', fontFamily: 'monospace',
-      fontSize: 11, padding: '8px 12px', borderRadius: 8,
-      border: '1px solid #4f46e5', lineHeight: 1.7, maxWidth: 320,
-      boxShadow: '0 4px 20px rgba(0,0,0,.5)',
-    }}>
-      <div style={{ fontWeight: 700, color: '#818cf8', marginBottom: 4 }}>🔍 Dashboard Debug</div>
-      <div>schedules: <b style={{color:'#fff'}}>{scheduleList.length}</b></div>
-      <div>instances: <b style={{color:'#fff'}}>{scheduleInstances.length}</b></div>
-      <div>thisWeek: <b style={{color:'#fff'}}>{thisWeekEvents.length}</b></div>
-      <div>batchName[0]: <b style={{color:'#fff'}}>"{scheduleList[0]?.batch_name ?? 'n/a'}"</b></div>
-      <div>day[0]: <b style={{color:'#fff'}}>{scheduleList[0]?.day_of_week ?? 'n/a'}</b></div>
-    </div>
-  );
 
   // All recitals sorted: upcoming soonest first, then past most-recent first
   const sortedRecitals = [...recitalList].sort((a, b) => {
@@ -568,7 +536,6 @@ export default function DashboardPage() {
   if (isMobile) {
     return (
       <div style={{ paddingBottom: 24, width: '100%', boxSizing: 'border-box' }}>
-        {_debugPanel}
         {/* Greeting */}
         <div style={{ marginBottom: 20 }}>
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 22, fontWeight: 800, color: C.ebony, marginBottom: 4, lineHeight: 1.2 }}>
@@ -649,7 +616,6 @@ export default function DashboardPage() {
   // ── DESKTOP LAYOUT ─────────────────────────────────────────────────────────────
   return (
     <div>
-      {_debugPanel}
       {/* Top row: greeting + action buttons */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, gap: 20 }}>
         <div>
