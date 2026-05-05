@@ -442,6 +442,24 @@ export default function DashboardPage() {
     '| todayStart:', todayStart.toISOString(), '| weekEnd:', weekEnd.toISOString(),
     '| scheduleInstances total:', scheduleInstances.length);
 
+  // VISIBLE DEBUG PANEL — renders on-screen so we can read state without DevTools
+  const _debugPanel = (
+    <div style={{
+      position: 'fixed', bottom: 12, right: 12, zIndex: 9999,
+      background: '#1e1b4b', color: '#a5b4fc', fontFamily: 'monospace',
+      fontSize: 11, padding: '8px 12px', borderRadius: 8,
+      border: '1px solid #4f46e5', lineHeight: 1.7, maxWidth: 320,
+      boxShadow: '0 4px 20px rgba(0,0,0,.5)',
+    }}>
+      <div style={{ fontWeight: 700, color: '#818cf8', marginBottom: 4 }}>🔍 Dashboard Debug</div>
+      <div>schedules: <b style={{color:'#fff'}}>{scheduleList.length}</b></div>
+      <div>instances: <b style={{color:'#fff'}}>{scheduleInstances.length}</b></div>
+      <div>thisWeek: <b style={{color:'#fff'}}>{thisWeekEvents.length}</b></div>
+      <div>batchName[0]: <b style={{color:'#fff'}}>"{scheduleList[0]?.batch_name ?? 'n/a'}"</b></div>
+      <div>day[0]: <b style={{color:'#fff'}}>{scheduleList[0]?.day_of_week ?? 'n/a'}</b></div>
+    </div>
+  );
+
   // All recitals sorted: upcoming soonest first, then past most-recent first
   const sortedRecitals = [...recitalList].sort((a, b) => {
     const ta = new Date(a.event_date).getTime(), tb = new Date(b.event_date).getTime();
@@ -550,6 +568,7 @@ export default function DashboardPage() {
   if (isMobile) {
     return (
       <div style={{ paddingBottom: 24, width: '100%', boxSizing: 'border-box' }}>
+        {_debugPanel}
         {/* Greeting */}
         <div style={{ marginBottom: 20 }}>
           <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 22, fontWeight: 800, color: C.ebony, marginBottom: 4, lineHeight: 1.2 }}>
@@ -630,6 +649,7 @@ export default function DashboardPage() {
   // ── DESKTOP LAYOUT ─────────────────────────────────────────────────────────────
   return (
     <div>
+      {_debugPanel}
       {/* Top row: greeting + action buttons */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, gap: 20 }}>
         <div>
