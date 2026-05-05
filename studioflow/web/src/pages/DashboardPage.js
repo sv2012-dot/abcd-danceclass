@@ -316,7 +316,7 @@ export default function DashboardPage() {
   // ── Queries ──────────────────────────────────────────────────────────────────
   const { data: recitalList  = [] } = useQuery({ queryKey: ['recitals',  sid], queryFn: () => recitalApi.list(sid), enabled: !!sid, staleTime: 0 });
   const { data: studentList  = [] } = useQuery({ queryKey: ['students',  sid], queryFn: () => studentApi.list(sid), enabled: !!sid });
-  const { data: batchList    = [] } = useQuery({ queryKey: ['batches',   sid], queryFn: () => batchApi.list(sid),   enabled: !!sid });
+  const { data: batchList    = [] } = useQuery({ queryKey: ['batches',   sid], queryFn: () => batchApi.list(sid),   enabled: !!sid, staleTime: 0 });
   const { data: todoRaw } = useQuery({ queryKey: ['todos', sid], queryFn: () => todoApi.list(sid), enabled: !!sid });
   const todoList = Array.isArray(todoRaw) ? todoRaw : (todoRaw?.todos || []);
   const { data: eventList    = [] } = useQuery({
@@ -327,16 +327,19 @@ export default function DashboardPage() {
       return eventApi.list(sid, { from, to });
     },
     enabled: !!sid,
+    staleTime: 0,
   });
   const { data: scheduleList = [] } = useQuery({
     queryKey: ['schedules', sid],
     queryFn:  () => schedulesApi.list(sid),
     enabled:  !!sid,
+    staleTime: 0,
   });
   const { data: exceptionList = [] } = useQuery({
     queryKey: ['schedule-exceptions', sid],
     queryFn:  () => exceptionsApi.list(sid),
     enabled:  !!sid,
+    staleTime: 0,
   });
 
   // ── Mutations ─────────────────────────────────────────────────────────────────
