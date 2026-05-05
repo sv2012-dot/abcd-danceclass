@@ -675,6 +675,9 @@ export default function DashboardPage() {
         <div>
           {/* THIS WEEK */}
           <SectionTitle first="THIS" accent="WEEK" onViewAll={() => navigate('/schedule')} />
+          <div style={{ fontSize: 11, color: C.boulder, marginBottom: 8, fontFamily: 'monospace' }}>
+            schedules: {scheduleList.length} | batches: {batchList.length} | allEvents: {allCalendarEvents.length} | thisWeek: {thisWeekEvents.length}
+          </div>
           <div style={{ background: C.white, borderRadius: 16, border: `1.5px solid ${C.border}`, overflow: 'hidden', marginBottom: 36 }}>
             {thisWeekEvents.length === 0
               ? <div style={{ padding: '28px 20px', color: C.grayChate, fontSize: 13, textAlign: 'center' }}>No events this week</div>
