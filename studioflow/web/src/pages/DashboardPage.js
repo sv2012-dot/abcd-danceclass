@@ -387,8 +387,10 @@ export default function DashboardPage() {
     const rangeTo   = new Date(Date.now() + 60 * 86400000);
     const result = [];
     for (const sch of scheduleList) {
-      const batch = batchList.find(b => String(b.id) === String(sch.batch_id));
-      if (!batch) continue;
+      // batch_name is already in the schedule response (JOIN in scheduleController)
+      // so we don't need batchList at all — avoids stale-cache lookup failures
+      const batchName = sch.batch_name;
+      if (!batchName) continue;
       const dow = DOW[sch.day_of_week];
       if (dow === undefined) continue;
       const cur = new Date(rangeFrom);
@@ -396,10 +398,10 @@ export default function DashboardPage() {
       cur.setDate(cur.getDate() + diff);
       while (cur <= rangeTo) {
         const ds = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
-        if (!exceptionKeys.has(`${sch.id}_${ds}`) && !realBatchDayKeys.has(`${batch.id}_${ds}`)) {
+        if (!exceptionKeys.has(`${sch.id}_${ds}`) && !realBatchDayKeys.has(`${sch.batch_id}_${ds}`)) {
           result.push({
             id: `sched_${sch.id}_${ds}`,
-            title: batch.name,
+            title: batchName,
             type: 'Class',
             start_datetime: `${ds}T${sch.start_time || '00:00'}`,
             end_datetime:   `${ds}T${sch.end_time   || '01:00'}`,
