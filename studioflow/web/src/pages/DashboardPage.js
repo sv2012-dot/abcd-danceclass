@@ -376,10 +376,13 @@ export default function DashboardPage() {
     })
     .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
   // Generate upcoming instances from recurring schedules (next 60 days)
-  // useMemo ensures this recomputes whenever scheduleList, exceptionList, or
-  // eventList change — the previous inline IIFE didn't guarantee recomputation
-  // after async data arrived, causing "No events this week" on the dashboard.
   const scheduleInstances = useMemo(() => {
+    // DEBUG — remove once events show correctly on dashboard
+    console.log('[Dashboard:scheduleInstances] scheduleList.length =', scheduleList.length,
+      scheduleList[0]
+        ? `| first: ${scheduleList[0].day_of_week} batch_name="${scheduleList[0].batch_name}" batch_id=${scheduleList[0].batch_id}`
+        : '| (empty — query still loading)');
+
     if (!scheduleList.length) return [];
     const DOW = { Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6, Sun:0 };
     const exceptionKeys = new Set(exceptionList.map(ex => `${ex.schedule_id}_${ex.exception_date}`));
@@ -392,9 +395,15 @@ export default function DashboardPage() {
     for (const sch of scheduleList) {
       // batch_name comes from the JOIN in scheduleController — no batchList lookup needed
       const batchName = sch.batch_name;
-      if (!batchName) continue;
+      if (!batchName) {
+        console.log('[Dashboard:scheduleInstances] SKIP — missing batch_name on schedule id', sch.id, sch);
+        continue;
+      }
       const dow = DOW[sch.day_of_week];
-      if (dow === undefined) continue;
+      if (dow === undefined) {
+        console.log('[Dashboard:scheduleInstances] SKIP — unknown day_of_week:', sch.day_of_week, 'on schedule id', sch.id);
+        continue;
+      }
       const cur = new Date(rangeFrom);
       const diff = ((dow - cur.getDay()) + 7) % 7;
       cur.setDate(cur.getDate() + diff);
@@ -413,6 +422,7 @@ export default function DashboardPage() {
         cur.setDate(cur.getDate() + 7);
       }
     }
+    console.log('[Dashboard:scheduleInstances] Generated', result.length, 'instances. First:', result[0]?.start_datetime);
     return result;
   }, [scheduleList, exceptionList, eventList]);
 
@@ -426,6 +436,11 @@ export default function DashboardPage() {
   const thisWeekEvents = [...(eventList || []), ...scheduleInstances]
     .filter(e => { const d = new Date(e.start_datetime); return d >= todayStart && d < weekEnd; })
     .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
+
+  // DEBUG — remove once confirmed working
+  console.log('[Dashboard] thisWeekEvents:', thisWeekEvents.length,
+    '| todayStart:', todayStart.toISOString(), '| weekEnd:', weekEnd.toISOString(),
+    '| scheduleInstances total:', scheduleInstances.length);
 
   // All recitals sorted: upcoming soonest first, then past most-recent first
   const sortedRecitals = [...recitalList].sort((a, b) => {
