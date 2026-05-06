@@ -103,62 +103,154 @@ function scrollToSection(id) {
 }
 
 // ── Nav ────────────────────────────────────────────────────────────────────────
-function NavBar({ onLogin, isMobile }) {
-  const [scrolled, setScrolled] = useState(false);
+function NavBar({ onLogin, isMobile, onPricing }) {
+  const [scrolled,  setScrolled]  = useState(false);
+  const [menuOpen,  setMenuOpen]  = useState(false);
+
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 40);
     window.addEventListener('scroll', fn);
     return () => window.removeEventListener('scroll', fn);
   }, []);
 
+  // Close drawer on any navigation
+  const navTo = (action) => { setMenuOpen(false); action(); };
+  const sectionTo = (id) => { setMenuOpen(false); scrollToSection(id); };
+
+  const NAV_LINK_STYLE = {
+    display:'block', width:'100%', padding:'16px 24px',
+    fontSize:16, fontWeight:600, color:'#E5E7EB',
+    textDecoration:'none', background:'none', border:'none',
+    borderBottom:'1px solid rgba(255,255,255,0.06)',
+    cursor:'pointer', textAlign:'left', transition:'background .15s',
+  };
+
   return (
-    <nav style={{
-      position:'fixed', top:0, left:0, right:0, zIndex:100,
-      background: scrolled ? 'rgba(10,8,20,0.94)' : 'transparent',
-      backdropFilter: scrolled ? 'blur(14px)' : 'none',
-      borderBottom: scrolled ? '1px solid rgba(124,58,237,0.18)' : 'none',
-      transition:'all .28s',
-      padding: isMobile ? '0 20px' : '0 48px', height:60,
-      display:'flex', alignItems:'center', justifyContent:'space-between',
-    }}>
-      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-        <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ height:26, width:26, display:'block', flexShrink:0 }} />
-        <span style={{ fontWeight:900, fontSize:19, letterSpacing:'-.02em', color:'#fff' }}>
-          Manch<span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>Q</span>
-        </span>
-      </div>
-      <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-        {!isMobile && <>
-          <a href="#features"  onClick={e => { e.preventDefault(); scrollToSection('features');  }} style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px', cursor:'pointer' }}>Features</a>
-          <a href="#why"       onClick={e => { e.preventDefault(); scrollToSection('why');       }} style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px', cursor:'pointer' }}>Why us</a>
-          <a href="#community" onClick={e => { e.preventDefault(); scrollToSection('community'); }} style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px', cursor:'pointer' }}>Community</a>
-        </>}
-        <button onClick={onLogin} style={{
-          padding: isMobile ? '8px 18px' : '9px 22px',
-          borderRadius:10, border:'none',
-          background:BTN_GRAD, color:'#fff',
-          fontWeight:700, fontSize:13, cursor:'pointer',
-          boxShadow:'0 2px 14px rgba(124,58,237,0.42)',
-          transition:'transform .15s, box-shadow .15s',
-          whiteSpace:'nowrap',
-        }}
-          onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 4px 20px rgba(124,58,237,0.55)'; }}
-          onMouseLeave={e=>{ e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow='0 2px 14px rgba(124,58,237,0.42)'; }}
-        >Log in →</button>
-      </div>
-    </nav>
+    <>
+      <nav style={{
+        position:'fixed', top:0, left:0, right:0, zIndex:200,
+        background: scrolled ? 'rgba(10,8,20,0.94)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(14px)' : 'none',
+        borderBottom: scrolled ? '1px solid rgba(124,58,237,0.18)' : 'none',
+        transition:'background .28s, backdropFilter .28s',
+        padding: isMobile ? '0 20px' : '0 48px', height:60,
+        display:'flex', alignItems:'center', justifyContent:'space-between',
+      }}>
+        {/* Logo */}
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ height:26, width:26, display:'block', flexShrink:0 }} />
+          <span style={{ fontWeight:900, fontSize:19, letterSpacing:'-.02em', color:'#fff' }}>
+            Manch<span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>Q</span>
+          </span>
+        </div>
+
+        {/* Desktop links + login */}
+        {!isMobile && (
+          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+            <a href="#features"  onClick={e => { e.preventDefault(); scrollToSection('features');  }} style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px', cursor:'pointer' }}>Features</a>
+            <a href="#why"       onClick={e => { e.preventDefault(); scrollToSection('why');       }} style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px', cursor:'pointer' }}>Why us</a>
+            <a href="#community" onClick={e => { e.preventDefault(); scrollToSection('community'); }} style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px', cursor:'pointer' }}>Community</a>
+            <a href="/pricing"   onClick={e => { e.preventDefault(); onPricing(); }}                 style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', textDecoration:'none', padding:'8px 14px', cursor:'pointer' }}>Pricing</a>
+            <button onClick={onLogin} style={{
+              padding:'9px 22px', borderRadius:10, border:'none',
+              background:BTN_GRAD, color:'#fff',
+              fontWeight:700, fontSize:13, cursor:'pointer',
+              boxShadow:'0 2px 14px rgba(124,58,237,0.42)',
+              transition:'transform .15s, box-shadow .15s', whiteSpace:'nowrap',
+            }}
+              onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 4px 20px rgba(124,58,237,0.55)'; }}
+              onMouseLeave={e=>{ e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow='0 2px 14px rgba(124,58,237,0.42)'; }}
+            >Log in →</button>
+          </div>
+        )}
+
+        {/* Mobile: hamburger */}
+        {isMobile && (
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            aria-label="Toggle menu"
+            style={{ background:'none', border:'none', cursor:'pointer', color:'#fff', padding:4, display:'flex', alignItems:'center' }}
+          >
+            {menuOpen ? (
+              // X icon
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            ) : (
+              // Hamburger icon
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <line x1="3" y1="6"  x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            )}
+          </button>
+        )}
+      </nav>
+
+      {/* Mobile overlay */}
+      {isMobile && menuOpen && (
+        <div
+          onClick={() => setMenuOpen(false)}
+          style={{ position:'fixed', inset:0, top:60, background:'rgba(0,0,0,0.55)', zIndex:198, backdropFilter:'blur(2px)' }}
+        />
+      )}
+
+      {/* Mobile slide-in drawer */}
+      {isMobile && (
+        <div style={{
+          position:'fixed', top:60, right:0, bottom:0,
+          width: Math.min(300, window.innerWidth * 0.82),
+          background:'rgba(12,9,24,0.98)',
+          borderLeft:'1px solid rgba(124,58,237,0.2)',
+          backdropFilter:'blur(20px)',
+          transform: menuOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition:'transform 0.26s cubic-bezier(0.4,0,0.2,1)',
+          zIndex:199, display:'flex', flexDirection:'column',
+          overflowY:'auto',
+        }}>
+          {/* Nav items */}
+          <nav style={{ flex:1, paddingTop:8 }}>
+            {[
+              { label:'Features',  action: () => sectionTo('features')  },
+              { label:'Why us',    action: () => sectionTo('why')        },
+              { label:'Community', action: () => sectionTo('community')  },
+              { label:'Pricing',   action: () => navTo(onPricing)        },
+            ].map(({ label, action }) => (
+              <button key={label} onClick={action} style={NAV_LINK_STYLE}
+                onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.05)'}
+                onMouseLeave={e => e.currentTarget.style.background='none'}
+              >{label}</button>
+            ))}
+          </nav>
+
+          {/* Login CTA at the bottom of the drawer */}
+          <div style={{ padding:'20px 24px', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
+            <button
+              onClick={() => navTo(onLogin)}
+              style={{
+                width:'100%', padding:'14px', borderRadius:12, border:'none',
+                background:BTN_GRAD, color:'#fff', fontWeight:700, fontSize:15,
+                cursor:'pointer', boxShadow:'0 4px 20px rgba(124,58,237,0.45)',
+              }}
+            >Log in →</button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function LandingPageA() {
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
-  const goLogin  = () => navigate('/login');
+  const navigate  = useNavigate();
+  const isMobile  = useIsMobile();
+  const goLogin   = () => navigate('/login');
+  const goPricing = () => navigate('/pricing');
 
   return (
     <div style={{ fontFamily:'var(--font-sans)', background:'#08060F', minHeight:'100vh', color:'#fff', overflowX:'hidden' }}>
-      <NavBar onLogin={goLogin} isMobile={isMobile} />
+      <NavBar onLogin={goLogin} isMobile={isMobile} onPricing={goPricing} />
 
       {/* ── Hero ───────────────────────────────────────────────────────── */}
       <section style={{
@@ -215,8 +307,7 @@ export default function LandingPageA() {
           </h1>
 
           <p style={{ fontSize: isMobile ? 16 : 18, color:'#fff', maxWidth:540, margin:'0 auto 40px', lineHeight:1.75, padding: isMobile ? '0 4px' : 0 }}>
-            You built your studio on passion. ManchQ makes sure the admin
-            never gets in the way — scheduling, students and recitals, all in one place.
+            Focus on your passion—ManchQ handles the rest. Schedules, students, recitals — no spreadsheets, no WhatsApp chaos, just freedom to dance.
           </p>
 
           {/* CTAs */}
@@ -252,7 +343,7 @@ export default function LandingPageA() {
           </div>
 
           <div style={{ marginTop:16, fontSize:13, color:'#9CA3AF' }}>
-            No credit card required · Set up in minutes
+            No credit card required to start. Set up in minutes
           </div>
         </div>
 
@@ -669,9 +760,10 @@ export default function LandingPageA() {
           © {new Date().getFullYear()} ManchQ · Made with care for dance studios. ·{' '}
           <a href="mailto:support@manchq.com" style={{ color:'#6a7fdb', textDecoration:'none' }}>support@manchq.com</a>
         </div>
-        <div style={{ fontSize:12, display:'flex', gap:16 }}>
+        <div style={{ fontSize:12, display:'flex', gap:16, flexWrap:'wrap', justifyContent: isMobile ? 'center' : 'flex-end' }}>
+          <a href="/pricing" onClick={e => { e.preventDefault(); goPricing(); }} style={{ color:'#6a7fdb', textDecoration:'none' }}>Pricing</a>
           <a href="/privacy" style={{ color:'#6a7fdb', textDecoration:'none' }}>Privacy Policy</a>
-          <a href="/terms" style={{ color:'#6a7fdb', textDecoration:'none' }}>Terms of Service</a>
+          <a href="/terms"   style={{ color:'#6a7fdb', textDecoration:'none' }}>Terms of Service</a>
         </div>
       </footer>
     </div>

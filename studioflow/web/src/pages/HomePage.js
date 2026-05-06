@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
-import { events as api, batches as batchesApi, students as studentsApi, schools, recitals as recitalApi, todos as todosApi } from "../api";
+import { events as api, batches as batchesApi, students as studentsApi, schools, recitals as recitalApi, todos as todosApi, schedules as schedulesApi, scheduleExceptions as scheduleExceptionsApi } from "../api";
 import toast from "react-hot-toast";
 import Button, { BTN_GRAD } from "../components/shared/Button";
 import Card from "../components/shared/Card";
@@ -435,6 +435,18 @@ function SchoolHomePage() {
     queryFn:  () => api.list(sid, { from: listFrom, to: listTo }),
     enabled:  !!sid,
   });
+  const { data: scheduleList=[] } = useQuery({
+    queryKey: ["schedules", sid],
+    queryFn:  () => schedulesApi.list(sid),
+    enabled:  !!sid,
+    staleTime: 0,
+  });
+  const { data: exceptionList=[] } = useQuery({
+    queryKey: ["scheduleExceptions", sid],
+    queryFn:  () => scheduleExceptionsApi.list(sid),
+    enabled:  !!sid,
+    staleTime: 0,
+  });
 
   // ── responsive ────────────────────────────────────────────────────────────
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -496,20 +508,132 @@ function SchoolHomePage() {
   }, [upcoming, featuredRecital, recitalList]);
 
   const upcomingClasses = useMemo(() => {
-    const now = new Date();
-    return (rawEvents||[])
-      .filter(e => new Date(e.start_datetime) >= now && e.type !== "Recital")
+    const now      = new Date();
+    const rangeEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30-day lookahead
+
+    // Manual/DB events that are upcoming and not Recitals
+    const manualUpcoming = (rawEvents||[]).filter(
+      e => new Date(e.start_datetime) >= now && e.type !== "Recital"
+    );
+
+    // Recurring schedule instances for the next 30 days
+    const DOW = { Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6, Sun:0 };
+    const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+
+    const exKeys = new Set(
+      (exceptionList||[]).map(ex => `${ex.schedule_id}_${(ex.exception_date||'').slice(0,10)}`)
+    );
+    const manualBatchDateKeys = new Set(
+      manualUpcoming.flatMap(ev =>
+        (ev.batches||[]).map(b => `${b.id}_${(ev.start_datetime||'').slice(0,10)}`)
+      )
+    );
+
+    const schedInstances = [];
+    for (const sch of (scheduleList||[])) {
+      const dow = DOW[sch.day_of_week];
+      if (dow === undefined) continue;
+      const name = sch.batch_name || 'Class';
+
+      const cur = new Date(todayMidnight);
+      cur.setDate(cur.getDate() + ((dow - cur.getDay() + 7) % 7));
+
+      while (cur <= rangeEnd) {
+        const y  = cur.getFullYear();
+        const mo = String(cur.getMonth()+1).padStart(2,'0');
+        const d  = String(cur.getDate()).padStart(2,'0');
+        const ds = `${y}-${mo}-${d}`;
+
+        if (!exKeys.has(`${sch.id}_${ds}`) && !manualBatchDateKeys.has(`${sch.batch_id}_${ds}`)) {
+          const startTime = (sch.start_time||'00:00').slice(0,5);
+          const endTime   = (sch.end_time  ||'01:00').slice(0,5);
+          const startDt   = new Date(`${ds}T${startTime}`);
+          if (startDt >= now) {
+            schedInstances.push({
+              id:             `sched_${sch.id}_${ds}`,
+              title:          name,
+              type:           'Class',
+              start_datetime: `${ds}T${startTime}`,
+              end_datetime:   `${ds}T${endTime}`,
+              location:       sch.room || '',
+              batches:        [],
+            });
+          }
+        }
+        cur.setDate(cur.getDate() + 7);
+      }
+    }
+
+    return [...manualUpcoming, ...schedInstances]
       .sort((a,b) => a.start_datetime.localeCompare(b.start_datetime))
-      .slice(0,3);
-  }, [rawEvents]);
+      .slice(0, 3);
+  }, [rawEvents, scheduleList, exceptionList]);
 
   const thisWeekEvents = useMemo(() => {
-    const now = new Date();
+    const now     = new Date();
     const weekOut = new Date(now.getTime() + 7 * 86400000);
-    return (rawEvents||[])
-      .filter(e => { const d = new Date(e.start_datetime); return d >= now && d <= weekOut; })
+
+    // 1. Manual/DB events within the window
+    const manualEvents = (rawEvents||[]).filter(e => {
+      const d = new Date(e.start_datetime);
+      return d >= now && d <= weekOut;
+    });
+
+    // 2. Recurring schedule instances
+    const DOW = { Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6, Sun:0 };
+    const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+
+    // Cancelled-day keys: "scheduleId_YYYY-MM-DD"
+    const exKeys = new Set(
+      (exceptionList||[]).map(ex => `${ex.schedule_id}_${(ex.exception_date||'').slice(0,10)}`)
+    );
+
+    // Dedup: skip schedule instance if a manual event already covers that batch+date
+    const manualBatchDateKeys = new Set(
+      manualEvents.flatMap(ev =>
+        (ev.batches||[]).map(b => `${b.id}_${(ev.start_datetime||'').slice(0,10)}`)
+      )
+    );
+
+    const schedInstances = [];
+    for (const sch of (scheduleList||[])) {
+      const dow = DOW[sch.day_of_week];
+      if (dow === undefined) continue;
+      const name = sch.batch_name || 'Class';
+
+      // Find the next occurrence of this day-of-week at or after today
+      const cur = new Date(todayMidnight);
+      cur.setDate(cur.getDate() + ((dow - cur.getDay() + 7) % 7));
+
+      // Within a 7-day window each DOW appears at most once
+      if (cur <= weekOut) {
+        const y  = cur.getFullYear();
+        const mo = String(cur.getMonth()+1).padStart(2,'0');
+        const d  = String(cur.getDate()).padStart(2,'0');
+        const ds = `${y}-${mo}-${d}`;
+
+        if (!exKeys.has(`${sch.id}_${ds}`) && !manualBatchDateKeys.has(`${sch.batch_id}_${ds}`)) {
+          const startTime = (sch.start_time||'00:00').slice(0,5);
+          const endTime   = (sch.end_time  ||'01:00').slice(0,5);
+          const startDt   = new Date(`${ds}T${startTime}`);
+          if (startDt >= now && startDt <= weekOut) {
+            schedInstances.push({
+              id:             `sched_${sch.id}_${ds}`,
+              title:          name,
+              type:           'Class',
+              start_datetime: `${ds}T${startTime}`,
+              end_datetime:   `${ds}T${endTime}`,
+              location:       sch.room || '',
+              batches:        [],
+            });
+          }
+        }
+      }
+    }
+
+    return [...manualEvents, ...schedInstances]
       .sort((a,b) => a.start_datetime.localeCompare(b.start_datetime));
-  }, [rawEvents]);
+  }, [rawEvents, scheduleList, exceptionList]);
 
   // ── mutations ─────────────────────────────────────────────────────────────
   const saveMutation = useMutation({
