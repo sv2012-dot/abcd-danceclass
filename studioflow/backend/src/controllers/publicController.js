@@ -42,6 +42,19 @@ exports.getRecital = async (req, res) => {
 // Vercel Edge Middleware proxies bot requests (WhatsApp/Telegram/etc.) here
 exports.ogPreview = async (req, res) => {
   function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmtDate(d) {
+    if (!d) return '';
+    try { return new Date(d).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric', timeZone:'UTC' }); }
+    catch { return ''; }
+  }
+  function fmtTime(t) {
+    if (!t) return '';
+    try {
+      const [h, m] = t.split(':');
+      const dt = new Date(0, 0, 0, parseInt(h, 10), parseInt(m, 10));
+      return dt.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+    } catch { return t; }
+  }
   try {
     const { schoolSlug, recitalSlug } = req.params;
     const APP_URL = process.env.APP_URL || 'https://manchq.com';
@@ -53,17 +66,38 @@ exports.ogPreview = async (req, res) => {
     if (!school) return res.status(404).send('Not found');
 
     const [recitals] = await pool.query(
-      'SELECT title, description, poster_url, event_date, venue FROM recitals WHERE school_id=? AND slug=? LIMIT 1',
+      'SELECT title, description, poster_url, event_date, event_time, venue FROM recitals WHERE school_id=? AND slug=? LIMIT 1',
       [school.id, recitalSlug]
     );
     const recital = recitals[0];
     const pageUrl = `${APP_URL}/${schoolSlug}/${recitalSlug}`;
-    const title   = recital ? `${recital.title} — ${school.name}` : school.name;
-    const desc    = recital?.description || `Join us for a performance by ${school.name}. RSVP now!`;
+
+    // Build a compelling title
+    const title = recital
+      ? `You're Invited: ${recital.title} — ${school.name}`
+      : `${school.name} — You're Invited`;
+
+    // Build a rich description with date, venue, and RSVP prompt
+    let desc;
+    if (recital) {
+      const datePart = fmtDate(recital.event_date);
+      const timePart = recital.event_time ? fmtTime(recital.event_time) : '';
+      const when = [datePart, timePart].filter(Boolean).join(', ');
+      const parts = [];
+      if (when)             parts.push(when);
+      if (recital.venue)    parts.push(`at ${recital.venue}`);
+      const header = parts.length ? parts.join(' ') + '.' : '';
+      const body   = recital.description ? recital.description.slice(0, 120) : '';
+      desc = [`${school.name} invites you to ${recital.title}.`, header, body, 'Tap to RSVP →'].filter(Boolean).join(' ');
+    } else {
+      desc = `${school.name} has sent you a recital invitation. Tap to see event details and RSVP.`;
+    }
+
     // Only use https:// image URLs — data: URIs are too large for OG
-    const image   = recital?.poster_url?.startsWith('https://') ? recital.poster_url : null;
+    const image = recital?.poster_url?.startsWith('https://') ? recital.poster_url : null;
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=60');
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -74,10 +108,15 @@ exports.ogPreview = async (req, res) => {
 <meta property="og:url" content="${esc(pageUrl)}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
-${image ? `<meta property="og:image" content="${esc(image)}">` : ''}
+<meta property="og:site_name" content="${esc(school.name)}">
+${image ? `<meta property="og:image" content="${esc(image)}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="${esc(recital?.title || school.name)}">` : ''}
 <meta name="twitter:card" content="${image ? 'summary_large_image' : 'summary'}">
 <meta name="twitter:title" content="${esc(title)}">
 <meta name="twitter:description" content="${esc(desc)}">
+<meta name="twitter:site" content="${esc(school.name)}">
 ${image ? `<meta name="twitter:image" content="${esc(image)}">` : ''}
 <meta http-equiv="refresh" content="0; url=${esc(pageUrl)}">
 </head>
