@@ -1,10 +1,13 @@
 /**
  * Vercel Serverless Function — OG preview proxy
  *
- * vercel.json routes /:school/:recital to this function ONLY when the
- * User-Agent matches a known link-preview bot (WhatsApp, Telegram, etc.).
- * Human browsers are never routed here — they hit the normal /(.*) → index.html rewrite.
+ * All /:school/:recital requests (without ?_h=1) land here.
+ * - Bots  → fetch OG HTML from backend and return it (rich WhatsApp/Telegram card)
+ * - Humans → redirect to same URL with ?_h=1, which skips this function and
+ *            hits the /(.*) → index.html rewrite so the React SPA loads normally
  */
+
+const BOT_UA = /facebot|facebookexternalhit|whatsapp|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|googlebot|bingbot|yandexbot|applebot|ia_archiver|pinterest|tumblr|vkshare/i;
 
 const BACKEND_URL =
   process.env.REACT_APP_API_URL?.replace('/api', '') ||
@@ -12,20 +15,24 @@ const BACKEND_URL =
 
 module.exports = async function handler(req, res) {
   const { school, recital } = req.query;
+  const ua = req.headers['user-agent'] || '';
 
-  if (!school || !recital) {
-    return res.status(400).send('Missing school or recital slug');
+  // Human browser — bounce back to the same URL with ?_h=1 so Vercel skips
+  // this function on the second hit and serves index.html instead
+  if (!BOT_UA.test(ua)) {
+    res.redirect(302, `/${school}/${recital}?_h=1`);
+    return;
   }
 
+  // Bot — proxy to the backend OG endpoint and return the preview HTML
   try {
-    const ogUrl = `${BACKEND_URL}/api/public/${school}/${recital}/og`;
-    const upstream = await fetch(ogUrl);
+    const upstream = await fetch(`${BACKEND_URL}/api/public/${school}/${recital}/og`);
     const html = await upstream.text();
-
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=60');
     res.status(upstream.status).send(html);
-  } catch (err) {
-    res.status(500).send('Error generating preview');
+  } catch {
+    // On error fall back to the SPA
+    res.redirect(302, `/${school}/${recital}?_h=1`);
   }
 };

@@ -64,6 +64,8 @@ function RSVPSection({ schoolSlug, recitalSlug, confirmedCount, setConfirmedCoun
 
   // Sync stored RSVP to parent CTA on first render
   useEffect(() => { if (stored?.response) onRsvpChange?.(stored.response); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Strip the internal routing bypass param (?_h=1) silently — humans never see it
+  useEffect(() => { if (window.location.search.includes('_h=')) window.history.replaceState({}, '', window.location.pathname); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isForm  = state === 'yes-form' || state === 'no-form';
   const isGoing = state === 'yes-form';
