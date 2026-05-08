@@ -93,8 +93,18 @@ exports.ogPreview = async (req, res) => {
       desc = `${school.name} has sent you a recital invitation. Tap to see event details and RSVP.`;
     }
 
-    // Only use https:// image URLs — data: URIs are too large for OG
-    const image = recital?.poster_url?.startsWith('https://') ? recital.poster_url : null;
+    // Only use https:// image URLs — data: URIs are too large for OG.
+    // For Cloudinary URLs, inject c_fill,w_1200,h_630 so WhatsApp gets a
+    // landscape crop without affecting what's stored or displayed in the app.
+    let image = null;
+    if (recital?.poster_url?.startsWith('https://')) {
+      const raw = recital.poster_url;
+      if (raw.includes('res.cloudinary.com') && raw.includes('/upload/')) {
+        image = raw.replace('/upload/', '/upload/c_fill,w_1200,h_630,q_auto/');
+      } else {
+        image = raw;
+      }
+    }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=60');

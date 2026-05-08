@@ -12,12 +12,14 @@ router.post('/image', auth(), async (req, res) => {
     return res.status(400).json({ error: 'data must be a base64 image data URL' });
   }
   try {
+    // Upload at original dimensions — no crop applied here.
+    // OG preview uses a URL-based transformation (c_fill,w_1200,h_630) appended
+    // in publicController so the stored image always matches what the user cropped.
     const result = await cloudinary.uploader.upload(data, {
       folder:        'recital-posters',
       resource_type: 'image',
-      transformation: [
-        { width: 1200, height: 630, crop: 'fill', quality: 'auto:good', fetch_format: 'auto' },
-      ],
+      quality:       'auto:good',
+      fetch_format:  'auto',
     });
     res.json({ url: result.secure_url });
   } catch (err) {
