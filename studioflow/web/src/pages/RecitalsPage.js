@@ -499,7 +499,20 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     setVolunteerModal(null);
   };
   const deleteVolunteer = (vid) => {
+    const vol = volunteers.find(v => v.id === vid);
     persistVolunteers(volunteers.filter(v => v.id !== vid));
+    // Also remove the matching entry from the invitees (participants) list
+    if (vol) {
+      const match = participants.find(p =>
+        p.name === vol.name &&
+        (p.email || '').toLowerCase() === (vol.email || '').toLowerCase()
+      );
+      if (match) {
+        api.deleteParticipant(sid, id, match.id)
+          .then(() => setParticipants(prev => prev.filter(p => p.id !== match.id)))
+          .catch(() => {});
+      }
+    }
     toast.success("Volunteer removed");
   };
 
