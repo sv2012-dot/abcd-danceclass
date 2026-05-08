@@ -338,11 +338,8 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
   const EMPTY_VENDOR = { name:"", service:"", contact:"", phone:"", status:"Pending" };
   const [vendorForm,     setVendorForm]     = useState(EMPTY_VENDOR);
 
-  // Volunteers state
-  const [volunteers,     setVolunteers]     = useState([]);
-  const [volunteerModal, setVolunteerModal] = useState(null);
-  const EMPTY_VOL = { name:"", role:"", email:"", phone:"", status:"Pending" };
-  const [volunteerForm,  setVolunteerForm]  = useState(EMPTY_VOL);
+  // Volunteers — derived from participants (see below), no separate state
+  const [editingVolId, setEditingVolId] = useState(null);
 
   // Program schedule state
   const EMPTY_PROG = { time:"", duration:"", title:"", performers:"", music_url:"", mc_notes:"", lighting_notes:"" };
@@ -398,6 +395,8 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
   const [showVolunteerInlineAdd, setShowVolunteerInlineAdd] = useState(false);
   const [volunteerInlineForm,    setVolunteerInlineForm]    = useState({ name:'', email:'', phone:'', role:'', plus_ones:0, rsvp_status:'Pending' });
   const PARTICIPANTS_KEY = `participants_${id}`;
+  // Volunteers = participants tagged as Volunteer type — derived, not separate state
+  const volunteers = participants.filter(p => p.type === 'Volunteer');
 
   // Overview section inline editing
   const [overviewEditing, setOverviewEditing] = useState(null); // 'description' or 'info' or null
@@ -428,8 +427,6 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     const savedVendors = localStorage.getItem(VENDORS_KEY);
     if (savedVendors) { try { setVendors(JSON.parse(savedVendors)); } catch {} }
 
-    const savedVols = localStorage.getItem(VOLUNTEERS_KEY);
-    if (savedVols) { try { setVolunteers(JSON.parse(savedVols)); } catch {} }
 
     const savedProg = localStorage.getItem(PROGRAM_KEY);
     if (savedProg) { try { setProgramItems(JSON.parse(savedProg)); } catch {} }
@@ -480,41 +477,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     toast.success("Vendor removed");
   };
 
-  // ── Volunteers CRUD ──────────────────────────────────────────────────────
-  const persistVolunteers = (list) => {
-    setVolunteers(list);
-    localStorage.setItem(VOLUNTEERS_KEY, JSON.stringify(list));
-  };
-  const openAddVolunteer  = () => { setVolunteerForm(EMPTY_VOL); setVolunteerModal({}); };
-  const openEditVolunteer = (v) => { setVolunteerForm({ name:v.name, role:v.role, email:v.email, phone:v.phone, status:v.status }); setVolunteerModal(v); };
-  const saveVolunteer = () => {
-    if (!volunteerForm.name.trim()) { toast.error("Name is required"); return; }
-    if (volunteerModal?.id) {
-      persistVolunteers(volunteers.map(v => v.id === volunteerModal.id ? { ...v, ...volunteerForm } : v));
-      toast.success("Volunteer updated");
-    } else {
-      persistVolunteers([...volunteers, { ...volunteerForm, id: Date.now() }]);
-      toast.success("Volunteer added");
-    }
-    setVolunteerModal(null);
-  };
-  const deleteVolunteer = (vid) => {
-    const vol = volunteers.find(v => v.id === vid);
-    persistVolunteers(volunteers.filter(v => v.id !== vid));
-    // Also remove the matching entry from the invitees (participants) list
-    if (vol) {
-      const match = participants.find(p =>
-        p.name === vol.name &&
-        (p.email || '').toLowerCase() === (vol.email || '').toLowerCase()
-      );
-      if (match) {
-        api.deleteParticipant(sid, id, match.id)
-          .then(() => setParticipants(prev => prev.filter(p => p.id !== match.id)))
-          .catch(() => {});
-      }
-    }
-    toast.success("Volunteer removed");
-  };
+  // ── Volunteers — filtered view of participants, no separate state ─────────
 
   // ── Inline Edit Event helpers ────────────────────────────────────────────
   const updateMutation = useMutation({
@@ -844,18 +807,6 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     }
   }, [sid, id]);
 
-  // Cross-add a participant as a volunteer in localStorage when type===Volunteer
-  const crossAddVolunteer = (p) => {
-    if (p.type !== 'Volunteer') return;
-    setVolunteers(prev => {
-      const exists = prev.find(v => v.name === p.name && (v.email === p.email || (!v.email && !p.email)));
-      if (exists) return prev;
-      const updated = [...prev, { id: Date.now(), name: p.name, email: p.email || '', phone: p.phone || '', role: p.role || '', status: p.rsvp_status === 'Confirmed' ? 'Confirmed' : 'Pending' }];
-      localStorage.setItem(VOLUNTEERS_KEY, JSON.stringify(updated));
-      return updated;
-    });
-  };
-
   const addParticipantMut = useMutation({
     mutationFn: (data) => api.addParticipant(sid, id, data),
     onSuccess: (newPart) => {
@@ -864,8 +815,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
       setVolunteerInlineForm({ name:'', email:'', phone:'', role:'', plus_ones:0, rsvp_status:'Pending' });
       setShowVolunteerInlineAdd(false);
       if (isMobile) setShowQuickAdd(false);
-      crossAddVolunteer(newPart);
-      toast.success(newPart.type === 'Volunteer' ? "Added as Invitee & Volunteer" : "Invitee added");
+      toast.success(newPart.type === 'Volunteer' ? "Volunteer added" : "Invitee added");
     },
     onError: (err) => toast.error(err?.error || err?.message || "Failed to add participant"),
   });
@@ -875,10 +825,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     onSuccess: (updated) => {
       setParticipants(prev => prev.map(p => p.id === updated.id ? updated : p));
       setEditingParticipantId(null);
+      setEditingVolId(null);
       setEditingParticipantForm({});
-      crossAddVolunteer(updated);
     },
-    onError: () => toast.error("Failed to update participant"),
+    onError: () => toast.error("Failed to update"),
   });
 
   const deleteParticipantMut = useMutation({
@@ -2291,97 +2241,105 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                 );
               })()}
 
-              {/* Volunteer list — only rendered when there are volunteers */}
+              {/* Volunteer list — derived from participants where type=Volunteer */}
               <div style={{ padding: volunteers.length > 0 ? "0 16px 16px" : 0 }}>
-            {volunteers.length > 0 && (isMobile ? (
-              /* ── MOBILE: card-per-volunteer ── */
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                {volunteers.map((v) => (
-                  <div key={v.id} style={{ background:"var(--card)", borderRadius:12, border:"1px solid var(--border)", overflow:"hidden" }}>
-                    {/* Card header */}
-                    <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", background:"var(--surface)", borderBottom:"1px solid var(--border)" }}>
-                      <div style={{
-                        width:36, height:36, borderRadius:"50%", flexShrink:0,
-                        background:`linear-gradient(135deg, hsl(${avatarHue(v.name)},55%,50%), hsl(${(avatarHue(v.name)+30)%360},55%,42%))`,
-                        display:"flex", alignItems:"center", justifyContent:"center",
-                        fontSize:13, fontWeight:800, color:"#fff", letterSpacing:".04em",
-                      }}>{initials(v.name)}</div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v.name}</div>
-                        {v.role && <div style={{ fontSize:12, color:"var(--muted)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v.role}</div>}
+            {volunteers.length > 0 && (() => {
+              const vFInp = { padding:"7px 10px", borderRadius:7, border:"1.5px solid var(--border)", fontSize:13, background:"var(--card)", color:"var(--text)", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit", appearance:"none", WebkitAppearance:"none" };
+              return (
+                <div style={{ display:"flex", flexDirection:"column", gap: isMobile ? 10 : 0, borderRadius:8, overflow: isMobile ? "visible" : "hidden" }}>
+                  {volunteers.map((p, i) => {
+                    const isEditing = editingVolId === p.id;
+                    const ef = editingParticipantForm;
+                    const rsvpColor = { Confirmed:"#10B981", Declined:"#EF4444", Pending:"#F59E0B" }[p.rsvp_status] || "#F59E0B";
+                    const rsvpLabel = { Confirmed:"✓ Confirmed", Declined:"✗ Declined", Pending:"⏱ Pending" }[p.rsvp_status] || p.rsvp_status;
+                    const rowBg = i % 2 === 0 ? "var(--card)" : "var(--surface)";
+                    const openEdit = () => { setEditingVolId(p.id); setEditingParticipantId(null); setEditingParticipantForm({ name:p.name||'', email:p.email||'', phone:p.phone||'', type:p.type||'Volunteer', plus_ones:p.plus_ones||0, rsvp_status:p.rsvp_status||'Pending', role:p.role||'' }); };
+
+                    if (isEditing) {
+                      return (
+                        <div key={p.id} style={{ ...(isMobile ? { borderRadius:12, border:"1px solid var(--border)", overflow:"hidden" } : { borderBottom:"1px solid var(--border)", borderLeft:"3px solid var(--accent)" }), background:"var(--surface)" }}>
+                          <div style={{ padding:"12px 14px", display:"flex", flexDirection:"column", gap:8 }}>
+                            <input autoFocus placeholder="Name *" value={ef.name||''} onChange={e => setEditingParticipantForm(f => ({...f, name:e.target.value}))} style={vFInp} />
+                            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                              <input type="email" placeholder="Email" value={ef.email||''} onChange={e => setEditingParticipantForm(f => ({...f, email:e.target.value}))} style={vFInp} />
+                              <input placeholder="Phone" value={ef.phone||''} onChange={e => setEditingParticipantForm(f => ({...f, phone:e.target.value}))} style={vFInp} />
+                            </div>
+                            <input placeholder="Role / Task (optional)" value={ef.role||''} onChange={e => setEditingParticipantForm(f => ({...f, role:e.target.value}))} style={vFInp} />
+                            <div style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:8 }}>
+                              <select value={ef.rsvp_status||'Pending'} onChange={e => setEditingParticipantForm(f => ({...f, rsvp_status:e.target.value}))} style={{...vFInp, cursor:"pointer"}}>
+                                <option value="Pending">Pending</option>
+                                <option value="Confirmed">Confirmed</option>
+                                <option value="Declined">Declined</option>
+                              </select>
+                              <div style={{ display:"flex", gap:6 }}>
+                                <button onClick={() => updateParticipantMut.mutate({ participantId:p.id, ...ef })} disabled={updateParticipantMut.isPending}
+                                  style={{ padding:"7px 16px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:7, fontWeight:700, fontSize:13, cursor:"pointer", whiteSpace:"nowrap" }}>
+                                  {updateParticipantMut.isPending ? "…" : "Save"}
+                                </button>
+                                <button onClick={() => { setEditingVolId(null); setEditingParticipantForm({}); }}
+                                  style={{ padding:"7px 12px", background:"none", border:"1px solid var(--border)", borderRadius:7, fontWeight:600, fontSize:13, cursor:"pointer", color:"var(--muted)", whiteSpace:"nowrap" }}>
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return isMobile ? (
+                      /* ── MOBILE: card ── */
+                      <div key={p.id} style={{ background:"var(--card)", borderRadius:12, border:"1px solid var(--border)", overflow:"hidden" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", background:"var(--surface)", borderBottom:"1px solid var(--border)" }}>
+                          <div style={{ width:36, height:36, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, hsl(${avatarHue(p.name)},55%,50%), hsl(${(avatarHue(p.name)+30)%360},55%,42%))`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color:"#fff", letterSpacing:".04em" }}>{initials(p.name)}</div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontWeight:700, fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</div>
+                            {p.role && <div style={{ fontSize:12, color:"var(--muted)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.role}</div>}
+                          </div>
+                          <div style={{ display:"flex", gap:5, flexShrink:0 }}>
+                            <button onClick={openEdit} title="Edit" style={{ width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid var(--border)", background:"none", cursor:"pointer", color:"var(--muted)" }}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                            <button onClick={() => { if (window.confirm(`Remove ${p.name}?`)) deleteParticipantMut.mutate(p.id); }} title="Remove" style={{ width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid #fecaca", background:"none", cursor:"pointer", color:"#e05c6a" }}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                            </button>
+                          </div>
+                        </div>
+                        <div style={{ padding:"12px 14px", display:"flex", flexDirection:"column", gap:8 }}>
+                          <span style={{ alignSelf:"flex-start", fontSize:11, padding:"4px 12px", borderRadius:20, fontWeight:700, background:rsvpColor+"20", color:rsvpColor }}>{rsvpLabel}</span>
+                          {p.email && <div style={{ fontSize:12, color:"var(--muted)", display:"flex", alignItems:"center", gap:6 }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                            {p.email}
+                          </div>}
+                          {p.phone && <div style={{ fontSize:12, color:"var(--muted)", display:"flex", alignItems:"center", gap:6 }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.56 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            {p.phone}
+                          </div>}
+                        </div>
                       </div>
-                      <div style={{ display:"flex", gap:5, flexShrink:0 }}>
-                        <button onClick={() => openEditVolunteer(v)} title="Edit" style={{ width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid var(--border)", background:"none", cursor:"pointer", color:"var(--muted)" }}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
-                        <button onClick={() => { if (window.confirm(`Remove ${v.name}?`)) deleteVolunteer(v.id); }} title="Remove" style={{ width:30, height:30, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid #fecaca", background:"none", cursor:"pointer", color:"#e05c6a" }}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                        </button>
+                    ) : (
+                      /* ── DESKTOP: row ── */
+                      <div key={p.id} style={{ display:"flex", alignItems:"center", padding:"14px 12px", gap:14, background:rowBg, borderBottom: i < volunteers.length - 1 ? "1px solid var(--border)" : "none" }}>
+                        <div style={{ width:42, height:42, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, hsl(${avatarHue(p.name)},55%,50%), hsl(${(avatarHue(p.name)+30)%360},55%,42%))`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:800, color:"#fff", letterSpacing:".04em" }}>{initials(p.name)}</div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontWeight:700, fontSize:14, marginBottom:2, color:"var(--text)" }}>{p.name}</div>
+                          {p.role && <div style={{ fontSize:12, color:"var(--muted)", marginBottom:1 }}>{p.role}</div>}
+                          <div style={{ fontSize:11, display:"flex", gap:10 }}>
+                            {p.email && <span style={{ color:"var(--muted)" }}>{p.email}</span>}
+                            {p.phone && <span style={{ color:"var(--muted)" }}>{p.phone}</span>}
+                          </div>
+                        </div>
+                        <span style={{ fontSize:11, padding:"5px 13px", borderRadius:20, fontWeight:700, flexShrink:0, background:rsvpColor+"20", color:rsvpColor }}>{rsvpLabel}</span>
+                        <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+                          <button onClick={openEdit} title="Edit" style={{ padding:"5px 10px", fontSize:11, border:"1px solid var(--border)", borderRadius:7, background:"none", cursor:"pointer", color:"var(--muted)", fontWeight:600 }}>Edit</button>
+                          <button onClick={() => { if (window.confirm(`Remove ${p.name}?`)) deleteParticipantMut.mutate(p.id); }} title="Remove" style={{ padding:"5px 10px", fontSize:11, border:"1px solid #fecaca", borderRadius:7, background:"none", cursor:"pointer", color:"#e05c6a", fontWeight:600 }}>Remove</button>
+                        </div>
                       </div>
-                    </div>
-                    {/* Card body */}
-                    <div style={{ padding:"12px 14px", display:"flex", flexDirection:"column", gap:8 }}>
-                      <span style={{
-                        alignSelf:"flex-start", fontSize:11, padding:"4px 12px", borderRadius:20, fontWeight:700,
-                        background: v.status === "Confirmed" ? "#52c4a020" : "#f4a04120",
-                        color:      v.status === "Confirmed" ? "#52c4a0"   : "#f4a041",
-                      }}>{v.status === "Confirmed" ? "✓ " : "⏱ "}{v.status}</span>
-                      {v.email && <div style={{ fontSize:12, color:"var(--muted)", display:"flex", alignItems:"center", gap:6 }}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                        {v.email}
-                      </div>}
-                      {v.phone && <div style={{ fontSize:12, color:"var(--muted)", display:"flex", alignItems:"center", gap:6 }}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.56 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                        {v.phone}
-                      </div>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              /* ── DESKTOP: table-style list ── */
-              <div style={{ borderRadius:8, overflow:"hidden" }}>
-                {volunteers.map((v, i) => (
-                  <div key={v.id} style={{
-                    display:"flex", alignItems:"center", padding:"14px 12px", gap:14,
-                    background: i % 2 === 0 ? "var(--card)" : "var(--surface)",
-                    borderBottom: i < volunteers.length - 1 ? "1px solid var(--border)" : "none",
-                  }}>
-                    <div style={{
-                      width:42, height:42, borderRadius:"50%", flexShrink:0,
-                      background:`linear-gradient(135deg, hsl(${avatarHue(v.name)},55%,50%), hsl(${(avatarHue(v.name)+30)%360},55%,42%))`,
-                      display:"flex", alignItems:"center", justifyContent:"center",
-                      fontSize:14, fontWeight:800, color:"#fff", letterSpacing:".04em",
-                    }}>{initials(v.name)}</div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:700, fontSize:14, marginBottom:2, textDecoration:"none", color:"var(--text)" }}>{v.name}</div>
-                      {v.role && <div style={{ fontSize:12, color:"var(--muted)", marginBottom:1, textDecoration:"none" }}>{v.role}</div>}
-                      <div style={{ fontSize:11, color:"var(--muted)", display:"flex", gap:10 }}>
-                        {v.email && <span style={{ textDecoration:"none", color:"var(--muted)" }}>{v.email}</span>}
-                        {v.phone && <span style={{ textDecoration:"none", color:"var(--muted)" }}>{v.phone}</span>}
-                      </div>
-                    </div>
-                    <span style={{
-                      fontSize:11, padding:"5px 13px", borderRadius:20, fontWeight:700, flexShrink:0,
-                      background: v.status === "Confirmed" ? "#52c4a020" : "#f4a04120",
-                      color:      v.status === "Confirmed" ? "#52c4a0"   : "#f4a041",
-                    }}>
-                      {v.status === "Confirmed" ? "✓ " : "⏱ "}{v.status}
-                    </span>
-                    <div style={{ display:"flex", gap:6, flexShrink:0 }}>
-                      <button onClick={() => openEditVolunteer(v)} title="Edit" style={{
-                        padding:"5px 10px", fontSize:11, border:"1px solid var(--border)",
-                        borderRadius:7, background:"none", cursor:"pointer", color:"var(--muted)", fontWeight:600,
-                      }}>Edit</button>
-                      <button onClick={() => { if (window.confirm(`Remove ${v.name}?`)) deleteVolunteer(v.id); }} title="Remove" style={{
-                        padding:"5px 10px", fontSize:11, border:"1px solid #fecaca",
-                        borderRadius:7, background:"none", cursor:"pointer", color:"#e05c6a", fontWeight:600,
-                      }}>Remove</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
+                    );
+                  })}
+                </div>
+              );
+            })()}
               </div>{/* closes volunteer list padding wrapper */}
 
               {/* ── Sign Up Genius row ── */}
@@ -2452,53 +2410,6 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
 
             </div>{/* closes volunteers island */}
 
-            {/* Add / Edit volunteer modal */}
-            {volunteerModal !== null && (
-              <Modal title={volunteerModal?.id ? "Edit Volunteer" : "Add Volunteer"} onClose={() => setVolunteerModal(null)}>
-                <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-                  {[
-                    { label:"Name", field:"name", placeholder:"Parent name" },
-                    { label:"Role / Task", field:"role", placeholder:"e.g. Ticket table, Backstage helper" },
-                    { label:"Email", field:"email", placeholder:"email@example.com" },
-                    { label:"Phone", field:"phone", placeholder:"(555) 000-0000" },
-                  ].map(({ label, field, placeholder }) => (
-                    <div key={field}>
-                      <label style={{ fontSize:12, fontWeight:700, display:"block", marginBottom:5, color:"var(--muted)" }}>{label}</label>
-                      <input
-                        value={volunteerForm[field] || ""}
-                        onChange={e => setVolunteerForm(f => ({ ...f, [field]: e.target.value }))}
-                        placeholder={placeholder}
-                        style={{
-                          width:"100%", boxSizing:"border-box", padding:"9px 13px",
-                          border:"1.5px solid var(--border)", borderRadius:9,
-                          fontSize:13, background:"var(--surface)", color:"var(--text)",
-                          outline:"none", fontFamily:"inherit",
-                        }}
-                      />
-                    </div>
-                  ))}
-                  <div>
-                    <label style={{ fontSize:12, fontWeight:700, display:"block", marginBottom:5, color:"var(--muted)" }}>Status</label>
-                    <select
-                      value={volunteerForm.status || "Pending"}
-                      onChange={e => setVolunteerForm(f => ({ ...f, status: e.target.value }))}
-                      style={{
-                        width:"100%", padding:"9px 13px", border:"1.5px solid var(--border)",
-                        borderRadius:9, fontSize:13, background:"var(--surface)",
-                        color:"var(--text)", outline:"none", fontFamily:"inherit",
-                      }}
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="Confirmed">Confirmed</option>
-                    </select>
-                  </div>
-                  <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:4 }}>
-                    <Button variant="secondary" onClick={() => setVolunteerModal(null)}>Cancel</Button>
-                    <Button onClick={saveVolunteer}>{volunteerModal?.id ? "Save Changes" : "Add Volunteer"}</Button>
-                  </div>
-                </div>
-              </Modal>
-            )}
           </div>
         )}
 
