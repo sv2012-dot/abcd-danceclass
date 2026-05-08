@@ -63,6 +63,7 @@ export const recitals = {
   deleteTask: (schoolId, id, taskId) => api.delete(`/schools/${schoolId}/recitals/${id}/tasks/${taskId}`),
   listParticipants: (schoolId, id) => api.get(`/schools/${schoolId}/recitals/${id}/participants`),
   addParticipant: (schoolId, id, data) => api.post(`/schools/${schoolId}/recitals/${id}/participants`, data),
+  updateParticipant: (schoolId, id, participantId, data) => api.put(`/schools/${schoolId}/recitals/${id}/participants/${participantId}`, data),
   updateParticipantRsvp: (schoolId, id, participantId, rsvp_status) => api.put(`/schools/${schoolId}/recitals/${id}/participants/${participantId}`, { rsvp_status }),
   deleteParticipant: (schoolId, id, participantId) => api.delete(`/schools/${schoolId}/recitals/${id}/participants/${participantId}`),
 };

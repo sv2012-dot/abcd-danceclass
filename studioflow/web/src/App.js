@@ -20,6 +20,7 @@ import LandingPageC from './pages/LandingPageC';
 import PricingPage from './pages/PricingPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
+import RecitalPublicPage from './pages/RecitalPublicPage';
 import AppShell from './components/shared/AppShell';
 
 const LOADING = (
@@ -53,6 +54,7 @@ function AppRoutes() {
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
+      <Route path="/:schoolSlug/:recitalSlug" element={<RecitalPublicPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/" element={<RootGuard />}>

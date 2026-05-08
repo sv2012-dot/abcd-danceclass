@@ -387,9 +387,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
   const [metaSaving,     setMetaSaving]     = useState(false);
 
   // Participants state
-  const [participants,   setParticipants]   = useState([]);
-  const [participantModal, setParticipantModal] = useState(null); // null=closed, {}=new, {id,...}=edit
-  const [participantForm, setParticipantForm] = useState({});
+  const [participants,        setParticipants]        = useState([]);
+  const [editingParticipantId, setEditingParticipantId] = useState(null);
+  const [editingParticipantForm, setEditingParticipantForm] = useState({});
+  const [quickAdd,            setQuickAdd]            = useState({ name:'', email:'', type:'Performer', plus_ones:0, rsvp_status:'Pending' });
   const PARTICIPANTS_KEY = `participants_${id}`;
 
   // Overview section inline editing
@@ -809,20 +810,20 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     mutationFn: (data) => api.addParticipant(sid, id, data),
     onSuccess: (newPart) => {
       setParticipants(prev => [...prev, newPart]);
-      setParticipantModal(null);
-      setParticipantForm({});
+      setQuickAdd({ name:'', email:'', type:'Performer', plus_ones:0, rsvp_status:'Pending' });
       toast.success("Participant added");
     },
-    onError: (err) => toast.error(err.error || "Failed to add participant"),
+    onError: (err) => toast.error(err?.response?.data?.error || "Failed to add participant"),
   });
 
   const updateParticipantMut = useMutation({
-    mutationFn: ({ participantId, rsvp_status }) => api.updateParticipantRsvp(sid, id, participantId, rsvp_status),
+    mutationFn: ({ participantId, ...data }) => api.updateParticipant(sid, id, participantId, data),
     onSuccess: (updated) => {
       setParticipants(prev => prev.map(p => p.id === updated.id ? updated : p));
-      toast.success("RSVP status updated");
+      setEditingParticipantId(null);
+      setEditingParticipantForm({});
     },
-    onError: () => toast.error("Failed to update RSVP status"),
+    onError: () => toast.error("Failed to update participant"),
   });
 
   const deleteParticipantMut = useMutation({
@@ -915,7 +916,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     { id:"overview",   label:"Overview",          shortLabel:"Overview",  icon:"home"        },
     { id:"program",    label:"Program Schedule",  shortLabel:"Program",   icon:"list"        },
     { id:"venue",      label:"Venue",             shortLabel:"Venue",     icon:"map-pin"     },
-    { id:"invitees",   label:"Invitees",          shortLabel:"Invitees",  icon:"users"       },
+    { id:"invitees",   label:`Invitees${recital.rsvp_stats?.confirmed > 0 ? ` · ${recital.rsvp_stats.confirmed} confirmed` : ""}`, shortLabel:"Invitees",  icon:"users"       },
     { id:"vendors",    label:"Vendors",           shortLabel:"Vendors",   icon:"package"     },
     { id:"tasks",      label:`To-Dos${recitalTodos.length ? ` (${done}/${recitalTodos.length})` : ""}`, shortLabel:"To-Dos", icon:"check-circle" },
   ];
@@ -976,8 +977,26 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                 <ArrowLeft /> Back
               </button>
 
-              {/* Right: photo · star · delete */}
+              {/* Right: photo · star · public · duplicate · delete */}
               <div style={{ display:"flex", gap:8 }}>
+                {/* Public page */}
+                {recital.slug && (
+                  <button
+                    onClick={() => window.open(`/${recital.school_slug}/${recital.slug}`, '_blank')}
+                    title="Open public event page"
+                    style={{
+                      width:34, height:34, borderRadius:"50%", cursor:"pointer",
+                      background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)",
+                      border:"1px solid rgba(255,255,255,.22)",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.85)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                      <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                  </button>
+                )}
                 {/* Photo upload / change */}
                 <label style={{
                   width:34, height:34, borderRadius:"50%", cursor:"pointer",
@@ -1220,6 +1239,27 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                   </svg>
                   Edit Event
                 </button>
+                {/* Preview public page */}
+                {recital.slug && (
+                  <button
+                    onClick={() => window.open(`/${recital.school_slug}/${recital.slug}`, '_blank')}
+                    title="Preview public event page"
+                    style={{
+                      display:"inline-flex", alignItems:"center", gap:6,
+                      padding:"9px 18px", borderRadius:10, border:"1.5px solid var(--border)",
+                      background:"var(--card)", cursor:"pointer", fontSize:13, fontWeight:600,
+                      color:"var(--text)", transition:"all .15s",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background="var(--surface)"}
+                    onMouseLeave={e => e.currentTarget.style.background="var(--card)"}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                      <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                    Public page
+                  </button>
+                )}
                 {/* Duplicate */}
                 <button onClick={() => duplicateRecitalMutation.mutate()} title="Duplicate recital" style={{
                   display:"inline-flex", alignItems:"center", gap:6,
@@ -1927,64 +1967,173 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
           <div>
             {/* Participants Section */}
             <div style={{ marginBottom: 32 }}>
-              <div style={{ display:"flex", flexDirection: isMobile ? "column" : "row", justifyContent:"space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: isMobile ? 12 : 0, marginBottom:20 }}>
-                <SectionHead title="Participants" sub="Attendees and RSVP status" />
-                <Button size="sm" onClick={() => { setParticipantForm({}); setParticipantModal({}); }} style={{ width: isMobile ? "100%" : "auto" }}>Add Participant</Button>
-              </div>
+              <SectionHead title="Participants" sub="Attendees and RSVP status · click any row to edit" />
 
-              {participants.length === 0 ? (
-                <div style={{ color:"var(--muted)", fontSize:13, padding:"20px", textAlign:"center", background:"var(--surface)", borderRadius:12 }}>No participants yet</div>
-              ) : (
-                <div style={{ overflowX:"auto" }}>
-                  <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
-                    <thead>
-                      <tr style={{ borderBottom:"1px solid var(--border)" }}>
-                        <th style={{ padding:"12px", textAlign:"left", fontWeight:700, color:"var(--muted)" }}>Email</th>
-                        <th style={{ padding:"12px", textAlign:"left", fontWeight:700, color:"var(--muted)" }}>Guest</th>
-                        <th style={{ padding:"12px", textAlign:"left", fontWeight:700, color:"var(--muted)" }}>RSVP Status</th>
-                        <th style={{ padding:"12px", textAlign:"center", fontWeight:700, color:"var(--muted)" }}>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {participants.map(p => (
-                        <tr key={p.id} style={{ borderBottom:"1px solid var(--border)" }}>
-                          <td style={{ padding:"12px", color:"var(--text)" }}>{p.email}</td>
-                          <td style={{ padding:"12px", color:"var(--muted)" }}>{p.is_guest ? "Yes" : "No"}</td>
-                          <td style={{ padding:"12px" }}>
-                            <select value={p.rsvp_status} onChange={e => updateParticipantMut.mutate({ participantId: p.id, rsvp_status: e.target.value })} style={{ padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:12, cursor:"pointer", background:"var(--card)", color:"var(--text)" }}>
+              {/* ── Stats strip ── */}
+              {participants.length > 0 && (() => {
+                const confirmed = participants.filter(p => p.rsvp_status === 'Confirmed').length;
+                const declined  = participants.filter(p => p.rsvp_status === 'Declined').length;
+                const pending   = participants.filter(p => p.rsvp_status === 'Pending').length;
+                const plusTotal = participants.reduce((a, p) => a + (Number(p.plus_ones) || 0), 0);
+                return (
+                  <div style={{ display:"flex", gap:10, marginBottom:16, flexWrap:"wrap" }}>
+                    {[
+                      { label:"Total", value: participants.length, color:"var(--accent)" },
+                      { label:"Confirmed", value: confirmed, color:"#10B981" },
+                      { label:"Pending",   value: pending,   color:"#F59E0B" },
+                      { label:"Declined",  value: declined,  color:"#EF4444" },
+                      { label:"+Guests",   value: plusTotal, color:"#8B5CF6" },
+                    ].map(s => (
+                      <div key={s.label} style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:10, padding:"8px 14px", textAlign:"center", minWidth:70 }}>
+                        <div style={{ fontSize:18, fontWeight:800, color:s.color, lineHeight:1 }}>{s.value}</div>
+                        <div style={{ fontSize:10, color:"var(--muted)", fontWeight:600, marginTop:3, textTransform:"uppercase", letterSpacing:".06em" }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* ── Participants table ── */}
+              <div style={{ background:"var(--card)", border:"1px solid var(--border)", borderRadius:12, overflow:"hidden" }}>
+                {/* Header */}
+                <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr 80px 36px" : "1.6fr 1.4fr 90px 80px 110px 36px", gap:0, background:"var(--surface)", borderBottom:"1px solid var(--border)", padding:"8px 12px" }}>
+                  {(isMobile
+                    ? ["Name", "RSVP", "+Guests", ""]
+                    : ["Name", "Email", "Type", "+Guests", "RSVP", ""]
+                  ).map(h => (
+                    <div key={h} style={{ fontSize:10, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".07em" }}>{h}</div>
+                  ))}
+                </div>
+
+                {/* Rows */}
+                {participants.map(p => {
+                  const isEditing = editingParticipantId === p.id;
+                  const ef = editingParticipantForm;
+                  const rsvpColor = { Confirmed:"#10B981", Declined:"#EF4444", Pending:"#F59E0B" }[p.rsvp_status] || "var(--muted)";
+                  const cellStyle = { padding:"10px 12px", fontSize:13, display:"flex", alignItems:"center" };
+                  const inputStyle = { width:"100%", padding:"5px 8px", borderRadius:6, border:"1px solid var(--border)", fontSize:12, background:"var(--surface)", color:"var(--text)", outline:"none" };
+                  return (
+                    <div key={p.id}
+                      style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr 80px 36px" : "1.6fr 1.4fr 90px 80px 110px 36px", borderBottom:"1px solid var(--border)", cursor: isEditing ? "default" : "pointer", transition:"background .1s" }}
+                      onClick={() => { if (!isEditing) { setEditingParticipantId(p.id); setEditingParticipantForm({ name:p.name||'', email:p.email||'', type:p.type||'Performer', plus_ones:p.plus_ones||0, rsvp_status:p.rsvp_status||'Pending' }); } }}
+                      onMouseEnter={e => { if (!isEditing) e.currentTarget.style.background = "var(--surface)"; }}
+                      onMouseLeave={e => { if (!isEditing) e.currentTarget.style.background = ""; }}
+                    >
+                      {/* Name */}
+                      <div style={cellStyle}>
+                        {isEditing
+                          ? <input style={inputStyle} value={ef.name} onChange={e => setEditingParticipantForm(f => ({...f, name:e.target.value}))} placeholder="Name" autoFocus onClick={e => e.stopPropagation()} />
+                          : <span style={{ fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name || <span style={{ color:"var(--muted)", fontStyle:"italic" }}>—</span>}</span>
+                        }
+                      </div>
+
+                      {/* Email — desktop only */}
+                      {!isMobile && (
+                        <div style={cellStyle}>
+                          {isEditing
+                            ? <input style={inputStyle} type="email" value={ef.email} onChange={e => setEditingParticipantForm(f => ({...f, email:e.target.value}))} placeholder="Email" onClick={e => e.stopPropagation()} />
+                            : <span style={{ color:"var(--muted)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontSize:12 }}>{p.email || "—"}</span>
+                          }
+                        </div>
+                      )}
+
+                      {/* Type — desktop only */}
+                      {!isMobile && (
+                        <div style={cellStyle}>
+                          {isEditing
+                            ? <select style={{...inputStyle, cursor:"pointer"}} value={ef.type} onChange={e => setEditingParticipantForm(f => ({...f, type:e.target.value}))} onClick={e => e.stopPropagation()}>
+                                <option value="Performer">Performer</option>
+                                <option value="Guest">Guest</option>
+                              </select>
+                            : <span style={{ fontSize:11, fontWeight:600, padding:"2px 8px", borderRadius:20, background: p.type === 'Performer' ? "rgba(99,102,241,0.12)" : "rgba(16,185,129,0.1)", color: p.type === 'Performer' ? "#6366F1" : "#10B981" }}>{p.type || "Performer"}</span>
+                          }
+                        </div>
+                      )}
+
+                      {/* +Guests */}
+                      <div style={cellStyle}>
+                        {isEditing
+                          ? <select style={{...inputStyle, cursor:"pointer"}} value={ef.plus_ones} onChange={e => setEditingParticipantForm(f => ({...f, plus_ones: Number(e.target.value)}))} onClick={e => e.stopPropagation()}>
+                              {[0,1,2,3].map(n => <option key={n} value={n}>{n === 0 ? "None" : `+${n}`}</option>)}
+                            </select>
+                          : <span style={{ fontWeight:700, color: p.plus_ones > 0 ? "#8B5CF6" : "var(--muted)" }}>{p.plus_ones > 0 ? `+${p.plus_ones}` : "—"}</span>
+                        }
+                      </div>
+
+                      {/* RSVP */}
+                      <div style={cellStyle}>
+                        {isEditing
+                          ? <select style={{...inputStyle, cursor:"pointer"}} value={ef.rsvp_status} onChange={e => setEditingParticipantForm(f => ({...f, rsvp_status:e.target.value}))} onClick={e => e.stopPropagation()}>
                               <option value="Pending">Pending</option>
                               <option value="Confirmed">Confirmed</option>
                               <option value="Declined">Declined</option>
-                              <option value="No Response">No Response</option>
                             </select>
-                          </td>
-                          <td style={{ padding:"12px", textAlign:"center" }}>
-                            <button onClick={() => deleteParticipantMut.mutate(p.id)} style={{ padding:"4px 8px", fontSize:11, background:"#ff3b30", color:"#fff", border:"none", borderRadius:4, cursor:"pointer" }}>Remove</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                          : <span style={{ fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:20, background: rsvpColor+"18", color: rsvpColor }}>{p.rsvp_status}</span>
+                        }
+                      </div>
 
-              {participantModal !== null && (
-                <Modal title={participantModal?.id ? "Edit Participant" : "Add Participant"} onClose={() => { setParticipantModal(null); setParticipantForm({}); }}>
-                  <Field label="Email">
-                    <Input type="email" value={participantForm.email || ''} onChange={e => setParticipantForm(f => ({...f, email: e.target.value}))} placeholder="participant@example.com" />
-                  </Field>
-                  <Field label="Guest">
-                    <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", marginBottom:20 }}>
-                      <input type="checkbox" checked={participantForm.is_guest || false} onChange={e => setParticipantForm(f => ({...f, is_guest: e.target.checked}))} style={{ cursor:"pointer" }} />
-                      <span>External guest (not a school contact)</span>
-                    </label>
-                  </Field>
-                  <div style={{ display:"flex", gap:10, marginTop:20 }}>
-                    <Button variant="secondary" onClick={() => { setParticipantModal(null); setParticipantForm({}); }} style={{ flex:1 }}>Cancel</Button>
-                    <Button onClick={() => addParticipantMut.mutate(participantForm)} disabled={!participantForm.email || addParticipantMut.isPending} style={{ flex:1 }}>Add Participant</Button>
-                  </div>
-                </Modal>
-              )}
+                      {/* Actions */}
+                      <div style={{ ...cellStyle, gap:4, justifyContent:"flex-end" }} onClick={e => e.stopPropagation()}>
+                        {isEditing ? (
+                          <>
+                            <button
+                              onClick={() => updateParticipantMut.mutate({ participantId:p.id, ...ef })}
+                              disabled={updateParticipantMut.isPending}
+                              style={{ padding:"4px 8px", fontSize:11, background:"var(--accent)", color:"#fff", border:"none", borderRadius:5, cursor:"pointer", fontWeight:600 }}
+                            >✓</button>
+                            <button
+                              onClick={() => { setEditingParticipantId(null); setEditingParticipantForm({}); }}
+                              style={{ padding:"4px 8px", fontSize:11, background:"var(--surface)", color:"var(--muted)", border:"1px solid var(--border)", borderRadius:5, cursor:"pointer" }}
+                            >✕</button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => { if (window.confirm("Remove this participant?")) deleteParticipantMut.mutate(p.id); }}
+                            style={{ padding:"4px 7px", fontSize:11, background:"none", color:"var(--muted)", border:"1px solid transparent", borderRadius:5, cursor:"pointer", lineHeight:1 }}
+                            title="Remove"
+                          >🗑</button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* ── Quick-add row ── */}
+                {(() => {
+                  const inputStyle = { width:"100%", padding:"6px 8px", borderRadius:6, border:"1px solid var(--border)", fontSize:12, background:"var(--surface)", color:"var(--text)", outline:"none", boxSizing:"border-box" };
+                  const submit = () => {
+                    if (!quickAdd.name.trim()) { toast.error("Name is required"); return; }
+                    addParticipantMut.mutate(quickAdd);
+                  };
+                  return (
+                    <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr 80px 36px" : "1.6fr 1.4fr 90px 80px 110px 36px", gap:0, borderTop:"2px dashed var(--border)", background:"var(--surface)", padding:"8px 12px", alignItems:"center", gap:8 }}>
+                      <input style={inputStyle} placeholder="Name *" value={quickAdd.name} onChange={e => setQuickAdd(q => ({...q, name:e.target.value}))} onKeyDown={e => e.key === 'Enter' && submit()} />
+                      {!isMobile && <input style={inputStyle} type="email" placeholder="Email" value={quickAdd.email} onChange={e => setQuickAdd(q => ({...q, email:e.target.value}))} onKeyDown={e => e.key === 'Enter' && submit()} />}
+                      {!isMobile && (
+                        <select style={{...inputStyle, cursor:"pointer"}} value={quickAdd.type} onChange={e => setQuickAdd(q => ({...q, type:e.target.value}))}>
+                          <option value="Performer">Performer</option>
+                          <option value="Guest">Guest</option>
+                        </select>
+                      )}
+                      <select style={{...inputStyle, cursor:"pointer"}} value={quickAdd.plus_ones} onChange={e => setQuickAdd(q => ({...q, plus_ones:Number(e.target.value)}))}>
+                        {[0,1,2,3].map(n => <option key={n} value={n}>{n === 0 ? "No guests" : `+${n}`}</option>)}
+                      </select>
+                      {!isMobile && (
+                        <select style={{...inputStyle, cursor:"pointer"}} value={quickAdd.rsvp_status} onChange={e => setQuickAdd(q => ({...q, rsvp_status:e.target.value}))}>
+                          <option value="Pending">Pending</option>
+                          <option value="Confirmed">Confirmed</option>
+                          <option value="Declined">Declined</option>
+                        </select>
+                      )}
+                      <button
+                        onClick={submit}
+                        disabled={addParticipantMut.isPending}
+                        style={{ padding:"6px 10px", fontSize:12, background:"var(--accent)", color:"#fff", border:"none", borderRadius:6, cursor:"pointer", fontWeight:700, whiteSpace:"nowrap" }}
+                      >{addParticipantMut.isPending ? "…" : "+ Add"}</button>
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
             <div style={{ display:"flex", flexDirection: isMobile ? "column" : "row", justifyContent:"space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: isMobile ? 12 : 0, marginBottom:20 }}>

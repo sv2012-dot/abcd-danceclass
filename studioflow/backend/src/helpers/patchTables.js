@@ -116,6 +116,18 @@ async function patchTables() {
     await addColumnIfMissing('schools',   'deleted_at',        'DATETIME NULL DEFAULT NULL');
     await addColumnIfMissing('batches',   'cover_url',         'MEDIUMTEXT NULL');
 
+    // Public page slugs
+    await addColumnIfMissing('schools',  'slug', 'VARCHAR(80) NULL');
+    await addColumnIfMissing('recitals', 'slug', 'VARCHAR(120) NULL');
+
+    // recital_participants new fields
+    await addColumnIfMissing('recital_participants', 'name',          'VARCHAR(120) NOT NULL DEFAULT ""');
+    await addColumnIfMissing('recital_participants', 'type',          "ENUM('Performer','Guest') NOT NULL DEFAULT 'Performer'");
+    await addColumnIfMissing('recital_participants', 'plus_ones',     'TINYINT UNSIGNED NOT NULL DEFAULT 0');
+    await addColumnIfMissing('recital_participants', 'rsvp_token',    'VARCHAR(64) NULL');
+    await addColumnIfMissing('recital_participants', 'email_sent_at', 'DATETIME NULL');
+    await ensureColumnNullable('recital_participants', 'email', 'VARCHAR(180) NULL');
+
     // Vendors table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS vendors (
@@ -325,6 +337,20 @@ async function patchTables() {
           );
         }
       }
+    }
+
+    // ── Auto-generate slugs for existing records ─────────────────────────────
+    function slugify(str) {
+      return (str || '').toLowerCase().trim()
+        .replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').slice(0, 80);
+    }
+    const [schoolsNoSlug] = await pool.query('SELECT id, name FROM schools WHERE slug IS NULL OR slug = ""');
+    for (const s of schoolsNoSlug) {
+      await pool.query('UPDATE schools SET slug = ? WHERE id = ?', [slugify(s.name), s.id]);
+    }
+    const [recitalsNoSlug] = await pool.query('SELECT id, title FROM recitals WHERE slug IS NULL OR slug = ""');
+    for (const r of recitalsNoSlug) {
+      await pool.query('UPDATE recitals SET slug = ? WHERE id = ?', [slugify(r.title), r.id]);
     }
 
     console.log('✅ patchTables complete');

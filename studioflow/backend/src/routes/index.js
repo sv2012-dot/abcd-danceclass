@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { auth } = require('../middleware/auth');
 
+router.use('/public',  require('./public'));
 router.use('/auth',     require('./auth'));
 router.use('/schools',  require('./schools'));
 router.use('/schools/:schoolId/students',  require('./students'));

@@ -1,5 +1,24 @@
 const pool = require('../../config/db');
 
+function slugify(str) {
+  return (str || '').toLowerCase().trim()
+    .replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').slice(0, 80);
+}
+async function uniqueRecitalSlug(pool, schoolId, title, excludeId = null) {
+  let base = slugify(title);
+  let slug = base;
+  let i = 2;
+  while (true) {
+    const q = excludeId
+      ? 'SELECT id FROM recitals WHERE school_id=? AND slug=? AND id!=? LIMIT 1'
+      : 'SELECT id FROM recitals WHERE school_id=? AND slug=? LIMIT 1';
+    const params = excludeId ? [schoolId, slug, excludeId] : [schoolId, slug];
+    const [rows] = await pool.query(q, params);
+    if (!rows[0]) return slug;
+    slug = `${base}-${i++}`;
+  }
+}
+
 exports.list = async (req, res) => {
   try {
     const [rows] = await pool.query(`
@@ -17,10 +36,24 @@ exports.list = async (req, res) => {
 
 exports.get = async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM recitals WHERE id = ? AND school_id = ?', [req.params.id, req.params.schoolId]);
+    const [rows] = await pool.query(`
+      SELECT r.*, s.slug AS school_slug
+      FROM recitals r
+      JOIN schools s ON s.id = r.school_id
+      WHERE r.id = ? AND r.school_id = ?
+    `, [req.params.id, req.params.schoolId]);
     if (!rows[0]) return res.status(404).json({ error: 'Recital not found' });
     const [tasks] = await pool.query('SELECT * FROM recital_tasks WHERE recital_id = ? ORDER BY sort_order, id', [req.params.id]);
-    res.json({ ...rows[0], tasks });
+    const [[rsvpRow]] = await pool.query(
+      `SELECT
+        COUNT(*) AS total,
+        SUM(rsvp_status = 'Confirmed') AS confirmed,
+        SUM(rsvp_status = 'Declined')  AS declined,
+        SUM(rsvp_status = 'Pending')   AS pending
+       FROM recital_participants WHERE recital_id = ?`,
+      [req.params.id]
+    );
+    res.json({ ...rows[0], tasks, rsvp_stats: rsvpRow });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
@@ -31,9 +64,10 @@ exports.create = async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
+    const slug = await uniqueRecitalSlug(pool, req.params.schoolId, title);
     const [r] = await conn.query(
-      'INSERT INTO recitals (school_id,title,event_date,event_time,venue,status,description,participant_count) VALUES (?,?,?,?,?,?,?,?)',
-      [req.params.schoolId, title, event_date, event_time||null, venue||null, status||'Planning', description||null, participant_count != null ? Number(participant_count) : null]
+      'INSERT INTO recitals (school_id,title,slug,event_date,event_time,venue,status,description,participant_count) VALUES (?,?,?,?,?,?,?,?,?)',
+      [req.params.schoolId, title, slug, event_date, event_time||null, venue||null, status||'Planning', description||null, participant_count != null ? Number(participant_count) : null]
     );
     if (tasks && tasks.length) {
       const vals = tasks.map((t, i) => [r.insertId, t.text || t, 0, i]);
@@ -52,9 +86,14 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   const { title, event_date, event_time, venue, status, description, is_featured, participant_count } = req.body;
   try {
+    const [curRows] = await pool.query('SELECT title, slug FROM recitals WHERE id=?', [req.params.id]);
+    let slug = curRows[0]?.slug;
+    if (!slug || curRows[0]?.title !== title) {
+      slug = await uniqueRecitalSlug(pool, req.params.schoolId, title, Number(req.params.id));
+    }
     await pool.query(
-      'UPDATE recitals SET title=?,event_date=?,event_time=?,venue=?,status=?,description=?,is_featured=?,participant_count=? WHERE id=? AND school_id=?',
-      [title, event_date, event_time||null, venue||null, status||'Planning', description||null, is_featured ? 1 : 0, participant_count != null ? Number(participant_count) : null, req.params.id, req.params.schoolId]
+      'UPDATE recitals SET title=?,slug=?,event_date=?,event_time=?,venue=?,status=?,description=?,is_featured=?,participant_count=? WHERE id=? AND school_id=?',
+      [title, slug, event_date, event_time||null, venue||null, status||'Planning', description||null, is_featured ? 1 : 0, participant_count != null ? Number(participant_count) : null, req.params.id, req.params.schoolId]
     );
     const [rows] = await pool.query('SELECT * FROM recitals WHERE id = ?', [req.params.id]);
     res.json(rows[0]);
@@ -135,12 +174,13 @@ exports.listParticipants = async (req, res) => {
 };
 
 exports.addParticipant = async (req, res) => {
-  const { email, student_id, is_guest } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email required' });
+  const { name, email, type, plus_ones, rsvp_status } = req.body;
+  if (!name && !email) return res.status(400).json({ error: 'Name or email required' });
   try {
     const [r] = await pool.query(
-      'INSERT INTO recital_participants (recital_id, school_id, email, student_id, is_guest, rsvp_status) VALUES (?,?,?,?,?,?)',
-      [req.params.id, req.params.schoolId, email.toLowerCase(), student_id || null, is_guest ? 1 : 0, 'Pending']
+      'INSERT INTO recital_participants (recital_id, school_id, name, email, type, plus_ones, rsvp_status) VALUES (?,?,?,?,?,?,?)',
+      [req.params.id, req.params.schoolId, name || '', email ? email.toLowerCase() : null,
+       type || 'Performer', Number(plus_ones) || 0, rsvp_status || 'Pending']
     );
     const [rows] = await pool.query('SELECT * FROM recital_participants WHERE id = ?', [r.insertId]);
     res.status(201).json(rows[0]);
@@ -154,12 +194,18 @@ exports.addParticipant = async (req, res) => {
 };
 
 exports.updateParticipantRsvp = async (req, res) => {
-  const { rsvp_status } = req.body;
-  if (!rsvp_status) return res.status(400).json({ error: 'rsvp_status required' });
+  const { name, email, type, plus_ones, rsvp_status } = req.body;
   try {
+    const sets = ['updated_at=NOW()'];
+    const vals = [];
+    if (name        !== undefined) { sets.push('name=?');       vals.push(name); }
+    if (email       !== undefined) { sets.push('email=?');      vals.push(email ? email.toLowerCase() : null); }
+    if (type        !== undefined) { sets.push('type=?');       vals.push(type); }
+    if (plus_ones   !== undefined) { sets.push('plus_ones=?');  vals.push(Number(plus_ones)); }
+    if (rsvp_status !== undefined) { sets.push('rsvp_status=?'); vals.push(rsvp_status); }
+    vals.push(req.params.participantId, req.params.id, req.params.schoolId);
     await pool.query(
-      'UPDATE recital_participants SET rsvp_status = ?, updated_at = NOW() WHERE id = ? AND recital_id = ? AND school_id = ?',
-      [rsvp_status, req.params.participantId, req.params.id, req.params.schoolId]
+      `UPDATE recital_participants SET ${sets.join(',')} WHERE id=? AND recital_id=? AND school_id=?`, vals
     );
     const [rows] = await pool.query('SELECT * FROM recital_participants WHERE id = ?', [req.params.participantId]);
     if (!rows[0]) return res.status(404).json({ error: 'Participant not found' });
