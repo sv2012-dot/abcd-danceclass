@@ -4,8 +4,12 @@
   "rewrites": [
     {
       "source": "/:school/:recital",
-      "missing": [{ "type": "query", "key": "_h" }],
-      "destination": "/api/og?school=:school&recital=:recital"
+      "has": [{
+        "type": "header",
+        "key": "user-agent",
+        "value": ".*(facebookexternalhit|facebot|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Googlebot|bingbot|Discordbot|Applebot|WhatsApp).*"
+      }],
+      "destination": "https://abcd-danceclass-production.up.railway.app/api/public/:school/:recital/og"
     },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
