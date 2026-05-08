@@ -120,6 +120,9 @@ async function patchTables() {
     await addColumnIfMissing('schools',  'slug', 'VARCHAR(80) NULL');
     await addColumnIfMissing('recitals', 'slug', 'VARCHAR(120) NULL');
 
+    // Important information bullet points (JSON array of strings)
+    await addColumnIfMissing('recitals', 'important_info', 'TEXT NULL');
+
     // recital_participants new fields
     await addColumnIfMissing('recital_participants', 'name',          'VARCHAR(120) NOT NULL DEFAULT ""');
     await addColumnIfMissing('recital_participants', 'type',          "ENUM('Performer','Guest') NOT NULL DEFAULT 'Performer'");
@@ -127,6 +130,19 @@ async function patchTables() {
     await addColumnIfMissing('recital_participants', 'rsvp_token',    'VARCHAR(64) NULL');
     await addColumnIfMissing('recital_participants', 'email_sent_at', 'DATETIME NULL');
     await ensureColumnNullable('recital_participants', 'email', 'VARCHAR(180) NULL');
+    // Expand type from 2-value ENUM to VARCHAR so Volunteer/Audience/Other are valid
+    await (async () => {
+      const [cols] = await pool.query(
+        `SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'recital_participants' AND COLUMN_NAME = 'type'`
+      );
+      if (cols[0] && cols[0].DATA_TYPE === 'enum') {
+        await pool.query(`ALTER TABLE recital_participants MODIFY COLUMN type VARCHAR(30) NOT NULL DEFAULT 'Performer'`);
+        console.log('  ✏️  Changed recital_participants.type from ENUM to VARCHAR(30)');
+      }
+    })();
+    await addColumnIfMissing('recital_participants', 'phone', 'VARCHAR(30) NULL');
+    await addColumnIfMissing('recital_participants', 'role',  'VARCHAR(200) NULL');
 
     // Vendors table
     await pool.query(`

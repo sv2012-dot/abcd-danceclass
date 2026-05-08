@@ -32,7 +32,9 @@ function fmtRecitalTime(t) {
   if (/[ap]m/i.test(t)) return t; // already formatted legacy string
   const [h, m] = t.split(':').map(Number);
   if (isNaN(h)) return t;
-  return new Date(2000, 0, 1, h, m || 0).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+  const hr12 = h % 12 || 12;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return `${hr12}:${String(m || 0).padStart(2, '0')} ${ampm}`;
 }
 
 // ── Image compression helper ──────────────────────────────────────────────────
@@ -390,7 +392,11 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
   const [participants,        setParticipants]        = useState([]);
   const [editingParticipantId, setEditingParticipantId] = useState(null);
   const [editingParticipantForm, setEditingParticipantForm] = useState({});
-  const [quickAdd,            setQuickAdd]            = useState({ name:'', email:'', type:'Performer', plus_ones:0, rsvp_status:'Pending' });
+  const BLANK_INVITEE = { name:'', email:'', phone:'', type:'Performer', plus_ones:0, rsvp_status:'Pending', role:'' };
+  const [quickAdd,            setQuickAdd]            = useState(BLANK_INVITEE);
+  const [showQuickAdd,        setShowQuickAdd]        = useState(false);
+  const [showVolunteerInlineAdd, setShowVolunteerInlineAdd] = useState(false);
+  const [volunteerInlineForm,    setVolunteerInlineForm]    = useState({ name:'', email:'', phone:'', role:'', plus_ones:0, rsvp_status:'Pending' });
   const PARTICIPANTS_KEY = `participants_${id}`;
 
   // Overview section inline editing
@@ -428,20 +434,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     const savedProg = localStorage.getItem(PROGRAM_KEY);
     if (savedProg) { try { setProgramItems(JSON.parse(savedProg)); } catch {} }
 
+    // important_info is seeded from DB when recital loads (see effect below)
+    // localStorage is only a fallback while DB hasn't responded yet
     const savedInfo = localStorage.getItem(INFO_KEY);
-    if (savedInfo) {
-      try { setInfoItems(JSON.parse(savedInfo)); } catch {}
-    } else {
-      const defaults = [
-        "Doors open 30 minutes before showtime",
-        "Students must arrive 1 hour early for costume and makeup",
-        "Photography and videography by approved vendors only during performance",
-        "Reserved seating for family members (2 tickets per student)",
-        "Reception to follow in the lobby",
-      ];
-      setInfoItems(defaults);
-      localStorage.setItem(INFO_KEY, JSON.stringify(defaults));
-    }
+    if (savedInfo) { try { setInfoItems(JSON.parse(savedInfo)); } catch {} }
 
     const savedInsta = localStorage.getItem(INSTA_KEY);
     if (savedInsta) { setInstaUrl(savedInsta); setInstaInput(savedInsta); }
@@ -758,6 +754,35 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     else if (recital && !recital.poster_url) setPoster(null);
   }, [recital?.poster_url]);
 
+  // Seed important_info — DB is authoritative; migrate localStorage → DB if DB column is empty
+  useEffect(() => {
+    if (!recital) return;
+    if (Array.isArray(recital.important_info) && recital.important_info.length > 0) {
+      // DB has items — use them
+      setInfoItems(recital.important_info);
+      localStorage.setItem(INFO_KEY, JSON.stringify(recital.important_info));
+    } else {
+      // DB column is new/empty — migrate any existing localStorage items to DB now
+      try {
+        const saved = localStorage.getItem(INFO_KEY);
+        const items = saved ? JSON.parse(saved) : [];
+        if (Array.isArray(items) && items.length > 0) {
+          setInfoItems(items);
+          // Silently push to DB so the public page can show them
+          api.update(sid, id, {
+            title: recital.title, event_date: (recital.event_date||'').slice(0,10),
+            event_time: recital.event_time||'', venue: recital.venue||'',
+            status: recital.status||'Planning', description: recital.description||'',
+            is_featured: recital.is_featured??0, participant_count: recital.participant_count??null,
+            important_info: items,
+          }).then(() => {
+            qc.setQueryData(["recital-detail", sid, id], old => old ? {...old, important_info: items} : old);
+          }).catch(() => {});
+        }
+      } catch {}
+    }
+  }, [recital?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Unified todos for this recital ───────────────────────────────────────
   const { data: todosData } = useQuery({
     queryKey: ["todos", sid],
@@ -806,14 +831,30 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     }
   }, [sid, id]);
 
+  // Cross-add a participant as a volunteer in localStorage when type===Volunteer
+  const crossAddVolunteer = (p) => {
+    if (p.type !== 'Volunteer') return;
+    setVolunteers(prev => {
+      const exists = prev.find(v => v.name === p.name && (v.email === p.email || (!v.email && !p.email)));
+      if (exists) return prev;
+      const updated = [...prev, { id: Date.now(), name: p.name, email: p.email || '', phone: p.phone || '', role: p.role || '', status: p.rsvp_status === 'Confirmed' ? 'Confirmed' : 'Pending' }];
+      localStorage.setItem(VOLUNTEERS_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const addParticipantMut = useMutation({
     mutationFn: (data) => api.addParticipant(sid, id, data),
     onSuccess: (newPart) => {
       setParticipants(prev => [...prev, newPart]);
-      setQuickAdd({ name:'', email:'', type:'Performer', plus_ones:0, rsvp_status:'Pending' });
-      toast.success("Participant added");
+      setQuickAdd(BLANK_INVITEE);
+      setVolunteerInlineForm({ name:'', email:'', phone:'', role:'', plus_ones:0, rsvp_status:'Pending' });
+      setShowVolunteerInlineAdd(false);
+      if (isMobile) setShowQuickAdd(false);
+      crossAddVolunteer(newPart);
+      toast.success(newPart.type === 'Volunteer' ? "Added as Invitee & Volunteer" : "Invitee added");
     },
-    onError: (err) => toast.error(err?.response?.data?.error || "Failed to add participant"),
+    onError: (err) => toast.error(err?.error || err?.message || "Failed to add participant"),
   });
 
   const updateParticipantMut = useMutation({
@@ -822,6 +863,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
       setParticipants(prev => prev.map(p => p.id === updated.id ? updated : p));
       setEditingParticipantId(null);
       setEditingParticipantForm({});
+      crossAddVolunteer(updated);
     },
     onError: () => toast.error("Failed to update participant"),
   });
@@ -858,12 +900,25 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     }).catch(() => toast.error("Failed to save description"));
   };
 
+  const saveInfoToDB = (items) => {
+    localStorage.setItem(INFO_KEY, JSON.stringify(items));
+    api.update(sid, id, {
+      title: recital.title, event_date: (recital.event_date||'').slice(0,10),
+      event_time: recital.event_time||'', venue: recital.venue||'',
+      status: recital.status||'Planning', description: recital.description||'',
+      is_featured: recital.is_featured??0, participant_count: recital.participant_count??null,
+      important_info: items,
+    }).then(() => {
+      qc.setQueryData(["recital-detail", sid, id], old => old ? {...old, important_info: items} : old);
+    }).catch(() => {});
+  };
+
   const addInfoItem = () => {
     const v = newInfoInput.trim();
     if (!v) { toast.error("Info cannot be empty"); return; }
     const newItems = [...infoItems, v];
     setInfoItems(newItems);
-    localStorage.setItem(INFO_KEY, JSON.stringify(newItems));
+    saveInfoToDB(newItems);
     setNewInfoInput("");
     toast.success("Item added");
   };
@@ -871,7 +926,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
   const updateInfoItem = (idx, val) => {
     const newItems = infoItems.map((x, i) => i === idx ? val : x);
     setInfoItems(newItems);
-    localStorage.setItem(INFO_KEY, JSON.stringify(newItems));
+    saveInfoToDB(newItems);
     setEditingInfoIdx(null);
     toast.success("Item updated");
   };
@@ -879,7 +934,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
   const deleteInfoItem = (idx) => {
     const newItems = infoItems.filter((_, i) => i !== idx);
     setInfoItems(newItems);
-    localStorage.setItem(INFO_KEY, JSON.stringify(newItems));
+    saveInfoToDB(newItems);
     toast.success("Item removed");
   };
 
@@ -1152,7 +1207,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                     )}
                     {m.id === 'participants' && (
                       <>
-                        <input type="number" min="0" placeholder="Count" value={metaForm.participants || ''} onChange={e => setMetaForm(f => ({...f, participants: e.target.value}))} style={{ flex:1, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:13 }} />
+                        <input type="number" min="0" placeholder="Count" value={metaForm.participants || ''} onChange={e => setMetaForm(f => ({...f, participants: e.target.value}))} style={{ width:72, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:13 }} />
                         <button onClick={e => { e.stopPropagation(); setMetaForm(f => ({...f, participants: null})); }} style={{ padding:"2px 8px", fontSize:11, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:4, cursor:"pointer", color:"var(--text)" }}>TBD</button>
                       </>
                     )}
@@ -1337,7 +1392,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                       )}
                       {m.id === 'participants' && (
                         <>
-                          <input type="number" min="0" placeholder="Count" value={metaForm.participants || ''} onChange={e => setMetaForm(f => ({...f, participants: e.target.value}))} onKeyDown={e => e.key === 'Escape' && setMetaEditing(null)} style={{ flex:1, minWidth:60, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:12 }} />
+                          <input type="number" min="0" placeholder="Count" value={metaForm.participants || ''} onChange={e => setMetaForm(f => ({...f, participants: e.target.value}))} onKeyDown={e => e.key === 'Escape' && setMetaEditing(null)} style={{ width:72, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:12 }} />
                           <button onClick={e => { e.stopPropagation(); setMetaForm(f => ({...f, participants: null})); }} style={{ padding:"2px 6px", fontSize:10, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:4, cursor:"pointer", whiteSpace:"nowrap", color:"var(--text)" }}>TBD</button>
                         </>
                       )}
@@ -1442,16 +1497,12 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                   <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                     <textarea value={overviewForm.info || ''} onChange={e => setOverviewForm({...overviewForm, info: e.target.value})} placeholder="Add items (one per line)..." style={{ padding:"10px", borderRadius:6, border:"1px solid var(--border)", fontSize:13, color:"var(--text)", background:"var(--surface)", minHeight:120, fontFamily:"inherit" }} />
                     <div style={{ display:"flex", gap:8 }}>
-                      <button onClick={async () => {
-                        try {
-                          const newItems = overviewForm.info?.trim().split('\n').filter(line => line.trim()) || [];
-                          setInfoItems(newItems);
-                          localStorage.setItem(INFO_KEY, JSON.stringify(newItems));
-                          setOverviewEditing(null);
-                          toast.success("Important information updated");
-                        } catch (e) {
-                          toast.error("Failed to save");
-                        }
+                      <button onClick={() => {
+                        const newItems = overviewForm.info?.trim().split('\n').filter(line => line.trim()) || [];
+                        setInfoItems(newItems);
+                        saveInfoToDB(newItems);
+                        setOverviewEditing(null);
+                        toast.success("Important information updated");
                       }} style={{ padding:"6px 14px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:6, fontSize:12, fontWeight:600, cursor:"pointer" }}>Save</button>
                       <button onClick={() => setOverviewEditing(null)} style={{ padding:"6px 14px", background:"var(--surface)", border:"1px solid var(--border)", color:"var(--text)", borderRadius:6, fontSize:12, fontWeight:600, cursor:"pointer" }}>Cancel</button>
                     </div>
@@ -1967,24 +2018,25 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
           <div>
             {/* Participants Section */}
             <div style={{ marginBottom: 32 }}>
-              <SectionHead title="Participants" sub="Attendees and RSVP status · click any row to edit" />
+              <SectionHead title="Invitees" sub="Attendees and RSVP status · click any row to edit" />
 
-              {/* ── Stats strip ── */}
+              {/* ── Stats strip — single row, total = people + guests ── */}
               {participants.length > 0 && (() => {
                 const confirmed = participants.filter(p => p.rsvp_status === 'Confirmed').length;
                 const declined  = participants.filter(p => p.rsvp_status === 'Declined').length;
                 const pending   = participants.filter(p => p.rsvp_status === 'Pending').length;
                 const plusTotal = participants.reduce((a, p) => a + (Number(p.plus_ones) || 0), 0);
+                const total     = participants.length + plusTotal;
+                const stats = [
+                  { label:"Total",   value: total,     color:"var(--accent)" },
+                  { label:"Pending", value: pending,   color:"#F59E0B" },
+                  { label:"No",      value: declined,  color:"#EF4444" },
+                  { label:"Yes",     value: confirmed, color:"#10B981" },
+                ];
                 return (
-                  <div style={{ display:"flex", gap:10, marginBottom:16, flexWrap:"wrap" }}>
-                    {[
-                      { label:"Total", value: participants.length, color:"var(--accent)" },
-                      { label:"Confirmed", value: confirmed, color:"#10B981" },
-                      { label:"Pending",   value: pending,   color:"#F59E0B" },
-                      { label:"Declined",  value: declined,  color:"#EF4444" },
-                      { label:"+Guests",   value: plusTotal, color:"#8B5CF6" },
-                    ].map(s => (
-                      <div key={s.label} style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:10, padding:"8px 14px", textAlign:"center", minWidth:70 }}>
+                  <div style={{ display:"flex", gap:10, marginBottom:16 }}>
+                    {stats.map(s => (
+                      <div key={s.label} style={{ flex:1, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:10, padding:"8px 10px", textAlign:"center" }}>
                         <div style={{ fontSize:18, fontWeight:800, color:s.color, lineHeight:1 }}>{s.value}</div>
                         <div style={{ fontSize:10, color:"var(--muted)", fontWeight:600, marginTop:3, textTransform:"uppercase", letterSpacing:".06em" }}>{s.label}</div>
                       </div>
@@ -1996,12 +2048,24 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
               {/* ── Participants table ── */}
               <div style={{ background:"var(--card)", border:"1px solid var(--border)", borderRadius:12, overflow:"hidden" }}>
                 {/* Header */}
-                <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr 80px 36px" : "1.6fr 1.4fr 90px 80px 110px 36px", gap:0, background:"var(--surface)", borderBottom:"1px solid var(--border)", padding:"8px 12px" }}>
+                <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 52px 80px 36px" : "1.6fr 1.4fr 90px 80px 110px 36px", background:"var(--surface)", borderBottom:"1px solid var(--border)", padding:"8px 12px", gap:8 }}>
                   {(isMobile
-                    ? ["Name", "RSVP", "+Guests", ""]
-                    : ["Name", "Email", "Type", "+Guests", "RSVP", ""]
+                    ? [
+                        { label:"Name",     align:"left"   },
+                        { label:"+Guests",  align:"center" },
+                        { label:"RSVP",     align:"center" },
+                        { label:"",         align:"right"  },
+                      ]
+                    : [
+                        { label:"Name",     align:"left"   },
+                        { label:"Email",    align:"left"   },
+                        { label:"Type",     align:"left"   },
+                        { label:"+Guests",  align:"center" },
+                        { label:"RSVP",     align:"center" },
+                        { label:"",         align:"right"  },
+                      ]
                   ).map(h => (
-                    <div key={h} style={{ fontSize:10, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".07em" }}>{h}</div>
+                    <div key={h.label} style={{ fontSize:10, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".07em", textAlign: h.align }}>{h.label}</div>
                   ))}
                 </div>
 
@@ -2010,230 +2074,216 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                   const isEditing = editingParticipantId === p.id;
                   const ef = editingParticipantForm;
                   const rsvpColor = { Confirmed:"#10B981", Declined:"#EF4444", Pending:"#F59E0B" }[p.rsvp_status] || "var(--muted)";
-                  const cellStyle = { padding:"10px 12px", fontSize:13, display:"flex", alignItems:"center" };
-                  const inputStyle = { width:"100%", padding:"5px 8px", borderRadius:6, border:"1px solid var(--border)", fontSize:12, background:"var(--surface)", color:"var(--text)", outline:"none" };
-                  return (
-                    <div key={p.id}
-                      style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr 80px 36px" : "1.6fr 1.4fr 90px 80px 110px 36px", borderBottom:"1px solid var(--border)", cursor: isEditing ? "default" : "pointer", transition:"background .1s" }}
-                      onClick={() => { if (!isEditing) { setEditingParticipantId(p.id); setEditingParticipantForm({ name:p.name||'', email:p.email||'', type:p.type||'Performer', plus_ones:p.plus_ones||0, rsvp_status:p.rsvp_status||'Pending' }); } }}
-                      onMouseEnter={e => { if (!isEditing) e.currentTarget.style.background = "var(--surface)"; }}
-                      onMouseLeave={e => { if (!isEditing) e.currentTarget.style.background = ""; }}
-                    >
-                      {/* Name */}
-                      <div style={cellStyle}>
-                        {isEditing
-                          ? <input style={inputStyle} value={ef.name} onChange={e => setEditingParticipantForm(f => ({...f, name:e.target.value}))} placeholder="Name" autoFocus onClick={e => e.stopPropagation()} />
-                          : <span style={{ fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name || <span style={{ color:"var(--muted)", fontStyle:"italic" }}>—</span>}</span>
-                        }
-                      </div>
+                  const typeLabel = { Performer:"Participant", Guest:"Audience", Volunteer:"Volunteer", Audience:"Audience", Other:"Other" }[p.type] ?? (p.type || "Participant");
+                  const typeColor = { Volunteer:"#10B981", Performer:"#6366F1", Guest:"#14B8A6", Audience:"#14B8A6", Other:"#9CA3AF" }[p.type] ?? "#9CA3AF";
+                  const fInp = { padding:"7px 10px", borderRadius:7, border:"1.5px solid var(--border)", fontSize:13, background:"var(--surface)", color:"var(--text)", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
 
-                      {/* Email — desktop only */}
-                      {!isMobile && (
-                        <div style={cellStyle}>
-                          {isEditing
-                            ? <input style={inputStyle} type="email" value={ef.email} onChange={e => setEditingParticipantForm(f => ({...f, email:e.target.value}))} placeholder="Email" onClick={e => e.stopPropagation()} />
-                            : <span style={{ color:"var(--muted)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontSize:12 }}>{p.email || "—"}</span>
-                          }
-                        </div>
-                      )}
-
-                      {/* Type — desktop only */}
-                      {!isMobile && (
-                        <div style={cellStyle}>
-                          {isEditing
-                            ? <select style={{...inputStyle, cursor:"pointer"}} value={ef.type} onChange={e => setEditingParticipantForm(f => ({...f, type:e.target.value}))} onClick={e => e.stopPropagation()}>
-                                <option value="Performer">Performer</option>
-                                <option value="Guest">Guest</option>
-                              </select>
-                            : <span style={{ fontSize:11, fontWeight:600, padding:"2px 8px", borderRadius:20, background: p.type === 'Performer' ? "rgba(99,102,241,0.12)" : "rgba(16,185,129,0.1)", color: p.type === 'Performer' ? "#6366F1" : "#10B981" }}>{p.type || "Performer"}</span>
-                          }
-                        </div>
-                      )}
-
-                      {/* +Guests */}
-                      <div style={cellStyle}>
-                        {isEditing
-                          ? <select style={{...inputStyle, cursor:"pointer"}} value={ef.plus_ones} onChange={e => setEditingParticipantForm(f => ({...f, plus_ones: Number(e.target.value)}))} onClick={e => e.stopPropagation()}>
-                              {[0,1,2,3].map(n => <option key={n} value={n}>{n === 0 ? "None" : `+${n}`}</option>)}
+                  if (isEditing) {
+                    return (
+                      <div key={p.id} style={{ borderBottom:"1px solid var(--border)", background:"var(--card)" }}>
+                        <div style={{ padding:"12px 12px 14px", display:"flex", flexDirection:"column", gap:8 }}>
+                          <input autoFocus placeholder="Name *" value={ef.name||''} onChange={e => setEditingParticipantForm(f => ({...f, name:e.target.value}))} style={fInp} />
+                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                            <input type="email" placeholder="Email" value={ef.email||''} onChange={e => setEditingParticipantForm(f => ({...f, email:e.target.value}))} style={fInp} />
+                            <input placeholder="Phone" value={ef.phone||''} onChange={e => setEditingParticipantForm(f => ({...f, phone:e.target.value}))} style={fInp} />
+                          </div>
+                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                            <select value={ef.type||'Performer'} onChange={e => setEditingParticipantForm(f => ({...f, type:e.target.value}))} style={{...fInp, cursor:"pointer"}}>
+                              <option value="Performer">Participant</option>
+                              <option value="Volunteer">Volunteer</option>
+                              <option value="Audience">Audience</option>
+                              <option value="Other">Other</option>
                             </select>
-                          : <span style={{ fontWeight:700, color: p.plus_ones > 0 ? "#8B5CF6" : "var(--muted)" }}>{p.plus_ones > 0 ? `+${p.plus_ones}` : "—"}</span>
-                        }
-                      </div>
-
-                      {/* RSVP */}
-                      <div style={cellStyle}>
-                        {isEditing
-                          ? <select style={{...inputStyle, cursor:"pointer"}} value={ef.rsvp_status} onChange={e => setEditingParticipantForm(f => ({...f, rsvp_status:e.target.value}))} onClick={e => e.stopPropagation()}>
+                            <select value={ef.plus_ones||0} onChange={e => setEditingParticipantForm(f => ({...f, plus_ones:Number(e.target.value)}))} style={{...fInp, cursor:"pointer"}}>
+                              {[0,1,2,3,4,5].map(n => <option key={n} value={n}>{n===0 ? "No guests" : `+${n} guest${n>1?'s':''}`}</option>)}
+                            </select>
+                          </div>
+                          {ef.type === 'Volunteer' && (
+                            <input placeholder="Role / Task (e.g. Ticket table, Backstage)" value={ef.role||''} onChange={e => setEditingParticipantForm(f => ({...f, role:e.target.value}))} style={fInp} />
+                          )}
+                          <div style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:8 }}>
+                            <select value={ef.rsvp_status||'Pending'} onChange={e => setEditingParticipantForm(f => ({...f, rsvp_status:e.target.value}))} style={{...fInp, cursor:"pointer"}}>
                               <option value="Pending">Pending</option>
-                              <option value="Confirmed">Confirmed</option>
-                              <option value="Declined">Declined</option>
+                              <option value="Confirmed">Confirmed / Yes</option>
+                              <option value="Declined">Declined / No</option>
                             </select>
-                          : <span style={{ fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:20, background: rsvpColor+"18", color: rsvpColor }}>{p.rsvp_status}</span>
-                        }
+                            <div style={{ display:"flex", gap:6 }}>
+                              <button onClick={() => updateParticipantMut.mutate({ participantId:p.id, ...ef })} disabled={updateParticipantMut.isPending}
+                                style={{ padding:"7px 16px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:7, fontWeight:700, fontSize:13, cursor:"pointer", whiteSpace:"nowrap" }}>
+                                {updateParticipantMut.isPending ? "…" : "Save"}
+                              </button>
+                              <button onClick={() => { setEditingParticipantId(null); setEditingParticipantForm({}); }}
+                                style={{ padding:"7px 12px", background:"none", border:"1px solid var(--border)", borderRadius:7, fontWeight:600, fontSize:13, cursor:"pointer", color:"var(--muted)", whiteSpace:"nowrap" }}>
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
+                    );
+                  }
 
-                      {/* Actions */}
-                      <div style={{ ...cellStyle, gap:4, justifyContent:"flex-end" }} onClick={e => e.stopPropagation()}>
-                        {isEditing ? (
-                          <>
-                            <button
-                              onClick={() => updateParticipantMut.mutate({ participantId:p.id, ...ef })}
-                              disabled={updateParticipantMut.isPending}
-                              style={{ padding:"4px 8px", fontSize:11, background:"var(--accent)", color:"#fff", border:"none", borderRadius:5, cursor:"pointer", fontWeight:600 }}
-                            >✓</button>
-                            <button
-                              onClick={() => { setEditingParticipantId(null); setEditingParticipantForm({}); }}
-                              style={{ padding:"4px 8px", fontSize:11, background:"var(--surface)", color:"var(--muted)", border:"1px solid var(--border)", borderRadius:5, cursor:"pointer" }}
-                            >✕</button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => { if (window.confirm("Remove this participant?")) deleteParticipantMut.mutate(p.id); }}
-                            style={{ padding:"4px 7px", fontSize:11, background:"none", color:"var(--muted)", border:"1px solid transparent", borderRadius:5, cursor:"pointer", lineHeight:1 }}
-                            title="Remove"
-                          >🗑</button>
+                  return (
+                    <div key={p.id} style={{ borderBottom:"1px solid var(--border)", cursor:"pointer", transition:"background .1s" }}
+                      onClick={() => { setEditingParticipantId(p.id); setEditingParticipantForm({ name:p.name||'', email:p.email||'', phone:p.phone||'', type:p.type||'Performer', plus_ones:p.plus_ones||0, rsvp_status:p.rsvp_status||'Pending', role:p.role||'' }); }}
+                      onMouseEnter={e => e.currentTarget.style.background = "var(--surface)"}
+                      onMouseLeave={e => e.currentTarget.style.background = ""}
+                    >
+                      {/* Row 1: Name | +Guests | RSVP | delete */}
+                      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 52px 80px 36px" : "1.6fr 1.4fr 90px 80px 110px 36px", gap:8, alignItems:"center" }}>
+                        <div style={{ padding:"10px 12px", fontSize:13, display:"flex", alignItems:"center" }}>
+                          <span style={{ fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth: isMobile ? 80 : "100%", display:"block" }}>{p.name || <span style={{ color:"var(--muted)", fontStyle:"italic" }}>—</span>}</span>
+                        </div>
+                        {!isMobile && (
+                          <div style={{ padding:"10px 12px", fontSize:12, display:"flex", alignItems:"center" }}>
+                            <span style={{ color:"var(--muted)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.email || "—"}</span>
+                          </div>
                         )}
+                        {!isMobile && (
+                          <div style={{ padding:"10px 12px", fontSize:13, display:"flex", alignItems:"center" }}>
+                            <span style={{ fontSize:11, fontWeight:600, padding:"2px 8px", borderRadius:20, background: typeColor+"1a", color: typeColor }}>{typeLabel}</span>
+                          </div>
+                        )}
+                        <div style={{ padding:"10px 0", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <span style={{ fontWeight:700, color: p.plus_ones > 0 ? "#8B5CF6" : "var(--muted)" }}>{p.plus_ones > 0 ? `+${p.plus_ones}` : "—"}</span>
+                        </div>
+                        <div style={{ padding:"10px 0", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <span style={{ fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:20, background: rsvpColor+"18", color: rsvpColor }}>{{ Confirmed:"Yes", Declined:"No", Pending:"Pending" }[p.rsvp_status] ?? p.rsvp_status}</span>
+                        </div>
+                        <div style={{ padding:"10px 6px", display:"flex", alignItems:"center", justifyContent:"flex-end" }} onClick={e => e.stopPropagation()}>
+                          <button onClick={() => { if (window.confirm("Remove this invitee?")) deleteParticipantMut.mutate(p.id); }} title="Remove"
+                            style={{ width:26, height:26, display:"flex", alignItems:"center", justifyContent:"center", background:"none", color:"var(--muted)", border:"1px solid transparent", borderRadius:5, cursor:"pointer" }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                          </button>
+                        </div>
                       </div>
+                      {/* Row 2 — mobile extra info: type badge + email + phone */}
+                      {isMobile && (p.type || p.email || p.phone) && (
+                        <div style={{ display:"flex", gap:8, flexWrap:"wrap", padding:"0 12px 8px", alignItems:"center" }}>
+                          <span style={{ fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:20, background: typeColor+"1a", color: typeColor, letterSpacing:".04em" }}>{typeLabel}</span>
+                          {p.email && <span style={{ fontSize:11, color:"var(--muted)", overflow:"hidden", textOverflow:"ellipsis", maxWidth:130, whiteSpace:"nowrap" }}>{p.email}</span>}
+                          {p.phone && <span style={{ fontSize:11, color:"var(--muted)" }}>{p.phone}</span>}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
 
-                {/* ── Quick-add row ── */}
+                {/* ── Quick-add — desktop always visible, mobile on-demand ── */}
                 {(() => {
-                  const inputStyle = { width:"100%", padding:"6px 8px", borderRadius:6, border:"1px solid var(--border)", fontSize:12, background:"var(--surface)", color:"var(--text)", outline:"none", boxSizing:"border-box" };
-                  const submit = () => {
+                  const qInp = { padding:"7px 10px", borderRadius:7, border:"1.5px solid var(--border)", fontSize:12, background:"var(--card)", color:"var(--text)", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
+                  const doAdd = () => {
                     if (!quickAdd.name.trim()) { toast.error("Name is required"); return; }
                     addParticipantMut.mutate(quickAdd);
                   };
+                  if (isMobile && !showQuickAdd) return null;
                   return (
-                    <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr 80px 36px" : "1.6fr 1.4fr 90px 80px 110px 36px", gap:0, borderTop:"2px dashed var(--border)", background:"var(--surface)", padding:"8px 12px", alignItems:"center", gap:8 }}>
-                      <input style={inputStyle} placeholder="Name *" value={quickAdd.name} onChange={e => setQuickAdd(q => ({...q, name:e.target.value}))} onKeyDown={e => e.key === 'Enter' && submit()} />
-                      {!isMobile && <input style={inputStyle} type="email" placeholder="Email" value={quickAdd.email} onChange={e => setQuickAdd(q => ({...q, email:e.target.value}))} onKeyDown={e => e.key === 'Enter' && submit()} />}
-                      {!isMobile && (
-                        <select style={{...inputStyle, cursor:"pointer"}} value={quickAdd.type} onChange={e => setQuickAdd(q => ({...q, type:e.target.value}))}>
-                          <option value="Performer">Performer</option>
-                          <option value="Guest">Guest</option>
+                    <div style={{ borderTop:"2px dashed var(--border)", background:"var(--surface)", padding:"12px 12px 14px", display:"flex", flexDirection:"column", gap:8 }}>
+                      <input autoFocus={isMobile} placeholder="Name *" value={quickAdd.name} onChange={e => setQuickAdd(q => ({...q, name:e.target.value}))} onKeyDown={e => e.key==='Enter' && doAdd()} style={qInp} />
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                        <input type="email" placeholder="Email" value={quickAdd.email||''} onChange={e => setQuickAdd(q => ({...q, email:e.target.value}))} style={qInp} />
+                        <input placeholder="Phone" value={quickAdd.phone||''} onChange={e => setQuickAdd(q => ({...q, phone:e.target.value}))} style={qInp} />
+                      </div>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                        <select value={quickAdd.type} onChange={e => setQuickAdd(q => ({...q, type:e.target.value}))} style={{...qInp, cursor:"pointer"}}>
+                          <option value="Performer">Participant</option>
+                          <option value="Volunteer">Volunteer</option>
+                          <option value="Audience">Audience</option>
+                          <option value="Other">Other</option>
                         </select>
+                        <select value={quickAdd.plus_ones} onChange={e => setQuickAdd(q => ({...q, plus_ones:Number(e.target.value)}))} style={{...qInp, cursor:"pointer"}}>
+                          {[0,1,2,3,4,5].map(n => <option key={n} value={n}>{n===0 ? "No guests" : `+${n} guest${n>1?'s':''}`}</option>)}
+                        </select>
+                      </div>
+                      {quickAdd.type === 'Volunteer' && (
+                        <input placeholder="Role / Task (e.g. Ticket table, Backstage)" value={quickAdd.role||''} onChange={e => setQuickAdd(q => ({...q, role:e.target.value}))} style={qInp} />
                       )}
-                      <select style={{...inputStyle, cursor:"pointer"}} value={quickAdd.plus_ones} onChange={e => setQuickAdd(q => ({...q, plus_ones:Number(e.target.value)}))}>
-                        {[0,1,2,3].map(n => <option key={n} value={n}>{n === 0 ? "No guests" : `+${n}`}</option>)}
-                      </select>
-                      {!isMobile && (
-                        <select style={{...inputStyle, cursor:"pointer"}} value={quickAdd.rsvp_status} onChange={e => setQuickAdd(q => ({...q, rsvp_status:e.target.value}))}>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:8 }}>
+                        <select value={quickAdd.rsvp_status} onChange={e => setQuickAdd(q => ({...q, rsvp_status:e.target.value}))} style={{...qInp, cursor:"pointer"}}>
                           <option value="Pending">Pending</option>
-                          <option value="Confirmed">Confirmed</option>
-                          <option value="Declined">Declined</option>
+                          <option value="Confirmed">Confirmed / Yes</option>
+                          <option value="Declined">Declined / No</option>
                         </select>
-                      )}
-                      <button
-                        onClick={submit}
-                        disabled={addParticipantMut.isPending}
-                        style={{ padding:"6px 10px", fontSize:12, background:"var(--accent)", color:"#fff", border:"none", borderRadius:6, cursor:"pointer", fontWeight:700, whiteSpace:"nowrap" }}
-                      >{addParticipantMut.isPending ? "…" : "+ Add"}</button>
+                        <div style={{ display:"flex", gap:6 }}>
+                          <button onClick={doAdd} disabled={addParticipantMut.isPending}
+                            style={{ padding:"7px 16px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:7, fontWeight:700, fontSize:12, cursor:"pointer", whiteSpace:"nowrap" }}>
+                            {addParticipantMut.isPending ? "…" : "+ Add"}
+                          </button>
+                          {isMobile && (
+                            <button onClick={() => { setShowQuickAdd(false); setQuickAdd(BLANK_INVITEE); }}
+                              style={{ padding:"7px 12px", background:"none", border:"1px solid var(--border)", borderRadius:7, fontWeight:600, fontSize:12, cursor:"pointer", color:"var(--muted)", whiteSpace:"nowrap" }}>
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   );
                 })()}
               </div>
             </div>
 
-            <div style={{ display:"flex", flexDirection: isMobile ? "column" : "row", justifyContent:"space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: isMobile ? 12 : 0, marginBottom:20 }}>
-              <SectionHead title="Helpers" sub="Volunteer coordinators and helpers for the event" />
-              <Button size="sm" onClick={openAddVolunteer} style={{ width: isMobile ? "100%" : "auto" }}>Add Helper</Button>
-            </div>
+            {/* Mobile + Add Invitee trigger button */}
+            {isMobile && !showQuickAdd && (
+              <button onClick={() => setShowQuickAdd(true)} style={{
+                display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+                width:"100%", padding:"11px", borderRadius:10, border:"1.5px dashed var(--border)",
+                background:"var(--surface)", color:"var(--accent)", fontSize:13, fontWeight:700, cursor:"pointer", marginBottom:24,
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                + Add Invitee
+              </button>
+            )}
 
-            {/* ── Sign Up Genius integration banner ── */}
-            <div style={{
-              borderRadius:12, border:"1.5px solid var(--border)",
-              background:"var(--surface)",
-              padding:"18px 20px", marginBottom:22,
-            }}>
-              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom: sugUrl && !editingUrl ? 14 : 10 }}>
-                {/* Sign Up Genius logo mark */}
-                <div style={{
-                  width:38, height:38, borderRadius:10, flexShrink:0,
-                  background:"linear-gradient(135deg, #00a651, #007a3d)",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <line x1="19" y1="8" x2="19" y2="14"/>
-                    <line x1="22" y1="11" x2="16" y2="11"/>
-                  </svg>
-                </div>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontSize:14, fontWeight:800, marginBottom:1 }}>Sign Up Genius</div>
-                  <div style={{ fontSize:12, color:"var(--muted)" }}>
-                    {sugUrl ? "Linked — volunteers can sign up directly" : "Paste your sign-up sheet URL to link it here"}
-                  </div>
-                </div>
-                {sugUrl && !editingUrl && (
-                  <button onClick={() => setEditingUrl(true)} style={{
-                    fontSize:11, color:"var(--muted)", background:"none", border:"1px solid var(--border)",
-                    borderRadius:7, padding:"4px 10px", cursor:"pointer", fontWeight:600,
-                  }}>Edit link</button>
+            {/* ── Volunteers island ── */}
+            <div style={{ background:"var(--card)", border:"1px solid var(--border)", borderRadius:14, overflow:"hidden" }}>
+
+              {/* Header row */}
+              <div style={{ display:"flex", flexDirection: isMobile ? "column" : "row", justifyContent:"space-between", alignItems: isMobile ? "stretch" : "center", gap: isMobile ? 10 : 0, padding:"16px 16px 14px" }}>
+                <SectionHead title="Volunteers" sub="Volunteer coordinators and helpers for the event" />
+                {!showVolunteerInlineAdd && (
+                  <Button size="sm" onClick={() => { setShowVolunteerInlineAdd(true); setVolunteerInlineForm({ name:'', email:'', phone:'', role:'', plus_ones:0, rsvp_status:'Pending' }); }} style={{ width: isMobile ? "100%" : "auto", ...(isMobile ? { padding:"9px 18px" } : {}) }}>Add Volunteer</Button>
                 )}
               </div>
 
-              {/* URL saved — show open button */}
-              {sugUrl && !editingUrl && (
-                <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                  <a href={sugUrl} target="_blank" rel="noopener noreferrer" style={{
-                    display:"inline-flex", alignItems:"center", gap:8,
-                    padding:"10px 20px", borderRadius:10, textDecoration:"none",
-                    background:"linear-gradient(135deg, #00a651, #007a3d)",
-                    color:"#fff", fontSize:13, fontWeight:700,
-                    boxShadow:"0 2px 8px rgba(0,166,81,.3)",
-                    transition:"opacity .15s",
-                  }}
-                    onMouseEnter={e => e.currentTarget.style.opacity = ".88"}
-                    onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                      <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                    </svg>
-                    Open Sign Up Sheet
-                  </a>
-                  <button onClick={clearSugUrl} style={{
-                    fontSize:11, color:"#e05c6a", background:"none", border:"none",
-                    cursor:"pointer", padding:"4px 6px", fontWeight:600,
-                  }}>Remove</button>
-                </div>
-              )}
+              {/* ── Inline add-volunteer form ── */}
+              {showVolunteerInlineAdd && (() => {
+                const vInp = { padding:"7px 10px", borderRadius:7, border:"1.5px solid var(--border)", fontSize:13, background:"var(--surface)", color:"var(--text)", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
+                const doAddVol = () => {
+                  if (!volunteerInlineForm.name.trim()) { toast.error("Name is required"); return; }
+                  addParticipantMut.mutate({ ...volunteerInlineForm, type:'Volunteer' });
+                };
+                return (
+                  <div style={{ borderTop:"1px solid var(--border)", padding:"14px 16px", display:"flex", flexDirection:"column", gap:8 }}>
+                    <input autoFocus placeholder="Name *" value={volunteerInlineForm.name} onChange={e => setVolunteerInlineForm(f => ({...f, name:e.target.value}))} onKeyDown={e => e.key==='Enter' && doAddVol()} style={vInp} />
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                      <input type="email" placeholder="Email" value={volunteerInlineForm.email||''} onChange={e => setVolunteerInlineForm(f => ({...f, email:e.target.value}))} style={vInp} />
+                      <input placeholder="Phone" value={volunteerInlineForm.phone||''} onChange={e => setVolunteerInlineForm(f => ({...f, phone:e.target.value}))} style={vInp} />
+                    </div>
+                    <input placeholder="Role / Task (e.g. Ticket table, Backstage)" value={volunteerInlineForm.role||''} onChange={e => setVolunteerInlineForm(f => ({...f, role:e.target.value}))} style={vInp} />
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:8 }}>
+                      <select value={volunteerInlineForm.rsvp_status} onChange={e => setVolunteerInlineForm(f => ({...f, rsvp_status:e.target.value}))} style={{...vInp, cursor:"pointer"}}>
+                        <option value="Pending">Pending</option>
+                        <option value="Confirmed">Confirmed</option>
+                      </select>
+                      <div style={{ display:"flex", gap:6 }}>
+                        <button onClick={doAddVol} disabled={addParticipantMut.isPending}
+                          style={{ padding:"7px 16px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:7, fontWeight:700, fontSize:13, cursor:"pointer", whiteSpace:"nowrap" }}>
+                          {addParticipantMut.isPending ? "…" : "+ Add"}
+                        </button>
+                        <button onClick={() => setShowVolunteerInlineAdd(false)}
+                          style={{ padding:"7px 12px", background:"none", border:"1px solid var(--border)", borderRadius:7, fontWeight:600, fontSize:13, cursor:"pointer", color:"var(--muted)", whiteSpace:"nowrap" }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
-              {/* URL input — initial state or editing */}
-              {(!sugUrl || editingUrl) && (
-                <div style={{ display:"flex", gap:8 }}>
-                  <input
-                    value={sugInput}
-                    onChange={e => setSugInput(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && saveSugUrl()}
-                    placeholder="https://www.signupgenius.com/go/your-signup-link"
-                    style={{
-                      flex:1, padding:"9px 14px",
-                      border:"1.5px solid var(--border)", borderRadius:9,
-                      fontSize:13, background:"var(--card)",
-                      color:"var(--text)", outline:"none", fontFamily:"inherit",
-                    }}
-                  />
-                  <Button onClick={saveSugUrl}>Save</Button>
-                  {editingUrl && (
-                    <Button variant="secondary" onClick={() => { setEditingUrl(false); setSugInput(sugUrl); }}>Cancel</Button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Volunteer list */}
-            {volunteers.length === 0 ? (
-              <div style={{ textAlign:"center", padding:"40px 20px", background:"var(--surface)", borderRadius:12, border:"1.5px dashed var(--border)" }}>
-                <div style={{ fontSize:28, marginBottom:10 }}>🙋</div>
-                <p style={{ fontWeight:700, marginBottom:4, fontSize:14 }}>No volunteers yet</p>
-                <p style={{ color:"var(--muted)", fontSize:12, marginBottom:16 }}>Add parent volunteers who will help coordinate and assist at the event.</p>
-                <Button size="sm" onClick={openAddVolunteer}>Add First Volunteer</Button>
-              </div>
-            ) : isMobile ? (
+              {/* Volunteer list — only rendered when there are volunteers */}
+              <div style={{ padding: volunteers.length > 0 ? "0 16px 16px" : 0 }}>
+            {volunteers.length > 0 && (isMobile ? (
               /* ── MOBILE: card-per-volunteer ── */
               <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                 {volunteers.map((v) => (
@@ -2280,10 +2330,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
               </div>
             ) : (
               /* ── DESKTOP: table-style list ── */
-              <div style={{ borderRadius:12, overflow:"hidden", border:"1px solid var(--border)" }}>
+              <div style={{ borderRadius:8, overflow:"hidden" }}>
                 {volunteers.map((v, i) => (
                   <div key={v.id} style={{
-                    display:"flex", alignItems:"center", padding:"16px 20px", gap:14,
+                    display:"flex", alignItems:"center", padding:"14px 12px", gap:14,
                     background: i % 2 === 0 ? "var(--card)" : "var(--surface)",
                     borderBottom: i < volunteers.length - 1 ? "1px solid var(--border)" : "none",
                   }}>
@@ -2321,7 +2371,76 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                   </div>
                 ))}
               </div>
-            )}
+            ))}
+              </div>{/* closes volunteer list padding wrapper */}
+
+              {/* ── Sign Up Genius row ── */}
+              <div style={{ borderTop:"1px solid var(--border)", padding:"14px 16px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom: sugUrl && !editingUrl ? 12 : 0 }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13, fontWeight:700, marginBottom:1 }}>Sign Up Genius</div>
+                    <div style={{ fontSize:12, color:"var(--muted)" }}>
+                      {sugUrl ? "Linked — volunteers can sign up directly" : "Paste your sign-up sheet URL to link it here"}
+                    </div>
+                    {!sugUrl && (
+                      <div style={{ fontSize:11, color:"var(--muted)", opacity:0.7, marginTop:5, lineHeight:1.5 }}>
+                        Note: Sign Up Genius is for visibility only. To keep your invitee count accurate, add volunteers from the sheet to the list above manually.
+                      </div>
+                    )}
+                  </div>
+                  {sugUrl && !editingUrl && (
+                    <button onClick={() => setEditingUrl(true)} style={{
+                      fontSize:11, color:"var(--muted)", background:"none", border:"1px solid var(--border)",
+                      borderRadius:7, padding:"4px 10px", cursor:"pointer", fontWeight:600, flexShrink:0,
+                    }}>Edit link</button>
+                  )}
+                </div>
+                {sugUrl && !editingUrl && (
+                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                    <a href={sugUrl} target="_blank" rel="noopener noreferrer" style={{
+                      display:"inline-flex", alignItems:"center", gap:8,
+                      padding:"8px 16px", borderRadius:8, textDecoration:"none",
+                      background:"linear-gradient(135deg, #00a651, #007a3d)",
+                      color:"#fff", fontSize:12, fontWeight:700, transition:"opacity .15s",
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = ".88"}
+                      onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                      Open Sign Up Sheet
+                    </a>
+                    <button onClick={clearSugUrl} style={{
+                      fontSize:11, color:"#e05c6a", background:"none", border:"none",
+                      cursor:"pointer", padding:"4px 6px", fontWeight:600,
+                    }}>Remove</button>
+                  </div>
+                )}
+                {(!sugUrl || editingUrl) && (
+                  <div style={{ display:"flex", gap:8, marginTop: sugUrl ? 0 : 10 }}>
+                    <input
+                      value={sugInput}
+                      onChange={e => setSugInput(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && saveSugUrl()}
+                      placeholder="https://www.signupgenius.com/go/your-signup-link"
+                      style={{
+                        flex:1, padding:"8px 12px",
+                        border:"1.5px solid var(--border)", borderRadius:8,
+                        fontSize:12, background:"var(--surface)",
+                        color:"var(--text)", outline:"none", fontFamily:"inherit",
+                      }}
+                    />
+                    <Button variant="secondary" size="sm" onClick={saveSugUrl}>Save</Button>
+                    {editingUrl && (
+                      <Button variant="secondary" size="sm" onClick={() => { setEditingUrl(false); setSugInput(sugUrl); }}>Cancel</Button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+            </div>{/* closes volunteers island */}
 
             {/* Add / Edit volunteer modal */}
             {volunteerModal !== null && (

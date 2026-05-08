@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -377,70 +377,66 @@ export default function DashboardPage() {
     .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
 
   // ── Merge manual events + recurring schedule instances, sorted nearest-first ──
-  const allCalendarEvents = useMemo(() => {
+  // Computed inline (no useMemo) so it always reflects the latest query data
+  const _buildCalendarEvents = () => {
     const DOW = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 };
-
-    // Today at midnight (local)
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    // 60-day look-ahead
     const rangeEnd = new Date(today.getTime() + 60 * 24 * 60 * 60 * 1000);
 
-    // Skipped occurrences: "scheduleId_YYYY-MM-DD"
     const exKeys = new Set(
       exceptionList.map(ex => `${ex.schedule_id}_${String(ex.exception_date || '').slice(0, 10)}`)
     );
-
-    // Dates already covered by a real manual event for a given batch: "batchId_YYYY-MM-DD"
     const manualBatchDateKeys = new Set(
       (eventList || []).flatMap(ev =>
         (ev.batches || []).map(b => `${b.id}_${String(ev.start_datetime || '').slice(0, 10)}`)
       )
     );
 
-    // Expand each schedule into concrete date instances
     const schedInstances = [];
     for (const sch of scheduleList) {
-      // batch_name is returned by the JOIN in scheduleController; fall back to batchList if needed
       const name =
         sch.batch_name ||
         batchList.find(b => String(b.id) === String(sch.batch_id))?.name ||
         'Class';
-
       const dow = DOW[sch.day_of_week];
       if (dow === undefined) continue;
 
-      // First occurrence on-or-after today
       const cur = new Date(today);
       cur.setDate(cur.getDate() + ((dow - cur.getDay() + 7) % 7));
 
       while (cur <= rangeEnd) {
-        // Build date string from LOCAL parts (toISOString gives UTC and can be a day off)
         const y  = cur.getFullYear();
         const mo = String(cur.getMonth() + 1).padStart(2, '0');
         const d  = String(cur.getDate()).padStart(2, '0');
         const ds = `${y}-${mo}-${d}`;
-
         if (!exKeys.has(`${sch.id}_${ds}`) && !manualBatchDateKeys.has(`${sch.batch_id}_${ds}`)) {
           schedInstances.push({
             id:             `sched_${sch.id}_${ds}`,
             title:          name,
             type:           'Class',
-            // .slice(0,5) trims MySQL's HH:MM:SS to HH:MM
             start_datetime: `${ds}T${(sch.start_time || '00:00').slice(0, 5)}`,
             end_datetime:   `${ds}T${(sch.end_time   || '01:00').slice(0, 5)}`,
             location:       sch.room || '',
           });
         }
-
         cur.setDate(cur.getDate() + 7);
       }
     }
-
-    // Combine manual events + schedule instances, sorted chronologically
     return [...(eventList || []), ...schedInstances].sort(
       (a, b) => new Date(a.start_datetime) - new Date(b.start_datetime)
     );
-  }, [scheduleList, exceptionList, eventList, batchList]);
+  };
+  const allCalendarEvents = _buildCalendarEvents();
+
+  // ── TEMP DEBUG — remove once working ──
+  console.log('%c[Dashboard]', 'color:cyan;font-weight:bold',
+    'sid=', sid,
+    '| schedules=', scheduleList.length,
+    '| batches=', batchList.length,
+    '| eventList=', eventList.length,
+    '| allEvents=', allCalendarEvents.length,
+    '| scheduleList[0]=', scheduleList[0] ?? 'empty'
+  );
 
   // This Week: today 00:00 → +7 days (includes events that started earlier today)
   const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
@@ -678,7 +674,7 @@ export default function DashboardPage() {
           <div style={{ fontSize: 11, color: C.boulder, marginBottom: 8, fontFamily: 'monospace' }}>
             schedules: {scheduleList.length} | batches: {batchList.length} | allEvents: {allCalendarEvents.length} | thisWeek: {thisWeekEvents.length}
           </div>
-          <div style={{ background: C.white, borderRadius: 16, border: `1.5px solid ${C.border}`, overflow: 'hidden', marginBottom: 36 }}>
+          <div style={{ background: C.white, borderRadius: 16, border: `3px solid red`, overflow: 'hidden', marginBottom: 36 }}>
             {thisWeekEvents.length === 0
               ? <div style={{ padding: '28px 20px', color: C.grayChate, fontSize: 13, textAlign: 'center' }}>No events this week</div>
               : thisWeekEvents.map(e => <WeekEventRow key={e.id} e={e} />)
