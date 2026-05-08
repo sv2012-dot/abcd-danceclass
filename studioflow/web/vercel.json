@@ -1,5 +1,18 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "build",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/:school/:recital",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebot|facebookexternalhit|whatsapp|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|googlebot|bingbot|yandexbot|applebot|ia_archiver|pinterest|tumblr|vkshare).*"
+        }
+      ],
+      "destination": "/api/og?school=:school&recital=:recital"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
