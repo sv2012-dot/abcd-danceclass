@@ -68,6 +68,11 @@ export const recitals = {
   deleteParticipant: (schoolId, id, participantId) => api.delete(`/schools/${schoolId}/recitals/${id}/participants/${participantId}`),
 };
 
+export const upload = {
+  // Upload a base64 data URL to Cloudinary via the backend; returns { url: 'https://...' }
+  image: (data) => api.post('/upload/image', { data }),
+};
+
 export const fees = {
   plans: (schoolId) => api.get(`/schools/${schoolId}/fees/plans`),
   createPlan: (schoolId, data) => api.post(`/schools/${schoolId}/fees/plans`, data),

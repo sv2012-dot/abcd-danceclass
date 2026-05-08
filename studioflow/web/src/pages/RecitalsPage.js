@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
-import { recitals as api, todos as todosApi } from "../api";
+import { recitals as api, todos as todosApi, upload as uploadApi } from "../api";
 import toast from "react-hot-toast";
 import Card from "../components/shared/Card";
 import Button from "../components/shared/Button";
@@ -584,21 +584,23 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     setCropFile(file);
   };
 
-  // Step 2: crop modal confirmed → save 800×600 4:3 dataUrl to DB
+  // Step 2: crop modal confirmed → upload to Cloudinary, save https:// URL to DB
   const saveCoverPhoto = async (dataUrl) => {
     setInstaUrl(""); setInstaInput(""); setShowInstaForm(false);
     localStorage.removeItem(INSTA_KEY);
     try {
       setPosterSaving(true);
-      await api.uploadPoster(sid, id, dataUrl);
-      setPoster(dataUrl);
-      qc.setQueryData(["recital-detail", sid, id], (old) => old ? { ...old, poster_url: dataUrl } : old);
+      // Upload base64 to Cloudinary → get back a public https:// URL
+      const { url } = await uploadApi.image(dataUrl);
+      await api.uploadPoster(sid, id, url);
+      setPoster(url);
+      qc.setQueryData(["recital-detail", sid, id], (old) => old ? { ...old, poster_url: url } : old);
       qc.setQueryData(["recitals", sid], (old) =>
-        Array.isArray(old) ? old.map(r => r.id === Number(id) ? { ...r, poster_url: dataUrl } : r) : old
+        Array.isArray(old) ? old.map(r => r.id === Number(id) ? { ...r, poster_url: url } : r) : old
       );
       toast.success("Cover photo saved");
-    } catch {
-      toast.error("Failed to save cover photo");
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to save cover photo");
     } finally {
       setPosterSaving(false);
     }
