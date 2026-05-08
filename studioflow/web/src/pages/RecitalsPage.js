@@ -2070,17 +2070,18 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                 </div>
 
                 {/* Rows */}
-                {participants.map(p => {
+                {participants.map((p, idx) => {
                   const isEditing = editingParticipantId === p.id;
                   const ef = editingParticipantForm;
                   const rsvpColor = { Confirmed:"#10B981", Declined:"#EF4444", Pending:"#F59E0B" }[p.rsvp_status] || "var(--muted)";
                   const typeLabel = { Performer:"Participant", Guest:"Audience", Volunteer:"Volunteer", Audience:"Audience", Other:"Other" }[p.type] ?? (p.type || "Participant");
                   const typeColor = { Volunteer:"#10B981", Performer:"#6366F1", Guest:"#14B8A6", Audience:"#14B8A6", Other:"#9CA3AF" }[p.type] ?? "#9CA3AF";
-                  const fInp = { padding:"7px 10px", borderRadius:7, border:"1.5px solid var(--border)", fontSize:13, background:"var(--surface)", color:"var(--text)", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
+                  const rowBg = idx % 2 === 0 ? "var(--card)" : "var(--surface)";
+                  const fInp = { padding:"7px 10px", borderRadius:7, border:"1.5px solid var(--border)", fontSize:13, background:"var(--card)", color:"var(--text)", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit", appearance:"none", WebkitAppearance:"none" };
 
                   if (isEditing) {
                     return (
-                      <div key={p.id} style={{ borderBottom:"1px solid var(--border)", background:"var(--card)" }}>
+                      <div key={p.id} style={{ borderBottom:"1px solid var(--border)", background:"var(--surface)", borderLeft:"3px solid var(--accent)" }}>
                         <div style={{ padding:"12px 12px 14px", display:"flex", flexDirection:"column", gap:8 }}>
                           <input autoFocus placeholder="Name *" value={ef.name||''} onChange={e => setEditingParticipantForm(f => ({...f, name:e.target.value}))} style={fInp} />
                           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
@@ -2098,9 +2099,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                               {[0,1,2,3,4,5].map(n => <option key={n} value={n}>{n===0 ? "No guests" : `+${n} guest${n>1?'s':''}`}</option>)}
                             </select>
                           </div>
-                          {ef.type === 'Volunteer' && (
-                            <input placeholder="Role / Task (e.g. Ticket table, Backstage)" value={ef.role||''} onChange={e => setEditingParticipantForm(f => ({...f, role:e.target.value}))} style={fInp} />
-                          )}
+                          <input placeholder="Role / Task (optional – e.g. Ticket table, Backstage)" value={ef.role||''} onChange={e => setEditingParticipantForm(f => ({...f, role:e.target.value}))} style={fInp} />
                           <div style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:8 }}>
                             <select value={ef.rsvp_status||'Pending'} onChange={e => setEditingParticipantForm(f => ({...f, rsvp_status:e.target.value}))} style={{...fInp, cursor:"pointer"}}>
                               <option value="Pending">Pending</option>
@@ -2124,10 +2123,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                   }
 
                   return (
-                    <div key={p.id} style={{ borderBottom:"1px solid var(--border)", cursor:"pointer", transition:"background .1s" }}
+                    <div key={p.id} style={{ borderBottom:"1px solid var(--border)", cursor:"pointer", transition:"background .12s", background: rowBg }}
                       onClick={() => { setEditingParticipantId(p.id); setEditingParticipantForm({ name:p.name||'', email:p.email||'', phone:p.phone||'', type:p.type||'Performer', plus_ones:p.plus_ones||0, rsvp_status:p.rsvp_status||'Pending', role:p.role||'' }); }}
-                      onMouseEnter={e => e.currentTarget.style.background = "var(--surface)"}
-                      onMouseLeave={e => e.currentTarget.style.background = ""}
+                      onMouseEnter={e => e.currentTarget.style.background = "var(--border)"}
+                      onMouseLeave={e => e.currentTarget.style.background = rowBg}
                     >
                       {/* Row 1: Name | +Guests | RSVP | delete */}
                       <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 52px 80px 36px" : "1.6fr 1.4fr 90px 80px 110px 36px", gap:8, alignItems:"center" }}>
@@ -2171,7 +2170,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
 
                 {/* ── Quick-add — desktop always visible, mobile on-demand ── */}
                 {(() => {
-                  const qInp = { padding:"7px 10px", borderRadius:7, border:"1.5px solid var(--border)", fontSize:12, background:"var(--card)", color:"var(--text)", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
+                  const qInp = { padding:"7px 10px", borderRadius:7, border:"1.5px solid var(--border)", fontSize:12, background:"var(--card)", color:"var(--text)", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit", appearance:"none", WebkitAppearance:"none" };
                   const doAdd = () => {
                     if (!quickAdd.name.trim()) { toast.error("Name is required"); return; }
                     addParticipantMut.mutate(quickAdd);
@@ -2195,9 +2194,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                           {[0,1,2,3,4,5].map(n => <option key={n} value={n}>{n===0 ? "No guests" : `+${n} guest${n>1?'s':''}`}</option>)}
                         </select>
                       </div>
-                      {quickAdd.type === 'Volunteer' && (
-                        <input placeholder="Role / Task (e.g. Ticket table, Backstage)" value={quickAdd.role||''} onChange={e => setQuickAdd(q => ({...q, role:e.target.value}))} style={qInp} />
-                      )}
+                      <input placeholder="Role / Task (optional)" value={quickAdd.role||''} onChange={e => setQuickAdd(q => ({...q, role:e.target.value}))} style={qInp} />
                       <div style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:8 }}>
                         <select value={quickAdd.rsvp_status} onChange={e => setQuickAdd(q => ({...q, rsvp_status:e.target.value}))} style={{...qInp, cursor:"pointer"}}>
                           <option value="Pending">Pending</option>
@@ -2248,7 +2245,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
 
               {/* ── Inline add-volunteer form ── */}
               {showVolunteerInlineAdd && (() => {
-                const vInp = { padding:"7px 10px", borderRadius:7, border:"1.5px solid var(--border)", fontSize:13, background:"var(--surface)", color:"var(--text)", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
+                const vInp = { padding:"7px 10px", borderRadius:7, border:"1.5px solid var(--border)", fontSize:13, background:"var(--card)", color:"var(--text)", outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit", appearance:"none", WebkitAppearance:"none" };
                 const doAddVol = () => {
                   if (!volunteerInlineForm.name.trim()) { toast.error("Name is required"); return; }
                   addParticipantMut.mutate({ ...volunteerInlineForm, type:'Volunteer' });
@@ -2344,11 +2341,11 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                       fontSize:14, fontWeight:800, color:"#fff", letterSpacing:".04em",
                     }}>{initials(v.name)}</div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:700, fontSize:14, marginBottom:2 }}>{v.name}</div>
-                      <div style={{ fontSize:12, color:"var(--muted)", marginBottom:1 }}>{v.role}</div>
+                      <div style={{ fontWeight:700, fontSize:14, marginBottom:2, textDecoration:"none", color:"var(--text)" }}>{v.name}</div>
+                      {v.role && <div style={{ fontSize:12, color:"var(--muted)", marginBottom:1, textDecoration:"none" }}>{v.role}</div>}
                       <div style={{ fontSize:11, color:"var(--muted)", display:"flex", gap:10 }}>
-                        <span>{v.email}</span>
-                        <span>{v.phone}</span>
+                        {v.email && <span style={{ textDecoration:"none", color:"var(--muted)" }}>{v.email}</span>}
+                        {v.phone && <span style={{ textDecoration:"none", color:"var(--muted)" }}>{v.phone}</span>}
                       </div>
                     </div>
                     <span style={{
