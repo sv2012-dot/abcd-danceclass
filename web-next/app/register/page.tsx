@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import toast from 'react-hot-toast';
@@ -17,7 +17,8 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
 };
 
-export default function RegisterPage() {
+// Inner component uses useSearchParams() — must be inside <Suspense>
+function RegisterForm() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -294,5 +295,18 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Outer page wraps the form in Suspense (required for useSearchParams in Next.js)
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
+        <p style={{ color: '#888' }}>Loading...</p>
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   );
 }
