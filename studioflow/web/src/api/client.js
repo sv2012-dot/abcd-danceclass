@@ -22,7 +22,8 @@ api.interceptors.response.use(
       sessionStorage.removeItem('sf_token');
       localStorage.removeItem('sf_token');
       localStorage.removeItem('sf_user');
-      window.location.href = '/login';
+      localStorage.removeItem('sf_school');
+      window.location.href = process.env.REACT_APP_LOGIN_URL || 'https://manchq.com/login';
     }
     return Promise.reject(err.response?.data || err);
   }

@@ -30,19 +30,22 @@ const LOADING = (
   </div>
 );
 
+const LOGIN_URL = process.env.REACT_APP_LOGIN_URL || 'https://manchq.com/login';
+const HOME_URL  = process.env.REACT_APP_HOME_URL  || 'https://manchq.com';
+
 function RequireAuth({ children, roles }) {
   const { user, loading } = useAuth();
   if (loading) return LOADING;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) { window.location.replace(LOGIN_URL); return null; }
   if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
   return children;
 }
 
-// Shows landing page to logged-out visitors; the app shell to logged-in users.
+// Redirect unauthenticated visitors to manchq.com; show dashboard to authenticated users.
 function RootGuard() {
   const { user, loading } = useAuth();
   if (loading) return LOADING;
-  if (!user) return <LandingPageA />;
+  if (!user) { window.location.replace(HOME_URL); return null; }
   return <AppShell />;
 }
 

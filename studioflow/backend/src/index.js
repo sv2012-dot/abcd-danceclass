@@ -16,6 +16,7 @@ const ALLOWED_ORIGINS = [
   'https://abcd-danceclass.vercel.app',
   'https://manchq.com',
   'https://www.manchq.com',
+  'https://app.manchq.com',
   // Additional origins from env (comma-separated)
   ...(process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean),
 ];
