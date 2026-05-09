@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useGoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
 import { redirectToDashboard } from '@/lib/redirectToDashboard';
+import { useAuth } from '@/lib/context/AuthContext';
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
@@ -17,6 +18,7 @@ const GoogleIcon = () => (
 
 export default function GoogleSignIn() {
   const router = useRouter();
+  const { setSession } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const login = useGoogleLogin({
@@ -34,11 +36,10 @@ export default function GoogleSignIn() {
 
         if (response.ok) {
           if (data.token) {
-            sessionStorage.setItem('sf_token', data.token);
-            localStorage.setItem('sf_user', JSON.stringify(data.user));
-            if (data.school) {
-              localStorage.setItem('sf_school', JSON.stringify(data.school));
-            }
+            // Push session into AuthContext so dashboard route guard sees the
+            // user immediately on next navigation. setSession also writes to
+            // sessionStorage / localStorage.
+            setSession(data.token, data.user, data.school || null);
             toast.success('Logged in successfully!');
             redirectToDashboard(router);
           } else if (data.requiresRegistration) {

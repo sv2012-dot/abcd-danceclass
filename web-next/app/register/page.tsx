@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
+import { redirectToDashboard } from '@/lib/redirectToDashboard';
 import toast from 'react-hot-toast';
 
 const inputStyle: React.CSSProperties = {
@@ -19,7 +20,7 @@ const inputStyle: React.CSSProperties = {
 
 // Inner component uses useSearchParams() — must be inside <Suspense>
 function RegisterForm() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, setSession } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [formLoading, setFormLoading] = useState(false);
@@ -121,15 +122,12 @@ function RegisterForm() {
 
       const data = await response.json();
 
-      // Store authentication data
-      sessionStorage.setItem('sf_token', data.token);
-      localStorage.setItem('sf_user', JSON.stringify(data.user));
-      if (data.school) {
-        localStorage.setItem('sf_school', JSON.stringify(data.school));
-      }
+      // Push session into AuthContext (also writes storage) so the dashboard
+      // route guard sees an authenticated user immediately on navigation.
+      setSession(data.token, data.user, data.school || null);
 
       toast.success('School registered successfully!');
-      router.push('/');
+      redirectToDashboard(router);
     } catch (error: any) {
       const msg = error?.message || (typeof error === 'string' ? error : 'Registration failed');
       toast.error(msg);

@@ -21,6 +21,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<User>;
   logout: () => void;
   setSchool: (school: School | null) => void;
+  setSession: (token: string, user: User, school?: School | null) => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -95,6 +96,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return data.user;
   };
 
+  // Used by external auth flows (e.g. Google sign-in) that have already
+  // obtained a token + user from the backend and need to push the session
+  // into context so route guards see the authenticated state immediately.
+  const setSession = (token: string, u: User, s: School | null = null) => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('sf_token', token);
+      localStorage.setItem('sf_user', JSON.stringify(u));
+    }
+    setUser(u);
+    persistSchool(s);
+  };
+
   const logout = () => {
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('sf_token');
@@ -107,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, school, loading, login, logout, setSchool: persistSchool }}>
+    <AuthContext.Provider value={{ user, school, loading, login, logout, setSchool: persistSchool, setSession }}>
       {children}
     </AuthContext.Provider>
   );
