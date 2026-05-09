@@ -213,29 +213,18 @@ export default function Home() {
   const router = useRouter();
   const isMobile = useIsMobile();
 
-  // If authenticated, send to dashboard
-  useEffect(() => {
+  // Smart login: if already authenticated go straight to dashboard, otherwise go to /login
+  const goLogin = () => {
     if (!loading && user) {
       const token = sessionStorage.getItem('sf_token') || '';
       const school = localStorage.getItem('sf_school');
       redirectToDashboard(token, user, school ? JSON.parse(school) : null);
+    } else {
+      router.push('/login');
     }
-  }, [loading, user]);
+  };
 
-  const goLogin   = () => router.push('/login');
   const goPricing = () => { window.location.href = 'https://app.manchq.com/pricing'; };
-
-  // Show nothing while checking auth (avoids flash of landing for logged-in users)
-  if (loading) {
-    return (
-      <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#08060F' }}>
-        <p style={{ color:'#888' }}>Loading...</p>
-      </div>
-    );
-  }
-
-  // Authenticated users are being redirected — show nothing
-  if (user) return null;
 
   return (
     <div style={{ fontFamily:'var(--font-sans)', background:'#08060F', minHeight:'100vh', color:'#fff', overflowX:'hidden' }}>
