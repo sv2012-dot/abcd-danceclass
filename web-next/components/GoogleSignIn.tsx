@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
+import { redirectToDashboard } from '@/lib/redirectToDashboard';
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
@@ -39,7 +40,7 @@ export default function GoogleSignIn() {
               localStorage.setItem('sf_school', JSON.stringify(data.school));
             }
             toast.success('Logged in successfully!');
-            router.push('/');
+            redirectToDashboard(data.token, data.user, data.school || null);
           } else if (data.requiresRegistration) {
             router.push(`/register?googleData=${encodeURIComponent(JSON.stringify(data.googleData))}`);
           }

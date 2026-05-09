@@ -1,0 +1,295 @@
+================================================================================
+                    NEXT.JS APP ARCHITECTURE & FLOW
+================================================================================
+
+CURRENT STRUCTURE:
+==================
+
+    layout.tsx (Server Component)
+    │
+    ├─ GoogleOAuthProvider (Client)
+    │  │
+    │  └─ AuthProvider (Client)
+    │     │ { user, loading, login, logout }
+    │     │
+    │     ├─ page.tsx          ← HOME PAGE (BROKEN - No content)
+    │     ├─ login/page.tsx    ← Works (Shows form)
+    │     ├─ register/page.tsx ← Works (Shows form)
+    │     └─ [schoolSlug]/[recitalSlug]/page.tsx ← Works (Server component)
+
+
+AUTHENTICATION FLOW DIAGRAM:
+=============================
+
+UNAUTHENTICATED USER (No token):
+─────────────────────────────────
+
+    Browser             AuthContext              Backend
+    │                   │                        │
+    GET /               │                        │
+    │─────────────────→ │                        │
+    │                   │ No token found         │
+    │                   │ loading = false        │
+    │                   │ user = null            │
+    │                   │                        │
+    │ page.tsx checks:  │                        │
+    │ if (!loading && !user && !redirected)     │
+    │ if (true && true && true) = TRUE          │
+    │                   │                        │
+    │ REDIRECT to /login│                        │
+    GET /login          │                        │
+    │─────────────────→ │                        │
+    │                   │                        │
+    ✓ Shows login form  │                        │
+
+    RESULT: ✅ CORRECT
+
+
+AUTHENTICATED USER (Has valid token):
+──────────────────────────────────────
+
+    Browser             AuthContext              Backend
+    │                   │                        │
+    GET /               │                        │
+    │─────────────────→ │                        │
+    │                   │ Token found in         │
+    │                   │ localStorage           │
+    │                   │                        │
+    │                   │ Calls auth.me()       │
+    │                   │─────────────────────→ │
+    │                   │                        │
+    │                   │ ✓ Token valid         │
+    │                   │ Returns: {user, school}
+    │                   │ ← ──────────────────  │
+    │                   │ Sets user state       │
+    │                   │ loading = false       │
+    │                   │ user = {data}         │
+    │                   │                        │
+    │ page.tsx checks:  │                        │
+    │ if (!loading && !user && !redirected)     │
+    │ if (true && FALSE && true) = FALSE        │
+    │                   │                        │
+    │ NO REDIRECT       │                        │
+    │                   │                        │
+    X Shows blank page: │                        │
+    X "Redirecting..." │                        │
+    │                   │                        │
+
+    RESULT: ❌ WRONG
+
+
+PAGE.TSX LOGIC ANALYSIS:
+=========================
+
+                    ┌─────────────────────────────────────┐
+                    │  Initial State                      │
+                    │  loading: true                      │
+                    │  user: null                         │
+                    │  redirected: false                  │
+                    └─────────────────────────────────────┘
+                                  ↓
+                    ┌─────────────────────────────────────┐
+                    │  Render Output:                     │
+                    │  <div>Redirecting to login...</div> │
+                    └─────────────────────────────────────┘
+                                  ↓
+                    ┌─────────────────────────────────────┐
+                    │  Effect Condition:                  │
+                    │  if (!true && !null && !false)      │
+                    │  if (false && true && true)         │
+                    │  = FALSE                            │
+                    │  → No redirect yet                  │
+                    └─────────────────────────────────────┘
+                                  ↓
+                    ┌─────────────────────────────────────┐
+                    │  Auth Check Completes              │
+                    └─────────────────────────────────────┘
+                           ↙                ↘
+                   No Token           Valid Token
+                          │                    │
+            ┌─────────────────────┐  ┌──────────────────────┐
+            │ loading: false      │  │ loading: false       │
+            │ user: null          │  │ user: {data}         │
+            │ redirected: false   │  │ redirected: false    │
+            └─────────────────────┘  └──────────────────────┘
+                      ↓                         ↓
+            ┌─────────────────────┐  ┌──────────────────────┐
+            │ Condition Check:    │  │ Condition Check:     │
+            │ if (!false &&       │  │ if (!false &&        │
+            │     !null &&        │  │     !{...} &&        │
+            │     !false)         │  │     !false)          │
+            │ = TRUE              │  │ = FALSE              │
+            └─────────────────────┘  └──────────────────────┘
+                      ↓                         ↓
+            ┌─────────────────────┐  ┌──────────────────────┐
+            │ Redirect to /login  │  │ NO REDIRECT          │
+            │                     │  │ Still shows:         │
+            │ ✓ User sees form    │  │ <div>Redirecting...  │
+            │                     │  │ X Blank page!        │
+            └─────────────────────┘  └──────────────────────┘
+                      │                         │
+                     ✅                        ❌
+
+
+WHAT PAGE.TSX ACTUALLY RETURNS:
+================================
+
+    export default function Home() {
+      const { user, loading } = useAuth();
+      const [redirected, setRedirected] = useState(false);
+
+      useEffect(() => {
+        if (!loading && !user && !redirected) {
+          setRedirected(true);
+          window.location.href = '/login';
+        }
+      }, [loading, user, redirected]);
+
+      return (  ← ALWAYS RETURNS THIS, NO MATTER WHAT STATE
+        <div>
+          <p>Redirecting to login...</p>
+        </div>
+      );
+    }
+
+    Problem:
+    ┌────────────────────────────────────────┐
+    │ This component has 2 possible states:  │
+    │                                        │
+    │ State A: Unauthenticated               │
+    │   → Effect triggers redirect           │
+    │   → User goes to /login page           │
+    │   ✓ CORRECT                            │
+    │                                        │
+    │ State B: Authenticated                 │
+    │   → Effect doesn't trigger             │
+    │   → Component still renders same div   │
+    │   → User sees blank message            │
+    │   ❌ WRONG - No home content!          │
+    └────────────────────────────────────────┘
+
+
+WHAT PAGE.TSX SHOULD RETURN:
+=============================
+
+    if (loading) {
+      return <LoadingSpinner />;  ← Show loading while checking
+    }
+
+    if (!user) {
+      router.push('/login');      ← Redirect if not authenticated
+      return null;
+    }
+
+    return (                        ← Show home content if authenticated
+      <Dashboard user={user} school={school} />
+    );
+
+
+NETWORK REQUESTS COMPARISON:
+=============================
+
+SCENARIO 1: No Token (Unauthenticated)
+──────────────────────────────────────
+
+    1. GET / (200)
+       └─ No API calls needed
+       └─ AuthContext finds no token
+       └─ Sets loading: false, user: null
+       └─ page.tsx redirects to /login
+
+    2. GET /login (200)
+       └─ Shows login form
+       └─ Total requests: 2
+
+
+SCENARIO 2: Has Token (Authenticated)
+──────────────────────────────────────
+
+    1. GET / (200)
+       └─ Renders page.tsx shell
+
+    2. GET http://localhost:5000/api/auth/me (200)
+       └─ Headers: Authorization: Bearer {token}
+       └─ Response: {user: {...}, school: {...}}
+       └─ AuthContext sets user state
+       └─ page.tsx: Still shows "Redirecting..." message
+
+    3. Page is stuck - user sees blank page
+       └─ Total requests: 2
+       └─ But only half working!
+
+
+MIDDLEWARE - WHAT'S MISSING:
+=============================
+
+Should exist: middleware.ts
+
+    export function middleware(request: NextRequest) {
+      const token = request.cookies.get('auth-token')?.value;
+
+      // Protect these routes
+      const protectedPaths = ['/', '/dashboard', '/settings'];
+
+      if (protectedPaths.includes(request.nextUrl.pathname)) {
+        if (!token) {
+          return NextResponse.redirect(
+            new URL('/login', request.url)
+          );
+        }
+      }
+
+      return NextResponse.next();
+    }
+
+    Benefits:
+    ✅ Server-side auth check
+    ✅ No flashing/loading states
+    ✅ Instant redirects
+    ✅ No client hydration issues
+    ✅ Consistent approach
+
+
+SUMMARY OF ISSUES:
+===================
+
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  Issue 1: Home page has NO CONTENT for authenticated users │
+│           It only handles redirects                        │
+│                                                             │
+│  Issue 2: Architecture mixes Server (layout) + Client      │
+│           (AuthProvider) causing timing issues            │
+│                                                             │
+│  Issue 3: No middleware → No server-side protection        │
+│                                                             │
+│  Issue 4: Inconsistent redirects (location.href vs router) │
+│                                                             │
+│  ROOT CAUSE: page.tsx always renders same div             │
+│              Unauthenticated users see it briefly          │
+│              Authenticated users see it permanently        │
+│              No one gets home page content                 │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+
+
+KEY INSIGHT:
+============
+
+    This is NOT a bug in auth logic.
+    This is NOT a backend issue.
+    This is an INCOMPLETE UI COMPONENT.
+
+    page.tsx is like a login button that says:
+    "If you're not logged in, go to login"
+
+    But it never says:
+    "If you ARE logged in, here's your dashboard"
+
+    It's like a door with a sign saying:
+    "Not welcome? Go to the lobby"
+
+    But no sign saying:
+    "Welcome! Come in!"
+
+================================================================================

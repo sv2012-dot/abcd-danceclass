@@ -1,0 +1,207 @@
+================================================================================
+                    FINAL INVESTIGATION REPORT
+           Redirect Loops & Blank Pages in Next.js App
+================================================================================
+
+Date: May 8, 2026
+Status: INVESTIGATION COMPLETE - READY FOR IMPLEMENTATION
+Confidence: 100%
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+The redirect loops and blank pages are NOT caused by authentication failures
+or API communication issues. The problem is straightforward:
+
+    THE HOME PAGE (page.tsx) IS INCOMPLETE
+
+    It has code to redirect unauthenticated users to /login
+    But it has NO CODE to show content for authenticated users
+
+    Result: Authenticated users see a blank page with
+            "Redirecting to login..." message
+
+This is not a bug - it's an unfinished feature in an ongoing CRA to Next.js
+migration.
+
+================================================================================
+ROOT CAUSE IDENTIFIED
+================================================================================
+
+File: /web-next/app/page.tsx
+Lines: 18-23
+
+The function ALWAYS returns the same div regardless of authentication state:
+
+    return (
+      <div style={{...}}>
+        <p>Redirecting to login...</p>
+      </div>
+    );
+
+What should happen:
+
+    if (loading) {
+      return <LoadingSpinner />;
+    }
+
+    if (!user) {
+      router.push('/login');
+      return null;
+    }
+
+    // User is authenticated - show content!
+    return <Dashboard user={user} school={school} />;
+
+================================================================================
+PROOF OF FINDINGS
+================================================================================
+
+Backend API Testing (All Working):
+  - POST /api/auth/login: 200 OK, returns valid token
+  - GET /api/auth/me (no token): 401 Unauthorized (correct)
+  - GET /api/auth/me (with token): 200 OK, returns user data
+
+Frontend Authentication (All Working):
+  - AuthContext finds token in localStorage
+  - Calls API with proper Authorization header
+  - Receives user data successfully
+  - Sets React state correctly
+  - No errors occur
+
+Page Component Behavior:
+
+Scenario A (No token):
+  if (!loading && !user && !redirected)
+  if (true && true && true) = TRUE
+  Result: Redirects to /login page
+  User sees: Login form ✓
+
+Scenario B (Valid token):
+  if (!loading && !user && !redirected)
+  if (true && FALSE && true) = FALSE
+  Result: No redirect
+  User sees: Blank page with "Redirecting..." message ✗
+
+THE FLAW: No else clause for when user IS authenticated
+
+================================================================================
+NETWORK TRACE
+================================================================================
+
+Unauthenticated User:
+  1. GET / → 200 OK
+  2. AuthContext finds no token
+  3. Sets loading: false, user: null
+  4. page.tsx condition = TRUE
+  5. Redirects to /login
+  6. GET /login → 200 OK
+  Result: Shows login form ✓
+
+Authenticated User:
+  1. GET / → 200 OK
+  2. AuthContext finds token
+  3. Calls GET /api/auth/me with Authorization header
+  4. Backend: 200 OK, returns {user, school}
+  5. AuthContext sets user state
+  6. page.tsx condition = FALSE
+  7. No redirect
+  8. Still shows initial message
+  Result: Blank page with message ✗
+
+================================================================================
+VERIFICATION
+================================================================================
+
+This diagnosis was verified through:
+
+1. Code Analysis
+   - Examined page.tsx logic
+   - Traced condition evaluation
+   - Identified missing else case
+
+2. API Testing
+   - Tested login endpoint
+   - Tested auth.me endpoint
+   - Verified token validation
+
+3. Behavior Observation
+   - Fresh user: Sees login (correct)
+   - Returning user: Sees blank (wrong)
+   - Expired token: Sees login (correct)
+
+4. Network Inspection
+   - Verified API calls succeed
+   - Confirmed response data arrives
+   - No errors in console
+
+5. Flow Simulation
+   - Traced state transitions
+   - Evaluated conditionals
+   - Confirmed logic flow
+
+All findings consistent and confirmed.
+
+================================================================================
+IMPACT ANALYSIS
+================================================================================
+
+Severity: HIGH
+  - Authenticated users cannot use the application
+  - Home page is completely broken
+  - Migration cannot be completed without fixing
+
+Scope: Limited
+  - Only affects home page (page.tsx)
+  - Auth logic is sound
+  - API works correctly
+
+Fix Complexity: LOW
+  - Problem is straightforward
+  - Solution is clear
+  - No architecture changes needed (optional middleware can improve)
+
+User Impact:
+  - Fresh users: Can log in (unaffected)
+  - Returning users: Cannot see home page (blocked)
+  - Expired sessions: Redirected to login (works)
+
+================================================================================
+SUMMARY TABLE
+================================================================================
+
+Component            Status   Details
+─────────────────────────────────────────────────────────────
+Backend API          ✅ WORKS Login, auth.me, token validation
+Authentication       ✅ WORKS Token generation, validation
+Context Init         ✅ WORKS Proper state management
+API Client           ✅ WORKS Axios with interceptors
+Token Storage        ✅ WORKS localStorage/sessionStorage
+Login Page           ✅ WORKS Shows login form
+Register Page        ✅ WORKS Shows registration form
+Home Page            ❌ BROKEN No content for authenticated users
+Middleware           ❌ MISSING No server-side route protection
+Dashboard Content    ❌ MISSING No UI for authenticated users
+
+================================================================================
+RECOMMENDATION
+================================================================================
+
+FIX THE HOME PAGE (page.tsx):
+
+Replace current code with proper state handling:
+  - Show loading spinner while auth checks
+  - Redirect if not authenticated
+  - Show dashboard if authenticated
+  - Handle error cases
+
+Add optional improvements:
+  - Create middleware.ts for server-side protection
+  - Extract dashboard to separate component
+  - Standardize redirect methods
+  - Add better error handling
+
+This investigation is complete. Implementation can proceed.
+
+================================================================================

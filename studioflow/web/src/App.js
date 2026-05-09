@@ -46,10 +46,28 @@ function RootGuard() {
   return <AppShell />;
 }
 
+function TokenBridge() {
+  // Accept a token passed via URL from the Next.js app and store it, then redirect home
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('sf_token');
+    const user = params.get('sf_user');
+    const school = params.get('sf_school');
+    if (token) {
+      sessionStorage.setItem('sf_token', token);
+      if (user) localStorage.setItem('sf_user', decodeURIComponent(user));
+      if (school) localStorage.setItem('sf_school', decodeURIComponent(school));
+      window.location.replace('/');
+    }
+  }, []);
+  return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'#000',color:'#888'}}>Loading dashboard...</div>;
+}
+
 function AppRoutes() {
   const { user } = useAuth();
   return (
     <Routes>
+      <Route path="/auth-bridge" element={<TokenBridge />} />
       <Route path="/landing-c" element={<LandingPageC />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />

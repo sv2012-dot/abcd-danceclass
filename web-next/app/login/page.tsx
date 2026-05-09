@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import GoogleSignIn from '@/components/GoogleSignIn';
 import toast from 'react-hot-toast';
+import { redirectToDashboard } from '@/lib/redirectToDashboard';
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -25,19 +26,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
+  // If already logged in, send to dashboard directly
   useEffect(() => {
-    if (user && !authLoading) {
-      router.push('/');
+    if (!authLoading && user) {
+      const token = sessionStorage.getItem('sf_token') || '';
+      const school = localStorage.getItem('sf_school');
+      redirectToDashboard(token, user, school ? JSON.parse(school) : null);
     }
-  }, [user, authLoading, router]);
-
-  if (authLoading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
-        <p style={{ color: '#888' }}>Loading...</p>
-      </div>
-    );
-  }
+  }, [authLoading, user]);
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +41,9 @@ export default function LoginPage() {
     try {
       const u = await login(form.email, form.password);
       toast.success(`Welcome back, ${u.name}!`);
-      router.push('/');
+      const token = sessionStorage.getItem('sf_token') || '';
+      const school = localStorage.getItem('sf_school');
+      redirectToDashboard(token, u, school ? JSON.parse(school) : null);
     } catch (err: any) {
       const msg = err?.error || err?.message || (typeof err === 'string' ? err : 'Login failed. Please check your credentials.');
       toast.error(msg);
