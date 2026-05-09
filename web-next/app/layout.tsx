@@ -35,7 +35,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+  // Trim defensively — Vercel env vars have shipped with trailing \n which
+  // silently breaks Google sign-in (Google rejects the malformed client_id).
+  const googleClientId = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '').trim();
 
   return (
     <html

@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 const PROD_API = 'https://abcd-danceclass-production.up.railway.app/api';
-const API_URL = process.env.NEXT_PUBLIC_API_URL
+// Trim defensively — Vercel env vars have been seen to ship with stray \n
+// suffixes that silently break URL concatenation.
+const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim())
   || (process.env.NODE_ENV === 'production' ? PROD_API : 'http://localhost:5000/api');
 
 const api = axios.create({

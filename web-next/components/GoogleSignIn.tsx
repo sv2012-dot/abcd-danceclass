@@ -27,7 +27,7 @@ export default function GoogleSignIn() {
       console.log('[GoogleSignIn] step 1: got Google access_token');
       toast('Got Google token — calling backend…');
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        const apiUrl = (process.env.NEXT_PUBLIC_API_URL?.trim()) || 'http://localhost:5000/api';
         console.log('[GoogleSignIn] step 2: POST', `${apiUrl}/auth/google`);
         const response = await fetch(`${apiUrl}/auth/google`, {
           method: 'POST',
