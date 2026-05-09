@@ -42,9 +42,10 @@
   --chart-5: oklch(0.2916 0.1574 280.1404);
 
   /* Typography */
-  --font-sans:  'Open Sans', system-ui, sans-serif;
-  --font-serif: 'Open Sans', system-ui, sans-serif;
-  --font-mono:  'Open Sans', system-ui, sans-serif;
+  /* next/font injects Open Sans behind --font-open-sans (set in app/layout) */
+  --font-sans:  var(--font-open-sans), 'Open Sans', system-ui, sans-serif;
+  --font-serif: var(--font-open-sans), 'Open Sans', system-ui, sans-serif;
+  --font-mono:  var(--font-open-sans), 'Open Sans', system-ui, sans-serif;
 
   /* Radius */
   --radius: 0.75rem;

@@ -924,14 +924,14 @@ function SchoolHomePage() {
               <div style={{ background:C.white, borderRadius:16, border:`1.5px solid ${C.border}`, overflow:'hidden', marginBottom:36 }}>
                 {thisWeekEvents.length === 0
                   ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center' }}>No events this week</div>
-                  : thisWeekEvents.slice(0,5).map(e => <ThisWeekRow key={e.id} e={e} onNavigate={()=>router.push('/schedule',{state:{openEventId:e.id,eventDate:e.start_datetime}})} />)
+                  : thisWeekEvents.slice(0,5).map(e => <ThisWeekRow key={e.id} e={e} onNavigate={()=>router.push(`/schedule?openEventId=${e.id}&eventDate=${encodeURIComponent(e.start_datetime || '')}`)} />)
                 }
               </div>
               <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>router.push('/schedule')} />
               {upcoming.length === 0
                 ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center', background:C.white, borderRadius:16, border:`1.5px solid ${C.border}` }}>No upcoming recitals</div>
                 : <div style={{ display:'grid', gridTemplateColumns: isDesktop ? 'repeat(3,minmax(0,1fr))' : 'repeat(2,minmax(0,1fr))', gap:12 }}>
-                    {upcomingGrid.map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push('/schedule',{state:{recitalId:r.id,from:'dashboard'}})} />)}
+                    {upcomingGrid.map((r,i) => <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push(`/schedule?recitalId=${r.id}&from=dashboard`)} />)}
                   </div>
               }
               {/* Desktop: stats below recitals */}
@@ -946,7 +946,7 @@ function SchoolHomePage() {
                 {featuredRecital && (
                   <div>
                     <SectionTitle first="FEATURED" accent="RECITAL" />
-                    <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push('/schedule',{state:{recitalId:featuredRecital.id}})} />
+                    <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push(`/schedule?recitalId=${featuredRecital.id}`)} />
                   </div>
                 )}
                 {renderTodoSection}
@@ -960,7 +960,7 @@ function SchoolHomePage() {
               {featuredRecital && (
                 <div>
                   <SectionTitle first="FEATURED" accent="RECITAL" />
-                  <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push('/schedule',{state:{recitalId:featuredRecital.id}})} />
+                  <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push(`/schedule?recitalId=${featuredRecital.id}`)} />
                 </div>
               )}
               {renderTodoSection}
@@ -982,12 +982,12 @@ function SchoolHomePage() {
                 {upcomingGrid.slice(0, 2).length > 0 && (
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gridAutoRows:190, gap:16, marginBottom: featuredRecital ? 16 : 0, minWidth:0 }}>
                     {upcomingGrid.slice(0, 2).map((r, i) => (
-                      <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push('/schedule',{state:{recitalId:r.id,from:'dashboard'}})} />
+                      <RecitalImageCard key={r.id} r={r} index={i} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push(`/schedule?recitalId=${r.id}&from=dashboard`)} />
                     ))}
                   </div>
                 )}
                 {featuredRecital && (
-                  <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push('/schedule',{state:{recitalId:featuredRecital.id}})} />
+                  <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push(`/schedule?recitalId=${featuredRecital.id}`)} />
                 )}
               </div>
           }
@@ -1005,7 +1005,7 @@ function SchoolHomePage() {
                 const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
                 const d     = parseLocalDate((e.start_datetime||"").slice(0,10));
                 return (
-                  <div key={e.id} onClick={()=>router.push("/schedule",{state:{openEventId:e.id,eventDate:e.start_datetime}})}
+                  <div key={e.id} onClick={()=>router.push(`/schedule?openEventId=${e.id}&eventDate=${encodeURIComponent(e.start_datetime || '')}`)}
                     style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderTop:`1px solid ${C.border}`,cursor:"pointer",transition:"background .1s"}}
                     {...conditionalHover(
                       ev=>{ev.currentTarget.style.background=C.surface;},

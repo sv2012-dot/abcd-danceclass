@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Open_Sans } from "next/font/google";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
@@ -7,14 +7,14 @@ import { AuthProvider } from "@/lib/context/AuthContext";
 import { ThemeProvider } from "@/lib/context/ThemeContext";
 import QueryProvider from "@/components/QueryProvider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Match the CRA's font (loaded via Google Fonts in CRA's index.html). The
+// design tokens in globals.css reference 'Open Sans' as --font-sans, so the
+// body MUST actually load Open Sans or every screen falls back to system-ui.
+const openSans = Open_Sans({
+  variable: "--font-open-sans",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -43,7 +43,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${openSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <GoogleOAuthProvider clientId={googleClientId}>

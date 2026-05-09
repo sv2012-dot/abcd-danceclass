@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import { useRouter, useParams, usePathname } from "next/navigation";
+import { useRouter, useParams, usePathname, useSearchParams } from "next/navigation";
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -320,6 +320,7 @@ export default function SchedulePage() {
   const qc  = useQueryClient();
   const router = useRouter();
   const location = usePathname();
+  const searchParams = useSearchParams();
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768; // matches AppShell mobile breakpoint
   const isAdmin = ["superadmin","school_admin","teacher"].includes(user?.role);
@@ -328,22 +329,27 @@ export default function SchedulePage() {
   const [recitalDetailId, setRecitalDetailId] = useState(null);
   const [recitalFrom, setRecitalFrom] = useState(null);
 
-  // If navigated here with a recitalId in state (e.g. from dashboard), open it directly
+  // If navigated here with ?recitalId=… (e.g. from dashboard), open it directly.
+  // Next.js doesn't support React-Router-style {state} on push, so the dashboard
+  // passes these as query params instead.
   useEffect(() => {
-    if (location.state?.recitalId) {
-      setRecitalDetailId(location.state.recitalId);
-      setRecitalFrom(location.state?.from || null);
-      window.history.replaceState({}, '');
+    const recitalIdQ = searchParams.get('recitalId');
+    if (recitalIdQ) {
+      setRecitalDetailId(Number(recitalIdQ) || recitalIdQ);
+      setRecitalFrom(searchParams.get('from') || null);
+      // Strip the param so the URL stays clean and back-nav doesn't re-trigger
+      router.replace('/schedule');
+      return;
     }
-    // If navigated here with goToDate (e.g. back from recital detail), jump to that month
-    if (location.state?.goToDate) {
+    const goToDate = searchParams.get('goToDate');
+    if (goToDate) {
       // Parse as local date (not UTC) to avoid off-by-one day across timezones
-      const [yr, mo, dy] = (location.state.goToDate || '').split('-').map(Number);
+      const [yr, mo, dy] = goToDate.split('-').map(Number);
       const d = new Date(yr, mo - 1, dy);
-      if (!isNaN(d)) { setCursor(d); setSelectedDay(d); }
-      window.history.replaceState({}, '');
+      if (!isNaN(d as any)) { setCursor(d); setSelectedDay(d); }
+      router.replace('/schedule');
     }
-  }, [location.key]); // eslint-disable-line
+  }, [searchParams]); // eslint-disable-line
 
 
   // Recitals are the single source of truth for Recital-type events.
@@ -542,16 +548,18 @@ export default function SchedulePage() {
     });
   }, [rawEvents, recitalEvents, recitalsList, scheduleEvents, filterType, studioOnly, filterBatch]);
 
-  // If navigated with openEventId (e.g. from dashboard THIS WEEK row), jump to date + open panel
+  // If navigated with ?openEventId=… (e.g. from dashboard THIS WEEK row), jump to date + open panel
   const pendingEventIdRef = useRef(null);
   useEffect(() => {
-    if (location.state?.openEventId) {
-      pendingEventIdRef.current = location.state.openEventId;
-      if (location.state.eventDate) {
-        const d = new Date(location.state.eventDate);
-        if (!isNaN(d)) { setCursor(d); setSelectedDay(d); }
+    const openEventId = searchParams.get('openEventId');
+    if (openEventId) {
+      pendingEventIdRef.current = Number(openEventId) || openEventId;
+      const eventDate = searchParams.get('eventDate');
+      if (eventDate) {
+        const d = new Date(eventDate);
+        if (!isNaN(d as any)) { setCursor(d); setSelectedDay(d); }
       }
-      window.history.replaceState({}, '');
+      router.replace('/schedule');
     }
   }, []); // eslint-disable-line
   useEffect(() => {

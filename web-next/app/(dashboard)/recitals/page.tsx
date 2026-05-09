@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import { useRouter, useParams, usePathname } from "next/navigation";
+import { useRouter, useParams, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import React, { useState, useEffect, useRef } from "react";
 
@@ -2983,6 +2983,7 @@ export default function RecitalsPage() {
   const [detailId, setDetailId] = useState(null);   // ← full-page detail
 
   const location = usePathname();
+  const searchParams = useSearchParams();
 
   const { data: recitals=[], isLoading } = useQuery({
     queryKey: ["recitals", sid],
@@ -3024,22 +3025,22 @@ export default function RecitalsPage() {
   // e.g. clicking a "Recital" event on HomePage or SchedulePage navigates with
   // { state: { openTitle: "Pranathi Annual Recital" } }
   useEffect(() => {
-    const openTitle = location.state?.openTitle;
+    const openTitle = searchParams.get('openTitle');
     if (!openTitle || recitals.length === 0 || detailId) return;
     const match = recitals.find(
       r => r.title?.toLowerCase().trim() === openTitle.toLowerCase().trim()
     );
     if (match) setDetailId(match.id);
-  }, [recitals, location.state?.openTitle]); // eslint-disable-line
+  }, [recitals, searchParams]); // eslint-disable-line
 
   // Auto-open the create modal when navigated with ?new=1 query param
   useEffect(() => {
-    if (new URLSearchParams(location.search).get('new') === '1') {
+    if (searchParams.get('new') === '1') {
       openAdd();
       // Strip the param from the URL without triggering a navigation
       window.history.replaceState({}, '', '/schedule');
     }
-  }, [location.search]); // eslint-disable-line
+  }, [searchParams]); // eslint-disable-line
 
   // ── Show full-page detail when detailId is set ─────────────────────────────
   if (detailId) {
@@ -3049,7 +3050,7 @@ export default function RecitalsPage() {
       <RecitalDetail
         id={detailId}
         sid={sid}
-        onBack={() => router.push('/schedule', recitalDate ? { state: { goToDate: recitalDate } } : {})}
+        onBack={() => router.push(recitalDate ? `/schedule?goToDate=${recitalDate}` : '/schedule')}
         onEdit={(r) => { openEdit(r); }}
         onDuplicated={(newId) => setDetailId(newId)}
       />
