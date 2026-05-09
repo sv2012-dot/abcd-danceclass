@@ -24,8 +24,11 @@ export default function GoogleSignIn() {
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setLoading(true);
+      console.log('[GoogleSignIn] step 1: got Google access_token');
+      toast('Got Google token — calling backend…');
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        console.log('[GoogleSignIn] step 2: POST', `${apiUrl}/auth/google`);
         const response = await fetch(`${apiUrl}/auth/google`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -33,30 +36,35 @@ export default function GoogleSignIn() {
         });
 
         const data = await response.json();
+        console.log('[GoogleSignIn] step 3: backend response', response.status, data);
 
         if (response.ok) {
           if (data.token) {
-            // Push session into AuthContext so dashboard route guard sees the
-            // user immediately on next navigation. setSession also writes to
-            // sessionStorage / localStorage.
+            console.log('[GoogleSignIn] step 4a: existing user — setting session');
+            toast.success(`Logged in as ${data.user?.email || 'user'} — going to /home`);
             setSession(data.token, data.user, data.school || null);
-            toast.success('Logged in successfully!');
             redirectToDashboard(router);
           } else if (data.requiresRegistration) {
+            console.log('[GoogleSignIn] step 4b: new user — going to register');
+            toast(`Email not registered — sending to /register`, { duration: 4000 });
             router.push(`/register?googleData=${encodeURIComponent(JSON.stringify(data.googleData))}`);
+          } else {
+            toast.error(`Unexpected response: ${JSON.stringify(data)}`);
           }
         } else {
-          toast.error(data.error || 'Google login failed');
+          console.error('[GoogleSignIn] backend error', response.status, data);
+          toast.error(`Backend ${response.status}: ${data.error || 'Google login failed'}`);
         }
-      } catch (error) {
-        console.error('Google login error:', error);
-        toast.error('Failed to authenticate with Google');
+      } catch (error: any) {
+        console.error('[GoogleSignIn] fetch error:', error);
+        toast.error(`Network error: ${error?.message || error}`);
       } finally {
         setLoading(false);
       }
     },
-    onError: () => {
-      toast.error('Failed to authenticate with Google');
+    onError: (err) => {
+      console.error('[GoogleSignIn] Google OAuth error:', err);
+      toast.error(`Google OAuth error: ${JSON.stringify(err)}`);
     },
   });
 

@@ -19,6 +19,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ManchQ - Recital Management",
   description: "Manage recitals, invitations, and RSVPs with ManchQ",
+  icons: {
+    icon: "/ManchQ-Logo.png",
+    shortcut: "/ManchQ-Logo.png",
+    apple: "/ManchQ-Logo.png",
+  },
   openGraph: {
     siteName: "ManchQ",
     type: "website",

@@ -48,6 +48,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Listen for 401s from anywhere in the app and clear session cleanly.
+    // Doing this in React-land (no window.location.reload) preserves the
+    // smooth Google-login flow.
+    const onUnauthorized = () => {
+      sessionStorage.removeItem('sf_token');
+      localStorage.removeItem('sf_token');
+      localStorage.removeItem('sf_user');
+      localStorage.removeItem('sf_school');
+      setUser(null);
+      setSchoolState(null);
+    };
+    window.addEventListener('sf:unauthorized', onUnauthorized);
+
     // Check if there's a valid token
     const token = sessionStorage.getItem('sf_token') || localStorage.getItem('sf_token');
 
@@ -75,6 +88,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // No token, so user is not authenticated
       setLoading(false);
     }
+
+    return () => {
+      window.removeEventListener('sf:unauthorized', onUnauthorized);
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
