@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import { ThemeProvider } from "@/lib/context/ThemeContext";
+import QueryProvider from "@/components/QueryProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,12 +47,14 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <GoogleOAuthProvider clientId={googleClientId}>
-          <AuthProvider>
-            <ThemeProvider>
-              {children}
-              <Toaster position="top-right" />
-            </ThemeProvider>
-          </AuthProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <ThemeProvider>
+                {children}
+                <Toaster position="top-right" />
+              </ThemeProvider>
+            </AuthProvider>
+          </QueryProvider>
         </GoogleOAuthProvider>
       </body>
     </html>
