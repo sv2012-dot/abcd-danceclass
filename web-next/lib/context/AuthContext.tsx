@@ -56,25 +56,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const token = typeof window !== 'undefined'
-      ? (sessionStorage.getItem('sf_token') || localStorage.getItem('sf_token'))
-      : null;
+    // Don't fetch on server-side
+    if (typeof window === 'undefined') {
+      setLoading(false);
+      return;
+    }
 
-    if (token) {
+    const token = sessionStorage.getItem('sf_token') || localStorage.getItem('sf_token');
+    const storedUser = localStorage.getItem('sf_user');
+
+    if (token && storedUser) {
+      // Trust cached user, try to verify token in background
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        setLoading(false);
+        return;
+      }
+
+      // Verify token asynchronously without blocking UI
       auth.me()
         .then((data) => {
           setUser(data.user);
           persistSchool(data.school);
         })
         .catch(() => {
-          if (typeof window !== 'undefined') {
-            sessionStorage.removeItem('sf_token');
-            localStorage.removeItem('sf_token');
-            localStorage.removeItem('sf_user');
-            localStorage.removeItem('sf_school');
-          }
-        })
-        .finally(() => setLoading(false));
+          // Token is invalid, clear everything
+          sessionStorage.removeItem('sf_token');
+          localStorage.removeItem('sf_token');
+          localStorage.removeItem('sf_user');
+          localStorage.removeItem('sf_school');
+          setUser(null);
+          persistSchool(null);
+        });
+
+      setLoading(false);
     } else {
       setLoading(false);
     }

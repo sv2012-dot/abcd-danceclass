@@ -5,24 +5,20 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        // If authenticated, redirect to dashboard (to be built)
-        // For now, stay on home
-      } else {
-        // If not authenticated, redirect to login
-        router.push('/login');
-      }
+    if (!user) {
+      // If not authenticated, redirect to login
+      router.push('/login');
     }
-  }, [user, loading, router]);
+    // If user exists, dashboard will be shown here (to be built)
+  }, [user, router]);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
-      <p style={{ color: '#888' }}>Loading...</p>
+      <p style={{ color: '#888' }}>Welcome to ManchQ</p>
     </div>
   );
 }
