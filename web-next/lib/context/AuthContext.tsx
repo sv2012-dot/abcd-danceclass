@@ -26,24 +26,9 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    try {
-      const stored = localStorage.getItem('sf_user');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
-
-  const [school, setSchoolState] = useState<School | null>(() => {
-    try {
-      const stored = localStorage.getItem('sf_school');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
-
+  // Start with null - don't trust localStorage on initial load
+  const [user, setUser] = useState<User | null>(null);
+  const [school, setSchoolState] = useState<School | null>(null);
   const [loading, setLoading] = useState(true);
 
   const persistSchool = (s: School | null) => {
@@ -56,42 +41,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Don't fetch on server-side
+    // Check on client-side only
     if (typeof window === 'undefined') {
       setLoading(false);
       return;
     }
 
+    // Check if there's a valid token
     const token = sessionStorage.getItem('sf_token') || localStorage.getItem('sf_token');
-    const storedUser = localStorage.getItem('sf_user');
 
-    if (token && storedUser) {
-      // Trust cached user, try to verify token in background
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        setLoading(false);
-        return;
-      }
-
-      // Verify token asynchronously without blocking UI
+    if (token) {
+      // Verify token with backend
       auth.me()
         .then((data) => {
           setUser(data.user);
+          localStorage.setItem('sf_user', JSON.stringify(data.user));
           persistSchool(data.school);
         })
         .catch(() => {
-          // Token is invalid, clear everything
+          // Token is invalid or expired, clear everything
           sessionStorage.removeItem('sf_token');
           localStorage.removeItem('sf_token');
           localStorage.removeItem('sf_user');
           localStorage.removeItem('sf_school');
           setUser(null);
           persistSchool(null);
+        })
+        .finally(() => {
+          setLoading(false);
         });
-
-      setLoading(false);
     } else {
+      // No token, so user is not authenticated
       setLoading(false);
     }
   }, []);
