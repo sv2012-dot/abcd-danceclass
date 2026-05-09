@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
-import { redirectToDashboard } from '@/lib/redirectToDashboard';
 
 const PURPLE   = '#7C3AED';
 const MAGENTA  = '#DC4EFF';
@@ -216,15 +215,13 @@ export default function Home() {
   // Smart login: if already authenticated go straight to dashboard, otherwise go to /login
   const goLogin = () => {
     if (!loading && user) {
-      const token = sessionStorage.getItem('sf_token') || '';
-      const school = localStorage.getItem('sf_school');
-      redirectToDashboard(token, user, school ? JSON.parse(school) : null);
+      router.push('/home');
     } else {
       router.push('/login');
     }
   };
 
-  const goPricing = () => { window.location.href = 'https://app.manchq.com/pricing'; };
+  const goPricing = () => { router.push('/pricing'); };
 
   return (
     <div style={{ fontFamily:'var(--font-sans)', background:'#08060F', minHeight:'100vh', color:'#fff', overflowX:'hidden' }}>
@@ -523,8 +520,8 @@ export default function Home() {
         </div>
         <div style={{ fontSize:12, display:'flex', gap:16, flexWrap:'wrap', justifyContent: isMobile ? 'center' : 'flex-end' }}>
           <button onClick={goPricing} style={{ background:'none', border:'none', color:'#6a7fdb', cursor:'pointer', padding:0, fontSize:12 }}>Pricing</button>
-          <a href="https://app.manchq.com/privacy" style={{ color:'#6a7fdb', textDecoration:'none' }}>Privacy Policy</a>
-          <a href="https://app.manchq.com/terms"   style={{ color:'#6a7fdb', textDecoration:'none' }}>Terms of Service</a>
+          <a href="/privacy" style={{ color:'#6a7fdb', textDecoration:'none' }}>Privacy Policy</a>
+          <a href="/terms"   style={{ color:'#6a7fdb', textDecoration:'none' }}>Terms of Service</a>
         </div>
       </footer>
     </div>

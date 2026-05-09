@@ -1,0 +1,36 @@
+'use client';
+
+import React from 'react';
+
+const inp: React.CSSProperties = {
+  width: '100%',
+  background: 'var(--surface)',
+  border: '1.5px solid var(--border)',
+  borderRadius: 9,
+  padding: '9px 13px',
+  fontSize: 14,
+  color: 'var(--text)',
+  fontFamily: 'var(--font-b)',
+  transition: 'background .2s, border-color .2s',
+};
+
+export function Field({ label, children }: { label: string; children: any }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 5 }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+export function Input(props: any) {
+  return <input {...props} style={{ ...inp, ...props.style }} />;
+}
+
+export function Select({ children, ...props }: any) {
+  return <select {...props} style={{ ...inp, ...props.style }}>{children}</select>;
+}
+
+export function Textarea(props: any) {
+  return <textarea {...props} style={{ ...inp, minHeight: 80, resize: 'vertical', ...props.style }} />;
+}

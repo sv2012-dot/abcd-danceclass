@@ -29,11 +29,9 @@ export default function LoginPage() {
   // If already logged in, send to dashboard directly
   useEffect(() => {
     if (!authLoading && user) {
-      const token = sessionStorage.getItem('sf_token') || '';
-      const school = localStorage.getItem('sf_school');
-      redirectToDashboard(token, user, school ? JSON.parse(school) : null);
+      redirectToDashboard(router);
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, router]);
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,9 +39,7 @@ export default function LoginPage() {
     try {
       const u = await login(form.email, form.password);
       toast.success(`Welcome back, ${u.name}!`);
-      const token = sessionStorage.getItem('sf_token') || '';
-      const school = localStorage.getItem('sf_school');
-      redirectToDashboard(token, u, school ? JSON.parse(school) : null);
+      redirectToDashboard(router);
     } catch (err: any) {
       const msg = err?.error || err?.message || (typeof err === 'string' ? err : 'Login failed. Please check your credentials.');
       toast.error(msg);

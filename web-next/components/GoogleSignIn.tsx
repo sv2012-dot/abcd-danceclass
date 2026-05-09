@@ -40,7 +40,7 @@ export default function GoogleSignIn() {
               localStorage.setItem('sf_school', JSON.stringify(data.school));
             }
             toast.success('Logged in successfully!');
-            redirectToDashboard(data.token, data.user, data.school || null);
+            redirectToDashboard(router);
           } else if (data.requiresRegistration) {
             router.push(`/register?googleData=${encodeURIComponent(JSON.stringify(data.googleData))}`);
           }

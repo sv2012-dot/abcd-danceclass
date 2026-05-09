@@ -1,12 +1,5 @@
 import api from './client';
 
-export const recitals = {
-  getPublic: (schoolSlug: string, recitalSlug: string) =>
-    fetch(`https://abcd-danceclass-production.up.railway.app/api/public/${schoolSlug}/${recitalSlug}`)
-      .then(r => r.json()),
-};
-
-// All other endpoints (authenticated, will be added as we migrate pages)
 export const auth = {
   login: (data: any) => api.post('/auth/login', data),
   me: () => api.get('/auth/me'),
@@ -18,8 +11,68 @@ export const schools = {
   get: (id: string) => api.get(`/schools/${id}`),
   create: (data: any) => api.post('/schools', data),
   update: (id: string, data: any) => api.put(`/schools/${id}`, data),
+  softDelete: (id: string, password: string) => api.delete(`/schools/${id}`, { data: { password } }),
+  restore: (id: string) => api.post(`/schools/${id}/restore`),
+  stats: (id: string) => api.get(`/schools/${id}/stats`),
+  resetAdminPassword: (id: string, password: string) => api.post(`/schools/${id}/reset-admin-password`, { password }),
+  seedSample: (id: string) => api.post(`/schools/${id}/seed-sample`),
 };
 
+export const students = {
+  list: (schoolId: string) => api.get(`/schools/${schoolId}/students`),
+  get: (schoolId: string, id: string) => api.get(`/schools/${schoolId}/students/${id}`),
+  create: (schoolId: string, data: any) => api.post(`/schools/${schoolId}/students`, data),
+  update: (schoolId: string, id: string, data: any) => api.put(`/schools/${schoolId}/students/${id}`, data),
+  remove: (schoolId: string, id: string) => api.delete(`/schools/${schoolId}/students/${id}`),
+  setBatches: (schoolId: string, id: string, batch_ids: any) => api.put(`/schools/${schoolId}/students/${id}/batches`, { batch_ids }),
+  toggleFee: (schoolId: string, studentId: string, due_day: any) => api.post(`/schools/${schoolId}/fees/toggle-current/${studentId}`, { due_day }),
+};
+
+export const batches = {
+  list: (schoolId: string) => api.get(`/schools/${schoolId}/batches`),
+  get: (schoolId: string, id: string) => api.get(`/schools/${schoolId}/batches/${id}`),
+  create: (schoolId: string, data: any) => api.post(`/schools/${schoolId}/batches`, data),
+  update: (schoolId: string, id: string, data: any) => api.put(`/schools/${schoolId}/batches/${id}`, data),
+  remove: (schoolId: string, id: string) => api.delete(`/schools/${schoolId}/batches/${id}`),
+  enroll: (schoolId: string, id: string, student_ids: any) => api.put(`/schools/${schoolId}/batches/${id}/enroll`, { student_ids }),
+  uploadCover: (schoolId: string, id: string, cover_url: string) => api.patch(`/schools/${schoolId}/batches/${id}/cover`, { cover_url }),
+};
+
+export const schedules = {
+  list: (schoolId: string) => api.get(`/schools/${schoolId}/schedules`),
+  create: (schoolId: string, data: any) => api.post(`/schools/${schoolId}/schedules`, data),
+  update: (schoolId: string, id: string, data: any) => api.put(`/schools/${schoolId}/schedules/${id}`, data),
+  remove: (schoolId: string, id: string) => api.delete(`/schools/${schoolId}/schedules/${id}`),
+};
+
+export const scheduleExceptions = {
+  list: (schoolId: string) => api.get(`/schools/${schoolId}/schedules/exceptions`),
+  create: (schoolId: string, data: any) => api.post(`/schools/${schoolId}/schedules/exceptions`, data),
+  remove: (schoolId: string, id: string) => api.delete(`/schools/${schoolId}/schedules/exceptions/${id}`),
+};
+
+// Public (unauthenticated) recital endpoint — used by [schoolSlug]/[recitalSlug]
+export const recitals = {
+  getPublic: (schoolSlug: string, recitalSlug: string) =>
+    fetch(`https://abcd-danceclass-production.up.railway.app/api/public/${schoolSlug}/${recitalSlug}`)
+      .then(r => r.json()),
+  list: (schoolId: string) => api.get(`/schools/${schoolId}/recitals`),
+  get: (schoolId: string, id: string) => api.get(`/schools/${schoolId}/recitals/${id}`),
+  create: (schoolId: string, data: any) => api.post(`/schools/${schoolId}/recitals`, data),
+  update: (schoolId: string, id: string, data: any) => api.put(`/schools/${schoolId}/recitals/${id}`, data),
+  remove: (schoolId: string, id: string) => api.delete(`/schools/${schoolId}/recitals/${id}`),
+  uploadPoster: (schoolId: string, id: string, poster_url: string) => api.patch(`/schools/${schoolId}/recitals/${id}/poster`, { poster_url }),
+  addTask: (schoolId: string, id: string, task_text: string) => api.post(`/schools/${schoolId}/recitals/${id}/tasks`, { task_text }),
+  toggleTask: (schoolId: string, id: string, taskId: string) => api.put(`/schools/${schoolId}/recitals/${id}/tasks/${taskId}/toggle`),
+  deleteTask: (schoolId: string, id: string, taskId: string) => api.delete(`/schools/${schoolId}/recitals/${id}/tasks/${taskId}`),
+  listParticipants: (schoolId: string, id: string) => api.get(`/schools/${schoolId}/recitals/${id}/participants`),
+  addParticipant: (schoolId: string, id: string, data: any) => api.post(`/schools/${schoolId}/recitals/${id}/participants`, data),
+  updateParticipant: (schoolId: string, id: string, participantId: string, data: any) => api.put(`/schools/${schoolId}/recitals/${id}/participants/${participantId}`, data),
+  updateParticipantRsvp: (schoolId: string, id: string, participantId: string, rsvp_status: any) => api.put(`/schools/${schoolId}/recitals/${id}/participants/${participantId}`, { rsvp_status }),
+  deleteParticipant: (schoolId: string, id: string, participantId: string) => api.delete(`/schools/${schoolId}/recitals/${id}/participants/${participantId}`),
+};
+
+// Backwards-compatible alias for any older imports
 export const recitalsAuth = {
   list: (schoolId: string) => api.get(`/schools/${schoolId}/recitals`),
   get: (schoolId: string, id: string) => api.get(`/schools/${schoolId}/recitals/${id}`),
@@ -31,4 +84,55 @@ export const recitalsAuth = {
 
 export const upload = {
   image: (data: string) => api.post('/upload/image', { data }),
+};
+
+export const fees = {
+  plans: (schoolId: string) => api.get(`/schools/${schoolId}/fees/plans`),
+  createPlan: (schoolId: string, data: any) => api.post(`/schools/${schoolId}/fees/plans`, data),
+  list: (schoolId: string, params?: any) => api.get(`/schools/${schoolId}/fees`, { params }),
+  create: (schoolId: string, data: any) => api.post(`/schools/${schoolId}/fees`, data),
+  updateStatus: (schoolId: string, feeId: string, data: any) => api.put(`/schools/${schoolId}/fees/${feeId}/status`, data),
+  summary: (schoolId: string) => api.get(`/schools/${schoolId}/fees/summary`),
+};
+
+export const users = {
+  list: (schoolId: string) => api.get(`/schools/${schoolId}/users`),
+  create: (schoolId: string, data: any) => api.post(`/schools/${schoolId}/users`, data),
+  update: (schoolId: string, id: string, data: any) => api.put(`/schools/${schoolId}/users/${id}`, data),
+};
+
+export const events = {
+  list: (schoolId: string, params?: any) => api.get(`/schools/${schoolId}/events`, { params }),
+  create: (schoolId: string, data: any) => api.post(`/schools/${schoolId}/events`, data),
+  update: (schoolId: string, id: string, data: any) => api.put(`/schools/${schoolId}/events/${id}`, data),
+  remove: (schoolId: string, id: string) => api.delete(`/schools/${schoolId}/events/${id}`),
+  studioNeeded: (schoolId: string) => api.get(`/schools/${schoolId}/events/studio-needed`),
+};
+
+export const todos = {
+  list: (schoolId: string) => api.get(`/schools/${schoolId}/todos`),
+  create: (schoolId: string, data: any) => api.post(`/schools/${schoolId}/todos`, data),
+  toggle: (schoolId: string, id: string) => api.put(`/schools/${schoolId}/todos/${id}/toggle`),
+  update: (schoolId: string, id: string, data: any) => api.put(`/schools/${schoolId}/todos/${id}`, data),
+  remove: (schoolId: string, id: string) => api.delete(`/schools/${schoolId}/todos/${id}`),
+};
+
+export const parent = {
+  students: () => api.get('/parent/students'),
+  schedule: () => api.get('/parent/schedule'),
+  recitals: () => api.get('/parent/recitals'),
+};
+
+export const studios = {
+  list: (schoolId: string) => api.get(`/schools/${schoolId}/studios`),
+  create: (schoolId: string, data: any) => api.post(`/schools/${schoolId}/studios`, data),
+  update: (schoolId: string, id: string, d: any) => api.put(`/schools/${schoolId}/studios/${id}`, d),
+  remove: (schoolId: string, id: string) => api.delete(`/schools/${schoolId}/studios/${id}`),
+};
+
+export const vendors = {
+  list: (schoolId: string, category?: string) => api.get(`/schools/${schoolId}/vendors${category ? `?category=${encodeURIComponent(category)}` : ''}`),
+  create: (schoolId: string, data: any) => api.post(`/schools/${schoolId}/vendors`, data),
+  update: (schoolId: string, id: string, data: any) => api.put(`/schools/${schoolId}/vendors/${id}`, data),
+  remove: (schoolId: string, id: string) => api.delete(`/schools/${schoolId}/vendors/${id}`),
 };
