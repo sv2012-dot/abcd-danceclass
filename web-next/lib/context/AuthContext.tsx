@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (token) {
       // Verify token with backend
       auth.me()
-        .then((data) => {
+        .then((data: any) => {
           setUser(data.user);
           localStorage.setItem('sf_user', JSON.stringify(data.user));
           persistSchool(data.school);
@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
-    const data = await auth.login({ email, password });
+    const data: any = await auth.login({ email, password });
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('sf_token', data.token);
       localStorage.setItem('sf_user', JSON.stringify(data.user));
@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Fetch school immediately after login
     try {
-      const me = await auth.me();
+      const me: any = await auth.me();
       persistSchool(me.school);
     } catch (_) {
       // Ignore errors
