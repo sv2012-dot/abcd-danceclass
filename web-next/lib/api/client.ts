@@ -1,0 +1,34 @@
+import axios from 'axios';
+
+const PROD_API = 'https://abcd-danceclass-production.up.railway.app/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL
+  || (process.env.NODE_ENV === 'production' ? PROD_API : 'http://localhost:5000/api');
+
+const api = axios.create({
+  baseURL: API_URL,
+  timeout: 30000,
+});
+
+// Request interceptor: add auth token if available (client-side only)
+if (typeof window !== 'undefined') {
+  api.interceptors.request.use(config => {
+    const token = sessionStorage.getItem('sf_token') || localStorage.getItem('sf_token');
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+  });
+
+  api.interceptors.response.use(
+    res => res.data,
+    err => {
+      if (err.response?.status === 401) {
+        sessionStorage.removeItem('sf_token');
+        localStorage.removeItem('sf_token');
+        localStorage.removeItem('sf_user');
+        window.location.href = '/login';
+      }
+      return Promise.reject(err.response?.data || err);
+    }
+  );
+}
+
+export default api;

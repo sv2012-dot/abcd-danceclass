@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+/* ── Design Tokens: Light Mode ────────────────────────────────────── */
+:root {
+  /* Core palette — Purple theme */
+  --background: #F9FAFB;
+  --foreground: #111827;
+  --card: #FFFFFF;
+  --card-foreground: #111827;
+  --popover: #FFFFFF;
+  --popover-foreground: #111827;
+  --primary: #7C3AED;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F3F4F6;
+  --secondary-foreground: #374151;
+  --muted-bg: #F3F4F6;
+  --muted-foreground: #6B7280;
+  --accent-bg: #F5F3FF;
+  --accent-foreground: #7C3AED;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #EAECF0;
+  --input: #EAECF0;
+  --ring: #7C3AED;
+
+  /* Sidebar */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #111827;
+  --sidebar-primary: #7C3AED;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #FFFFFF;
+  --sidebar-accent-foreground: #111827;
+  --sidebar-border: #EAECF0;
+  --sidebar-ring: #7C3AED;
+  --sidebar-muted: #9CA3AF;
+
+  /* Typography */
+  --font-sans: 'Open Sans', system-ui, sans-serif;
+  --font-serif: 'Open Sans', system-ui, sans-serif;
+  --font-mono: 'Open Sans', system-ui, sans-serif;
+
+  /* Backward-compat aliases */
+  --accent: var(--primary);
+  --accent-light: #DDD6FE;
+  --bg: var(--background);
+  --surface: var(--secondary);
+  --text: var(--foreground);
+  --muted: var(--muted-foreground);
+  --font-d: var(--font-serif);
+  --font-b: var(--font-sans);
+}
+
+/* ── Dark Mode ────────────────────────────────────────────────────── */
+.dark {
+  --background: oklch(0.2046 0 0);
+  --foreground: oklch(0.9219 0 0);
+  --card: oklch(0 0 0);
+  --card-foreground: oklch(0.9219 0 0);
+  --popover: oklch(0.2686 0 0);
+  --popover-foreground: oklch(0.9219 0 0);
+  --primary: oklch(0.75 0.20 293);
+  --primary-foreground: oklch(0 0 0);
+  --secondary: oklch(0.17 0 0);
+  --secondary-foreground: oklch(0.9219 0 0);
+  --muted-bg: oklch(0.2393 0 0);
+  --muted-foreground: oklch(0.7155 0 0);
+  --destructive: oklch(0.6368 0.2078 25.3313);
+  --destructive-foreground: oklch(1.0000 0 0);
+  --border: oklch(0.16 0 0);
+  --input: oklch(0.16 0 0);
+  --ring: oklch(0.75 0.20 293);
+  --sidebar: oklch(0.1684 0 0);
+  --sidebar-foreground: oklch(0.9219 0 0);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
