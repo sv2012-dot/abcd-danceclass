@@ -1,24 +1,33 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
+import { useEffect, useState } from 'react';
 
 export default function Home() {
   const { user } = useAuth();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
     if (!user) {
-      // If not authenticated, redirect to login
-      router.push('/login');
+      router.replace('/login');
     }
-    // If user exists, dashboard will be shown here (to be built)
-  }, [user, router]);
+  }, [mounted, user, router]);
+
+  if (!mounted || !user) {
+    return null;
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
-      <p style={{ color: '#888' }}>Welcome to ManchQ</p>
+      <p style={{ color: '#fff' }}>Welcome to ManchQ Dashboard</p>
     </div>
   );
 }
