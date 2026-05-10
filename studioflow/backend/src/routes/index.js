@@ -16,5 +16,6 @@ router.use('/schools/:schoolId/studios',  auth(), require('./studios'));
 router.use('/schools/:schoolId/vendors', auth(), require('./vendors'));
 router.use('/parent',  require('./parent'));
 router.use('/upload',  require('./upload'));
+router.use('/smart',   require('./smart'));
 
 module.exports = router;
