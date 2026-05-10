@@ -14,6 +14,8 @@ import Button from "@/components/shared/Button";
 import Modal from "@/components/shared/Modal";
 import { Field, Input, Select, Textarea } from "@/components/shared/Field";
 import SvgIcon from "@/components/shared/SvgIcon";
+import SmartButton from "@/components/smart/SmartButton";
+import SmartPlanModal from "@/components/smart/SmartPlanModal";
 
 const RECITAL_COLOR = "#6a7fdb";
 const EMPTY = { title:"", event_date:"", event_time:"18:00", venue:"", description:"" };
@@ -398,6 +400,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
   const [quickAdd,            setQuickAdd]            = useState(BLANK_INVITEE);
   const [showQuickAdd,        setShowQuickAdd]        = useState(false);
   const [showVolunteerInlineAdd, setShowVolunteerInlineAdd] = useState(false);
+  const [showSmartPlan,       setShowSmartPlan]       = useState(false);
   const [volunteerInlineForm,    setVolunteerInlineForm]    = useState({ name:'', email:'', phone:'', role:'', plus_ones:0, rsvp_status:'Pending' });
   const PARTICIPANTS_KEY = `participants_${id}`;
   // Volunteers = participants tagged as Volunteer type — derived, not separate state
@@ -2572,16 +2575,19 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
         {/* ── TO-DOS ── */}
         {tab === "tasks" && (
           <div>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:10 }}>
               <SectionHead title="To-Dos" sub="Tasks linked to this recital — they also appear on the main To-Dos page" />
-              {recitalTodos.length > 0 && (
-                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <div style={{ width:80, height:6, borderRadius:3, background:"var(--border)", overflow:"hidden" }}>
-                    <div style={{ height:"100%", width:pct+"%", background:color, borderRadius:3, transition:"width .3s" }} />
-                  </div>
-                  <span style={{ fontSize:12, color:"var(--muted)", fontWeight:600 }}>{done}/{recitalTodos.length} done</span>
-                </div>
-              )}
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                {recitalTodos.length > 0 && (
+                  <>
+                    <div style={{ width:80, height:6, borderRadius:3, background:"var(--border)", overflow:"hidden" }}>
+                      <div style={{ height:"100%", width:pct+"%", background:color, borderRadius:3, transition:"width .3s" }} />
+                    </div>
+                    <span style={{ fontSize:12, color:"var(--muted)", fontWeight:600 }}>{done}/{recitalTodos.length} done</span>
+                  </>
+                )}
+                <SmartButton onClick={() => setShowSmartPlan(true)} size="sm">Smart Plan</SmartButton>
+              </div>
             </div>
 
             {recitalTodos.length === 0 ? (
@@ -2967,6 +2973,17 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
           onCancel={() => setCropFile(null)}
         />
       )}
+
+      {/* Smart Plan modal — generate tailored countdown todos for this recital */}
+      <SmartPlanModal
+        open={showSmartPlan}
+        onClose={() => setShowSmartPlan(false)}
+        schoolId={String(sid)}
+        recitalId={Number(id)}
+        recitalTitle={recital?.title}
+        recitalDate={recital?.event_date ? String(recital.event_date).slice(0,10) : undefined}
+        onCreated={() => qc.invalidateQueries({ queryKey: ['todos', sid] })}
+      />
     </div>
   );
 }

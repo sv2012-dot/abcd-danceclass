@@ -13,6 +13,9 @@ import Card from "@/components/shared/Card";
 import Button from "@/components/shared/Button";
 import Badge from "@/components/shared/Badge";
 import { Field, Input, Select, Textarea } from "@/components/shared/Field";
+import SmartButton from "@/components/smart/SmartButton";
+import SmartAddModal from "@/components/smart/SmartAddModal";
+import SmartReplyModal from "@/components/smart/SmartReplyModal";
 import { RecitalDetail } from "../recitals/page";
 import SvgIcon from "@/components/shared/SvgIcon";
 
@@ -409,6 +412,8 @@ export default function SchedulePage() {
   const [studioOnly, setStudioOnly] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [selectedDay, setSelectedDay] = useState(today);
+  const [showSmartAdd, setShowSmartAdd] = useState(false);
+  const [smartReplyEvent, setSmartReplyEvent] = useState(null);   // event obj or null
 
   // Date range to fetch
   const { from, to } = useMemo(() => {
@@ -1150,6 +1155,7 @@ export default function SchedulePage() {
               <p style={{color:"var(--muted)",fontSize:12}}>Click any day to add an event</p>
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginLeft:"auto"}}>
+              {isAdmin && <SmartButton onClick={()=>setShowSmartAdd(true)} size="sm">Smart Add</SmartButton>}
               {isAdmin && <Button onClick={()=>openAdd()} size="sm">Add Event</Button>}
               {isAdmin && <Button variant="secondary" onClick={openAddRecital} size="sm">Add Recital</Button>}
             </div>
@@ -1389,6 +1395,9 @@ export default function SchedulePage() {
                   {isAdmin && !e._isSchedule && (!isMobile || (!!e.requires_studio && !e.studio_booked)) && (
                     <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
                       {!isMobile && <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Event</button>}
+                      {!e._isSchedule && !e._isRecital && (
+                        <SmartButton onClick={() => setSmartReplyEvent(e)} variant="secondary" size="md">Smart Reply</SmartButton>
+                      )}
                       {!!e.requires_studio && !e.studio_booked && (
                         <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true,batch_ids:(e.batches||[]).map(b=>b.id)}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #52c4a0", background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="check-circle" size={14} color="#52c4a0" /> Mark Studio Booked</button>
                       )}
@@ -1563,6 +1572,23 @@ export default function SchedulePage() {
           )}
         </div>
       )}
+
+      {/* Smart Add modal — bulk create events from natural language */}
+      <SmartAddModal
+        open={showSmartAdd}
+        onClose={() => setShowSmartAdd(false)}
+        schoolId={String(sid)}
+        onCreated={() => qc.invalidateQueries({ queryKey: ['events'] })}
+      />
+
+      {/* Smart Reply modal — draft a parent message about this event */}
+      <SmartReplyModal
+        open={!!smartReplyEvent}
+        onClose={() => setSmartReplyEvent(null)}
+        context="event"
+        contextId={smartReplyEvent?.id || 0}
+        contextLabel={smartReplyEvent ? `${smartReplyEvent.title}` : undefined}
+      />
     </div>
   );
 }
