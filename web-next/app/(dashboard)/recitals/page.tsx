@@ -2023,7 +2023,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                     ? [
                         { label:"Name",     align:"left"   },
                         { label:"+Guests",  align:"center" },
-                        { label:"RSVP",     align:"center" },
+                        { label:"RSVP",     align:"left"   },
                         { label:"",         align:"right"  },
                       ]
                     : [
@@ -2031,7 +2031,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                         { label:"Email",    align:"left"   },
                         { label:"Type",     align:"left"   },
                         { label:"+Guests",  align:"center" },
-                        { label:"RSVP",     align:"center" },
+                        { label:"RSVP",     align:"left"   },
                         { label:"",         align:"right"  },
                       ]
                   ).map(h => (
@@ -2069,7 +2069,9 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                               {[0,1,2,3,4,5].map(n => <option key={n} value={n}>{n===0 ? "No guests" : `+${n} guest${n>1?'s':''}`}</option>)}
                             </select>
                           </div>
-                          <input placeholder="Role / Task (optional – e.g. Ticket table, Backstage)" value={ef.role||''} onChange={e => setEditingParticipantForm(f => ({...f, role:e.target.value}))} style={fInp} />
+                          {ef.type === 'Volunteer' && (
+                            <input placeholder="Role / Task (optional – e.g. Ticket table, Backstage)" value={ef.role||''} onChange={e => setEditingParticipantForm(f => ({...f, role:e.target.value}))} style={fInp} />
+                          )}
                           <div style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:8 }}>
                             <select value={ef.rsvp_status||'Pending'} onChange={e => setEditingParticipantForm(f => ({...f, rsvp_status:e.target.value}))} style={{...fInp, cursor:"pointer"}}>
                               <option value="Pending">Pending</option>
@@ -2094,7 +2096,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
 
                   return (
                     <div key={p.id} style={{ borderBottom:"1px solid var(--border)", cursor:"pointer", transition:"background .12s", background: rowBg }}
-                      onClick={() => { setEditingParticipantId(p.id); setEditingParticipantForm({ name:p.name||'', email:p.email||'', phone:p.phone||'', type:p.type||'Performer', plus_ones:p.plus_ones||0, rsvp_status:p.rsvp_status||'Pending', role:p.role||'' }); }}
+                      onClick={() => { setEditingParticipantId(p.id); setEditingParticipantForm({ name:p.name||'', email:p.email||'', phone:p.phone||'', type: (p.type === 'Guest' ? 'Audience' : (p.type || 'Performer')), plus_ones:p.plus_ones||0, rsvp_status:p.rsvp_status||'Pending', role:p.role||'' }); }}
                       onMouseEnter={e => e.currentTarget.style.background = "var(--border)"}
                       onMouseLeave={e => e.currentTarget.style.background = rowBg}
                     >
@@ -2116,7 +2118,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                         <div style={{ padding:"10px 0", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center" }}>
                           <span style={{ fontWeight:700, color: p.plus_ones > 0 ? "#8B5CF6" : "var(--muted)" }}>{p.plus_ones > 0 ? `+${p.plus_ones}` : "—"}</span>
                         </div>
-                        <div style={{ padding:"10px 0", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <div style={{ padding:"10px 0", fontSize:13, display:"flex", alignItems:"center", justifyContent:"flex-start" }}>
                           <span style={{ fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:20, background: rsvpColor+"18", color: rsvpColor }}>{{ Confirmed:"Yes", Declined:"No", Pending:"Pending" }[p.rsvp_status] ?? p.rsvp_status}</span>
                         </div>
                         <div style={{ padding:"10px 6px", display:"flex", alignItems:"center", justifyContent:"flex-end" }} onClick={e => e.stopPropagation()}>
@@ -2145,10 +2147,11 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                     if (!quickAdd.name.trim()) { toast.error("Name is required"); return; }
                     addParticipantMut.mutate(quickAdd);
                   };
-                  if (isMobile && !showQuickAdd) return null;
+                  // Form is on-demand on both desktop and mobile (was always-open on desktop)
+                  if (!showQuickAdd) return null;
                   return (
                     <div style={{ borderTop:"2px dashed var(--border)", background:"var(--surface)", padding:"12px 12px 14px", display:"flex", flexDirection:"column", gap:8 }}>
-                      <input autoFocus={isMobile} placeholder="Name *" value={quickAdd.name} onChange={e => setQuickAdd(q => ({...q, name:e.target.value}))} onKeyDown={e => e.key==='Enter' && doAdd()} style={qInp} />
+                      <input autoFocus placeholder="Name *" value={quickAdd.name} onChange={e => setQuickAdd(q => ({...q, name:e.target.value}))} onKeyDown={e => e.key==='Enter' && doAdd()} style={qInp} />
                       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
                         <input type="email" placeholder="Email" value={quickAdd.email||''} onChange={e => setQuickAdd(q => ({...q, email:e.target.value}))} style={qInp} />
                         <input placeholder="Phone" value={quickAdd.phone||''} onChange={e => setQuickAdd(q => ({...q, phone:e.target.value}))} style={qInp} />
@@ -2164,7 +2167,9 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                           {[0,1,2,3,4,5].map(n => <option key={n} value={n}>{n===0 ? "No guests" : `+${n} guest${n>1?'s':''}`}</option>)}
                         </select>
                       </div>
-                      <input placeholder="Role / Task (optional)" value={quickAdd.role||''} onChange={e => setQuickAdd(q => ({...q, role:e.target.value}))} style={qInp} />
+                      {quickAdd.type === 'Volunteer' && (
+                        <input placeholder="Role / Task (optional – e.g. Ticket table, Backstage)" value={quickAdd.role||''} onChange={e => setQuickAdd(q => ({...q, role:e.target.value}))} style={qInp} />
+                      )}
                       <div style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:8 }}>
                         <select value={quickAdd.rsvp_status} onChange={e => setQuickAdd(q => ({...q, rsvp_status:e.target.value}))} style={{...qInp, cursor:"pointer"}}>
                           <option value="Pending">Pending</option>
@@ -2176,12 +2181,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                             style={{ padding:"7px 16px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:7, fontWeight:700, fontSize:12, cursor:"pointer", whiteSpace:"nowrap" }}>
                             {addParticipantMut.isPending ? "…" : "+ Add"}
                           </button>
-                          {isMobile && (
-                            <button onClick={() => { setShowQuickAdd(false); setQuickAdd(BLANK_INVITEE); }}
-                              style={{ padding:"7px 12px", background:"none", border:"1px solid var(--border)", borderRadius:7, fontWeight:600, fontSize:12, cursor:"pointer", color:"var(--muted)", whiteSpace:"nowrap" }}>
-                              Cancel
-                            </button>
-                          )}
+                          <button onClick={() => { setShowQuickAdd(false); setQuickAdd(BLANK_INVITEE); }}
+                            style={{ padding:"7px 12px", background:"none", border:"1px solid var(--border)", borderRadius:7, fontWeight:600, fontSize:12, cursor:"pointer", color:"var(--muted)", whiteSpace:"nowrap" }}>
+                            Cancel
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -2190,15 +2193,15 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
               </div>
             </div>
 
-            {/* Mobile + Add Invitee trigger button */}
-            {isMobile && !showQuickAdd && (
+            {/* + Add Invitee trigger — shown on both desktop and mobile when form is hidden */}
+            {!showQuickAdd && (
               <button onClick={() => setShowQuickAdd(true)} style={{
                 display:"flex", alignItems:"center", justifyContent:"center", gap:8,
                 width:"100%", padding:"11px", borderRadius:10, border:"1.5px dashed var(--border)",
                 background:"var(--surface)", color:"var(--accent)", fontSize:13, fontWeight:700, cursor:"pointer", marginBottom:24,
               }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                + Add Invitee
+                Add Invitee
               </button>
             )}
 
