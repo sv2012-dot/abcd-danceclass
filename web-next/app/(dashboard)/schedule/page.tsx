@@ -1144,6 +1144,27 @@ export default function SchedulePage() {
               <SvgIcon name="plus" size={24} color="#fff" />
             </button>
           )}
+
+          {/* Smart Add FAB — sits above the regular FAB */}
+          {isAdmin && (
+            <button onClick={() => setShowSmartAdd(true)} title="Smart Add" style={{
+              position:"fixed",right:20,bottom:148,zIndex:50,
+              width:56,height:56,borderRadius:"50%",
+              background:"linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)",
+              border:"none",cursor:"pointer",
+              display:"flex",alignItems:"center",justifyContent:"center",
+              boxShadow:"0 4px 20px rgba(124,58,237,0.55)",
+              transition:"transform .15s, box-shadow .15s",
+              color:"#fff",
+            }}
+              onMouseEnter={ev=>{ev.currentTarget.style.transform="scale(1.08)";ev.currentTarget.style.boxShadow="0 6px 28px rgba(124,58,237,0.7)";}}
+              onMouseLeave={ev=>{ev.currentTarget.style.transform="scale(1)";ev.currentTarget.style.boxShadow="0 4px 20px rgba(124,58,237,0.55)";}}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
+              </svg>
+            </button>
+          )}
         </div>
       ) : (
         /* ── DESKTOP LAYOUT (unchanged) ─────────────────────────────────── */
@@ -1305,6 +1326,13 @@ export default function SchedulePage() {
                           <button onClick={() => openEdit(e)} title="Edit event" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
                             <SvgIcon name="pencil" size={15} color="rgba(255,255,255,.85)" />
                           </button>
+                          {!e._isRecital && (
+                            <button onClick={() => setSmartReplyEvent(e)} title="Smart Reply" style={{ width:34, height:34, borderRadius:"50%", background:"linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#fff" }}>
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
+                              </svg>
+                            </button>
+                          )}
                           <button onClick={() => { if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} title="Delete event" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
                             <SvgIcon name="trash" size={15} color="rgba(255,255,255,.75)" />
                           </button>

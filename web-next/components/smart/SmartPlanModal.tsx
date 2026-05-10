@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import SmartModal from './SmartModal';
 import SmartButton from './SmartButton';
 import { smart, type SmartPlanTodo } from '@/lib/api/smart';
-import { recitals as recitalsApi } from '@/lib/api';
+import { todos as todosApi } from '@/lib/api';
 
 function friendlyError(e: any): string {
   if (e?.message?.includes('429') || e?.error === 'rate_limit_exceeded' || e?.status === 429) {
@@ -86,7 +86,13 @@ export default function SmartPlanModal({ open, onClose, schoolId, recitalId, rec
     try {
       for (const r of selected) {
         try {
-          await recitalsApi.addTask(schoolId, String(recitalId), r._editText.trim());
+          // Create as a To-Do linked to this recital — matches the manual
+          // "Add To-Do" button flow so items appear in the To-Dos tab.
+          await todosApi.create(schoolId, {
+            title: r._editText.trim(),
+            recital_id: Number(recitalId),
+            assigned_to: null,
+          });
           ok++;
         } catch {
           failed++;
