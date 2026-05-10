@@ -126,10 +126,17 @@ router.post('/generate-recital-plan', async (req, res) => {
       [recital_id]
     );
 
+    // event_date can come back from mysql2 as a Date object OR a string,
+    // depending on driver config. Normalise to YYYY-MM-DD before re-parsing.
+    const eventIso = r.event_date instanceof Date
+      ? r.event_date.toISOString().slice(0, 10)
+      : String(r.event_date).slice(0, 10);
     const today = new Date();
-    const eventDate = new Date(String(r.event_date).slice(0, 10));
-    const daysUntil = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24));
-    if (daysUntil < 0) return res.status(400).json({ error: 'Recital is in the past' });
+    today.setHours(0, 0, 0, 0);
+    const eventDate = new Date(eventIso + 'T00:00:00Z');
+    const daysUntil = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (isNaN(daysUntil)) return res.status(400).json({ error: 'Could not parse recital date' });
+    if (daysUntil < 0) return res.status(400).json({ error: 'Recital is in the past', event_date: eventIso });
 
     const system = `You generate practical recital production checklists for dance schools.
 Return ONLY valid JSON. No prose, no markdown.
@@ -159,7 +166,7 @@ RULES:
   Title: ${r.title}
   School: ${r.school_name}
   Dance style: ${r.school_dance_style || 'not specified'}
-  Event date: ${String(r.event_date).slice(0, 10)} (${daysUntil} days from today)
+  Event date: ${eventIso} (${daysUntil} days from today)
   Venue: ${r.venue || 'not yet booked'}
   Time: ${r.event_time || 'TBD'}
   Description: ${r.description || '(none)'}
