@@ -7,6 +7,7 @@ type ClientProps = {
   schoolSlug: string;
   recitalSlug: string;
   initialData?: any;
+  autoScrollToRsvp?: boolean;
 };
 
 const PURPLE = '#7C3AED';
@@ -79,7 +80,7 @@ const ShareIcon = () => (
   </svg>
 );
 
-export function RecitalClient({ schoolSlug, recitalSlug, initialData }: ClientProps) {
+export function RecitalClient({ schoolSlug, recitalSlug, initialData, autoScrollToRsvp }: ClientProps) {
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(!initialData);
   const [copied, setCopied] = useState(false);
@@ -99,6 +100,15 @@ export function RecitalClient({ schoolSlug, recitalSlug, initialData }: ClientPr
       })();
     }
   }, [schoolSlug, recitalSlug, initialData]);
+
+  // Auto-scroll to the RSVP section when arriving via /<school>/<recital>/rsvp
+  useEffect(() => {
+    if (!autoScrollToRsvp || loading) return;
+    const t = setTimeout(() => {
+      rsvpRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 200);
+    return () => clearTimeout(t);
+  }, [autoScrollToRsvp, loading]);
 
   if (loading) {
     return (
@@ -190,14 +200,18 @@ export function RecitalClient({ schoolSlug, recitalSlug, initialData }: ClientPr
           </div>
         </div>
 
-        {/* Primary CTA */}
+        {/* Primary CTA — scrolls to inline RSVP section (matches CRA behavior) */}
         <div style={{ padding: '16px 16px 0' }}>
-          <a href={`https://manchq.com/${schoolSlug}/${recitalSlug}/rsvp`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: GRAD, boxShadow: '0 2px 12px rgba(124,58,237,.28)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', textDecoration: 'none' }}>
+          <button
+            type="button"
+            onClick={() => rsvpRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: GRAD, boxShadow: '0 2px 12px rgba(124,58,237,.28)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+          >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
             RSVP for this event
-          </a>
+          </button>
         </div>
 
         {/* Meta grid */}
