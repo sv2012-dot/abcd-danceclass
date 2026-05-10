@@ -1,5 +1,0 @@
-{
-  "buildCommand": "npm run build",
-  "outputDirectory": "studioflow/web/build",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
