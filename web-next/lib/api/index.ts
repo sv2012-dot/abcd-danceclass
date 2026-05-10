@@ -52,10 +52,28 @@ export const scheduleExceptions = {
 };
 
 // Public (unauthenticated) recital endpoint — used by [schoolSlug]/[recitalSlug]
+const PUBLIC_API_BASE =
+  (process.env.NEXT_PUBLIC_API_URL?.trim()) ||
+  'https://abcd-danceclass-production.up.railway.app/api';
+
 export const recitals = {
   getPublic: (schoolSlug: string, recitalSlug: string) =>
-    fetch(`https://abcd-danceclass-production.up.railway.app/api/public/${schoolSlug}/${recitalSlug}`)
+    fetch(`${PUBLIC_API_BASE}/public/${schoolSlug}/${recitalSlug}`)
       .then(r => r.json()),
+  submitPublicRsvp: (
+    schoolSlug: string,
+    recitalSlug: string,
+    body: { name: string; email?: string; response: 'Confirmed' | 'Declined'; plus_ones: number }
+  ) =>
+    fetch(`${PUBLIC_API_BASE}/public/${schoolSlug}/${recitalSlug}/rsvp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(async r => {
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
+      return data;
+    }),
   list: (schoolId: string) => api.get(`/schools/${schoolId}/recitals`),
   get: (schoolId: string, id: string) => api.get(`/schools/${schoolId}/recitals/${id}`),
   create: (schoolId: string, data: any) => api.post(`/schools/${schoolId}/recitals`, data),
