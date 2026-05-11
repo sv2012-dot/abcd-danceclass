@@ -24,47 +24,43 @@ export default function GoogleSignIn() {
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setLoading(true);
-      console.log('[GoogleSignIn] step 1: got Google access_token');
-      toast('Got Google token — calling backend…');
+      // Single customer-facing toast that persists until we redirect or fail
+      const t = toast.loading('Getting you in…');
       try {
         const apiUrl = (process.env.NEXT_PUBLIC_API_URL?.trim()) || 'http://localhost:5000/api';
-        console.log('[GoogleSignIn] step 2: POST', `${apiUrl}/auth/google`);
         const response = await fetch(`${apiUrl}/auth/google`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ access_token: tokenResponse.access_token }),
         });
-
         const data = await response.json();
-        console.log('[GoogleSignIn] step 3: backend response', response.status, data);
 
         if (response.ok) {
           if (data.token) {
-            console.log('[GoogleSignIn] step 4a: existing user — setting session');
-            toast.success(`Logged in as ${data.user?.email || 'user'} — going to /home`);
             setSession(data.token, data.user, data.school || null);
+            toast.success(`Welcome back, ${data.user?.name?.split(' ')[0] || 'there'}!`, { id: t });
             redirectToDashboard(router);
           } else if (data.requiresRegistration) {
-            console.log('[GoogleSignIn] step 4b: new user — going to register');
-            toast(`Email not registered — sending to /register`, { duration: 4000 });
+            toast.success('Almost there — just a few details about your studio.', { id: t });
             router.push(`/register?googleData=${encodeURIComponent(JSON.stringify(data.googleData))}`);
           } else {
-            toast.error(`Unexpected response: ${JSON.stringify(data)}`);
+            toast.error("Something didn't add up — please try again.", { id: t });
           }
         } else {
+          // Keep technical details in console for debugging; user sees a friendly line
           console.error('[GoogleSignIn] backend error', response.status, data);
-          toast.error(`Backend ${response.status}: ${data.error || 'Google login failed'}`);
+          toast.error("We couldn't sign you in. Please try again.", { id: t });
         }
       } catch (error: any) {
         console.error('[GoogleSignIn] fetch error:', error);
-        toast.error(`Network error: ${error?.message || error}`);
+        toast.error("Couldn't reach our servers. Check your connection and try again.", { id: t });
       } finally {
         setLoading(false);
       }
     },
     onError: (err) => {
       console.error('[GoogleSignIn] Google OAuth error:', err);
-      toast.error(`Google OAuth error: ${JSON.stringify(err)}`);
+      toast.error("Google sign-in was cancelled or blocked.");
     },
   });
 
