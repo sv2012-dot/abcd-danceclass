@@ -2621,12 +2621,12 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                         onClick={() => toggleTodoMut.mutate(t.id)}
                         style={{
                           width:28, height:28, borderRadius:"50%", flexShrink:0, cursor:"pointer",
-                          border: t.is_complete ? "none" : "2px solid var(--border)",
+                          border: t.is_complete ? "none" : "2px solid var(--muted)",
                           background: t.is_complete ? color : "transparent",
                           display:"flex", alignItems:"center", justifyContent:"center",
                           transition:"all .15s",
                         }}>
-                        {t.is_complete && <CheckIcon />}
+                        {!!t.is_complete && <CheckIcon />}
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{
@@ -2686,12 +2686,12 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                       onClick={() => toggleTodoMut.mutate(t.id)}
                       style={{
                         width:22, height:22, borderRadius:"50%", flexShrink:0, cursor:"pointer",
-                        border: t.is_complete ? "none" : "2px solid var(--border)",
+                        border: t.is_complete ? "none" : "2px solid var(--muted)",
                         background: t.is_complete ? color : "transparent",
                         display:"flex", alignItems:"center", justifyContent:"center",
                         transition:"all .15s",
                       }}>
-                      {t.is_complete && <CheckIcon />}
+                      {!!t.is_complete && <CheckIcon />}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <span style={{
