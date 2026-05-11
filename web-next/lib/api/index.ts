@@ -154,3 +154,26 @@ export const vendors = {
   update: (schoolId: string, id: string, data: any) => api.put(`/schools/${schoolId}/vendors/${id}`, data),
   remove: (schoolId: string, id: string) => api.delete(`/schools/${schoolId}/vendors/${id}`),
 };
+
+// ── Attendance ──────────────────────────────────────────────────────────────
+export type AttendanceStatus = 'present' | 'absent' | 'excused' | 'late';
+
+export const attendance = {
+  // Event-based
+  getForEvent: (schoolId: string, eventId: number, date: string) =>
+    api.get(`/schools/${schoolId}/attendance/events/${eventId}`, { params: { date } }),
+  saveForEvent: (schoolId: string, eventId: number, body: { class_date: string; entries: Array<{ student_id: number; status: AttendanceStatus; notes?: string }> }) =>
+    api.post(`/schools/${schoolId}/attendance/events/${eventId}/bulk`, body),
+
+  // Recurring schedule (class) based
+  getForSchedule: (schoolId: string, scheduleId: number, date: string) =>
+    api.get(`/schools/${schoolId}/attendance/schedule/${scheduleId}`, { params: { date } }),
+  saveForSchedule: (schoolId: string, scheduleId: number, body: { class_date: string; entries: Array<{ student_id: number; status: AttendanceStatus; notes?: string }> }) =>
+    api.post(`/schools/${schoolId}/attendance/schedule/${scheduleId}/bulk`, body),
+
+  // Read-only summaries
+  forStudent: (schoolId: string, studentId: number, params?: { from?: string; to?: string }) =>
+    api.get(`/schools/${schoolId}/attendance/students/${studentId}`, { params }),
+  batchStats: (schoolId: string, batchId: number, params?: { from?: string; to?: string }) =>
+    api.get(`/schools/${schoolId}/attendance/batches/${batchId}/stats`, { params }),
+};

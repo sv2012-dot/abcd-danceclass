@@ -369,6 +369,36 @@ async function patchTables() {
       await pool.query('UPDATE recitals SET slug = ? WHERE id = ?', [slugify(r.title), r.id]);
     }
 
+    // ── Attendance table ────────────────────────────────────────────────
+    // Tracks per-student attendance for either an event (one-off) or a
+    // recurring class instance (schedule_id + class_date). Exactly one of
+    // event_id / schedule_id is set per row.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS attendance (
+        id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        school_id       INT UNSIGNED NOT NULL,
+        student_id      INT UNSIGNED NOT NULL,
+        event_id        INT UNSIGNED NULL,
+        schedule_id     INT UNSIGNED NULL,
+        class_date      DATE         NOT NULL,
+        status          ENUM('present','absent','excused','late') NOT NULL DEFAULT 'present',
+        notes           VARCHAR(255) NULL,
+        marked_by_user_id INT UNSIGNED NULL,
+        marked_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_attendance_event    (school_id, student_id, class_date, event_id),
+        UNIQUE KEY uniq_attendance_schedule (school_id, student_id, class_date, schedule_id),
+        INDEX idx_school_date (school_id, class_date),
+        INDEX idx_student     (student_id),
+        INDEX idx_event       (event_id),
+        INDEX idx_schedule    (schedule_id),
+        FOREIGN KEY (school_id)         REFERENCES schools(id)   ON DELETE CASCADE,
+        FOREIGN KEY (student_id)        REFERENCES students(id)  ON DELETE CASCADE,
+        FOREIGN KEY (event_id)          REFERENCES events(id)    ON DELETE CASCADE,
+        FOREIGN KEY (marked_by_user_id) REFERENCES users(id)     ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     console.log('✅ patchTables complete');
   } catch (err) {
     // Non-fatal — log but don't crash the server

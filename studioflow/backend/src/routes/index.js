@@ -14,6 +14,7 @@ router.use('/schools/:schoolId/events',   require('./events'));
 router.use('/schools/:schoolId/todos',    auth(), require('./todos'));
 router.use('/schools/:schoolId/studios',  auth(), require('./studios'));
 router.use('/schools/:schoolId/vendors', auth(), require('./vendors'));
+router.use('/schools/:schoolId/attendance', require('./attendance'));
 router.use('/parent',  require('./parent'));
 router.use('/upload',  require('./upload'));
 router.use('/smart',   require('./smart'));

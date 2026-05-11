@@ -16,6 +16,7 @@ import { Field, Input, Select, Textarea } from "@/components/shared/Field";
 import SmartButton from "@/components/smart/SmartButton";
 import SmartAddModal from "@/components/smart/SmartAddModal";
 import SmartAnnounceModal from "@/components/smart/SmartAnnounceModal";
+import AttendanceModal from "@/components/attendance/AttendanceModal";
 import { RecitalDetail } from "../recitals/page";
 import SvgIcon from "@/components/shared/SvgIcon";
 
@@ -414,6 +415,7 @@ export default function SchedulePage() {
   const [selectedDay, setSelectedDay] = useState(today);
   const [showSmartAdd, setShowSmartAdd] = useState(false);
   const [smartReplyEvent, setSmartReplyEvent] = useState(null);   // event obj or null
+  const [attendanceEvent, setAttendanceEvent] = useState(null);   // event obj or null
 
   // Date range to fetch
   const { from, to } = useMemo(() => {
@@ -1326,6 +1328,11 @@ export default function SchedulePage() {
                           <button onClick={() => openEdit(e)} title="Edit event" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
                             <SvgIcon name="pencil" size={15} color="rgba(255,255,255,.85)" />
                           </button>
+                          <button onClick={() => setAttendanceEvent(e)} title="Take attendance" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(16,185,129,0.55)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#fff" }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          </button>
                           <button onClick={() => setSmartReplyEvent(e)} title="Message parents" style={{ width:34, height:34, borderRadius:"50%", background:"linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#fff" }}>
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
@@ -1409,8 +1416,11 @@ export default function SchedulePage() {
                               {skipMutation.isPending ? "Skipping…" : "Skip this class"}
                             </button>
                           </div>
-                          <div style={{ marginTop:8 }}>
-                            <SmartButton onClick={() => setSmartReplyEvent(e)} variant="secondary" size="md" style={{ width:"100%" }}>Message</SmartButton>
+                          <div style={{ display:"flex", gap:8, marginTop:8 }}>
+                            <button onClick={()=>setAttendanceEvent(e)} style={{ flex:1, padding:"7px 12px", borderRadius:8, border:"1.5px solid #10B981", background:"rgba(16,185,129,0.08)", color:"#10B981", cursor:"pointer", fontSize:12, fontWeight:700 }}>
+                              ✓ Attendance
+                            </button>
+                            <SmartButton onClick={() => setSmartReplyEvent(e)} variant="secondary" size="md" style={{ flex:1 }}>Message</SmartButton>
                           </div>
                         </>
                       )}
@@ -1426,6 +1436,7 @@ export default function SchedulePage() {
                   {isAdmin && !e._isSchedule && (!isMobile || (!!e.requires_studio && !e.studio_booked)) && (
                     <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
                       {!isMobile && <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Event</button>}
+                      <button onClick={()=>setAttendanceEvent(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #10B981", background:"rgba(16,185,129,0.08)", color:"#10B981", cursor:"pointer", fontSize:13, fontWeight:700, display:"inline-flex", alignItems:"center", gap:7 }}>✓ Attendance</button>
                       <SmartButton onClick={() => setSmartReplyEvent(e)} variant="secondary" size="md">Message</SmartButton>
                       {!!e.requires_studio && !e.studio_booked && (
                         <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true,batch_ids:(e.batches||[]).map(b=>b.id)}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #52c4a0", background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="check-circle" size={14} color="#52c4a0" /> Mark Studio Booked</button>
@@ -1608,6 +1619,17 @@ export default function SchedulePage() {
         onClose={() => setShowSmartAdd(false)}
         schoolId={String(sid)}
         onCreated={() => qc.invalidateQueries({ queryKey: ['events'] })}
+      />
+
+      {/* Attendance modal — mark presence for an event or recurring class */}
+      <AttendanceModal
+        open={!!attendanceEvent}
+        onClose={() => setAttendanceEvent(null)}
+        schoolId={String(sid)}
+        eventId={attendanceEvent && !attendanceEvent._isSchedule ? attendanceEvent.id : undefined}
+        scheduleId={attendanceEvent?._isSchedule ? attendanceEvent._scheduleId : undefined}
+        classDate={attendanceEvent?.start_datetime ? String(attendanceEvent.start_datetime).slice(0, 10) : new Date().toISOString().slice(0, 10)}
+        eventTitle={attendanceEvent?.title}
       />
 
       {/* Smart Announce modal — draft a parent-facing announcement */}
