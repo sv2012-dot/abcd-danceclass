@@ -7,7 +7,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useTheme } from "@/lib/context/ThemeContext";
-import { events as api, batches as batchesApi, recitals as recitalApi, studios as studiosApi, schedules as schedulesApi, scheduleExceptions as exceptionsApi } from "@/lib/api";
+import { events as api, batches as batchesApi, recitals as recitalApi, studios as studiosApi, schedules as schedulesApi, scheduleExceptions as exceptionsApi, attendance as attendanceApi } from "@/lib/api";
 import toast from "react-hot-toast";
 import Card from "@/components/shared/Card";
 import Button from "@/components/shared/Button";
@@ -416,6 +416,53 @@ export default function SchedulePage() {
   const [showSmartAdd, setShowSmartAdd] = useState(false);
   const [smartReplyEvent, setSmartReplyEvent] = useState(null);   // event obj or null
   const [attendanceEvent, setAttendanceEvent] = useState(null);   // event obj or null
+  const [markingAllId, setMarkingAllId] = useState(null);          // event id currently being processed
+
+  // ── Quick "Mark All Present" — fetches the roster and saves everyone as
+  // present in a single click. Confirms first since it overwrites any
+  // existing marks for that class instance.
+  const handleMarkAllPresent = async (event) => {
+    if (!sid || !event) return;
+    const isSchedule = !!event._isSchedule;
+    const eventId = !isSchedule ? event.id : null;
+    const scheduleId = isSchedule ? event._scheduleId : null;
+    const classDate = String(event.start_datetime || '').slice(0, 10);
+    if (!classDate) { toast.error('Class date missing'); return; }
+
+    setMarkingAllId(event.id);
+    try {
+      // Fetch roster
+      const data = isSchedule
+        ? await attendanceApi.getForSchedule(String(sid), scheduleId, classDate)
+        : await attendanceApi.getForEvent(String(sid), eventId, classDate);
+
+      const students = (data && data.students) || [];
+      if (students.length === 0) {
+        toast.error('No students in linked batch to mark');
+        return;
+      }
+      const existingMarks = Object.keys((data && data.attendance) || {}).length;
+      const ok = window.confirm(
+        existingMarks > 0
+          ? `Mark all ${students.length} students present? This will overwrite ${existingMarks} existing mark${existingMarks !== 1 ? 's' : ''}.`
+          : `Mark all ${students.length} students present in "${event.title}"?`
+      );
+      if (!ok) return;
+
+      const entries = students.map(s => ({ student_id: s.id, status: 'present' }));
+      const body = { class_date: classDate, entries };
+      if (isSchedule) {
+        await attendanceApi.saveForSchedule(String(sid), scheduleId, body);
+      } else {
+        await attendanceApi.saveForEvent(String(sid), eventId, body);
+      }
+      toast.success(`Marked ${students.length} present`);
+    } catch (e) {
+      toast.error(e?.error || e?.message || 'Failed to mark attendance');
+    } finally {
+      setMarkingAllId(null);
+    }
+  };
 
   // Date range to fetch
   const { from, to } = useMemo(() => {
@@ -1416,11 +1463,15 @@ export default function SchedulePage() {
                               {skipMutation.isPending ? "Skipping…" : "Skip this class"}
                             </button>
                           </div>
-                          <div style={{ display:"flex", gap:8, marginTop:8 }}>
-                            <button onClick={()=>setAttendanceEvent(e)} style={{ flex:1, padding:"7px 12px", borderRadius:8, border:"1.5px solid #10B981", background:"rgba(16,185,129,0.08)", color:"#10B981", cursor:"pointer", fontSize:12, fontWeight:700 }}>
+                          <div style={{ display:"flex", gap:8, marginTop:8, flexWrap:"wrap" }}>
+                            <button onClick={()=>setAttendanceEvent(e)} style={{ flex:"1 1 auto", padding:"7px 12px", borderRadius:8, border:"1.5px solid #10B981", background:"rgba(16,185,129,0.08)", color:"#10B981", cursor:"pointer", fontSize:12, fontWeight:700 }}>
                               ✓ Attendance
                             </button>
-                            <SmartButton onClick={() => setSmartReplyEvent(e)} variant="secondary" size="md" style={{ flex:1 }}>Message</SmartButton>
+                            <button onClick={()=>handleMarkAllPresent(e)} disabled={markingAllId === e.id}
+                              style={{ flex:"1 1 auto", padding:"7px 12px", borderRadius:8, border:"none", background:"linear-gradient(135deg,#059669,#10B981)", color:"#fff", cursor: markingAllId === e.id ? "wait" : "pointer", fontSize:12, fontWeight:700, opacity: markingAllId === e.id ? 0.7 : 1 }}>
+                              {markingAllId === e.id ? "Marking…" : "⚡ All Present"}
+                            </button>
+                            <SmartButton onClick={() => setSmartReplyEvent(e)} variant="secondary" size="md" style={{ flex:"1 1 auto" }}>Message</SmartButton>
                           </div>
                         </>
                       )}
@@ -1437,6 +1488,10 @@ export default function SchedulePage() {
                     <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
                       {!isMobile && <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Event</button>}
                       <button onClick={()=>setAttendanceEvent(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #10B981", background:"rgba(16,185,129,0.08)", color:"#10B981", cursor:"pointer", fontSize:13, fontWeight:700, display:"inline-flex", alignItems:"center", gap:7 }}>✓ Attendance</button>
+                      <button onClick={()=>handleMarkAllPresent(e)} disabled={markingAllId === e.id} title="Mark every student in this class as present"
+                        style={{ padding:"9px 14px", borderRadius:9, border:"none", background:"linear-gradient(135deg,#059669,#10B981)", color:"#fff", cursor: markingAllId === e.id ? "wait" : "pointer", fontSize:13, fontWeight:700, display:"inline-flex", alignItems:"center", gap:7, boxShadow:"0 2px 8px rgba(16,185,129,0.3)", opacity: markingAllId === e.id ? 0.7 : 1 }}>
+                        {markingAllId === e.id ? "Marking…" : "⚡ All Present"}
+                      </button>
                       <SmartButton onClick={() => setSmartReplyEvent(e)} variant="secondary" size="md">Message</SmartButton>
                       {!!e.requires_studio && !e.studio_booked && (
                         <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true,batch_ids:(e.batches||[]).map(b=>b.id)}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #52c4a0", background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="check-circle" size={14} color="#52c4a0" /> Mark Studio Booked</button>
