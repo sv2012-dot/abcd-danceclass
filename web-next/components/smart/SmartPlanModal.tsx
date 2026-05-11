@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import SmartModal from './SmartModal';
 import SmartButton from './SmartButton';
+import SmartUsageFooter from './SmartUsageFooter';
 import { smart, type SmartPlanTodo } from '@/lib/api/smart';
 import { todos as todosApi } from '@/lib/api';
 
@@ -213,6 +214,7 @@ export default function SmartPlanModal({ open, onClose, schoolId, recitalId, rec
           </button>
         </>
       )}
+      <SmartUsageFooter />
     </SmartModal>
   );
 }

@@ -20,8 +20,37 @@ if (typeof window !== 'undefined') {
   });
 
   api.interceptors.response.use(
-    res => res.data,
+    res => {
+      // Capture rate-limit headers from Smart ManchQ routes so the modals can
+      // show a usage counter footer. express-rate-limit (standardHeaders:true)
+      // emits "ratelimit-remaining" / "ratelimit-limit" / "ratelimit-reset".
+      const url: string = res.config?.url || '';
+      if (url.startsWith('/smart/') || url.includes('/api/smart/')) {
+        const h = res.headers || {};
+        const remaining = Number(h['ratelimit-remaining'] ?? h['x-ratelimit-remaining']);
+        const limit = Number(h['ratelimit-limit'] ?? h['x-ratelimit-limit']);
+        const reset = Number(h['ratelimit-reset'] ?? h['x-ratelimit-reset']);
+        if (Number.isFinite(remaining) && Number.isFinite(limit)) {
+          window.dispatchEvent(new CustomEvent('sf:smart-usage', {
+            detail: { remaining, limit, resetInSeconds: reset || null },
+          }));
+        }
+      }
+      return res.data;
+    },
     err => {
+      // Capture rate-limit headers even on 429 so the modal updates to 0
+      const url: string = err.config?.url || '';
+      if ((url.startsWith('/smart/') || url.includes('/api/smart/')) && err.response?.headers) {
+        const h = err.response.headers;
+        const remaining = Number(h['ratelimit-remaining'] ?? h['x-ratelimit-remaining']);
+        const limit = Number(h['ratelimit-limit'] ?? h['x-ratelimit-limit']);
+        if (Number.isFinite(remaining) && Number.isFinite(limit)) {
+          window.dispatchEvent(new CustomEvent('sf:smart-usage', {
+            detail: { remaining, limit, resetInSeconds: null },
+          }));
+        }
+      }
       if (err.response?.status === 401) {
         // Best-effort logging so we can debug auth bounces in production.
         try {

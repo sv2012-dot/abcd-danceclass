@@ -16,6 +16,7 @@ import { Field, Input, Select, Textarea } from "@/components/shared/Field";
 import SvgIcon from "@/components/shared/SvgIcon";
 import SmartButton from "@/components/smart/SmartButton";
 import SmartPlanModal from "@/components/smart/SmartPlanModal";
+import SmartAnnounceModal from "@/components/smart/SmartAnnounceModal";
 
 const RECITAL_COLOR = "#6a7fdb";
 const EMPTY = { title:"", event_date:"", event_time:"18:00", venue:"", description:"" };
@@ -401,6 +402,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
   const [showQuickAdd,        setShowQuickAdd]        = useState(false);
   const [showVolunteerInlineAdd, setShowVolunteerInlineAdd] = useState(false);
   const [showSmartPlan,       setShowSmartPlan]       = useState(false);
+  const [showSmartAnnounce,   setShowSmartAnnounce]   = useState(false);
   const [volunteerInlineForm,    setVolunteerInlineForm]    = useState({ name:'', email:'', phone:'', role:'', plus_ones:0, rsvp_status:'Pending' });
   const PARTICIPANTS_KEY = `participants_${id}`;
   // Volunteers = participants tagged as Volunteer type — derived, not separate state
@@ -1005,8 +1007,24 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                 <ArrowLeft /> Back
               </button>
 
-              {/* Right: photo · star · public · duplicate · delete */}
+              {/* Right: message · photo · star · public · duplicate · delete */}
               <div style={{ display:"flex", gap:8 }}>
+                {/* Message — Smart Announce */}
+                <button
+                  onClick={() => setShowSmartAnnounce(true)}
+                  title="Message parents about this recital"
+                  style={{
+                    width:34, height:34, borderRadius:"50%", cursor:"pointer",
+                    background:"linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)",
+                    border:"1px solid rgba(255,255,255,.22)",
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    color:"#fff",
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
+                  </svg>
+                </button>
                 {/* Public page */}
                 {recital.slug && (
                   <button
@@ -2983,6 +3001,22 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
         recitalTitle={recital?.title}
         recitalDate={recital?.event_date ? String(recital.event_date).slice(0,10) : undefined}
         onCreated={() => qc.invalidateQueries({ queryKey: ['todos', sid] })}
+      />
+
+      {/* Smart Announce modal — draft a parent-facing announcement */}
+      <SmartAnnounceModal
+        open={showSmartAnnounce}
+        onClose={() => setShowSmartAnnounce(false)}
+        ctx={recital ? {
+          contextType: 'recital',
+          contextId: Number(id),
+          title: recital.title,
+          subtitle: 'Recital',
+          dateLabel: recital.event_date ? new Date(String(recital.event_date).slice(0,10) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : undefined,
+          timeLabel: recital.event_time ? fmtRecitalTime(recital.event_time) : undefined,
+          location: recital.venue || undefined,
+          color: '#c4527a',
+        } : null}
       />
     </div>
   );

@@ -42,6 +42,7 @@ export type SmartReplyResponse = {
   char_count: number;
   suggested_send: 'whatsapp' | 'email';
   tone: SmartReplyTone;
+  school_name: string;
 };
 
 // ── Endpoints ─────────────────────────────────────────────────────────────

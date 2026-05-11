@@ -15,7 +15,7 @@ import Badge from "@/components/shared/Badge";
 import { Field, Input, Select, Textarea } from "@/components/shared/Field";
 import SmartButton from "@/components/smart/SmartButton";
 import SmartAddModal from "@/components/smart/SmartAddModal";
-import SmartReplyModal from "@/components/smart/SmartReplyModal";
+import SmartAnnounceModal from "@/components/smart/SmartAnnounceModal";
 import { RecitalDetail } from "../recitals/page";
 import SvgIcon from "@/components/shared/SvgIcon";
 
@@ -1326,13 +1326,11 @@ export default function SchedulePage() {
                           <button onClick={() => openEdit(e)} title="Edit event" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
                             <SvgIcon name="pencil" size={15} color="rgba(255,255,255,.85)" />
                           </button>
-                          {!e._isRecital && (
-                            <button onClick={() => setSmartReplyEvent(e)} title="Smart Reply" style={{ width:34, height:34, borderRadius:"50%", background:"linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#fff" }}>
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
-                              </svg>
-                            </button>
-                          )}
+                          <button onClick={() => setSmartReplyEvent(e)} title="Message parents" style={{ width:34, height:34, borderRadius:"50%", background:"linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#fff" }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
+                            </svg>
+                          </button>
                           <button onClick={() => { if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} title="Delete event" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
                             <SvgIcon name="trash" size={15} color="rgba(255,255,255,.75)" />
                           </button>
@@ -1398,18 +1396,23 @@ export default function SchedulePage() {
                         <button onClick={()=>{ setDetailEvent(null); setPanelMode('view'); router.push("/batches"); }} style={{ fontSize:11, fontWeight:700, color:"var(--accent)", background:"none", border:"none", cursor:"pointer", padding:0 }}>Manage in Batches →</button>
                       </div>
                       {isAdmin && (
-                        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                          <button onClick={() => openOverride(e)} style={{ flex:1, padding:"7px 12px", borderRadius:8, border:"1.5px solid var(--accent)", background:"transparent", color:"var(--accent)", cursor:"pointer", fontSize:12, fontWeight:700 }}>
-                            Edit this class
-                          </button>
-                          <button
-                            onClick={() => { if (window.confirm("Skip this class on " + fmtDate(e.start_datetime) + "?")) skipMutation.mutate({ scheduleId: e._scheduleId, date: e.start_datetime.slice(0,10) }); }}
-                            disabled={skipMutation.isPending}
-                            style={{ flex:1, padding:"7px 12px", borderRadius:8, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:12, fontWeight:700 }}
-                          >
-                            {skipMutation.isPending ? "Skipping…" : "Skip this class"}
-                          </button>
-                        </div>
+                        <>
+                          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                            <button onClick={() => openOverride(e)} style={{ flex:1, padding:"7px 12px", borderRadius:8, border:"1.5px solid var(--accent)", background:"transparent", color:"var(--accent)", cursor:"pointer", fontSize:12, fontWeight:700 }}>
+                              Edit this class
+                            </button>
+                            <button
+                              onClick={() => { if (window.confirm("Skip this class on " + fmtDate(e.start_datetime) + "?")) skipMutation.mutate({ scheduleId: e._scheduleId, date: e.start_datetime.slice(0,10) }); }}
+                              disabled={skipMutation.isPending}
+                              style={{ flex:1, padding:"7px 12px", borderRadius:8, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:12, fontWeight:700 }}
+                            >
+                              {skipMutation.isPending ? "Skipping…" : "Skip this class"}
+                            </button>
+                          </div>
+                          <div style={{ marginTop:8 }}>
+                            <SmartButton onClick={() => setSmartReplyEvent(e)} variant="secondary" size="md" style={{ width:"100%" }}>Message</SmartButton>
+                          </div>
+                        </>
                       )}
                     </div>
                   )}
@@ -1423,9 +1426,7 @@ export default function SchedulePage() {
                   {isAdmin && !e._isSchedule && (!isMobile || (!!e.requires_studio && !e.studio_booked)) && (
                     <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
                       {!isMobile && <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Event</button>}
-                      {!e._isSchedule && !e._isRecital && (
-                        <SmartButton onClick={() => setSmartReplyEvent(e)} variant="secondary" size="md">Smart Reply</SmartButton>
-                      )}
+                      <SmartButton onClick={() => setSmartReplyEvent(e)} variant="secondary" size="md">Message</SmartButton>
                       {!!e.requires_studio && !e.studio_booked && (
                         <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true,batch_ids:(e.batches||[]).map(b=>b.id)}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #52c4a0", background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="check-circle" size={14} color="#52c4a0" /> Mark Studio Booked</button>
                       )}
@@ -1609,13 +1610,26 @@ export default function SchedulePage() {
         onCreated={() => qc.invalidateQueries({ queryKey: ['events'] })}
       />
 
-      {/* Smart Reply modal — draft a parent message about this event */}
-      <SmartReplyModal
+      {/* Smart Announce modal — draft a parent-facing announcement */}
+      <SmartAnnounceModal
         open={!!smartReplyEvent}
         onClose={() => setSmartReplyEvent(null)}
-        context="event"
-        contextId={smartReplyEvent?.id || 0}
-        contextLabel={smartReplyEvent ? `${smartReplyEvent.title}` : undefined}
+        ctx={smartReplyEvent ? (() => {
+          const e = smartReplyEvent;
+          const s = e.start_datetime ? new Date(e.start_datetime) : null;
+          const en = e.end_datetime ? new Date(e.end_datetime) : null;
+          const fmtTime = (d) => d ? d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
+          return {
+            contextType: e._isRecital ? 'recital' : 'event',
+            contextId: e._isRecital ? e._recitalId : e.id,
+            title: e.title,
+            subtitle: e.type,
+            dateLabel: s ? s.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : undefined,
+            timeLabel: s && en ? `${fmtTime(s)} – ${fmtTime(en)}` : (s ? fmtTime(s) : undefined),
+            location: e.location || undefined,
+            color: TYPE_COLORS[e.type] || '#8a7a9a',
+          };
+        })() : null}
       />
     </div>
   );

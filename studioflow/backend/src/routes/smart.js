@@ -260,13 +260,18 @@ Guardian: ${s.guardian_name || '(unknown)'}`;
     }[finalTone];
 
     const system = `You draft short messages from a dance school admin to parents.
-The message will be sent via WhatsApp or email. Keep it under 80 words.
-Return ONLY the message text. No greeting like "here is your message", no quotes around it, no markdown.
+The message will be sent via WhatsApp or email. Keep the BODY under 60 words.
+The frontend will render a separate headline and event card above your text — do NOT
+repeat the date/time/event title; they'll be shown in the card. Speak to the parent
+directly in the body about what they need to know or do.
+
+Return ONLY the message body text. No headline, no greeting like "here is your message",
+no quotes, no markdown. Do not sign off — the school name is added separately.
 
 TONE: ${finalTone}
 TONE GUIDANCE: ${toneGuide}
-DO: be specific (date, time, location). Sign off with the school name.
-DON'T: invent details not in the context. Don't add emojis to formal tone.`;
+DO: be specific about the action ('please confirm', 'no class this week'). Use parent-friendly language.
+DON'T: invent details. Don't repeat what the card already shows. Don't include the school name at the end. No emojis in formal tone.`;
 
     const user = `${contextDetails}
 
@@ -274,9 +279,9 @@ SCHOOL NAME: ${schoolName}
 PURPOSE: ${purpose}
 ${custom ? `\nADDITIONAL NOTES FROM ADMIN:\n${custom}` : ''}
 
-Draft the message.`;
+Draft just the body.`;
 
-    const { text, usage, latencyMs } = await runText({ system, user, maxTokens: 600 });
+    const { text, usage, latencyMs } = await runText({ system, user, maxTokens: 400 });
     logSmart(req, 'draft-message', true, { context, ms: latencyMs, in: usage.input_tokens, out: usage.output_tokens });
 
     res.json({
@@ -284,6 +289,7 @@ Draft the message.`;
       char_count: text.length,
       suggested_send: contextDetails.includes('Email') ? 'email' : 'whatsapp',
       tone: finalTone,
+      school_name: schoolName,
     });
   } catch (err) {
     logSmart(req, 'draft-message', false, { msg: err.message });

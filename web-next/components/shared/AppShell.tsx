@@ -3,10 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useTheme } from '@/lib/context/ThemeContext';
 import SvgIcon from './SvgIcon';
 import OnboardingWizard from './OnboardingWizard';
+import SmartAddModal from '../smart/SmartAddModal';
 
 const Icons: Record<string, React.ReactNode> = {
   dashboard: (
@@ -128,6 +130,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showSmartAdd, setShowSmartAdd] = useState(false);
+  const qc = useQueryClient();
   const [isMobile, setIsMobile] = useState(false);
   const [hoveredNav, setHoveredNav] = useState<string | null>(null);
   const [canHover, setCanHover] = useState(false);
@@ -202,6 +206,42 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Global Smart Add — accessible from every dashboard page */}
+      {showBrand && (
+        <div style={{ padding: '12px 14px 6px' }}>
+          <button
+            onClick={() => setShowSmartAdd(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              width: '100%',
+              padding: '10px 14px',
+              borderRadius: 10,
+              border: 'none',
+              cursor: 'pointer',
+              background: 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)',
+              color: '#fff',
+              fontWeight: 700,
+              fontSize: 13,
+              letterSpacing: '0.01em',
+              boxShadow: '0 2px 10px rgba(124,58,237,0.28)',
+              transition: 'transform .08s',
+            }}
+            onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.98)')}
+            onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            title="Smart Add — paste a casual schedule"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
+            </svg>
+            Smart Add
+          </button>
         </div>
       )}
 
@@ -326,6 +366,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </main>
         </div>
+
+        {/* Global Smart Add modal — accessible from sidebar on every page */}
+        <SmartAddModal
+          open={showSmartAdd}
+          onClose={() => setShowSmartAdd(false)}
+          schoolId={String(user?.school_id || '')}
+          onCreated={() => qc.invalidateQueries({ queryKey: ['events'] })}
+        />
       </>
     );
   }
@@ -357,13 +405,35 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
-          <button
-            onClick={() => setMenuOpen((o) => !o)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sidebar-foreground)', display: 'flex', alignItems: 'center', padding: 4 }}
-            aria-label="Toggle menu"
-          >
-            {menuOpen ? Icons.close : Icons.menu}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={() => setShowSmartAdd(true)}
+              style={{
+                background: 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 32, height: 32,
+                borderRadius: 8,
+              }}
+              aria-label="Smart Add"
+              title="Smart Add"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
+              </svg>
+            </button>
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sidebar-foreground)', display: 'flex', alignItems: 'center', padding: 4 }}
+              aria-label="Toggle menu"
+            >
+              {menuOpen ? Icons.close : Icons.menu}
+            </button>
+          </div>
         </header>
 
         {menuOpen && (
@@ -403,6 +473,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </main>
       </div>
+
+      {/* Global Smart Add modal — accessible from sidebar/topbar on every page */}
+      <SmartAddModal
+        open={showSmartAdd}
+        onClose={() => setShowSmartAdd(false)}
+        schoolId={String(user?.school_id || '')}
+        onCreated={() => qc.invalidateQueries({ queryKey: ['events'] })}
+      />
     </>
   );
 }

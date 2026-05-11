@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { events as api, batches as batchesApi, students as studentsApi, schools, recitals as recitalApi, todos as todosApi, schedules as schedulesApi, scheduleExceptions as scheduleExceptionsApi } from "@/lib/api";
 import toast from "react-hot-toast";
 import Button, { BTN_GRAD } from "@/components/shared/Button";
+import SmartAddModal from "@/components/smart/SmartAddModal";
 import Card from "@/components/shared/Card";
 import Modal from "@/components/shared/Modal";
 import Badge from "@/components/shared/Badge";
@@ -468,6 +469,7 @@ function SchoolHomePage() {
   const [form, setForm]             = useState(EMPTY_EVENT);
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [showAddBatch,   setShowAddBatch]   = useState(false);
+  const [showSmartAdd,   setShowSmartAdd]   = useState(false);
   const [showAddRecital, setShowAddRecital] = useState(false);
   const [studentForm, setStudentForm]       = useState(EMPTY_STUDENT);
   const [batchForm,   setBatchForm]         = useState(EMPTY_BATCH);
@@ -819,6 +821,7 @@ function SchoolHomePage() {
           {createMenuOpen && (
             <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,minWidth:220,background:C.white,border:`1.5px solid ${C.border}`,borderRadius:14,boxShadow:"0 8px 32px rgba(0,0,0,.14)",zIndex:200,overflow:"hidden"}}>
               {[
+                { label:"Smart Add",      color:"#7C3AED",      action:()=>{ setShowSmartAdd(true); setCreateMenuOpen(false); } },
                 { label:"Create Event",   color:"#0EA5E9",      action:()=>{ openAdd(); setCreateMenuOpen(false); } },
                 { label:"Create Recital", color:"#C026D3",      action:()=>{ setShowAddRecital(true); setCreateMenuOpen(false); } },
                 { label:"Create Batch",   color:"#F59E0B",      action:()=>{ setShowAddBatch(true); setCreateMenuOpen(false); } },
@@ -834,7 +837,9 @@ function SchoolHomePage() {
                   onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}
                 >
                   <span style={{width:36,height:36,borderRadius:10,background:color+"14",color,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                    {label==="Create Event" ? (
+                    {label==="Smart Add" ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/></svg>
+                    ) : label==="Create Event" ? (
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     ) : label==="Create Recital" ? (
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -871,6 +876,7 @@ function SchoolHomePage() {
             {createMenuOpen && (
               <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,minWidth:190,background:C.white,border:`1px solid ${C.border}`,borderRadius:12,boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:200,overflow:"hidden"}}>
                 {[
+                  { label:"Smart Add",      action:()=>{ setShowSmartAdd(true); setCreateMenuOpen(false); } },
                   { label:"Create Event",   action:()=>{ openAdd(); setCreateMenuOpen(false); } },
                   { label:"Create Recital", action:()=>{ setShowAddRecital(true); setCreateMenuOpen(false); } },
                   { label:"Add Student",    action:()=>{ setShowAddStudent(true); setCreateMenuOpen(false); } },
@@ -1184,6 +1190,14 @@ function SchoolHomePage() {
           </div>
         </Modal>
       )}
+
+      {/* Smart Add modal — bulk create events from natural language */}
+      <SmartAddModal
+        open={showSmartAdd}
+        onClose={() => setShowSmartAdd(false)}
+        schoolId={String(sid)}
+        onCreated={() => qc.invalidateQueries({ queryKey: ['events'] })}
+      />
 
     </div>
   );

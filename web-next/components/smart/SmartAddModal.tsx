@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import SmartModal from './SmartModal';
 import SmartButton from './SmartButton';
+import SmartUsageFooter from './SmartUsageFooter';
 import { smart, type SmartParsedEvent } from '@/lib/api/smart';
 import { events as eventsApi, batches as batchesApi } from '@/lib/api';
 
@@ -25,6 +26,28 @@ function useNarrow(breakpoint = 600) {
     return () => window.removeEventListener('resize', fn);
   }, [breakpoint]);
   return narrow;
+}
+
+// Translate technical backend warnings into friendlier copy users will tolerate.
+// Returns null if the warning is purely informational and the UI already
+// surfaces the relevant info elsewhere (e.g. the row-level "+ Create X" hint
+// already covers "no batch matched").
+function humaniseWarning(raw: string): string | null {
+  // Hide warnings whose info is already shown inline on each row
+  if (/no batch matched/i.test(raw)) return null;
+  if (/batch_id set to null/i.test(raw)) return null;
+  if (/year auto.?assumed/i.test(raw)) return null; // shown in dedicated chip below
+
+  // Translate the common ones into plain language
+  if (/recurring pattern.*detected.*only first/i.test(raw)) {
+    return 'A recurring pattern was hinted at but only the first date was added — tap a row to duplicate it manually, or rephrase like "every Mon for 4 weeks" and try again.';
+  }
+  if (/medium confidence|confidence/i.test(raw) && /batch/i.test(raw)) {
+    return 'A batch name was best-guessed — pick the right one in the row dropdown if it\'s wrong.';
+  }
+
+  // Default: keep but strip jargon prefixes
+  return raw.replace(/^['"]?[A-Z][a-zA-Z_]+['"]?\s*:?\s*/, '');
 }
 
 type Props = {
@@ -191,7 +214,7 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
       open={open}
       onClose={handleClose}
       title="Smart Add"
-      subtitle="Paste a casual schedule. Manch will turn it into events you can review and create in one click."
+      subtitle="Type or paste a casual schedule. We'll suggest events you can review and add in one click."
       maxWidth={760}
       footer={
         rows.length > 0 ? (
@@ -204,7 +227,7 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
               Cancel
             </button>
             <SmartButton onClick={doCreate} loading={creating} disabled={selectedCount === 0} size="md">
-              {creating ? 'Creating…' : `Create ${selectedCount} event${selectedCount !== 1 ? 's' : ''}`}
+              {creating ? 'Adding…' : `Add ${selectedCount} event${selectedCount !== 1 ? 's' : ''}`}
             </SmartButton>
           </>
         ) : null
@@ -264,21 +287,29 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
               />
             </label>
             <SmartButton onClick={doParse} loading={parsing} disabled={!text.trim()} size="md">
-              {parsing ? 'Thinking…' : 'Parse'}
+              {parsing ? 'Thinking…' : 'Create Events'}
             </SmartButton>
           </div>
         </>
       ) : (
         // ── Preview table ──
         <>
-          {warnings.length > 0 && (
-            <div style={{ marginBottom: 12, padding: '10px 12px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 8 }}>
-              {warnings.map((w, i) => (
-                <div key={i} style={{ fontSize: 12, color: '#B45309', lineHeight: 1.5 }}>⚠ {w}</div>
-              ))}
-              {yearAssumed && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>Year auto-assumed: <strong>{yearAssumed}</strong></div>}
-            </div>
-          )}
+          {(() => {
+            const friendly = warnings.map(humaniseWarning).filter(Boolean) as string[];
+            if (friendly.length === 0 && !yearAssumed) return null;
+            return (
+              <div style={{ marginBottom: 12, padding: '10px 12px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 8 }}>
+                {friendly.map((w, i) => (
+                  <div key={i} style={{ fontSize: 12, color: '#B45309', lineHeight: 1.5, marginBottom: i < friendly.length - 1 ? 4 : 0 }}>💡 {w}</div>
+                ))}
+                {yearAssumed && (
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: friendly.length ? 6 : 0 }}>
+                    Year not specified — using <strong>{yearAssumed}</strong>. Adjust any row's date below if that's wrong.
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
             {/* header — desktop only */}
@@ -369,7 +400,7 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
                       <option>Other</option>
                     </select>
                     {r.warning && (
-                      <div style={{ fontSize: 11, color: '#B45309', marginTop: 2 }}>⚠ {r.warning}</div>
+                      <div style={{ fontSize: 11, color: '#B45309', marginTop: 2 }}>⚠ {r.warning === 'duplicate' ? 'Same date appears twice — unchecked by default. Check it to add anyway.' : r.warning}</div>
                     )}
                     {r.proposed_batch_name && !r.batch_id && (
                       <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
@@ -418,7 +449,7 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
                       <option>Other</option>
                     </select>
                     {r.warning && (
-                      <div style={{ gridColumn: '2 / -1', fontSize: 11, color: '#B45309', marginTop: 2 }}>⚠ {r.warning}</div>
+                      <div style={{ gridColumn: '2 / -1', fontSize: 11, color: '#B45309', marginTop: 2 }}>⚠ {r.warning === 'duplicate' ? 'Same date appears twice — unchecked by default. Check it to add anyway.' : r.warning}</div>
                     )}
                     {r.proposed_batch_name && !r.batch_id && (
                       <div style={{ gridColumn: '2 / -1', fontSize: 11, color: '#6B7280', marginTop: 2 }}>
@@ -440,6 +471,7 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
           </button>
         </>
       )}
+      <SmartUsageFooter />
     </SmartModal>
   );
 }
