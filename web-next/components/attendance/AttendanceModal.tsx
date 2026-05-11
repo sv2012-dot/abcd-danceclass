@@ -3,8 +3,13 @@
 // Attendance modal — opened from a Schedule event detail (or a recurring class
 // instance). Lists every student in the linked batch(es) with a 4-way status
 // toggle. Bulk "Mark all present" at the top. Saves on confirm.
+//
+// Mobile UX: each student row supports swipe gestures —
+//   swipe RIGHT → Present (green)
+//   swipe LEFT  → Absent (red)
+//   tap toggles still work for Late/Excused or undo.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { attendance, type AttendanceStatus } from '@/lib/api';
 
@@ -28,6 +33,145 @@ const STATUS_CONFIG: { value: AttendanceStatus; label: string; color: string; ic
   { value: 'excused', label: 'Excused', color: '#6366F1', icon: '∼' },
   { value: 'absent',  label: 'Absent',  color: '#EF4444', icon: '✗' },
 ];
+
+// Swipe threshold past which the gesture commits to a status
+const SWIPE_THRESHOLD_PX = 70;
+const SWIPE_MAX_REVEAL_PX = 120;
+
+// ── Swipeable student row ───────────────────────────────────────────────────
+// Tap any of the 4 status icons OR swipe right (Present) / left (Absent).
+// On touch devices the row slides under-finger and reveals colored hint.
+function SwipeRow({
+  student,
+  current,
+  onSet,
+}: {
+  student: { id: number; name: string };
+  current?: AttendanceStatus;
+  onSet: (status: AttendanceStatus) => void;
+}) {
+  const [dx, setDx] = useState(0);
+  const startRef = useRef<{ x: number; y: number; locked: 'h' | 'v' | null } | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    startRef.current = { x: t.clientX, y: t.clientY, locked: null };
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    const start = startRef.current;
+    if (!start) return;
+    const t = e.touches[0];
+    const ddx = t.clientX - start.x;
+    const ddy = t.clientY - start.y;
+    // Lock to dominant axis to avoid stealing vertical scroll
+    if (!start.locked) {
+      if (Math.abs(ddx) > 6 && Math.abs(ddx) > Math.abs(ddy)) start.locked = 'h';
+      else if (Math.abs(ddy) > 6) start.locked = 'v';
+    }
+    if (start.locked === 'h') {
+      // Clamp to a max so the row doesn't fly off
+      const clamped = Math.max(-SWIPE_MAX_REVEAL_PX, Math.min(SWIPE_MAX_REVEAL_PX, ddx));
+      setDx(clamped);
+    }
+  };
+  const onTouchEnd = () => {
+    const final = dx;
+    if (final >= SWIPE_THRESHOLD_PX) onSet('present');
+    else if (final <= -SWIPE_THRESHOLD_PX) onSet('absent');
+    setDx(0);
+    startRef.current = null;
+  };
+
+  const revealRight = Math.max(0, dx);
+  const revealLeft = Math.max(0, -dx);
+  const willCommit = Math.abs(dx) >= SWIPE_THRESHOLD_PX;
+
+  return (
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 10 }}>
+      {/* Hint backgrounds revealed during swipe */}
+      {revealRight > 0 && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+            paddingLeft: 18, background: '#10B981', color: '#fff', fontWeight: 800, fontSize: 14,
+            opacity: Math.min(1, revealRight / SWIPE_THRESHOLD_PX), pointerEvents: 'none',
+          }}
+        >
+          ✓ {willCommit ? 'Present' : 'Swipe →'}
+        </div>
+      )}
+      {revealLeft > 0 && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+            paddingRight: 18, background: '#EF4444', color: '#fff', fontWeight: 800, fontSize: 14,
+            opacity: Math.min(1, revealLeft / SWIPE_THRESHOLD_PX), pointerEvents: 'none',
+          }}
+        >
+          {willCommit ? 'Absent' : '← Swipe'} ✗
+        </div>
+      )}
+
+      {/* The actual row — translates under finger */}
+      <div
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '10px 12px',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 10,
+          flexWrap: 'wrap',
+          transform: `translateX(${dx}px)`,
+          transition: dx === 0 ? 'transform 0.2s ease-out' : 'none',
+          touchAction: 'pan-y',
+        }}
+      >
+        <div style={{ flex: '1 1 140px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--card)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'var(--muted)', border: '1px solid var(--border)', flexShrink: 0 }}>
+            {student.name?.[0]?.toUpperCase() || '?'}
+          </div>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {student.name}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          {STATUS_CONFIG.map((opt) => {
+            const active = current === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => onSet(opt.value)}
+                title={opt.label}
+                style={{
+                  width: 36, height: 32,
+                  padding: 0,
+                  borderRadius: 8,
+                  border: active ? `1.5px solid ${opt.color}` : '1px solid var(--border)',
+                  background: active ? opt.color + '20' : 'var(--card)',
+                  color: active ? opt.color : 'var(--muted)',
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  transition: 'background .1s, color .1s',
+                }}
+              >
+                {opt.icon}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function AttendanceModal({ open, onClose, schoolId, eventId, scheduleId, classDate, eventTitle }: Props) {
   const [students, setStudents] = useState<Student[]>([]);
@@ -185,61 +329,22 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
               No students in the linked batch. Add students to the batch first.
             </p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {students.map((s) => {
-                const current = marks[s.id];
-                return (
-                  <div
+            <>
+              {/* Touch hint — only show on devices that have touch */}
+              <p style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center', margin: '0 0 10px', display: 'block' }}>
+                Tip: swipe right for Present, left for Absent
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {students.map((s) => (
+                  <SwipeRow
                     key={s.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '10px 12px',
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 10,
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <div style={{ flex: '1 1 140px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--card)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'var(--muted)', border: '1px solid var(--border)', flexShrink: 0 }}>
-                        {s.name?.[0]?.toUpperCase() || '?'}
-                      </div>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {s.name}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                      {STATUS_CONFIG.map((opt) => {
-                        const active = current === opt.value;
-                        return (
-                          <button
-                            key={opt.value}
-                            onClick={() => setStatus(s.id, opt.value)}
-                            title={opt.label}
-                            style={{
-                              width: 36, height: 32,
-                              padding: 0,
-                              borderRadius: 8,
-                              border: active ? `1.5px solid ${opt.color}` : '1px solid var(--border)',
-                              background: active ? opt.color + '20' : 'var(--card)',
-                              color: active ? opt.color : 'var(--muted)',
-                              fontSize: 14,
-                              fontWeight: 800,
-                              cursor: 'pointer',
-                              transition: 'background .1s, color .1s',
-                            }}
-                          >
-                            {opt.icon}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    student={s}
+                    current={marks[s.id]}
+                    onSet={(status) => setStatus(s.id, status)}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
 

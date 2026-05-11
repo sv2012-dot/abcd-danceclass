@@ -12,6 +12,7 @@ import Badge from "@/components/shared/Badge";
 import Modal from "@/components/shared/Modal";
 import { Field, Input, Select, Textarea } from "@/components/shared/Field";
 import SvgIcon from "@/components/shared/SvgIcon";
+import BatchAttendanceGrid from "@/components/attendance/BatchAttendanceGrid";
 
 const LEVELS = ["Beginner","Intermediate","Advanced","Mixed"];
 const BATCH_COLORS = ["#e8607a","#6a7fdb","#f4a041","#52c4a0","#b47fe8","#e87a52"];
@@ -706,6 +707,11 @@ export default function BatchesPage() {
                     })}
                   </div>
                 )}
+              </PSection>
+
+              {/* Attendance grid */}
+              <PSection title="Attendance">
+                <BatchAttendanceGrid schoolId={String(sid)} batchId={activeBatch.id} />
               </PSection>
 
               {/* Notes */}

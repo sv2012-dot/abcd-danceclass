@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import Card from "@/components/shared/Card";
 import Button from "@/components/shared/Button";
 import { Field, Input, Textarea } from "@/components/shared/Field";
+import StudentAttendancePanel from "@/components/attendance/StudentAttendancePanel";
 
 // ─── Dance avatar stickers — individual PNGs ──────────────────────────────
 // 72 files: sticker_RR_CC.png (rows 01-06, cols 01-12).
@@ -702,6 +703,9 @@ export default function StudentsPage() {
                       <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, background: "var(--surface)", borderRadius: 9, padding: "10px 12px", margin: 0 }}>{selected.notes}</p>
                     </PanelSection>
                   )}
+                  <PanelSection title="Attendance">
+                    <StudentAttendancePanel schoolId={String(sid)} studentId={selected.id} />
+                  </PanelSection>
                   <div style={{ display: "flex", gap: 9, marginTop: 24 }}>
                     <Button onClick={startEdit} style={{ flex: 1 }}>✏️ Edit Profile</Button>
                     <Button variant="danger" onClick={() => { if (window.confirm("Remove this student?")) deleteMutation.mutate(selected.id); }}
