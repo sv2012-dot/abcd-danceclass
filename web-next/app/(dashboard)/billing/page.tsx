@@ -91,6 +91,10 @@ function BillingContent() {
     } else if (checkout === 'cancelled') {
       toast("Cancelled — you're still on the same plan.");
       router.replace('/billing');
+    } else if (searchParams.get('portal') === 'returned') {
+      // User just came back from Stripe Customer Portal — they may have
+      // cancelled, updated payment, etc. Pull fresh state from Stripe.
+      syncFromStripe(true).then(() => router.replace('/billing'));
     }
   }, [searchParams, router]);
 
@@ -269,27 +273,30 @@ function BillingContent() {
         <UsageCard label="AI / day" used={null} cap={info.limits.smart_calls_per_day} isPaid={isPaid} isDaily />
       </div>
 
-      {/* Manual sync — recovery valve if the webhook missed.
-          Shown only when we'd expect a subscription but aren't seeing one. */}
-      {info.source !== 'subscription' && (
-        <div style={{ textAlign: 'center', marginBottom: 16 }}>
-          <button
-            onClick={() => syncFromStripe(false)}
-            disabled={busy !== null}
-            style={{
-              background: 'none',
-              border: '1px dashed var(--border)',
-              borderRadius: 8,
-              padding: '8px 14px',
-              fontSize: 12,
-              color: 'var(--muted)',
-              cursor: busy === null ? 'pointer' : 'wait',
-            }}
-          >
-            {busy === 'sync' ? 'Syncing…' : '⟳ Already paid? Sync from Stripe'}
-          </button>
-        </div>
-      )}
+      {/* Manual sync — always available recovery valve.
+          - For non-subscribers: 'Already paid? Sync from Stripe'
+          - For subscribers: 'Refresh subscription state' (after cancel etc.) */}
+      <div style={{ textAlign: 'center', marginBottom: 16 }}>
+        <button
+          onClick={() => syncFromStripe(false)}
+          disabled={busy !== null}
+          style={{
+            background: 'none',
+            border: '1px dashed var(--border)',
+            borderRadius: 8,
+            padding: '8px 14px',
+            fontSize: 12,
+            color: 'var(--muted)',
+            cursor: busy === null ? 'pointer' : 'wait',
+          }}
+        >
+          {busy === 'sync'
+            ? 'Syncing…'
+            : info.source === 'subscription'
+              ? '⟳ Refresh subscription state'
+              : '⟳ Already paid? Sync from Stripe'}
+        </button>
+      </div>
 
       {/* Coffee hook footer */}
       <div

@@ -174,7 +174,8 @@ router.post('/portal', auth('school_admin', 'superadmin'), async (req, res) => {
     const origin = req.headers.origin || 'https://manchq.com';
     const portal = await stripe.billingPortal.sessions.create({
       customer: school.stripe_customer_id,
-      return_url: `${origin}/billing`,
+      // Auto-sync on return so cancellations etc. reflect immediately
+      return_url: `${origin}/billing?portal=returned`,
     });
     res.json({ url: portal.url });
   } catch (err) {
