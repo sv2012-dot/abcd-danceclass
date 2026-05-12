@@ -26,14 +26,31 @@ function daysUntil(iso: string | null) {
   return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
 }
 
+// Module-level cache so the badge survives sidebar remounts without
+// flashing to null while re-fetching. SidebarContent is defined inline
+// inside AppShell, so any parent state change (nav hover, menu toggle,
+// etc.) remounts this component — and a null state on remount = flicker.
+let _planCache: PlanInfo | null = null;
+let _cacheTime = 0;
+const CACHE_TTL_MS = 60_000; // refetch at most once per minute
+
 export default function PlanBadge() {
   const router = useRouter();
-  const [info, setInfo] = useState<PlanInfo | null>(null);
+  const [info, setInfo] = useState<PlanInfo | null>(_planCache);
 
   useEffect(() => {
     let cancelled = false;
+    // Skip if cache is still fresh — no need to refetch every mount
+    if (_planCache && Date.now() - _cacheTime < CACHE_TTL_MS) {
+      setInfo(_planCache);
+      return;
+    }
     (api.get('/billing/me') as any)
-      .then((d: any) => { if (!cancelled) setInfo(d); })
+      .then((d: any) => {
+        _planCache = d;
+        _cacheTime = Date.now();
+        if (!cancelled) setInfo(d);
+      })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
