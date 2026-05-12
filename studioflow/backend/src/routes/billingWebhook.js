@@ -5,6 +5,22 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../database');
 
+/**
+ * Stripe moved current_period_end from the subscription object's top level
+ * into its items (API version 2025-09-30+). Handle both shapes so we work
+ * across API version upgrades.
+ */
+function extractPeriodEnd(sub) {
+  if (!sub) return null;
+  // Try top-level first (older API versions)
+  let unix = sub.current_period_end;
+  // Fall back to first subscription item (newer API versions)
+  if (typeof unix !== 'number') {
+    unix = sub.items?.data?.[0]?.current_period_end;
+  }
+  return typeof unix === 'number' ? new Date(unix * 1000) : null;
+}
+
 router.post('/', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -43,9 +59,9 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
             const Stripe = require('stripe');
             const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
             const sub = await stripe.subscriptions.retrieve(session.subscription);
-            if (sub?.current_period_end) {
-              periodEnd = new Date(sub.current_period_end * 1000);
-            }
+            periodEnd = extractPeriodEnd(sub);
+            console.log('[stripe-webhook] checkout.session.completed for school', schoolId,
+              'sub', session.subscription, 'periodEnd', periodEnd);
           } catch (err) {
             console.error('[stripe-webhook] failed to retrieve subscription', err.message);
           }
@@ -64,12 +80,14 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
       case 'customer.subscription.created': {
         const sub = event.data.object;
         const isActive = ['active', 'trialing'].includes(sub.status);
-        const periodEnd = new Date(sub.current_period_end * 1000);
+        const periodEnd = extractPeriodEnd(sub);
+        console.log('[stripe-webhook]', event.type, 'sub', sub.id, 'status', sub.status,
+          'periodEnd', periodEnd, 'customer', sub.customer);
         await pool.query(
           `UPDATE schools
               SET plan_tier = ?,
                   stripe_subscription_id = ?,
-                  current_period_end = ?
+                  current_period_end = COALESCE(?, current_period_end)
             WHERE stripe_customer_id = ?`,
           [isActive ? 'paid' : 'free', sub.id, periodEnd, sub.customer]
         );
