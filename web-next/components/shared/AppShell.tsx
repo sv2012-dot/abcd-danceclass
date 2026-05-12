@@ -92,20 +92,19 @@ const NAV_ITEMS: Record<string, any[]> = {
   ],
   school_admin: [
     { to: '/home', label: 'Dashboard', icon: 'dashboard' },
-    { to: '/batches', label: 'Batches', icon: 'batches' },
+    // Batches + Students live behind a single nav entry with in-page tabs
+    { to: '/batches', label: 'Classes', icon: 'batches', matchPaths: ['/batches', '/students'] },
     { to: '/schedule', label: 'My Events', icon: 'schedule' },
     { to: '/todos', label: 'To-Dos', icon: 'todos' },
-    { to: '/students', label: 'Students', icon: 'users' },
     { to: '/studios', label: 'Studios', icon: 'studios' },
     { to: '/vendors', label: 'Vendors', icon: 'vendors' },
     { to: '/about', label: 'About', icon: 'about' },
   ],
   teacher: [
     { to: '/home', label: 'Dashboard', icon: 'dashboard' },
-    { to: '/batches', label: 'Batches', icon: 'batches' },
+    { to: '/batches', label: 'Classes', icon: 'batches', matchPaths: ['/batches', '/students'] },
     { to: '/schedule', label: 'My Events', icon: 'schedule' },
     { to: '/todos', label: 'To-Dos', icon: 'todos' },
-    { to: '/students', label: 'Students', icon: 'users' },
     { to: '/studios', label: 'Studios', icon: 'studios' },
     { to: '/vendors', label: 'Vendors', icon: 'vendors' },
     { to: '/about', label: 'About', icon: 'about' },
@@ -198,13 +197,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <div style={{ width: 52, height: 52, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#fff', fontSize: 16, letterSpacing: '-0.5px', background: AVATAR_GRAD }}>
               {initials(schoolName)}
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{ flex: 1, minWidth: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--sidebar-foreground)', lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {schoolName}
               </div>
               <div style={{ fontSize: 13, color: 'var(--sidebar-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {isSuperAdmin ? 'Platform admin' : (city || brief)}
               </div>
+              {/* Small plan indicator — Trial · Upgrade link, or Pro badge */}
+              {!isSuperAdmin && <PlanBadge />}
             </div>
           </div>
         </div>
@@ -246,12 +250,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* Plan / trial countdown chip — clickable, sends to /billing */}
-      {showBrand && <PlanBadge />}
-
       <nav style={{ flex: 1, padding: '16px 10px', overflowY: 'auto' }}>
         {navItems.map((item: any) => {
-          const isActive = pathname === item.to;
+          // Allow a nav entry to highlight active across multiple URLs
+          // (e.g. "Classes" stays active on both /batches and /students)
+          const isActive = item.matchPaths
+            ? item.matchPaths.includes(pathname)
+            : pathname === item.to;
           const isHovered = canHover && hoveredNav === item.to;
           return (
             <Link

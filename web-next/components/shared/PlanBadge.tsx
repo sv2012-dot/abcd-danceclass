@@ -1,7 +1,14 @@
 'use client';
 
-// PlanBadge — small clickable chip showing trial countdown / Pro / Free.
-// Renders in the AppShell sidebar so admins always know where they stand.
+// PlanBadge — compact plan indicator rendered inside the sidebar brand block,
+// directly below the school name + city line.
+//
+// Visual modes:
+//   - Pro (paid subscription) → tiny purple gradient badge "⭐ Pro"
+//   - Trial                   → small inline link "Upgrade ↗  •  30d left"
+//   - Free / default          → small inline link "Upgrade →"
+//
+// All variants navigate to /billing on click.
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -27,7 +34,7 @@ export default function PlanBadge() {
     let cancelled = false;
     (api.get('/billing/me') as any)
       .then((d: any) => { if (!cancelled) setInfo(d); })
-      .catch(() => { /* silent — backend may not have shipped yet */ });
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -37,59 +44,64 @@ export default function PlanBadge() {
   const isTrial = info.source === 'trial';
   const days = daysUntil(info.trial_ends_at);
 
-  let label = '';
-  let icon = '';
-  let bg = '';
-  let color = '';
-
+  // ── Pro: small gradient badge ──
   if (isSub) {
-    label = 'Pro';
-    icon = '⭐';
-    bg = 'linear-gradient(135deg, rgba(124,58,237,0.18) 0%, rgba(220,78,255,0.12) 100%)';
-    color = '#A78BFA';
-  } else if (isTrial && days !== null) {
-    const urgent = days <= 5;
-    label = `Trial · ${days}d left`;
-    icon = urgent ? '⏰' : '✨';
-    bg = urgent ? 'rgba(245,158,11,0.12)' : 'rgba(124,58,237,0.10)';
-    color = urgent ? '#F59E0B' : '#C4B5FD';
-  } else {
-    label = 'Free plan';
-    icon = '🎓';
-    bg = 'rgba(255,255,255,0.04)';
-    color = 'var(--sidebar-muted)';
+    return (
+      <button
+        onClick={() => router.push('/billing')}
+        title="Manage billing"
+        style={{
+          marginTop: 6,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '2px 8px',
+          borderRadius: 12,
+          border: 'none',
+          background: 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)',
+          color: '#fff',
+          fontSize: 10,
+          fontWeight: 800,
+          letterSpacing: '0.04em',
+          cursor: 'pointer',
+          textTransform: 'uppercase',
+        }}
+      >
+        <span aria-hidden style={{ fontSize: 10 }}>★</span>
+        Pro
+      </button>
+    );
   }
+
+  // ── Trial / Free: small inline link ──
+  const urgent = isTrial && days !== null && days <= 5;
+  const label = isTrial
+    ? `Upgrade ↗ · ${days}d ${urgent ? '⏰' : 'trial'}`
+    : 'Upgrade →';
 
   return (
     <button
       onClick={() => router.push('/billing')}
+      title={isTrial ? 'Subscribe before trial ends' : 'Upgrade to Pro'}
       style={{
-        margin: '8px 14px 0',
-        display: 'flex',
+        marginTop: 6,
+        display: 'inline-flex',
         alignItems: 'center',
-        gap: 8,
-        padding: '8px 12px',
-        borderRadius: 10,
-        border: '1px solid rgba(124,58,237,0.18)',
-        background: bg,
-        color,
-        fontSize: 12,
+        gap: 4,
+        padding: 0,
+        background: 'none',
+        border: 'none',
+        color: urgent ? '#F59E0B' : '#A78BFA',
+        fontSize: 11,
         fontWeight: 700,
+        letterSpacing: '-0.005em',
         cursor: 'pointer',
-        width: 'calc(100% - 28px)',
-        textAlign: 'left',
-        transition: 'transform .08s, opacity .15s',
+        textDecoration: 'none',
       }}
-      onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.98)')}
-      onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-      onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-      title={isSub ? 'Manage billing' : isTrial ? 'Subscribe before trial ends' : 'Upgrade to Pro'}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'underline'; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'none'; }}
     >
-      <span aria-hidden style={{ fontSize: 14 }}>{icon}</span>
-      <span style={{ flex: 1 }}>{label}</span>
-      {(isTrial || info.source === 'default') && (
-        <span style={{ fontSize: 10, opacity: 0.7 }}>→</span>
-      )}
+      {label}
     </button>
   );
 }

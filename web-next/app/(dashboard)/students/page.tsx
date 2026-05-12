@@ -10,6 +10,7 @@ import Card from "@/components/shared/Card";
 import Button from "@/components/shared/Button";
 import { Field, Input, Textarea } from "@/components/shared/Field";
 import StudentAttendancePanel from "@/components/attendance/StudentAttendancePanel";
+import RosterTabs from "@/components/shared/RosterTabs";
 
 // ─── Dance avatar stickers — individual PNGs ──────────────────────────────
 // 72 files: sticker_RR_CC.png (rows 01-06, cols 01-12).
@@ -353,6 +354,9 @@ export default function StudentsPage() {
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div style={{ paddingRight: (selected || showAdd) && !isMobile ? PANEL_W + 20 : 0, transition: "padding .25s ease" }}>
+
+      {/* ── Tab switcher — Batches | Students ── */}
+      <RosterTabs />
 
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
