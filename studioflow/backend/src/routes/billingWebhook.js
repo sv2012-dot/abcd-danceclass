@@ -12,13 +12,17 @@ const { pool } = require('../database');
  */
 function extractPeriodEnd(sub) {
   if (!sub) return null;
-  // Try top-level first (older API versions)
-  let unix = sub.current_period_end;
-  // Fall back to first subscription item (newer API versions)
-  if (typeof unix !== 'number') {
-    unix = sub.items?.data?.[0]?.current_period_end;
+  // 1) Top-level (older API versions)
+  if (typeof sub.current_period_end === 'number') {
+    return new Date(sub.current_period_end * 1000);
   }
-  return typeof unix === 'number' ? new Date(unix * 1000) : null;
+  // 2) Subscription items (Stripe API 2025-09-30+)
+  const itemEnd = sub.items?.data?.[0]?.current_period_end;
+  if (typeof itemEnd === 'number') return new Date(itemEnd * 1000);
+  // 3) Last-ditch: 31 days out for monthly subs. The next Stripe event will
+  //    sync the exact value; meanwhile effectivePlan() sees a future date
+  //    and treats the school as a subscriber.
+  return new Date(Date.now() + 31 * 24 * 60 * 60 * 1000);
 }
 
 router.post('/', express.raw({ type: 'application/json' }), async (req, res) => {
