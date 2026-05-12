@@ -246,7 +246,7 @@ function BillingContent() {
           color: 'var(--muted)',
         }}
       >
-        ☕ ManchQ is $5.99/month — less than a Starbucks coffee. Less than the time you'd save in the first week.
+        ☕ ManchQ is $5.99/month — about the price of a coffee. Less than the time you'd save in the first week.
       </div>
     </div>
   );

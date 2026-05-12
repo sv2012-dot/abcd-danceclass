@@ -124,7 +124,7 @@ const TABLE_ROWS = [
 
 const FAQ = [
   { q:'Why $5.99?',
-    a:'It\'s the same as a Starbucks coffee — a price small enough not to think about. We\'d rather have hundreds of happy studios than ten begrudging ones.' },
+    a:"It's the price of a coffee — small enough not to think about. We'd rather have hundreds of happy studios than ten begrudging ones." },
   { q:'Can I start on Debut and upgrade later?',
     a:'Absolutely. Start free, grow into it. Your data, schedules, students and recitals all carry over instantly when you upgrade.' },
   { q:'Is there a free trial for Spotlight?',
@@ -183,7 +183,7 @@ export default function PricingPage() {
         }}>
           <span style={{ fontSize: isMobile ? 18 : 22 }} aria-hidden>☕</span>
           <span style={{ fontSize: isMobile ? 13 : 14, color:'#E5E7EB', fontWeight:600, letterSpacing:'-.005em' }}>
-            <span style={{ color:'#9CA3AF' }}>Less than a Starbucks coffee —</span>{' '}
+            <span style={{ color:'#9CA3AF' }}>About the price of a coffee —</span>{' '}
             <span style={{ color:'#fff' }}>buy your digital companion a latte</span>
           </span>
         </div>
