@@ -35,9 +35,27 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
         const session = event.data.object;
         const schoolId = session.metadata?.school_id;
         if (schoolId && session.subscription) {
+          // Pull the subscription object directly so we can capture
+          // current_period_end in the same update — don't rely on the
+          // separate customer.subscription.created event to arrive.
+          let periodEnd = null;
+          try {
+            const Stripe = require('stripe');
+            const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+            const sub = await stripe.subscriptions.retrieve(session.subscription);
+            if (sub?.current_period_end) {
+              periodEnd = new Date(sub.current_period_end * 1000);
+            }
+          } catch (err) {
+            console.error('[stripe-webhook] failed to retrieve subscription', err.message);
+          }
           await pool.query(
-            `UPDATE schools SET plan_tier = 'paid', stripe_subscription_id = ? WHERE id = ?`,
-            [session.subscription, schoolId]
+            `UPDATE schools
+                SET plan_tier = 'paid',
+                    stripe_subscription_id = ?,
+                    current_period_end = COALESCE(?, current_period_end)
+              WHERE id = ?`,
+            [session.subscription, periodEnd, schoolId]
           );
         }
         break;

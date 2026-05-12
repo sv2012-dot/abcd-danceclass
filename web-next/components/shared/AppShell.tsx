@@ -9,6 +9,7 @@ import { useTheme } from '@/lib/context/ThemeContext';
 import SvgIcon from './SvgIcon';
 import OnboardingWizard from './OnboardingWizard';
 import SmartAddModal from '../smart/SmartAddModal';
+import PlanBadge from './PlanBadge';
 
 const Icons: Record<string, React.ReactNode> = {
   dashboard: (
@@ -244,6 +245,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       )}
+
+      {/* Plan / trial countdown chip — clickable, sends to /billing */}
+      {showBrand && <PlanBadge />}
 
       <nav style={{ flex: 1, padding: '16px 10px', overflowY: 'auto' }}>
         {navItems.map((item: any) => {
