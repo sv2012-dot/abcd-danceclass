@@ -13,7 +13,12 @@ import Modal from "@/components/shared/Modal";
 import { Field, Input, Select, Textarea } from "@/components/shared/Field";
 import SvgIcon from "@/components/shared/SvgIcon";
 import BatchAttendanceGrid from "@/components/attendance/BatchAttendanceGrid";
-import RosterTabs from "@/components/shared/RosterTabs";
+import PageTabs from "@/components/shared/PageTabs";
+
+const ROSTER_TABS = [
+  { label: "Batches",  path: "/batches"  },
+  { label: "Students", path: "/students" },
+];
 
 const LEVELS = ["Beginner","Intermediate","Advanced","Mixed"];
 const BATCH_COLORS = ["#e8607a","#6a7fdb","#f4a041","#52c4a0","#b47fe8","#e87a52"];
@@ -375,7 +380,7 @@ export default function BatchesPage() {
     <div style={{ paddingRight: panelOpen && !isMobile ? PANEL_W+20 : 0, transition:"padding .25s ease" }}>
 
       {/* ── Tab switcher — Batches | Students ── */}
-      <RosterTabs />
+      <PageTabs tabs={ROSTER_TABS} />
 
       {/* ── Header ── */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:10 }}>

@@ -1,18 +1,20 @@
 'use client';
 
-// RosterTabs — header tab bar rendered at the top of /batches and /students.
-// Lets the user flip between the two views without bouncing through the
-// sidebar nav. Page contents stay in their own routes — URLs preserved.
+// Generic top-of-page tab bar. Each tab is { label, path } — clicking a tab
+// navigates to that URL. Active tab is the one whose path matches the
+// current pathname.
+//
+// Used to merge related pages under a single sidebar nav entry without
+// changing URLs:
+//   • /batches + /students under "Classes"
+//   • /studios + /vendors under "Resources"
 
 import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
-const TABS: { label: string; path: string }[] = [
-  { label: 'Batches',  path: '/batches'  },
-  { label: 'Students', path: '/students' },
-];
+export type PageTab = { label: string; path: string };
 
-export default function RosterTabs() {
+export default function PageTabs({ tabs }: { tabs: PageTab[] }) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -25,7 +27,7 @@ export default function RosterTabs() {
         borderBottom: '1px solid var(--border)',
       }}
     >
-      {TABS.map((t) => {
+      {tabs.map((t) => {
         const active = pathname === t.path;
         return (
           <button

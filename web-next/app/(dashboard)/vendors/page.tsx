@@ -10,6 +10,12 @@ import Card, { CARD_TOKENS as CT } from "@/components/shared/Card";
 import Button from "@/components/shared/Button";
 import { Field, Input, Textarea } from "@/components/shared/Field";
 import SvgIcon from "@/components/shared/SvgIcon";
+import PageTabs from "@/components/shared/PageTabs";
+
+const RESOURCE_TABS = [
+  { label: "Studios", path: "/studios" },
+  { label: "Vendors", path: "/vendors" },
+];
 
 /* ─── Category config ───────────────────────────────────────────────── */
 const CATEGORIES = [
@@ -253,6 +259,8 @@ export default function VendorsPage() {
 
   return (
     <div style={{ paddingRight: panelOpen && !isMobile ? PANEL_W + 20 : 0, transition: "padding .25s ease" }}>
+
+      <PageTabs tabs={RESOURCE_TABS} />
 
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>

@@ -11,6 +11,12 @@ import Button from "@/components/shared/Button";
 import Modal from "@/components/shared/Modal";
 import { Field, Input, Textarea } from "@/components/shared/Field";
 import SvgIcon from "@/components/shared/SvgIcon";
+import PageTabs from "@/components/shared/PageTabs";
+
+const RESOURCE_TABS = [
+  { label: "Studios", path: "/studios" },
+  { label: "Vendors", path: "/vendors" },
+];
 
 const EMPTY = {
   name: "", address: "", city: "", state: "", zip: "",
@@ -509,6 +515,7 @@ export default function StudiosPage() {
 
   return (
     <div style={{ paddingRight: (selected || panelMode === 'add') && !isMobile ? PANEL_W + 20 : 0, transition: "padding .25s ease" }}>
+      <PageTabs tabs={RESOURCE_TABS} />
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ fontFamily: "var(--font-d)", fontSize: 26, marginBottom: 4 }}>Studio Bookings</h1>

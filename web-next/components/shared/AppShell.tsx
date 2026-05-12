@@ -92,12 +92,12 @@ const NAV_ITEMS: Record<string, any[]> = {
   ],
   school_admin: [
     { to: '/home', label: 'Dashboard', icon: 'dashboard' },
-    // Batches + Students live behind a single nav entry with in-page tabs
+    // Batches + Students share an entry with in-page tabs
     { to: '/batches', label: 'Classes', icon: 'batches', matchPaths: ['/batches', '/students'] },
     { to: '/schedule', label: 'My Events', icon: 'schedule' },
     { to: '/todos', label: 'To-Dos', icon: 'todos' },
-    { to: '/studios', label: 'Studios', icon: 'studios' },
-    { to: '/vendors', label: 'Vendors', icon: 'vendors' },
+    // Studios + Vendors share an entry with in-page tabs
+    { to: '/studios', label: 'Resources', icon: 'studios', matchPaths: ['/studios', '/vendors'] },
     { to: '/about', label: 'About', icon: 'about' },
   ],
   teacher: [
@@ -105,8 +105,7 @@ const NAV_ITEMS: Record<string, any[]> = {
     { to: '/batches', label: 'Classes', icon: 'batches', matchPaths: ['/batches', '/students'] },
     { to: '/schedule', label: 'My Events', icon: 'schedule' },
     { to: '/todos', label: 'To-Dos', icon: 'todos' },
-    { to: '/studios', label: 'Studios', icon: 'studios' },
-    { to: '/vendors', label: 'Vendors', icon: 'vendors' },
+    { to: '/studios', label: 'Resources', icon: 'studios', matchPaths: ['/studios', '/vendors'] },
     { to: '/about', label: 'About', icon: 'about' },
   ],
   parent: [
@@ -123,6 +122,169 @@ function initials(name = '') {
 const AVATAR_GRAD = 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)';
 const SIDEBAR_W = 232;
 const MOBILE_BP = 768;
+
+// ── Stable SidebarContent ────────────────────────────────────────────────
+// Defined at module scope (NOT inside AppShell) so it isn't recreated on
+// every parent render. Receives everything it needs via props — previously
+// closured over AppShell state, which caused full sidebar remounts (and
+// PlanBadge flicker) on every nav-item hover.
+type SidebarProps = {
+  showBrand?: boolean;
+  schoolName: string;
+  city: string;
+  brief: string;
+  isSuperAdmin: boolean;
+  user: any;
+  navItems: any[];
+  pathname: string;
+  hoveredNav: string | null;
+  setHoveredNav: (v: string | null) => void;
+  canHover: boolean;
+  theme: 'light' | 'dark' | string;
+  toggleTheme: () => void;
+  onAboutClick: () => void;
+  onSmartAdd: () => void;
+  onLogout: () => void;
+};
+
+function SidebarContent({
+  showBrand = true,
+  schoolName, city, brief, isSuperAdmin, user, navItems, pathname,
+  hoveredNav, setHoveredNav, canHover, theme, toggleTheme,
+  onAboutClick, onSmartAdd, onLogout,
+}: SidebarProps) {
+  return (
+    <>
+      {showBrand && (
+        <div
+          onClick={onAboutClick}
+          style={{ padding: '20px 16px 16px', borderBottom: '1px solid var(--sidebar-border)', cursor: 'pointer', transition: 'background .15s' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.04)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+          title="View school profile"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#fff', fontSize: 16, letterSpacing: '-0.5px', background: AVATAR_GRAD }}>
+              {initials(schoolName)}
+            </div>
+            <div
+              style={{ flex: 1, minWidth: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--sidebar-foreground)', lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {schoolName}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--sidebar-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {isSuperAdmin ? 'Platform admin' : (city || brief)}
+              </div>
+              {!isSuperAdmin && <PlanBadge />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBrand && (
+        <div style={{ padding: '12px 14px 6px' }}>
+          <button
+            onClick={onSmartAdd}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              width: '100%', padding: '10px 14px', borderRadius: 10, border: 'none',
+              cursor: 'pointer', background: 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)',
+              color: '#fff', fontWeight: 700, fontSize: 13, letterSpacing: '0.01em',
+              boxShadow: '0 2px 10px rgba(124,58,237,0.28)', transition: 'transform .08s',
+            }}
+            onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.98)')}
+            onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            title="Smart Add — paste a casual schedule"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
+            </svg>
+            Smart Add
+          </button>
+        </div>
+      )}
+
+      <nav style={{ flex: 1, padding: '16px 10px', overflowY: 'auto' }}>
+        {navItems.map((item: any) => {
+          const isActive = item.matchPaths
+            ? item.matchPaths.includes(pathname)
+            : pathname === item.to;
+          const isHovered = canHover && hoveredNav === item.to;
+          return (
+            <Link
+              key={item.to}
+              href={item.to}
+              onMouseEnter={canHover ? () => setHoveredNav(item.to) : undefined}
+              onMouseLeave={canHover ? () => setHoveredNav(null) : undefined}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+                padding: '12px 14px', borderRadius: 10, border: 'none', marginBottom: 4,
+                fontSize: 14, fontWeight: isActive ? 600 : 500,
+                color: 'var(--sidebar-foreground)',
+                opacity: isActive ? 1 : isHovered ? 1 : canHover ? 0.72 : 1,
+                background: isActive ? 'rgba(124,58,237,0.09)' : isHovered ? 'rgba(124,58,237,0.09)' : 'transparent',
+                boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                cursor: 'pointer', textDecoration: 'none', transition: 'background .15s, opacity .15s',
+                boxSizing: 'border-box',
+              }}
+            >
+              {Icons[item.icon]}
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div style={{ padding: '14px 16px 12px', borderTop: '1px solid var(--sidebar-border)' }}>
+        <div style={{ fontSize: 10, color: 'var(--sidebar-muted)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Signed in as</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--sidebar-foreground)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name}</div>
+        <button
+          style={{ background: 'none', border: 'none', color: 'var(--sidebar-muted)', fontSize: 13, cursor: 'pointer', textAlign: 'left', padding: 0 }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#DC2626'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--sidebar-muted)'; }}
+          onClick={onLogout}
+        >Sign out →</button>
+      </div>
+
+      <div style={{ padding: '10px 16px', borderTop: '1px solid var(--sidebar-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 11, color: 'var(--sidebar-muted)', fontWeight: 600 }}>
+          {theme === 'dark' ? 'Night mode' : 'Day mode'}
+        </span>
+        <button
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to day mode' : 'Switch to night mode'}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 0,
+            background: theme === 'dark' ? 'oklch(0.3715 0 0)' : '#e5e7eb',
+            border: 'none', borderRadius: 999, padding: '3px 4px',
+            cursor: 'pointer', width: 44, height: 24,
+            position: 'relative', transition: 'background .25s',
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ position: 'absolute', left: 5, lineHeight: 1, opacity: theme === 'dark' ? 0.3 : 1, transition: 'opacity .2s', display: 'flex' }}><SvgIcon name="sun" size={11} color="currentColor" /></span>
+          <span style={{ position: 'absolute', right: 5, lineHeight: 1, opacity: theme === 'dark' ? 1 : 0.3, transition: 'opacity .2s', display: 'flex' }}><SvgIcon name="moon" size={11} color="currentColor" /></span>
+          <span style={{
+            display: 'block', width: 18, height: 18, borderRadius: '50%',
+            background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+            position: 'absolute',
+            left: theme === 'dark' ? 'calc(100% - 22px)' : '3px',
+            transition: 'left .25s cubic-bezier(0.4,0,0.2,1)',
+          }} />
+        </button>
+      </div>
+
+      <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--sidebar-border)' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--sidebar-foreground)' }}>ManchQ</div>
+        <div style={{ fontSize: 10, color: 'var(--sidebar-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2, fontWeight: 500 }}>Your dance studio manager</div>
+        <a href="mailto:support@manchq.com" style={{ fontSize: 10, color: 'var(--sidebar-muted)', textDecoration: 'none', marginTop: 5, display: 'block' }}>support@manchq.com</a>
+      </div>
+    </>
+  );
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, school, logout } = useAuth() as any;
@@ -183,152 +345,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setShowSplash(false);
   };
 
-  const SidebarContent = ({ showBrand = true }: { showBrand?: boolean }) => (
-    <>
-      {showBrand && (
-        <div
-          onClick={() => router.push('/about')}
-          style={{ padding: '20px 16px 16px', borderBottom: '1px solid var(--sidebar-border)', cursor: 'pointer', transition: 'background .15s' }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.04)'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-          title="View school profile"
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 52, height: 52, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#fff', fontSize: 16, letterSpacing: '-0.5px', background: AVATAR_GRAD }}>
-              {initials(schoolName)}
-            </div>
-            <div
-              style={{ flex: 1, minWidth: 0 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--sidebar-foreground)', lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {schoolName}
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--sidebar-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {isSuperAdmin ? 'Platform admin' : (city || brief)}
-              </div>
-              {/* Small plan indicator — Trial · Upgrade link, or Pro badge */}
-              {!isSuperAdmin && <PlanBadge />}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Global Smart Add — accessible from every dashboard page */}
-      {showBrand && (
-        <div style={{ padding: '12px 14px 6px' }}>
-          <button
-            onClick={() => setShowSmartAdd(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              width: '100%',
-              padding: '10px 14px',
-              borderRadius: 10,
-              border: 'none',
-              cursor: 'pointer',
-              background: 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)',
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: 13,
-              letterSpacing: '0.01em',
-              boxShadow: '0 2px 10px rgba(124,58,237,0.28)',
-              transition: 'transform .08s',
-            }}
-            onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.98)')}
-            onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-            title="Smart Add — paste a casual schedule"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
-            </svg>
-            Smart Add
-          </button>
-        </div>
-      )}
-
-      <nav style={{ flex: 1, padding: '16px 10px', overflowY: 'auto' }}>
-        {navItems.map((item: any) => {
-          // Allow a nav entry to highlight active across multiple URLs
-          // (e.g. "Classes" stays active on both /batches and /students)
-          const isActive = item.matchPaths
-            ? item.matchPaths.includes(pathname)
-            : pathname === item.to;
-          const isHovered = canHover && hoveredNav === item.to;
-          return (
-            <Link
-              key={item.to}
-              href={item.to}
-              onMouseEnter={canHover ? () => setHoveredNav(item.to) : undefined}
-              onMouseLeave={canHover ? () => setHoveredNav(null) : undefined}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                padding: '12px 14px', borderRadius: 10, border: 'none', marginBottom: 4,
-                fontSize: 14, fontWeight: isActive ? 600 : 500,
-                color: 'var(--sidebar-foreground)',
-                opacity: isActive ? 1 : isHovered ? 1 : canHover ? 0.72 : 1,
-                background: isActive ? 'rgba(124,58,237,0.09)' : isHovered ? 'rgba(124,58,237,0.09)' : 'transparent',
-                boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-                cursor: 'pointer', textDecoration: 'none', transition: 'background .15s, opacity .15s',
-                boxSizing: 'border-box',
-              }}
-            >
-              {Icons[item.icon]}
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div style={{ padding: '14px 16px 12px', borderTop: '1px solid var(--sidebar-border)' }}>
-        <div style={{ fontSize: 10, color: 'var(--sidebar-muted)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Signed in as</div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--sidebar-foreground)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name}</div>
-        <button
-          style={{ background: 'none', border: 'none', color: 'var(--sidebar-muted)', fontSize: 13, cursor: 'pointer', textAlign: 'left', padding: 0 }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#DC2626'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--sidebar-muted)'; }}
-          onClick={handleLogout}
-        >Sign out →</button>
-      </div>
-
-      <div style={{ padding: '10px 16px', borderTop: '1px solid var(--sidebar-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 11, color: 'var(--sidebar-muted)', fontWeight: 600 }}>
-          {theme === 'dark' ? 'Night mode' : 'Day mode'}
-        </span>
-        <button
-          onClick={toggleTheme}
-          title={theme === 'dark' ? 'Switch to day mode' : 'Switch to night mode'}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 0,
-            background: theme === 'dark' ? 'oklch(0.3715 0 0)' : '#e5e7eb',
-            border: 'none', borderRadius: 999, padding: '3px 4px',
-            cursor: 'pointer', width: 44, height: 24,
-            position: 'relative', transition: 'background .25s',
-            flexShrink: 0,
-          }}
-        >
-          <span style={{ position: 'absolute', left: 5, lineHeight: 1, opacity: theme === 'dark' ? 0.3 : 1, transition: 'opacity .2s', display: 'flex' }}><SvgIcon name="sun" size={11} color="currentColor" /></span>
-          <span style={{ position: 'absolute', right: 5, lineHeight: 1, opacity: theme === 'dark' ? 1 : 0.3, transition: 'opacity .2s', display: 'flex' }}><SvgIcon name="moon" size={11} color="currentColor" /></span>
-          <span style={{
-            display: 'block', width: 18, height: 18, borderRadius: '50%',
-            background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
-            position: 'absolute',
-            left: theme === 'dark' ? 'calc(100% - 22px)' : '3px',
-            transition: 'left .25s cubic-bezier(0.4,0,0.2,1)',
-          }} />
-        </button>
-      </div>
-
-      <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--sidebar-border)' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--sidebar-foreground)' }}>ManchQ</div>
-        <div style={{ fontSize: 10, color: 'var(--sidebar-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2, fontWeight: 500 }}>Your dance studio manager</div>
-        <a href="mailto:support@manchq.com" style={{ fontSize: 10, color: 'var(--sidebar-muted)', textDecoration: 'none', marginTop: 5, display: 'block' }}>support@manchq.com</a>
-      </div>
-    </>
-  );
+  // SidebarContent is now a stable top-level component (see below). Pass
+  // everything it needs as props so closure changes in AppShell don't
+  // remount the entire sidebar (was causing PlanBadge flicker on nav hover).
+  const sidebarProps = {
+    showBrand: true,
+    schoolName,
+    city,
+    brief,
+    isSuperAdmin,
+    user,
+    navItems,
+    pathname,
+    hoveredNav,
+    setHoveredNav,
+    canHover,
+    theme,
+    toggleTheme,
+    onAboutClick: () => router.push('/about'),
+    onSmartAdd: () => setShowSmartAdd(true),
+    onLogout: handleLogout,
+  };
 
   const DemoSplash = showSplash ? (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(6px)' }}>
@@ -367,7 +404,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         )}
         <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
           <aside style={{ width: SIDEBAR_W, background: 'var(--sidebar)', display: 'flex', flexDirection: 'column', flexShrink: 0, height: '100vh', borderRight: '1px solid var(--sidebar-border)' }}>
-            <SidebarContent />
+            <SidebarContent {...sidebarProps} />
           </aside>
           <main style={{ flex: 1, overflowY: 'auto', background: dashBg, transition: 'background .3s' }}>
             <div style={{ padding: '32px 36px', maxWidth: 1340, margin: '0 auto' }}>
@@ -460,7 +497,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
           zIndex: 300, overflowY: 'auto',
         }}>
-          <SidebarContent showBrand={false} />
+          <SidebarContent {...sidebarProps} showBrand={false} />
         </div>
 
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', background: dashBg, transition: 'background .3s' }}>
