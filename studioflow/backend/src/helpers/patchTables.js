@@ -114,6 +114,38 @@ async function patchTables() {
     await addColumnIfMissing('recitals',  'participant_count', 'INT NULL');
     await addColumnIfMissing('studios',   'is_quick_add',      'TINYINT(1) NOT NULL DEFAULT 0');
     await addColumnIfMissing('schools',   'deleted_at',        'DATETIME NULL DEFAULT NULL');
+
+    // ── Billing / Stripe ────────────────────────────────────────────────
+    // Single paid tier ($5.99/mo). New schools start with a 30-day trial
+    // (plan_tier='paid', trial_ends_at set 30 days out). Webhook updates
+    // these on subscription events.
+    await addColumnIfMissing('schools', 'plan_tier',             "ENUM('free','paid') NOT NULL DEFAULT 'free'");
+    await addColumnIfMissing('schools', 'trial_ends_at',         'DATETIME NULL DEFAULT NULL');
+    await addColumnIfMissing('schools', 'stripe_customer_id',    'VARCHAR(64) NULL DEFAULT NULL');
+    await addColumnIfMissing('schools', 'stripe_subscription_id','VARCHAR(64) NULL DEFAULT NULL');
+    await addColumnIfMissing('schools', 'current_period_end',    'DATETIME NULL DEFAULT NULL');
+
+    // Stripe webhook idempotency — record processed event IDs so retries
+    // don't double-apply subscription updates.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS stripe_events (
+        id           VARCHAR(64) PRIMARY KEY,
+        type         VARCHAR(80) NOT NULL,
+        received_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // Grandfather: any existing school that's never been on a plan gets a
+    // fresh 30-day trial so demo/early-tester data stays usable.
+    await pool.query(`
+      UPDATE schools
+         SET plan_tier = 'paid',
+             trial_ends_at = DATE_ADD(NOW(), INTERVAL 30 DAY)
+       WHERE plan_tier = 'free'
+         AND trial_ends_at IS NULL
+         AND stripe_subscription_id IS NULL
+    `);
+
     await addColumnIfMissing('batches',   'cover_url',         'MEDIUMTEXT NULL');
 
     // Public page slugs

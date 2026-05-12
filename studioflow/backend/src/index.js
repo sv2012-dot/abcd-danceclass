@@ -32,6 +32,10 @@ app.use(cors({
   },
   credentials: true,
 }));
+// Stripe webhook MUST receive the raw body (for signature verification).
+// Mount it BEFORE the JSON parser so the signed payload isn't mutated.
+app.use('/api/billing/webhook', require('./routes/billingWebhook'));
+
 app.use(express.json({ limit: '15mb' }));
 app.use(morgan('dev'));
 

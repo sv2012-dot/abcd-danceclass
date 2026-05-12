@@ -1,9 +1,10 @@
 const router = require('express').Router({ mergeParams: true });
 const c = require('../controllers/recitalController');
 const { auth } = require('../middleware/auth');
+const { withinFreeLimits } = require('../lib/plan');
 
 router.get('/',                       auth(), c.list);
-router.post('/',                      auth('superadmin','school_admin'), c.create);
+router.post('/',                      auth('superadmin','school_admin'), withinFreeLimits('recitals'), c.create);
 router.get('/:id',                    auth(), c.get);
 router.put('/:id',                    auth('superadmin','school_admin'), c.update);
 router.delete('/:id',                 auth('superadmin','school_admin'), c.remove);

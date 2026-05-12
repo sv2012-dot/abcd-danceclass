@@ -252,9 +252,12 @@ exports.registerSchool = async (req, res) => {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    // Create school
+    // Create school — new schools start with a 30-day trial of paid features
+    // (plan_tier='paid' + trial_ends_at). When trial expires they drop to
+    // 'free' on the fly via the effectivePlan() helper.
     const [schoolResult] = await conn.query(
-      'INSERT INTO schools (name, owner_name, email, city, dance_style, is_active) VALUES (?, ?, ?, ?, ?, 1)',
+      `INSERT INTO schools (name, owner_name, email, city, dance_style, is_active, plan_tier, trial_ends_at)
+       VALUES (?, ?, ?, ?, ?, 1, 'paid', DATE_ADD(NOW(), INTERVAL 30 DAY))`,
       [schoolName, ownerName, ownerEmail, city || null, danceStyle || null]
     );
 

@@ -18,5 +18,6 @@ router.use('/schools/:schoolId/attendance', require('./attendance'));
 router.use('/parent',  require('./parent'));
 router.use('/upload',  require('./upload'));
 router.use('/smart',   require('./smart'));
+router.use('/billing', require('./billing'));
 
 module.exports = router;

@@ -87,70 +87,63 @@ function Dash() {
 const DEBUT_FEATURES = [
   { label:'Up to 30 students',           included:true  },
   { label:'Up to 2 active batches',      included:true  },
-  { label:'Up to 5 recitals',            included:true  },
+  { label:'Up to 4 recitals',            included:true  },
+  { label:'All Smart ManchQ features',   included:true  },
+  { label:'20 AI actions per day',       included:true  },
   { label:'Class & event scheduling',    included:true  },
-  { label:'Basic recurring schedules',   included:true  },
+  { label:'Attendance tracking',         included:true  },
+  { label:'Public RSVP pages',           included:true  },
   { label:'To-do lists',                 included:true  },
-  { label:'Parent portal (view-only)',   included:true  },
-  { label:'Poster & photo uploads',      included:false },
-  { label:'Studio & vendor directory',   included:false },
-  { label:'Team accounts & user roles',  included:false },
-  { label:'Advanced analytics',          included:false },
+  { label:'Higher AI limit (60/day)',    included:false },
+  { label:'Custom branding on RSVP',     included:false },
   { label:'Priority support',            included:false },
 ];
 
 const SPOTLIGHT_FEATURES = [
-  { label:'Unlimited students',                included:true },
-  { label:'Unlimited batches',                 included:true },
-  { label:'Everything in Debut',               included:true },
-  { label:'Full recital management',           included:true },
-  { label:'Poster & photo uploads',            included:true },
-  { label:'Studio & vendor directory',         included:true },
-  { label:'Team accounts & user roles',        included:true },
-  { label:'Schedule exceptions & overrides',   included:true },
-  { label:'Advanced analytics & reports',      included:true },
-  { label:'Priority email & chat support',     included:true },
-  { label:'Early access to new features',      included:true },
-  { label:'Custom onboarding session',         included:true },
+  { label:'Everything in Debut, plus:',         included:true },
+  { label:'Unlimited students',                 included:true },
+  { label:'Unlimited batches',                  included:true },
+  { label:'Unlimited recitals',                 included:true },
+  { label:'60 AI actions per day',              included:true },
+  { label:'Custom branding on RSVP pages',      included:true },
+  { label:'Priority email support',             included:true },
+  { label:'Daily database backups',             included:true },
+  { label:'Early access to new features',       included:true },
 ];
 
 const TABLE_ROWS = [
   { feature:'Students',                  hustler:'Up to 30',       director:'Unlimited'     },
   { feature:'Batches',                   hustler:'Up to 2',        director:'Unlimited'     },
-  { feature:'Recitals',                  hustler:'Up to 5',        director:'Unlimited'     },
-  { feature:'Scheduling',                hustler:'Basic',          director:'Full + exceptions' },
-  { feature:'Parent portal',             hustler:'View only',      director:'Full access'   },
-  { feature:'Photo uploads',             hustler:'—',              director:'✓'             },
-  { feature:'Studio & vendors',          hustler:'—',              director:'✓'             },
-  { feature:'Team roles',                hustler:'—',              director:'✓'             },
-  { feature:'Analytics',                 hustler:'—',              director:'✓'             },
-  { feature:'Support',                   hustler:'Community',      director:'Priority'      },
+  { feature:'Recitals',                  hustler:'Up to 4',        director:'Unlimited'     },
+  { feature:'Smart ManchQ AI',           hustler:'20 / day',       director:'60 / day'      },
+  { feature:'Public RSVP pages',         hustler:'✓',              director:'✓'             },
+  { feature:'Attendance tracking',       hustler:'✓',              director:'✓'             },
+  { feature:'Custom RSVP branding',      hustler:'—',              director:'✓'             },
+  { feature:'Support',                   hustler:'Community',      director:'Priority email'},
 ];
 
 const FAQ = [
+  { q:'Why $5.99?',
+    a:'It\'s the same as a Starbucks coffee — a price small enough not to think about. We\'d rather have hundreds of happy studios than ten begrudging ones.' },
   { q:'Can I start on Debut and upgrade later?',
-    a:'Absolutely. Start free, grow into it. Your data, schedules and students all carry over instantly — no migration needed.' },
+    a:'Absolutely. Start free, grow into it. Your data, schedules, students and recitals all carry over instantly when you upgrade.' },
   { q:'Is there a free trial for Spotlight?',
     a:'30 days, no credit card required. You get the full Spotlight experience so you can decide with confidence, not guesswork.' },
   { q:"What happens if I go over Debut's limits?",
-    a:"We'll give you a heads-up before anything stops working. No surprise cutoffs — just a friendly nudge to consider upgrading." },
+    a:"We'll show a friendly nudge when you hit a limit. Your existing data stays put — you just can't add more until you upgrade or remove old records." },
   { q:'Can I cancel anytime?',
-    a:'Yes, anytime. No lock-in, no fees. If you cancel, you stay on Spotlight until end of your billing period, then drop to Debut.' },
+    a:'Yes, anytime. No lock-in, no fees. If you cancel, you stay on Spotlight until the end of your billing period, then drop to Debut.' },
   { q:'Do you offer discounts for smaller studios?',
-    a:"Yes — if you're a solo instructor or very small studio, reach out. We'd rather have you in than out." },
+    a:"Honestly at $5.99 we're already priced for the smallest studios. If genuine hardship — reach out, we'll work something out." },
 ];
 
 export default function PricingPage() {
   const router          = useRouter();
   const isMobile        = useIsMobile();
-  const [annual, setAnnual]   = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const monthlyPrice  = 19;
-  const annualPrice   = Math.round(monthlyPrice * 0.75);
-  const price         = annual ? annualPrice  : monthlyPrice;
-  const cadence       = annual ? '/mo, billed yearly' : '/month';
-  const saving        = annual ? `Save $${(monthlyPrice - annualPrice) * 12}/yr` : null;
+  const price         = '5.99';
+  const cadence       = '/month';
 
   const px = isMobile ? 16 : 24;
 
@@ -177,23 +170,22 @@ export default function PricingPage() {
           </span>
         </h1>
 
-        <p style={{ fontSize: isMobile ? 15 : 18, color:'#9CA3AF', maxWidth:480, margin:'0 auto 32px', lineHeight:1.65 }}>
+        <p style={{ fontSize: isMobile ? 15 : 18, color:'#9CA3AF', maxWidth:480, margin:'0 auto 28px', lineHeight:1.65 }}>
           Start free, upgrade when you're ready. No lock-ins, no gotchas.
         </p>
 
-        <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:40, padding:'5px 8px' }}>
-          <button onClick={() => setAnnual(false)} style={{
-            padding:'8px 18px', borderRadius:30, border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
-            background:!annual ? BTN_GRAD : 'transparent', color:!annual ? '#fff' : '#6B7280', transition:'all .2s',
-          }}>Monthly</button>
-          <button onClick={() => setAnnual(true)} style={{
-            padding:'8px 18px', borderRadius:30, border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
-            background:annual ? BTN_GRAD : 'transparent', color:annual ? '#fff' : '#6B7280', transition:'all .2s',
-            display:'flex', alignItems:'center', gap:6,
-          }}>
-            Annual
-            <span style={{ fontSize:10, fontWeight:800, color:'#10B981', background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.3)', borderRadius:10, padding:'2px 7px', letterSpacing:'.04em' }}>25% OFF</span>
-          </button>
+        {/* The coffee hook — a friendly anchor for the price point */}
+        <div style={{
+          display:'inline-flex', alignItems:'center', gap:10,
+          background:'rgba(255,255,255,0.04)',
+          border:'1px solid rgba(220,78,255,0.25)',
+          borderRadius:40, padding:'10px 18px',
+        }}>
+          <span style={{ fontSize: isMobile ? 18 : 22 }} aria-hidden>☕</span>
+          <span style={{ fontSize: isMobile ? 13 : 14, color:'#E5E7EB', fontWeight:600, letterSpacing:'-.005em' }}>
+            <span style={{ color:'#9CA3AF' }}>Less than a Starbucks coffee —</span>{' '}
+            <span style={{ color:'#fff' }}>buy your digital companion a latte</span>
+          </span>
         </div>
       </section>
 
@@ -271,10 +263,7 @@ export default function PricingPage() {
                 <span style={{ fontSize:13, color:'#A78BFA', fontWeight:600, marginBottom:9 }}>{cadence}</span>
               </div>
               <div style={{ height:18 }}>
-                {saving
-                  ? <span style={{ fontSize:12, color:'#10B981', fontWeight:700 }}>{saving}</span>
-                  : <span style={{ fontSize:12, color:'#6B7280' }}>Switch to annual to save 25%</span>
-                }
+                <span style={{ fontSize:12, color:'#A78BFA', fontWeight:600 }}>☕ Same as your coffee. Twice the smiles.</span>
               </div>
             </div>
 

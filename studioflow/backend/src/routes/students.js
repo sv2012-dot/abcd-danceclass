@@ -1,9 +1,10 @@
 const router = require('express').Router({ mergeParams: true });
 const c = require('../controllers/studentController');
 const { auth } = require('../middleware/auth');
+const { withinFreeLimits } = require('../lib/plan');
 
 router.get('/',     auth('superadmin','school_admin','teacher'), c.list);
-router.post('/',    auth('superadmin','school_admin'), c.create);
+router.post('/',    auth('superadmin','school_admin'), withinFreeLimits('students'), c.create);
 router.get('/:id',  auth('superadmin','school_admin','teacher'), c.get);
 router.put('/:id',         auth('superadmin','school_admin'), c.update);
 router.put('/:id/batches', auth('superadmin','school_admin'), c.setBatches);
