@@ -145,7 +145,8 @@ function BillingContent() {
             </p>
           </div>
           <div>
-            {isPaid ? (
+            {isSub ? (
+              // Active paying subscriber — manage card / cancel via Stripe Portal
               <button
                 onClick={handlePortal}
                 disabled={busy !== null}
@@ -163,6 +164,7 @@ function BillingContent() {
                 {busy === 'portal' ? 'Opening…' : 'Manage billing'}
               </button>
             ) : (
+              // Trial OR free plan — show upgrade CTA
               <button
                 onClick={handleUpgrade}
                 disabled={busy !== null}
@@ -178,7 +180,7 @@ function BillingContent() {
                   boxShadow: '0 4px 18px rgba(124,58,237,0.4)',
                 }}
               >
-                {busy === 'checkout' ? 'Loading…' : '☕ Upgrade for $5.99/mo'}
+                {busy === 'checkout' ? 'Loading…' : (isTrial ? '☕ Subscribe — $5.99/mo' : '☕ Upgrade for $5.99/mo')}
               </button>
             )}
           </div>
