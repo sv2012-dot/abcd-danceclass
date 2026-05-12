@@ -33,7 +33,7 @@ function BillingContent() {
   const searchParams = useSearchParams();
   const [info, setInfo] = useState<PlanInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<'checkout' | 'portal' | null>(null);
+  const [busy, setBusy] = useState<'checkout' | 'portal' | 'sync' | null>(null);
 
   const refresh = () => {
     setLoading(true);
@@ -43,15 +43,50 @@ function BillingContent() {
       .finally(() => setLoading(false));
   };
 
+  // Pull subscription state directly from Stripe — bypasses the webhook.
+  // Used both on return-from-checkout and as a user-facing "Sync" button.
+  const syncFromStripe = async (silent = false): Promise<boolean> => {
+    if (!silent) setBusy('sync');
+    try {
+      const data: any = await api.post('/billing/sync', {});
+      if (data?.synced && data?.status && data.status !== 'no_active_subscription') {
+        if (!silent) toast.success('Synced from Stripe — you\'re subscribed ✓');
+        await refresh();
+        return true;
+      }
+      if (!silent) toast(data?.reason === 'no_stripe_customer'
+        ? 'No Stripe customer on file yet — try Subscribe.'
+        : 'No active subscription found in Stripe.');
+      return false;
+    } catch (e: any) {
+      if (!silent) toast.error(e?.error || 'Sync failed');
+      return false;
+    } finally {
+      if (!silent) setBusy(null);
+    }
+  };
+
   useEffect(() => { refresh(); }, []);
 
-  // Handle return from Stripe Checkout
+  // Handle return from Stripe Checkout — sync directly from Stripe so we
+  // don't depend on the webhook race-condition.
   useEffect(() => {
     const checkout = searchParams.get('checkout');
     if (checkout === 'success') {
       toast.success('Welcome to Spotlight! ☕ Your subscription is active.');
-      // Webhook usually fires within a second or two — small delay then refresh
-      setTimeout(refresh, 1500);
+      // Try webhook-driven refresh first (gives webhook a moment to land),
+      // then fall back to direct Stripe sync so the UI always reflects truth.
+      (async () => {
+        await new Promise(r => setTimeout(r, 1500));
+        await refresh();
+        // If still not showing as subscriber, pull straight from Stripe
+        setTimeout(async () => {
+          const fresh = await (api.get('/billing/me') as any).catch(() => null);
+          if (fresh && fresh.source !== 'subscription') {
+            await syncFromStripe(true);
+          }
+        }, 3000);
+      })();
       router.replace('/billing');
     } else if (checkout === 'cancelled') {
       toast("Cancelled — you're still on the same plan.");
@@ -227,12 +262,34 @@ function BillingContent() {
       </div>
 
       {/* Usage cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 16 }}>
         <UsageCard label="Students" used={info.usage.students} cap={info.limits.students ?? info.free_limits.students} isPaid={isPaid} />
         <UsageCard label="Batches" used={info.usage.batches} cap={info.limits.batches ?? info.free_limits.batches} isPaid={isPaid} />
         <UsageCard label="Recitals" used={info.usage.recitals} cap={info.limits.recitals ?? info.free_limits.recitals} isPaid={isPaid} />
         <UsageCard label="AI / day" used={null} cap={info.limits.smart_calls_per_day} isPaid={isPaid} isDaily />
       </div>
+
+      {/* Manual sync — recovery valve if the webhook missed.
+          Shown only when we'd expect a subscription but aren't seeing one. */}
+      {info.source !== 'subscription' && (
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+          <button
+            onClick={() => syncFromStripe(false)}
+            disabled={busy !== null}
+            style={{
+              background: 'none',
+              border: '1px dashed var(--border)',
+              borderRadius: 8,
+              padding: '8px 14px',
+              fontSize: 12,
+              color: 'var(--muted)',
+              cursor: busy === null ? 'pointer' : 'wait',
+            }}
+          >
+            {busy === 'sync' ? 'Syncing…' : '⟳ Already paid? Sync from Stripe'}
+          </button>
+        </div>
+      )}
 
       {/* Coffee hook footer */}
       <div

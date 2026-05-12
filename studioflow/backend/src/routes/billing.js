@@ -6,6 +6,16 @@ const { auth } = require('../middleware/auth');
 const { pool } = require('../database');
 const { effectivePlan, FREE_LIMITS, PAID_LIMITS } = require('../lib/plan');
 
+// Mirror of webhook helper: pulls current_period_end from old or new Stripe
+// API shapes, with a 31-day fallback so subscriptions always register.
+function extractPeriodEnd(sub) {
+  if (!sub) return null;
+  if (typeof sub.current_period_end === 'number') return new Date(sub.current_period_end * 1000);
+  const itemEnd = sub.items?.data?.[0]?.current_period_end;
+  if (typeof itemEnd === 'number') return new Date(itemEnd * 1000);
+  return new Date(Date.now() + 31 * 24 * 60 * 60 * 1000);
+}
+
 // ── GET /api/billing/me — current plan + limits for the signed-in school ──
 router.get('/me', auth(), async (req, res) => {
   try {
@@ -84,6 +94,67 @@ router.post('/checkout', auth('school_admin', 'superadmin'), async (req, res) =>
     res.json({ url: session.url });
   } catch (err) {
     console.error('[billing] checkout', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/billing/sync — pull latest subscription state from Stripe ────
+// Safety valve for when the webhook misses or fires before the DB is ready.
+// Idempotent: lists the school's Stripe subscriptions and updates plan/period
+// from the most recent active/trialing one (or downgrades if none found).
+router.post('/sync', auth('school_admin', 'superadmin'), async (req, res) => {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return res.status(503).json({ error: 'Billing not yet configured' });
+  }
+  try {
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const sid = req.user.school_id;
+    if (!sid) return res.status(403).json({ error: 'school context required' });
+
+    const [[school]] = await pool.query(
+      'SELECT id, stripe_customer_id FROM schools WHERE id = ? LIMIT 1', [sid]
+    );
+    if (!school) return res.status(404).json({ error: 'School not found' });
+    if (!school.stripe_customer_id) {
+      return res.json({ synced: false, reason: 'no_stripe_customer' });
+    }
+
+    // Pull all subscriptions for this customer, pick most recent active-ish one
+    const subs = await stripe.subscriptions.list({
+      customer: school.stripe_customer_id,
+      status: 'all',
+      limit: 10,
+    });
+    const active = subs.data.find(s => ['active', 'trialing', 'past_due'].includes(s.status));
+
+    if (!active) {
+      // No live subscription — make sure DB reflects that
+      await pool.query(
+        `UPDATE schools SET plan_tier = 'free', stripe_subscription_id = NULL WHERE id = ?`,
+        [sid]
+      );
+      return res.json({ synced: true, status: 'no_active_subscription' });
+    }
+
+    const periodEnd = extractPeriodEnd(active);
+    await pool.query(
+      `UPDATE schools
+          SET plan_tier = 'paid',
+              stripe_subscription_id = ?,
+              current_period_end = ?
+        WHERE id = ?`,
+      [active.id, periodEnd, sid]
+    );
+    console.log('[billing] manual sync for school', sid, 'sub', active.id, 'periodEnd', periodEnd);
+    res.json({
+      synced: true,
+      status: active.status,
+      subscription_id: active.id,
+      period_end: periodEnd,
+    });
+  } catch (err) {
+    console.error('[billing] sync', err);
     res.status(500).json({ error: err.message });
   }
 });
