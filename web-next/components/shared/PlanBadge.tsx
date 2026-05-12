@@ -65,7 +65,7 @@ export default function PlanBadge() {
   if (isSub) {
     return (
       <button
-        onClick={() => router.push('/billing')}
+        onClick={(e) => { e.stopPropagation(); router.push('/billing'); }}
         title="Manage billing"
         style={{
           marginTop: 6,
@@ -98,7 +98,7 @@ export default function PlanBadge() {
 
   return (
     <button
-      onClick={() => router.push('/billing')}
+      onClick={(e) => { e.stopPropagation(); router.push('/billing'); }}
       title={isTrial ? 'Subscribe before trial ends' : 'Upgrade to Pro'}
       style={{
         marginTop: 6,
