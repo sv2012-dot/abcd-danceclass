@@ -457,26 +457,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button
-              onClick={() => setShowSmartAdd(true)}
-              style={{
-                background: 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)',
-                border: 'none',
-                cursor: 'pointer',
-                color: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 32, height: 32,
-                borderRadius: 8,
-              }}
-              aria-label="Smart Add"
-              title="Smart Add"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
-              </svg>
-            </button>
-            <button
               onClick={() => setMenuOpen((o) => !o)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sidebar-foreground)', display: 'flex', alignItems: 'center', padding: 4 }}
               aria-label="Toggle menu"
