@@ -34,7 +34,7 @@ let _planCache: PlanInfo | null = null;
 let _cacheTime = 0;
 const CACHE_TTL_MS = 60_000; // refetch at most once per minute
 
-export default function PlanBadge() {
+export default function PlanBadge({ variant = 'inline' }: { variant?: 'inline' | 'capsule' } = {}) {
   const router = useRouter();
   const [info, setInfo] = useState<PlanInfo | null>(_planCache);
 
@@ -90,12 +90,39 @@ export default function PlanBadge() {
     );
   }
 
-  // ── Trial / Free: small inline link ──
+  // ── Trial / Free ──
   const urgent = isTrial && days !== null && days <= 5;
   const label = isTrial
     ? `Upgrade ↗ · ${days}d ${urgent ? '⏰' : 'trial'}`
     : 'Upgrade →';
 
+  // Capsule variant — small pill button (used in the mobile drawer footer)
+  if (variant === 'capsule') {
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); router.push('/billing'); }}
+        title={isTrial ? 'Subscribe before trial ends' : 'Upgrade to Pro'}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '4px 10px',
+          borderRadius: 999,
+          border: `1px solid ${urgent ? 'rgba(245,158,11,0.45)' : 'rgba(167,139,250,0.45)'}`,
+          background: urgent ? 'rgba(245,158,11,0.08)' : 'rgba(167,139,250,0.08)',
+          color: urgent ? '#F59E0B' : '#A78BFA',
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '-0.005em',
+          cursor: 'pointer',
+        }}
+      >
+        {label}
+      </button>
+    );
+  }
+
+  // Default inline link variant
   return (
     <button
       onClick={(e) => { e.stopPropagation(); router.push('/billing'); }}

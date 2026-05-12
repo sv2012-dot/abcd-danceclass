@@ -278,6 +278,11 @@ function SidebarContent({
       </div>
 
       <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--sidebar-border)' }}>
+        {!showBrand && !isSuperAdmin && (
+          <div style={{ marginBottom: 8 }}>
+            <PlanBadge variant="capsule" />
+          </div>
+        )}
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--sidebar-foreground)' }}>ManchQ</div>
         <div style={{ fontSize: 10, color: 'var(--sidebar-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2, fontWeight: 500 }}>Your dance studio manager</div>
         <a href="mailto:support@manchq.com" style={{ fontSize: 10, color: 'var(--sidebar-muted)', textDecoration: 'none', marginTop: 5, display: 'block' }}>support@manchq.com</a>
@@ -436,7 +441,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         />
       )}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-        <header style={{ minHeight: 56, background: 'var(--sidebar)', borderBottom: '1px solid var(--sidebar-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', flexShrink: 0, zIndex: 200 }}>
+        <header style={{ height: 56, background: 'var(--sidebar)', borderBottom: '1px solid var(--sidebar-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0, zIndex: 200 }}>
           <div
             onClick={() => router.push('/home')}
             style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1, minWidth: 0 }}
@@ -444,15 +449,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: AVATAR_GRAD, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
               {initials(schoolName)}
             </div>
-            <div
-              style={{ minWidth: 0, flex: 1 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--sidebar-foreground)', letterSpacing: '-0.3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>{schoolName}</div>
-              <div style={{ fontSize: 11, color: 'var(--sidebar-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1, lineHeight: 1.2 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--sidebar-foreground)', letterSpacing: '-0.3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{schoolName}</div>
+              <div style={{ fontSize: 11, color: 'var(--sidebar-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                 {isSuperAdmin ? 'Platform admin' : (city || brief)}
               </div>
-              {!isSuperAdmin && <PlanBadge />}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
