@@ -16,12 +16,15 @@ const FREE_LIMITS = {
   batches: 2,
   students: 30,
   smart_calls_per_day: 20,
+  // Multi-user: free = owner only. No invites allowed.
+  team_members: 1,
 };
 const PAID_LIMITS = {
   recitals: Infinity,
   batches: Infinity,
   students: Infinity,
   smart_calls_per_day: 60,
+  team_members: Infinity,
 };
 
 /**

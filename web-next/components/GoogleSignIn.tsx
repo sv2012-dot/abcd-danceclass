@@ -36,7 +36,18 @@ export default function GoogleSignIn() {
         const data = await response.json();
 
         if (response.ok) {
-          if (data.token) {
+          if (data.requires_choice && data.chooser_token) {
+            // Multi-school: stash chooser payload, route to /auth/choose-school
+            try {
+              sessionStorage.setItem('sf_pending_chooser', JSON.stringify({
+                chooser_token: data.chooser_token,
+                memberships: data.memberships || [],
+                user: data.user,
+              }));
+            } catch (_) {}
+            toast.dismiss(t);
+            router.replace('/auth/choose-school');
+          } else if (data.token) {
             setSession(data.token, data.user, data.school || null);
             toast.success(`Welcome back, ${data.user?.name?.split(' ')[0] || 'there'}!`, { id: t });
             redirectToDashboard(router);

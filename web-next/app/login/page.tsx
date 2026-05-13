@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/context/AuthContext';
 import GoogleSignIn from '@/components/GoogleSignIn';
 import toast from 'react-hot-toast';
 import { redirectToDashboard } from '@/lib/redirectToDashboard';
+import { auth } from '@/lib/api';
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -20,11 +21,11 @@ const inputStyle: React.CSSProperties = {
 };
 
 export default function LoginPage() {
-  const { login, user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, setSession } = useAuth();
   const router = useRouter();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPw, setShowPw] = useState(false);
+  const [linkSent, setLinkSent] = useState(false);
 
   // If already logged in, send to dashboard directly
   useEffect(() => {
@@ -33,16 +34,40 @@ export default function LoginPage() {
     }
   }, [authLoading, user, router]);
 
-  const handle = async (e: React.FormEvent) => {
+  const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email.trim()) return;
     setLoading(true);
     try {
-      const u = await login(form.email, form.password);
-      toast.success(`Welcome back, ${u.name}!`);
+      await auth.requestMagicLink(email.trim());
+      setLinkSent(true);
+    } catch (err: any) {
+      toast.error(err?.error || err?.message || 'Could not send sign-in link.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDemo = async (demoEmail: string) => {
+    setLoading(true);
+    try {
+      const data: any = await auth.demoLogin(demoEmail);
+      if (data?.requires_choice && data?.chooser_token) {
+        try {
+          sessionStorage.setItem('sf_pending_chooser', JSON.stringify({
+            chooser_token: data.chooser_token,
+            memberships: data.memberships || [],
+            user: data.user,
+          }));
+        } catch (_) {}
+        router.replace('/auth/choose-school');
+        return;
+      }
+      setSession(data.token, data.user, data.school);
+      toast.success(`Welcome to the demo!`);
       redirectToDashboard(router);
     } catch (err: any) {
-      const msg = err?.error || err?.message || (typeof err === 'string' ? err : 'Login failed. Please check your credentials.');
-      toast.error(msg);
+      toast.error(err?.error || 'Demo sign-in failed.');
     } finally {
       setLoading(false);
     }
@@ -50,136 +75,114 @@ export default function LoginPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', padding: 20 }}>
-        <div style={{ width: '100%', maxWidth: 400 }}>
-
-          {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: 36 }}>
-            <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'center' }}>
-              <button
-                onClick={() => router.push('/')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, borderRadius: '50%', display: 'flex' }}
-                title="Go to homepage"
-              >
-                <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ width: 80, height: 80, borderRadius: '50%', display: 'block' }} />
-              </button>
-            </div>
-            <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 28, color: '#fff', marginBottom: 6, letterSpacing: '-0.5px' }}>ManchQ</h1>
-            <p style={{ color: '#888', fontSize: 13, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Dance School Management</p>
+      <div style={{ width: '100%', maxWidth: 400 }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 36 }}>
+          <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'center' }}>
+            <button
+              onClick={() => router.push('/')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, borderRadius: '50%', display: 'flex' }}
+              title="Go to homepage"
+            >
+              <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ width: 80, height: 80, borderRadius: '50%', display: 'block' }} />
+            </button>
           </div>
+          <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 28, color: '#fff', marginBottom: 6, letterSpacing: '-0.5px' }}>ManchQ</h1>
+          <p style={{ color: '#888', fontSize: 13, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Dance School Management</p>
+        </div>
 
-          {/* Card */}
-          <div style={{ background: 'var(--card)', borderRadius: 16, padding: 32, boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 24, color: 'var(--text)' }}>Sign in to your account</h2>
-
-            {/* Google Sign In */}
-            <div style={{ marginBottom: 24 }}>
-              <GoogleSignIn />
+        {/* Card */}
+        <div style={{ background: 'var(--card)', borderRadius: 16, padding: 32, boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }}>
+          {linkSent ? (
+            <div style={{ textAlign: 'center', padding: '12px 0' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>✉️</div>
+              <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: 'var(--text)' }}>Check your inbox</h2>
+              <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.55, marginBottom: 18 }}>
+                We sent a sign-in link to <strong style={{ color: 'var(--text)' }}>{email}</strong>.<br/>
+                It expires in 15 minutes.
+              </p>
+              <button
+                onClick={() => { setLinkSent(false); setEmail(''); }}
+                style={{ background: 'none', border: 'none', color: '#6a7fdb', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
+              >
+                ← Use a different email
+              </button>
+              <div style={{ marginTop: 22, padding: 14, background: 'var(--surface)', borderRadius: 10, fontSize: 12, color: 'var(--muted)', lineHeight: 1.55, textAlign: 'left' }}>
+                <strong style={{ color: 'var(--text)' }}>Didn't get it?</strong> Check spam, or
+                {' '}<a href="mailto:support@manchq.com" style={{ color: '#6a7fdb' }}>email support</a>.
+              </div>
             </div>
+          ) : (
+            <>
+              <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6, color: 'var(--text)' }}>Sign in to ManchQ</h2>
+              <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 22, lineHeight: 1.5 }}>
+                No password &mdash; we'll email you a one-time sign-in link.
+              </p>
 
-            {/* Divider */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24, gap: 12 }}>
-              <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
-              <span style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 700 }}>Or</span>
-              <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
-            </div>
-
-            <form onSubmit={handle}>
-              {/* Email */}
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>
-                  Email
-                </label>
-                <input
-                  type="email"
-                  required
-                  autoComplete="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="you@example.com"
-                  style={inputStyle}
-                />
+              {/* Google Sign In */}
+              <div style={{ marginBottom: 20 }}>
+                <GoogleSignIn />
               </div>
 
-              {/* Password */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>
-                  Password
-                </label>
-                <div style={{ position: 'relative' }}>
+              {/* Divider */}
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, gap: 12 }}>
+                <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
+                <span style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 700 }}>Or</span>
+                <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
+              </div>
+
+              <form onSubmit={handleMagicLink}>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>
+                    Email
+                  </label>
                   <input
-                    type={showPw ? 'text' : 'password'}
+                    type="email"
                     required
-                    autoComplete="current-password"
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    style={{ ...inputStyle, paddingRight: 44 }}
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    style={inputStyle}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPw((p) => !p)}
-                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--muted)', display: 'flex', alignItems: 'center' }}
-                  >
-                    {showPw ? (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
-                        <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
-                        <line x1="1" y1="1" x2="23" y2="23" />
-                      </svg>
-                    ) : (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    )}
-                  </button>
                 </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || !email.trim()}
+                  style={{ width: '100%', padding: '13px', background: loading || !email.trim() ? '#555' : '#111', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: loading || !email.trim() ? 'not-allowed' : 'pointer', letterSpacing: '0.01em' }}
+                >
+                  {loading ? 'Sending link…' : 'Email me a sign-in link →'}
+                </button>
+              </form>
+
+              {/* Demo account */}
+              <div style={{ marginTop: 22, padding: 14, background: 'var(--surface)', borderRadius: 10, fontSize: 12, color: 'var(--muted)', borderLeft: '3px solid var(--border)' }}>
+                <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text)' }}>Just exploring?</div>
+                <button
+                  type="button"
+                  onClick={() => handleDemo('teacher@manchq.com')}
+                  disabled={loading}
+                  style={{ width: '100%', padding: '9px 12px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, cursor: loading ? 'not-allowed' : 'pointer', fontSize: 12, color: 'var(--text)', fontWeight: 600 }}
+                >
+                  Try the demo →
+                </button>
               </div>
 
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={loading}
-                style={{ width: '100%', padding: '13px', background: loading ? '#555' : '#111', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', letterSpacing: '0.01em' }}
-              >
-                {loading ? 'Signing in…' : 'Sign In →'}
-              </button>
-            </form>
-
-            {/* Demo hint */}
-            <div style={{ marginTop: 20, padding: 14, background: 'var(--surface)', borderRadius: 10, fontSize: 12, color: 'var(--muted)', borderLeft: '3px solid var(--border)' }}>
-              <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text)' }}>Demo Accounts</div>
-              {[
-                { label: 'teacher@manchq.com', pw: 'School123!', note: 'Demo Academy' },
-                { label: 'parent@manchq.com', pw: 'Parent123!', note: 'Parent view' },
-              ].map(({ label, pw, note }) => (
+              {/* Register link */}
+              <div style={{ marginTop: 22, textAlign: 'center', fontSize: 14, color: 'var(--muted)' }}>
+                Don't have a school?{' '}
                 <button
-                  key={label}
-                  type="button"
-                  onClick={() => setForm({ email: label, password: pw })}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', color: 'var(--muted)', fontSize: 12, lineHeight: 1.5 }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--muted)')}
+                  onClick={() => router.push('/register')}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6a7fdb', fontWeight: 700, padding: 0, textDecoration: 'underline' }}
                 >
-                  <span style={{ color: 'var(--text)', fontWeight: 600 }}>{label}</span>
-                  {' / '}
-                  {pw}
-                  <span style={{ marginLeft: 6, opacity: 0.6 }}>({note})</span>
+                  Register here
                 </button>
-              ))}
-            </div>
-
-            {/* Register link */}
-            <div style={{ marginTop: 24, textAlign: 'center', fontSize: 14, color: 'var(--muted)' }}>
-              Don't have a school?{' '}
-              <button
-                onClick={() => router.push('/register')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6a7fdb', fontWeight: 700, padding: 0, textDecoration: 'underline' }}
-              >
-                Register here
-              </button>
-            </div>
-          </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
-    );
+    </div>
+  );
 }

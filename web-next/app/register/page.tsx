@@ -122,10 +122,23 @@ function RegisterForm() {
 
       const data = await response.json();
 
-      // Push session into AuthContext (also writes storage) so the dashboard
-      // route guard sees an authenticated user immediately on navigation.
-      setSession(data.token, data.user, data.school || null);
+      // Multi-school: if the email already had other schools, the backend
+      // returns a chooser payload instead of a single-school JWT.
+      if (data?.requires_choice && data?.chooser_token) {
+        try {
+          sessionStorage.setItem('sf_pending_chooser', JSON.stringify({
+            chooser_token: data.chooser_token,
+            memberships: data.memberships || [],
+            user: data.user,
+          }));
+        } catch (_) {}
+        toast.success('School registered! Pick which one to enter.');
+        router.replace('/auth/choose-school');
+        return;
+      }
 
+      // Single-school: drop straight into the dashboard.
+      setSession(data.token, data.user, data.school || null);
       toast.success('School registered successfully!');
       redirectToDashboard(router);
     } catch (error: any) {
@@ -142,7 +155,7 @@ function RegisterForm() {
         {/* Header */}
         <div style={{ marginBottom: 32, textAlign: 'center' }}>
           <h1 style={{ fontSize: 28, fontWeight: 700, margin: '0 0 8px', color: 'var(--text)' }}>Register Your School</h1>
-          <p style={{ fontSize: 14, color: 'var(--muted)', margin: 0 }}>Get started with ManchQ in minutes</p>
+          <p style={{ fontSize: 14, color: 'var(--muted)', margin: 0 }}>Get started with ManchQ in minutes &mdash; no password needed.</p>
         </div>
 
         {/* Form */}

@@ -207,7 +207,112 @@ const verifyEmailConfig = async () => {
   }
 };
 
+/**
+ * Send a magic-link sign-in email.
+ * @param {string} toEmail
+ * @param {string} link  Full URL the user clicks to sign in
+ */
+const sendMagicLinkEmail = async (toEmail, link) => {
+  try {
+    const html = `
+      <!DOCTYPE html>
+      <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;padding:24px;">
+        <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <div style="text-align:center;margin-bottom:24px;">
+            <div style="font-size:22px;font-weight:700;color:#111;letter-spacing:-0.5px;">ManchQ</div>
+            <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">Dance school management</div>
+          </div>
+          <h2 style="font-size:18px;margin:0 0 12px;color:#111;">Your sign-in link</h2>
+          <p style="font-size:14px;color:#444;line-height:1.55;margin:0 0 24px;">
+            Click the button below to sign in to ManchQ. This link expires in 15 minutes and can only be used once.
+          </p>
+          <div style="text-align:center;margin:24px 0;">
+            <a href="${link}" style="display:inline-block;background:linear-gradient(135deg,#7C3AED 0%,#DC4EFF 100%);color:#fff;padding:13px 28px;border-radius:9px;font-weight:700;font-size:14px;text-decoration:none;">Sign in to ManchQ →</a>
+          </div>
+          <p style="font-size:12px;color:#888;line-height:1.55;margin:24px 0 0;word-break:break-all;">
+            Or copy this link into your browser:<br/>
+            <a href="${link}" style="color:#7C3AED;">${link}</a>
+          </p>
+          <hr style="border:none;border-top:1px solid #eee;margin:24px 0;"/>
+          <p style="font-size:11px;color:#999;margin:0;">
+            If you didn't request this, you can safely ignore this email.<br/>
+            &mdash; ManchQ &middot; <a href="mailto:support@manchq.com" style="color:#7C3AED;">support@manchq.com</a>
+          </p>
+        </div>
+      </body></html>
+    `;
+    const mailOptions = {
+      from: `"${process.env.APP_NAME || 'ManchQ'}" <${process.env.SMTP_USER}>`,
+      to: toEmail,
+      subject: 'Your ManchQ sign-in link',
+      html,
+      text: `Sign in to ManchQ:\n\n${link}\n\nThis link expires in 15 minutes.\nIf you didn't request it, ignore this email.`,
+    };
+    await transporter.sendMail(mailOptions);
+    console.log(`✓ Magic-link email sent to ${toEmail}`);
+    return { success: true };
+  } catch (error) {
+    console.error('✗ Failed to send magic-link email:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Send a team-invitation email.
+ */
+const sendInvitationEmail = async (toEmail, link, inviterName, schoolName, role) => {
+  try {
+    const roleLabel = role === 'school_admin' ? 'Admin' : role === 'teacher' ? 'Teacher' : role;
+    const html = `
+      <!DOCTYPE html>
+      <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;padding:24px;">
+        <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <div style="text-align:center;margin-bottom:24px;">
+            <div style="font-size:22px;font-weight:700;color:#111;letter-spacing:-0.5px;">ManchQ</div>
+            <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">Dance school management</div>
+          </div>
+          <h2 style="font-size:18px;margin:0 0 12px;color:#111;">You've been invited</h2>
+          <p style="font-size:14px;color:#444;line-height:1.6;margin:0 0 16px;">
+            <strong>${inviterName || 'A teammate'}</strong> invited you to join
+            <strong>${schoolName}</strong> on ManchQ as <strong>${roleLabel}</strong>.
+          </p>
+          <p style="font-size:14px;color:#444;line-height:1.55;margin:0 0 24px;">
+            Click the button below to accept &mdash; you'll be signed in right away. No password needed. This invite expires in 7 days.
+          </p>
+          <div style="text-align:center;margin:24px 0;">
+            <a href="${link}" style="display:inline-block;background:linear-gradient(135deg,#7C3AED 0%,#DC4EFF 100%);color:#fff;padding:13px 28px;border-radius:9px;font-weight:700;font-size:14px;text-decoration:none;">Accept invite →</a>
+          </div>
+          <p style="font-size:12px;color:#888;line-height:1.55;margin:24px 0 0;word-break:break-all;">
+            Or copy this link:<br/>
+            <a href="${link}" style="color:#7C3AED;">${link}</a>
+          </p>
+          <hr style="border:none;border-top:1px solid #eee;margin:24px 0;"/>
+          <p style="font-size:11px;color:#999;margin:0;">
+            Didn't expect this invite? Just ignore the email.<br/>
+            &mdash; ManchQ &middot; <a href="mailto:support@manchq.com" style="color:#7C3AED;">support@manchq.com</a>
+          </p>
+        </div>
+      </body></html>
+    `;
+    const mailOptions = {
+      from: `"${process.env.APP_NAME || 'ManchQ'}" <${process.env.SMTP_USER}>`,
+      to: toEmail,
+      subject: `${inviterName || 'A teammate'} invited you to ${schoolName} on ManchQ`,
+      html,
+      text: `${inviterName || 'A teammate'} invited you to join ${schoolName} on ManchQ as ${roleLabel}.\n\nAccept the invite:\n${link}\n\nThis invite expires in 7 days.`,
+    };
+    await transporter.sendMail(mailOptions);
+    console.log(`✓ Invitation email sent to ${toEmail} for ${schoolName}`);
+    return { success: true };
+  } catch (error) {
+    console.error('✗ Failed to send invitation email:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   sendWelcomeEmail,
+  sendMagicLinkEmail,
+  sendInvitationEmail,
   verifyEmailConfig,
 };

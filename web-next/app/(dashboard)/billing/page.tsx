@@ -8,13 +8,16 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import api from '@/lib/api/client';
+import { useAuth } from '@/lib/context/AuthContext';
 
 type PlanInfo = {
   plan: 'free' | 'paid';
   source: 'subscription' | 'trial' | 'default';
   trial_ends_at: string | null;
+  is_owner: boolean;
+  owner_name: string | null;
   limits: { students: number | null; batches: number | null; recitals: number | null; smart_calls_per_day: number };
-  usage: { students: number; batches: number; recitals: number };
+  usage: { students: number; batches: number; recitals: number; smart_today: number };
   free_limits: { recitals: number; batches: number; students: number; smart_calls_per_day: number };
 };
 
@@ -31,6 +34,7 @@ function daysBetween(future: string | null) {
 function BillingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { school } = useAuth() as any;
   const [info, setInfo] = useState<PlanInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<'checkout' | 'portal' | 'sync' | null>(null);
@@ -148,14 +152,25 @@ function BillingContent() {
   const isSub = info.source === 'subscription';
   const daysLeft = daysBetween(info.trial_ends_at);
 
+  const schoolName = school?.name || 'this studio';
+
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '20px 8px' }}>
       <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 28, fontWeight: 800, margin: '0 0 6px', letterSpacing: '-0.5px' }}>
-        Your Plan
+        Billing for {schoolName}
       </h1>
-      <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 24px' }}>
-        Manage your subscription and see how much room you have on your current plan.
+      <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 18px' }}>
+        Each studio is billed separately. {info.is_owner
+          ? 'You own this studio, so you manage the subscription here.'
+          : `Subscription is managed by ${info.owner_name || 'the owner'}.`}
       </p>
+
+      {/* Non-owner banner */}
+      {!info.is_owner && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', marginBottom: 18, fontSize: 13, color: 'var(--muted)', lineHeight: 1.55 }}>
+          <strong style={{ color: 'var(--text)' }}>Read-only view.</strong> Your team's plan and limits are shown below. To upgrade or change billing, reach out to {info.owner_name ? <strong style={{ color: 'var(--text)' }}>{info.owner_name}</strong> : 'the studio owner'}.
+        </div>
+      )}
 
       {/* Plan card */}
       <div
@@ -184,8 +199,7 @@ function BillingContent() {
             </p>
           </div>
           <div>
-            {isSub ? (
-              // Active paying subscriber — manage card / cancel via Stripe Portal
+            {info.is_owner && isSub && (
               <button
                 onClick={handlePortal}
                 disabled={busy !== null}
@@ -202,8 +216,8 @@ function BillingContent() {
               >
                 {busy === 'portal' ? 'Opening…' : 'Manage billing'}
               </button>
-            ) : (
-              // Trial OR free plan — show upgrade CTA
+            )}
+            {info.is_owner && !isSub && (
               <button
                 onClick={handleUpgrade}
                 disabled={busy !== null}
@@ -266,37 +280,40 @@ function BillingContent() {
       </div>
 
       {/* Usage cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 8 }}>
         <UsageCard label="Students" used={info.usage.students} cap={info.limits.students ?? info.free_limits.students} isPaid={isPaid} />
         <UsageCard label="Batches" used={info.usage.batches} cap={info.limits.batches ?? info.free_limits.batches} isPaid={isPaid} />
         <UsageCard label="Recitals" used={info.usage.recitals} cap={info.limits.recitals ?? info.free_limits.recitals} isPaid={isPaid} />
-        <UsageCard label="AI / day" used={null} cap={info.limits.smart_calls_per_day} isPaid={isPaid} isDaily />
+        <UsageCard label="AI today" used={info.usage.smart_today ?? 0} cap={info.limits.smart_calls_per_day} isPaid={isPaid} isDaily />
       </div>
+      <p style={{ fontSize: 11, color: 'var(--muted)', margin: '0 0 16px', lineHeight: 1.5 }}>
+        AI usage is shared across your whole team. Resets at midnight.
+      </p>
 
-      {/* Manual sync — always available recovery valve.
-          - For non-subscribers: 'Already paid? Sync from Stripe'
-          - For subscribers: 'Refresh subscription state' (after cancel etc.) */}
-      <div style={{ textAlign: 'center', marginBottom: 16 }}>
-        <button
-          onClick={() => syncFromStripe(false)}
-          disabled={busy !== null}
-          style={{
-            background: 'none',
-            border: '1px dashed var(--border)',
-            borderRadius: 8,
-            padding: '8px 14px',
-            fontSize: 12,
-            color: 'var(--muted)',
-            cursor: busy === null ? 'pointer' : 'wait',
-          }}
-        >
-          {busy === 'sync'
-            ? 'Syncing…'
-            : info.source === 'subscription'
-              ? '⟳ Refresh subscription state'
-              : '⟳ Already paid? Sync from Stripe'}
-        </button>
-      </div>
+      {/* Manual sync — owner-only recovery valve */}
+      {info.is_owner && (
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+          <button
+            onClick={() => syncFromStripe(false)}
+            disabled={busy !== null}
+            style={{
+              background: 'none',
+              border: '1px dashed var(--border)',
+              borderRadius: 8,
+              padding: '8px 14px',
+              fontSize: 12,
+              color: 'var(--muted)',
+              cursor: busy === null ? 'pointer' : 'wait',
+            }}
+          >
+            {busy === 'sync'
+              ? 'Syncing…'
+              : info.source === 'subscription'
+                ? '⟳ Refresh subscription state'
+                : '⟳ Already paid? Sync from Stripe'}
+          </button>
+        </div>
+      )}
 
       {/* Coffee hook footer */}
       <div
@@ -310,15 +327,94 @@ function BillingContent() {
           color: 'var(--muted)',
         }}
       >
-        ☕ ManchQ is $5.99/month — about the price of a coffee. Less than the time you'd save in the first week.
+        ☕ ManchQ is $5.99/month per studio — about the price of a coffee. Less than the time you'd save in the first week.
       </div>
+
+      {/* Danger zone — owner-only delete */}
+      {info.is_owner && (
+        <DeleteSchoolBlock schoolName={schoolName} />
+      )}
+    </div>
+  );
+}
+
+function DeleteSchoolBlock({ schoolName }: { schoolName: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [confirm, setConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const canDelete = confirm.trim().toLowerCase() === schoolName.toLowerCase();
+
+  const handleDelete = async () => {
+    if (!canDelete) return;
+    setBusy(true);
+    try {
+      await (api as any).delete('/billing/school', { data: { confirm_name: confirm.trim() } });
+      toast.success(`${schoolName} has been deleted.`);
+      // Clear session so AuthContext picks up the change
+      try { sessionStorage.removeItem('sf_token'); localStorage.removeItem('sf_token'); localStorage.removeItem('sf_user'); localStorage.removeItem('sf_school'); } catch (_) {}
+      window.location.href = '/login';
+    } catch (err: any) {
+      toast.error(err?.error || 'Could not delete the studio.');
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 32, padding: 20, background: 'rgba(220,38,38,0.04)', border: '1px solid rgba(220,38,38,0.35)', borderRadius: 12 }}>
+      <h3 style={{ fontSize: 15, fontWeight: 800, color: '#DC2626', margin: '0 0 8px' }}>Danger zone</h3>
+      <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 14px', lineHeight: 1.55 }}>
+        Deleting this studio cancels its subscription immediately and removes all access for your team. We hold the data for 30 days &mdash; reach out to <a href="mailto:support@manchq.com" style={{ color: '#7C3AED' }}>support@manchq.com</a> within that window to restore.
+      </p>
+      {!open ? (
+        <button
+          onClick={() => setOpen(true)}
+          style={{ background: 'transparent', color: '#DC2626', border: '1.5px solid #DC2626', padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+        >
+          Delete this studio →
+        </button>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ fontSize: 13, color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
+            Type <strong>{schoolName}</strong> below to confirm.
+          </p>
+          <input
+            type="text"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder={schoolName}
+            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: 'var(--text)', outline: 'none' }}
+          />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => { setOpen(false); setConfirm(''); }}
+              style={{ background: 'transparent', color: 'var(--muted)', border: '1px solid var(--border)', padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={!canDelete || busy}
+              style={{ background: '#DC2626', color: '#fff', border: 'none', padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: canDelete && !busy ? 'pointer' : 'not-allowed', opacity: canDelete && !busy ? 1 : 0.55 }}
+            >
+              {busy ? 'Deleting…' : 'Permanently delete'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function UsageCard({ label, used, cap, isPaid, isDaily }: { label: string; used: number | null; cap: number; isPaid: boolean; isDaily?: boolean }) {
+  // For non-daily counts on a paid plan: unlimited.
+  // For daily AI calls: always show used / cap, even on paid (limit is 60).
   const isUnlimited = !isDaily && isPaid;
-  const pct = isUnlimited ? 0 : used !== null ? Math.min(100, Math.round((used / cap) * 100)) : 0;
+  const pct = isUnlimited
+    ? 0
+    : used !== null
+      ? Math.min(100, Math.round((used / cap) * 100))
+      : 0;
   const color = pct >= 100 ? '#EF4444' : pct >= 80 ? '#F59E0B' : '#10B981';
 
   return (
@@ -329,13 +425,11 @@ function UsageCard({ label, used, cap, isPaid, isDaily }: { label: string; used:
       <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>
         {isUnlimited ? (
           <>Unlimited <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>✨</span></>
-        ) : isDaily ? (
-          <>{cap} <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>/day</span></>
         ) : (
-          <>{used} <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>of {cap}</span></>
+          <>{used ?? 0} <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>{isDaily ? `of ${cap} today` : `of ${cap}`}</span></>
         )}
       </div>
-      {!isUnlimited && !isDaily && (
+      {!isUnlimited && (
         <div style={{ marginTop: 8, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
           <div style={{ width: `${pct}%`, height: '100%', background: color, transition: 'width .3s' }} />
         </div>

@@ -4,6 +4,14 @@ export const auth = {
   login: (data: any) => api.post('/auth/login', data),
   me: () => api.get('/auth/me'),
   changePassword: (data: any) => api.put('/auth/change-password', data),
+  // Magic-link auth — primary path
+  requestMagicLink: (email: string) => api.post('/auth/magic-link', { email }),
+  consumeMagicLink: (token: string) => api.post('/auth/magic-link/consume', { token }),
+  demoLogin: (email: string) => api.post('/auth/demo-login', { email }),
+  // Multi-school chooser
+  chooseSchool: (chooser_token: string, school_id: number) =>
+    api.post('/auth/choose-school', { chooser_token, school_id }),
+  switchSchool: () => api.post('/auth/switch-school', {}),
 };
 
 export const schools = {
@@ -157,6 +165,26 @@ export const vendors = {
 
 // ── Attendance ──────────────────────────────────────────────────────────────
 export type AttendanceStatus = 'present' | 'absent' | 'excused' | 'late';
+
+// ── Smart ManchQ usage ──────────────────────────────────────────────────────
+export const smart = {
+  usageToday: () => api.get('/smart/usage/today'),
+};
+
+// ── Team / invitations ──────────────────────────────────────────────────────
+export const team = {
+  list:           () => api.get('/team'),
+  invite:         (data: { email: string; role: 'school_admin' | 'teacher' }) =>
+                    api.post('/team/invitations', data),
+  resendInvite:   (id: number) => api.post(`/team/invitations/${id}/resend`),
+  revokeInvite:   (id: number) => api.delete(`/team/invitations/${id}`),
+  updateRole:     (id: number, role: 'school_admin' | 'teacher') =>
+                    api.patch(`/team/members/${id}`, { role }),
+  removeMember:   (id: number) => api.delete(`/team/members/${id}`),
+  transferOwner:  (to_user_id: number, confirm_email: string) =>
+                    api.post('/team/transfer-ownership', { to_user_id, confirm_email }),
+  previewInvite:  (token: string) => api.get(`/team/invitations/${token}/preview`),
+};
 
 export const attendance = {
   // Event-based

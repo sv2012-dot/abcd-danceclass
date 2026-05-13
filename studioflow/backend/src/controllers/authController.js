@@ -1,8 +1,138 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const pool = require('../../config/db');
 const { OAuth2Client } = require('google-auth-library');
-const { sendWelcomeEmail } = require('../services/emailService');
+const {
+  sendWelcomeEmail,
+  sendMagicLinkEmail,
+} = require('../services/emailService');
+
+// Magic-link config
+const MAGIC_LINK_TTL_MIN = 15;
+const CHOOSER_TTL_MIN    = 10;
+const APP_URL = () =>
+  (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+
+function generateToken() {
+  return crypto.randomBytes(32).toString('hex'); // 64 chars
+}
+
+async function buildSchool(schoolId) {
+  if (!schoolId) return null;
+  const [sr] = await pool.query(
+    'SELECT id, name, city, dance_style FROM schools WHERE id = ?',
+    [schoolId]
+  );
+  return sr[0] || null;
+}
+
+// Fetch all ACTIVE memberships for a user (joined to school info).
+// Filters out memberships pointing at soft-deleted schools.
+async function fetchActiveMemberships(userId) {
+  const [rows] = await pool.query(
+    `SELECT sm.school_id, sm.role, sm.is_owner, sm.last_used_at, sm.joined_at,
+            s.name AS school_name, s.city AS school_city,
+            s.dance_style, s.plan_tier, s.trial_ends_at,
+            s.stripe_subscription_id, s.current_period_end
+       FROM school_memberships sm
+       JOIN schools s ON s.id = sm.school_id
+      WHERE sm.user_id = ?
+        AND sm.removed_at IS NULL
+        AND s.deleted_at IS NULL
+        AND s.is_active = 1
+      ORDER BY sm.last_used_at IS NULL, sm.last_used_at DESC, sm.joined_at DESC`,
+    [userId]
+  );
+  return rows;
+}
+
+// Issue a full session JWT scoped to a specific membership.
+// Also mirrors role+school_id onto users (legacy fields) and bumps last_used_at.
+async function issueScopedToken(user, membership) {
+  // Mirror onto users for backward compat with code that still reads
+  // req.user.school_id / req.user.role
+  await pool.query(
+    `UPDATE users SET school_id = ?, role = ?, is_owner = ?,
+                       last_login = NOW(), last_sign_in_at = NOW()
+       WHERE id = ?`,
+    [membership.school_id, membership.role, membership.is_owner ? 1 : 0, user.id]
+  );
+  await pool.query(
+    `UPDATE school_memberships SET last_used_at = NOW()
+       WHERE user_id = ? AND school_id = ?`,
+    [user.id, membership.school_id]
+  );
+  const tokenUser = {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: membership.role,
+    school_id: membership.school_id,
+    is_owner: membership.is_owner ? 1 : 0,
+  };
+  return jwt.sign(
+    tokenUser,
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+  );
+}
+
+// Issue a short-lived chooser token so the frontend can show the chooser
+// screen and POST back a selected school_id.
+async function issueChooserToken(userId) {
+  const token = generateToken();
+  await pool.query(
+    `INSERT INTO chooser_tokens (token, user_id, expires_at)
+     VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+    [token, userId, CHOOSER_TTL_MIN]
+  );
+  return token;
+}
+
+// After any successful auth event, branch on membership count.
+//   0  → orphan account (no school) — sign in anyway, no school context
+//   1  → issue full scoped JWT, return { token, user, school }
+//   N  → issue chooser token, return { requires_choice, chooser_token, memberships }
+//
+// `superadmin` users bypass this entirely — they have cross-school access by
+// role and don't need memberships (handled by callers).
+async function finalizeAuth(user) {
+  const memberships = await fetchActiveMemberships(user.id);
+
+  if (memberships.length === 0) {
+    // Orphan — user exists but isn't in any school. Issue a token without
+    // a school context. They probably want /register, but we leave that
+    // decision to the frontend.
+    const token = jwt.sign(
+      { id: user.id, email: user.email, name: user.name, role: user.role || 'orphan' },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+    return { token, user: { ...user, school_id: null, role: 'orphan' }, school: null, memberships: [] };
+  }
+
+  if (memberships.length === 1) {
+    const m = memberships[0];
+    const token = await issueScopedToken(user, m);
+    const school = await buildSchool(m.school_id);
+    return {
+      token,
+      user: { ...user, school_id: m.school_id, role: m.role, is_owner: m.is_owner },
+      school,
+      memberships,
+    };
+  }
+
+  // 2+ memberships → require a choice
+  const chooser_token = await issueChooserToken(user.id);
+  return {
+    requires_choice: true,
+    chooser_token,
+    memberships,
+    user: { id: user.id, email: user.email, name: user.name },
+  };
+}
 
 function signToken(user) {
   return jwt.sign(
@@ -16,32 +146,347 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
   try {
-    const [rows] = await pool.query('SELECT * FROM users WHERE email = ? AND is_active = 1', [email.toLowerCase()]);
+    const [rows] = await pool.query(
+      'SELECT * FROM users WHERE email = ? AND is_active = 1 AND removed_at IS NULL',
+      [email.toLowerCase()]
+    );
     const user = rows[0];
-    if (!user || !bcrypt.compareSync(password, user.password)) {
+    if (!user || !user.password || !bcrypt.compareSync(password, user.password)) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
-    await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
-    const token = signToken(user);
     delete user.password;
-    res.json({ token, user });
+    if (user.role === 'superadmin') {
+      // Superadmins bypass memberships and the chooser
+      await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+      const token = signToken(user);
+      return res.json({ token, user });
+    }
+    const result = await finalizeAuth(user);
+    res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
 exports.me = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT id, name, email, role, school_id, is_active, last_login, created_at FROM users WHERE id = ?',
+      `SELECT id, name, email, role, school_id, is_active, is_owner,
+              email_verified_at, last_login, last_sign_in_at, created_at
+       FROM users WHERE id = ?`,
       [req.user.id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'User not found' });
-    let school = null;
-    if (rows[0].school_id) {
-      const [sr] = await pool.query('SELECT id, name, city, dance_style FROM schools WHERE id = ?', [rows[0].school_id]);
-      school = sr[0] || null;
+    const user = rows[0];
+    const school = await buildSchool(user.school_id);
+    // Memberships: only relevant for non-superadmins. Used by the sidebar's
+    // "Switch school" link and by the team page.
+    let memberships = [];
+    if (user.role !== 'superadmin') {
+      memberships = await fetchActiveMemberships(user.id);
     }
-    res.json({ user: rows[0], school });
+    res.json({ user, school, memberships });
   } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+// POST /auth/choose-school { chooser_token, school_id }
+// Consumes a chooser token and issues a full JWT scoped to the chosen school.
+// Also used by the in-app "Switch school" link.
+exports.chooseSchool = async (req, res) => {
+  const ct = String(req.body.chooser_token || '').trim();
+  const sid = Number(req.body.school_id);
+  if (!ct || !sid) return res.status(400).json({ error: 'chooser_token and school_id required.' });
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [tokens] = await conn.query(
+      `SELECT id, user_id, expires_at, consumed_at FROM chooser_tokens WHERE token = ? LIMIT 1`,
+      [ct]
+    );
+    const tok = tokens[0];
+    if (!tok)                              { await conn.rollback(); return res.status(400).json({ error: 'Invalid chooser token.' }); }
+    if (tok.consumed_at)                   { await conn.rollback(); return res.status(400).json({ error: 'Chooser link already used.' }); }
+    if (new Date(tok.expires_at) < new Date()) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'Chooser link expired. Sign in again.' });
+    }
+
+    await conn.query('UPDATE chooser_tokens SET consumed_at = NOW() WHERE id = ?', [tok.id]);
+
+    // Verify the user actually has an active membership for the requested school
+    const [memRows] = await conn.query(
+      `SELECT sm.school_id, sm.role, sm.is_owner
+         FROM school_memberships sm
+         JOIN schools s ON s.id = sm.school_id
+        WHERE sm.user_id = ?
+          AND sm.school_id = ?
+          AND sm.removed_at IS NULL
+          AND s.deleted_at IS NULL
+          AND s.is_active = 1
+        LIMIT 1`,
+      [tok.user_id, sid]
+    );
+    const m = memRows[0];
+    if (!m) {
+      await conn.rollback();
+      return res.status(403).json({ error: 'You do not have access to that school.' });
+    }
+
+    const [userRows] = await conn.query(
+      `SELECT id, name, email, role FROM users WHERE id = ?`,
+      [tok.user_id]
+    );
+    const user = userRows[0];
+
+    const token = await issueScopedToken(user, m);
+    const school = await buildSchool(m.school_id);
+
+    await conn.commit();
+    res.json({
+      token,
+      user: { ...user, school_id: m.school_id, role: m.role, is_owner: m.is_owner },
+      school,
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error('chooseSchool error:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+};
+
+// POST /auth/switch-school — for already-signed-in users who want to swap
+// schools without having to re-do the magic-link dance. Issues a chooser
+// token bound to the current JWT user, so the frontend can redirect to
+// /auth/choose-school.
+exports.requestSwitch = async (req, res) => {
+  try {
+    const chooser_token = await issueChooserToken(req.user.id);
+    const memberships = await fetchActiveMemberships(req.user.id);
+    res.json({ chooser_token, memberships });
+  } catch (err) {
+    console.error('requestSwitch error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ──────────────────────────────────────────────────────────────────────
+// Magic-link auth
+// ──────────────────────────────────────────────────────────────────────
+//
+// POST /auth/magic-link
+//   Body: { email }
+//   Always returns 200 (no email enumeration). If the email is known, send
+//   a sign-in link. If unknown, silently no-op so attackers can't probe.
+exports.requestMagicLink = async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    // Still 200 — same shape, don't help bots
+    return res.json({ message: 'If that email is on ManchQ, a link is on its way.' });
+  }
+  try {
+    const [rows] = await pool.query(
+      'SELECT id FROM users WHERE email = ? AND is_active = 1 AND removed_at IS NULL',
+      [email]
+    );
+    if (rows[0]) {
+      const token = generateToken();
+      await pool.query(
+        `INSERT INTO magic_tokens (token, email, purpose, expires_at)
+         VALUES (?, ?, 'signin', DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+        [token, email, MAGIC_LINK_TTL_MIN]
+      );
+      const link = `${APP_URL()}/auth/magic?token=${token}`;
+      sendMagicLinkEmail(email, link).catch(err =>
+        console.error('Magic-link email failed:', err.message)
+      );
+    }
+    return res.json({ message: 'If that email is on ManchQ, a link is on its way.' });
+  } catch (err) {
+    console.error('requestMagicLink error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /auth/magic-link/consume
+//   Body: { token }
+//   Consumes a single-use magic token. For purpose='invite', also runs the
+//   invitation-accept side effects (attach to school, set role).
+exports.consumeMagicLink = async (req, res) => {
+  const token = String(req.body.token || '').trim();
+  if (!token) return res.status(400).json({ error: 'Token required' });
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [rows] = await conn.query(
+      `SELECT id, token, email, purpose, school_id, role, expires_at, consumed_at
+       FROM magic_tokens WHERE token = ? LIMIT 1`,
+      [token]
+    );
+    const t = rows[0];
+    if (!t) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'Invalid or expired link.' });
+    }
+    if (t.consumed_at) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'This link has already been used.' });
+    }
+    if (new Date(t.expires_at).getTime() < Date.now()) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'This link has expired. Request a new one.' });
+    }
+
+    // Mark consumed immediately to make it single-use
+    await conn.query(
+      'UPDATE magic_tokens SET consumed_at = NOW() WHERE id = ?',
+      [t.id]
+    );
+
+    // Find or create the user
+    const email = t.email.toLowerCase();
+    let [users] = await conn.query(
+      'SELECT id, name, email, role, school_id, is_active, is_owner FROM users WHERE email = ? LIMIT 1',
+      [email]
+    );
+    let user = users[0];
+
+    if (!user) {
+      // Only invite-purpose tokens may create a brand-new user.
+      if (t.purpose !== 'invite') {
+        await conn.commit();
+        return res.status(404).json({ error: 'No account found for this email.' });
+      }
+      const defaultName = email.split('@')[0];
+      const [ins] = await conn.query(
+        `INSERT INTO users (name, email, role, school_id, is_active, email_verified_at)
+         VALUES (?, ?, ?, ?, 1, NOW())`,
+        [defaultName, email, t.role || 'teacher', t.school_id]
+      );
+      [users] = await conn.query(
+        'SELECT id, name, email, role, school_id, is_active, is_owner FROM users WHERE id = ?',
+        [ins.insertId]
+      );
+      user = users[0];
+    } else {
+      // Existing user — just refresh sign-in timestamps. The invite-attach
+      // logic below now inserts a NEW membership instead of overwriting the
+      // user's school_id, so multi-school users keep their existing schools.
+      await conn.query(
+        `UPDATE users SET
+           email_verified_at = COALESCE(email_verified_at, NOW()),
+           last_sign_in_at   = NOW(),
+           last_login        = NOW()
+         WHERE id = ?`,
+        [user.id]
+      );
+    }
+
+    // INVITE path: insert a school_memberships row (idempotent on the
+    // unique (user_id, school_id) constraint — if they already had a
+    // removed membership, un-remove it).
+    let acceptedSchoolId = null;
+    if (t.purpose === 'invite' && t.school_id) {
+      const role = t.role || 'teacher';
+      const [existing] = await conn.query(
+        `SELECT id, removed_at FROM school_memberships
+          WHERE user_id = ? AND school_id = ? LIMIT 1`,
+        [user.id, t.school_id]
+      );
+      if (existing[0]) {
+        // Re-activate / update existing membership (was removed previously)
+        await conn.query(
+          `UPDATE school_memberships
+              SET role = ?, is_owner = 0, removed_at = NULL, joined_at = COALESCE(joined_at, NOW())
+            WHERE id = ?`,
+          [role, existing[0].id]
+        );
+      } else {
+        await conn.query(
+          `INSERT INTO school_memberships (user_id, school_id, role, is_owner, joined_at)
+           VALUES (?, ?, ?, 0, NOW())`,
+          [user.id, t.school_id, role]
+        );
+      }
+      // For brand-new users (no other memberships), set users.school_id so
+      // finalizeAuth can drop them straight in. For existing multi-school
+      // users, finalizeAuth will route them through the chooser.
+      const [[cnt]] = await conn.query(
+        `SELECT COUNT(*) AS n FROM school_memberships
+          WHERE user_id = ? AND removed_at IS NULL`,
+        [user.id]
+      );
+      if (cnt.n === 1) {
+        await conn.query('UPDATE users SET school_id = ?, role = ? WHERE id = ?',
+          [t.school_id, role, user.id]);
+        user.school_id = t.school_id;
+        user.role = role;
+      }
+      acceptedSchoolId = t.school_id;
+
+      await conn.query(
+        `UPDATE invitations SET status='accepted', accepted_at = NOW()
+         WHERE token = ? AND status = 'pending'`,
+        [t.token]
+      );
+    }
+
+    await conn.commit();
+
+    // Superadmins bypass the chooser
+    if (user.role === 'superadmin') {
+      const token_jwt = signToken(user);
+      return res.json({ token: token_jwt, user });
+    }
+
+    // Hand off to finalizeAuth — handles 0 / 1 / N membership branching.
+    // If this was an invite accept and the user has multiple memberships,
+    // we still want to land them in the school they just joined, so we
+    // hint that via accepted_school_id.
+    const result = await finalizeAuth(user);
+    if (acceptedSchoolId && result.requires_choice) {
+      result.accepted_school_id = acceptedSchoolId;
+    }
+    res.json(result);
+  } catch (err) {
+    await conn.rollback();
+    console.error('consumeMagicLink error:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+};
+
+// POST /auth/demo-login
+//   Server-side issued magic-token for the demo accounts so we don't leak
+//   credentials in the HTML. Body: { email } — must be teacher@manchq.com
+//   or parent@manchq.com.
+const DEMO_EMAILS = ['teacher@manchq.com', 'parent@manchq.com'];
+exports.demoLogin = async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (!DEMO_EMAILS.includes(email)) {
+    return res.status(400).json({ error: 'Not a demo account.' });
+  }
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, name, email, role, school_id, is_active, is_owner FROM users WHERE email = ? AND is_active = 1',
+      [email]
+    );
+    const user = rows[0];
+    if (!user) return res.status(404).json({ error: 'Demo account not provisioned.' });
+    if (user.role === 'superadmin') {
+      const token = signToken(user);
+      return res.json({ token, user });
+    }
+    const result = await finalizeAuth(user);
+    res.json(result);
+  } catch (err) {
+    console.error('demoLogin error:', err);
+    res.status(500).json({ error: err.message });
+  }
 };
 
 exports.changePassword = async (req, res) => {
@@ -102,14 +547,13 @@ exports.googleLogin = async (req, res) => {
 
     if (existingUser[0]) {
       const user = existingUser[0];
-      await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
-      const token = signToken(user);
-      let school = null;
-      if (user.school_id) {
-        const [sr] = await pool.query('SELECT id, name, city, dance_style FROM schools WHERE id = ?', [user.school_id]);
-        school = sr[0] || null;
+      if (user.role === 'superadmin') {
+        await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+        const token = signToken(user);
+        return res.json({ token, user });
       }
-      return res.json({ token, user, school });
+      const result = await finalizeAuth(user);
+      return res.json(result);
     }
 
     // New user — return user data and flag for registration
@@ -263,16 +707,37 @@ exports.registerSchool = async (req, res) => {
 
     const schoolId = schoolResult.insertId;
 
-    // Create admin user with random password (Google OAuth users)
-    const randomPassword = require('crypto').randomBytes(16).toString('hex');
-    const hashedPassword = bcrypt.hashSync(randomPassword, 10);
-
-    const [userResult] = await conn.query(
-      'INSERT INTO users (name, email, password, role, school_id, is_active) VALUES (?, ?, ?, ?, ?, 1)',
-      [ownerName, ownerEmail.toLowerCase(), hashedPassword, 'school_admin', schoolId]
+    // If this email already has a user (multi-school case), reuse it.
+    // Otherwise, create a new user.
+    let userId;
+    const [existing] = await conn.query(
+      'SELECT id FROM users WHERE email = ? LIMIT 1',
+      [ownerEmail.toLowerCase()]
     );
+    if (existing[0]) {
+      userId = existing[0].id;
+      // Mirror the new school onto the user record (legacy fields).
+      await conn.query(
+        `UPDATE users SET school_id = ?, role = 'school_admin', is_owner = 1,
+                            email_verified_at = COALESCE(email_verified_at, NOW())
+           WHERE id = ?`,
+        [schoolId, userId]
+      );
+    } else {
+      const [userResult] = await conn.query(
+        `INSERT INTO users (name, email, role, school_id, is_active, is_owner, email_verified_at)
+         VALUES (?, ?, 'school_admin', ?, 1, 1, NOW())`,
+        [ownerName, ownerEmail.toLowerCase(), schoolId]
+      );
+      userId = userResult.insertId;
+    }
 
-    const userId = userResult.insertId;
+    // Owner membership for the new school
+    await conn.query(
+      `INSERT INTO school_memberships (user_id, school_id, role, is_owner, joined_at)
+       VALUES (?, ?, 'school_admin', 1, NOW())`,
+      [userId, schoolId]
+    );
 
     await conn.commit();
 
@@ -280,36 +745,28 @@ exports.registerSchool = async (req, res) => {
     seedDummyData(schoolId, danceStyle).catch(err =>
       console.warn('Seed sample data skipped:', err.message)
     );
-    const user = {
-      id: userId,
-      name: ownerName,
-      email: ownerEmail.toLowerCase(),
-      role: 'school_admin',
-      school_id: schoolId,
-      is_active: 1,
-    };
-
-    const school = {
-      id: schoolId,
-      name: schoolName,
-      owner_name: ownerName,
-      email: ownerEmail,
-      city: city || null,
-      dance_style: danceStyle || null,
-    };
-
-    // Generate token
-    const token = signToken(user);
 
     // Send welcome email asynchronously (don't wait for it)
     sendWelcomeEmail(schoolName, ownerEmail, ownerName, schoolId).catch(error => {
       console.error('Welcome email failed (non-blocking):', error.message);
     });
 
+    const userObj = {
+      id: userId,
+      name: ownerName,
+      email: ownerEmail.toLowerCase(),
+      role: 'school_admin',
+      school_id: schoolId,
+      is_active: 1,
+      is_owner: 1,
+    };
+
+    // Run through finalizeAuth — if the user already had other schools,
+    // they'll be routed through the chooser. New users (single membership)
+    // get dropped straight into their fresh studio.
+    const result = await finalizeAuth(userObj);
     res.status(201).json({
-      token,
-      user,
-      school,
+      ...result,
       message: 'School registered successfully! Welcome email sent.',
     });
   } catch (error) {

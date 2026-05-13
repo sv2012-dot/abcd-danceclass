@@ -73,6 +73,14 @@ const Icons: Record<string, React.ReactNode> = {
       <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
     </svg>
   ),
+  team: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
   menu: (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
@@ -98,6 +106,7 @@ const NAV_ITEMS: Record<string, any[]> = {
     { to: '/todos', label: 'To-Dos', icon: 'todos' },
     // Studios + Vendors share an entry with in-page tabs
     { to: '/studios', label: 'Resources', icon: 'studios', matchPaths: ['/studios', '/vendors'] },
+    { to: '/team', label: 'Team', icon: 'team' },
     { to: '/about', label: 'About', icon: 'about' },
   ],
   teacher: [
@@ -145,6 +154,8 @@ type SidebarProps = {
   onAboutClick: () => void;
   onSmartAdd: () => void;
   onLogout: () => void;
+  membershipCount?: number;
+  onSwitchSchool?: () => void;
 };
 
 function SidebarContent({
@@ -152,6 +163,7 @@ function SidebarContent({
   schoolName, city, brief, isSuperAdmin, user, navItems, pathname,
   hoveredNav, setHoveredNav, canHover, theme, toggleTheme,
   onAboutClick, onSmartAdd, onLogout,
+  membershipCount = 0, onSwitchSchool,
 }: SidebarProps) {
   return (
     <>
@@ -241,6 +253,15 @@ function SidebarContent({
       <div style={{ padding: '14px 16px 12px', borderTop: '1px solid var(--sidebar-border)' }}>
         <div style={{ fontSize: 10, color: 'var(--sidebar-muted)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Signed in as</div>
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--sidebar-foreground)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name}</div>
+        {membershipCount > 1 && onSwitchSchool && (
+          <button
+            style={{ display: 'block', background: 'none', border: 'none', color: 'var(--sidebar-muted)', fontSize: 12, cursor: 'pointer', textAlign: 'left', padding: 0, marginBottom: 6 }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#7C3AED'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--sidebar-muted)'; }}
+            onClick={onSwitchSchool}
+            title="Switch to another studio you're a member of"
+          >Switch studio →</button>
+        )}
         <button
           style={{ background: 'none', border: 'none', color: 'var(--sidebar-muted)', fontSize: 13, cursor: 'pointer', textAlign: 'left', padding: 0 }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#DC2626'; }}
@@ -292,7 +313,7 @@ function SidebarContent({
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, school, logout } = useAuth() as any;
+  const { user, school, logout, memberships } = useAuth() as any;
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
@@ -370,6 +391,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     onAboutClick: () => router.push('/about'),
     onSmartAdd: () => setShowSmartAdd(true),
     onLogout: handleLogout,
+    membershipCount: memberships?.length || 0,
+    onSwitchSchool: () => router.push('/auth/choose-school'),
   };
 
   const DemoSplash = showSplash ? (

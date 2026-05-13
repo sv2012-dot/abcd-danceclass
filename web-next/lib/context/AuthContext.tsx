@@ -14,9 +14,18 @@ type School = {
   name: string;
 };
 
+type Membership = {
+  school_id: number;
+  school_name: string;
+  school_city: string | null;
+  role: string;
+  is_owner: number;
+};
+
 type AuthContextType = {
   user: User | null;
   school: School | null;
+  memberships: Membership[];
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
   logout: () => void;
@@ -30,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Start with null - don't trust localStorage on initial load
   const [user, setUser] = useState<User | null>(null);
   const [school, setSchoolState] = useState<School | null>(null);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
   const [loading, setLoading] = useState(true);
 
   const persistSchool = (s: School | null) => {
@@ -71,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(data.user);
           localStorage.setItem('sf_user', JSON.stringify(data.user));
           persistSchool(data.school);
+          setMemberships(data.memberships || []);
         })
         .catch(() => {
           // Token is invalid or expired, clear everything
@@ -137,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, school, loading, login, logout, setSchool: persistSchool, setSession }}>
+    <AuthContext.Provider value={{ user, school, memberships, loading, login, logout, setSchool: persistSchool, setSession }}>
       {children}
     </AuthContext.Provider>
   );

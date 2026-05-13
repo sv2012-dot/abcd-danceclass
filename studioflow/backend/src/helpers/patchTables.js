@@ -431,6 +431,209 @@ async function patchTables() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    // ── Magic-link auth + multi-user invitations ───────────────────────
+    // Single token table shared by sign-in links and team invites.
+    // purpose='signin' → just authenticates the email.
+    // purpose='invite' → also attaches the user to school_id with role.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS magic_tokens (
+        id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        token        VARCHAR(64)  NOT NULL UNIQUE,
+        email        VARCHAR(180) NOT NULL,
+        purpose      ENUM('signin','invite') NOT NULL DEFAULT 'signin',
+        school_id    INT UNSIGNED NULL,
+        role         VARCHAR(40)  NULL,
+        invited_by   INT UNSIGNED NULL,
+        expires_at   DATETIME     NOT NULL,
+        consumed_at  DATETIME     NULL,
+        created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_email   (email),
+        INDEX idx_expires (expires_at),
+        FOREIGN KEY (school_id)  REFERENCES schools(id) ON DELETE CASCADE,
+        FOREIGN KEY (invited_by) REFERENCES users(id)   ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS invitations (
+        id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        school_id           INT UNSIGNED NOT NULL,
+        email               VARCHAR(180) NOT NULL,
+        role                VARCHAR(40)  NOT NULL,
+        token               VARCHAR(64)  NOT NULL UNIQUE,
+        invited_by_user_id  INT UNSIGNED NULL,
+        status              ENUM('pending','accepted','revoked','expired') NOT NULL DEFAULT 'pending',
+        created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        accepted_at         DATETIME NULL,
+        INDEX idx_school (school_id),
+        INDEX idx_email  (email),
+        FOREIGN KEY (school_id)          REFERENCES schools(id) ON DELETE CASCADE,
+        FOREIGN KEY (invited_by_user_id) REFERENCES users(id)   ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // Add columns to users table for new auth model
+    await addColumnIfMissing('users', 'email_verified_at', 'DATETIME NULL');
+    await addColumnIfMissing('users', 'is_owner',          'TINYINT(1) NOT NULL DEFAULT 0');
+    await addColumnIfMissing('users', 'last_sign_in_at',   'DATETIME NULL');
+    await addColumnIfMissing('users', 'removed_at',        'DATETIME NULL');
+    // Make password column nullable — new users won't have one
+    try {
+      await ensureColumnNullable('users', 'password', 'VARCHAR(255) NULL');
+    } catch (_) { /* column type may differ across deployments */ }
+
+    // Grandfather existing users: mark all current emails as verified,
+    // and pick a single owner per school (the lowest-id school_admin).
+    await pool.query(
+      `UPDATE users SET email_verified_at = NOW() WHERE email_verified_at IS NULL`
+    );
+    const [ownerCandidates] = await pool.query(`
+      SELECT u.id, u.school_id
+      FROM users u
+      INNER JOIN (
+        SELECT school_id, MIN(id) AS first_admin_id
+        FROM users
+        WHERE role = 'school_admin' AND school_id IS NOT NULL
+        GROUP BY school_id
+      ) f ON f.first_admin_id = u.id
+      WHERE u.is_owner = 0
+    `);
+    for (const u of ownerCandidates) {
+      await pool.query('UPDATE users SET is_owner = 1 WHERE id = ?', [u.id]);
+    }
+    if (ownerCandidates.length > 0) {
+      console.log(`  👑 Marked ${ownerCandidates.length} existing school_admin(s) as owners`);
+    }
+
+    // Resolve any school that ended up with multiple owners. Source of truth:
+    // schools.email = the email used at registration. If a user in that school
+    // matches that email, they're the owner; everyone else is demoted.
+    const [dupes] = await pool.query(`
+      SELECT school_id, COUNT(*) AS n
+      FROM users
+      WHERE is_owner = 1 AND school_id IS NOT NULL AND removed_at IS NULL
+      GROUP BY school_id
+      HAVING n > 1
+    `);
+    let demoted = 0;
+    for (const d of dupes) {
+      // Prefer the user whose email matches schools.email
+      const [r1] = await pool.query(
+        `UPDATE users u
+           JOIN schools s ON s.id = u.school_id
+            SET u.is_owner = 0
+          WHERE u.school_id = ? AND u.is_owner = 1
+            AND LOWER(u.email) <> LOWER(s.email)`,
+        [d.school_id]
+      );
+      demoted += r1.affectedRows || 0;
+
+      // If still multiple (no email match found), keep only the lowest-id one
+      const [[after]] = await pool.query(
+        `SELECT COUNT(*) AS n FROM users
+          WHERE is_owner = 1 AND school_id = ? AND removed_at IS NULL`,
+        [d.school_id]
+      );
+      if (after.n > 1) {
+        const [r2] = await pool.query(
+          `UPDATE users
+              SET is_owner = 0
+            WHERE school_id = ? AND is_owner = 1
+              AND id <> (SELECT min_id FROM (
+                  SELECT MIN(id) AS min_id FROM users
+                   WHERE school_id = ? AND is_owner = 1 AND removed_at IS NULL
+              ) x)`,
+          [d.school_id, d.school_id]
+        );
+        demoted += r2.affectedRows || 0;
+      }
+    }
+    if (demoted > 0) {
+      console.log(`  🧹 Demoted ${demoted} duplicate owner(s) — each school now has exactly one`);
+    }
+
+    // Attribution columns — added now so future auth+team work has them.
+    // Nullable to keep all existing rows valid.
+    for (const tbl of ['batches','students','recitals','todos','schedules']) {
+      try { await addColumnIfMissing(tbl, 'created_by_user_id', 'INT UNSIGNED NULL'); } catch (_) {}
+    }
+
+    // ── Multi-school memberships ──────────────────────────────────────────
+    // One row per (user, school). Role + is_owner live here, NOT on users.
+    // Existing users.school_id / users.role / users.is_owner are kept as
+    // "current active session" mirror columns — JWT remains the runtime
+    // source of truth — but ownership and per-school roles live here.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS school_memberships (
+        id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        user_id       INT UNSIGNED NOT NULL,
+        school_id     INT UNSIGNED NOT NULL,
+        role          VARCHAR(40)  NOT NULL DEFAULT 'teacher',
+        is_owner      TINYINT(1)   NOT NULL DEFAULT 0,
+        joined_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_used_at  DATETIME     NULL,
+        removed_at    DATETIME     NULL,
+        UNIQUE KEY uniq_user_school (user_id, school_id),
+        INDEX idx_user   (user_id),
+        INDEX idx_school (school_id),
+        FOREIGN KEY (user_id)   REFERENCES users(id)   ON DELETE CASCADE,
+        FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // Short-lived "you have N schools, pick one" tokens. Issued after a
+    // successful auth event (magic-link, Google, demo) when the user has
+    // >1 active membership. Consumed by POST /auth/choose-school.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chooser_tokens (
+        id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        token        VARCHAR(64)  NOT NULL UNIQUE,
+        user_id      INT UNSIGNED NOT NULL,
+        expires_at   DATETIME     NOT NULL,
+        consumed_at  DATETIME     NULL,
+        created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_expires (expires_at),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // Per-school per-day AI call counter. The rate-limit middleware is the
+    // fast path; this table is the persistent source of truth so a backend
+    // restart can't accidentally hand out extra free calls.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS smart_usage_daily (
+        school_id   INT UNSIGNED NOT NULL,
+        usage_date  DATE         NOT NULL,
+        count       INT UNSIGNED NOT NULL DEFAULT 0,
+        updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (school_id, usage_date),
+        FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // Backfill memberships from existing users.school_id rows
+    const [orphans] = await pool.query(`
+      SELECT u.id AS user_id, u.school_id, u.role, COALESCE(u.is_owner,0) AS is_owner
+        FROM users u
+        LEFT JOIN school_memberships sm
+          ON sm.user_id = u.id AND sm.school_id = u.school_id
+       WHERE u.school_id IS NOT NULL
+         AND (u.removed_at IS NULL)
+         AND sm.id IS NULL
+    `);
+    for (const o of orphans) {
+      try {
+        await pool.query(
+          `INSERT INTO school_memberships (user_id, school_id, role, is_owner, joined_at)
+           VALUES (?, ?, ?, ?, NOW())`,
+          [o.user_id, o.school_id, o.role || 'teacher', o.is_owner ? 1 : 0]
+        );
+      } catch (_) { /* unique key collision is fine */ }
+    }
+    if (orphans.length > 0) {
+      console.log(`  🔗 Backfilled ${orphans.length} membership(s) from users.school_id`);
+    }
+
     console.log('✅ patchTables complete');
   } catch (err) {
     // Non-fatal — log but don't crash the server

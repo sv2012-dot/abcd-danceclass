@@ -13,12 +13,19 @@
 const router = require('express').Router();
 const { auth } = require('../middleware/auth');
 const smartRateLimit = require('../middleware/smartRateLimit');
+const { smartUsageMiddleware, getUsageHandler } = require('../middleware/smartUsage');
 const pool = require('../../config/db');
 const { runJson, runText } = require('../lib/anthropic');
 
-// Apply auth + rate limit to ALL smart routes
+// Apply auth to ALL smart routes
 router.use(auth());
+
+// Today's usage — read-only, doesn't count against the limit
+router.get('/usage/today', getUsageHandler);
+
+// Generate routes: rate-limited + persistently counted, shared across the school
 router.use(smartRateLimit);
+router.use(smartUsageMiddleware);
 
 function logSmart(req, action, ok, extra = {}) {
   const sid = req.user?.school_id;

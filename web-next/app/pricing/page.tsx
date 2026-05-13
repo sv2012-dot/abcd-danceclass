@@ -125,6 +125,8 @@ const TABLE_ROWS = [
 const FAQ = [
   { q:'Why $5.99?',
     a:"It's the price of a coffee — small enough not to think about. We'd rather have hundreds of happy studios than ten begrudging ones." },
+  { q:'I run more than one studio. How does pricing work?',
+    a:"Each studio gets its own ManchQ workspace and its own subscription — $5.99/month each. Sign in, sign out, sign up again to create the second one. You can choose between them at the gate." },
   { q:'Can I start on Debut and upgrade later?',
     a:'Absolutely. Start free, grow into it. Your data, schedules, students and recitals all carry over instantly when you upgrade.' },
   { q:'Is there a free trial for Spotlight?',
@@ -143,7 +145,7 @@ export default function PricingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const price         = '5.99';
-  const cadence       = '/month';
+  const cadence       = '/month per studio';
 
   const px = isMobile ? 16 : 24;
 
@@ -209,7 +211,7 @@ export default function PricingPage() {
               </p>
               <div style={{ display:'flex', alignItems:'flex-end', gap:4, marginBottom:4 }}>
                 <span style={{ fontSize:48, fontWeight:900, color:'#fff', lineHeight:1, letterSpacing:'-.03em' }}>$0</span>
-                <span style={{ fontSize:13, color:'#6B7280', fontWeight:600, marginBottom:9 }}>/month</span>
+                <span style={{ fontSize:13, color:'#6B7280', fontWeight:600, marginBottom:9 }}>/month per studio</span>
               </div>
               <p style={{ fontSize:12, color:'#374151', margin:0 }}>No credit card required</p>
             </div>
