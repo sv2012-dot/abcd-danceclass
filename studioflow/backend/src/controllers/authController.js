@@ -460,35 +460,6 @@ exports.consumeMagicLink = async (req, res) => {
   }
 };
 
-// POST /auth/demo-login
-//   Server-side issued magic-token for the demo accounts so we don't leak
-//   credentials in the HTML. Body: { email } — must be teacher@manchq.com
-//   or parent@manchq.com.
-const DEMO_EMAILS = ['teacher@manchq.com', 'parent@manchq.com'];
-exports.demoLogin = async (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase();
-  if (!DEMO_EMAILS.includes(email)) {
-    return res.status(400).json({ error: 'Not a demo account.' });
-  }
-  try {
-    const [rows] = await pool.query(
-      'SELECT id, name, email, role, school_id, is_active, is_owner FROM users WHERE email = ? AND is_active = 1',
-      [email]
-    );
-    const user = rows[0];
-    if (!user) return res.status(404).json({ error: 'Demo account not provisioned.' });
-    if (user.role === 'superadmin') {
-      const token = signToken(user);
-      return res.json({ token, user });
-    }
-    const result = await finalizeAuth(user);
-    res.json(result);
-  } catch (err) {
-    console.error('demoLogin error:', err);
-    res.status(500).json({ error: err.message });
-  }
-};
-
 exports.changePassword = async (req, res) => {
   const { current_password, new_password } = req.body;
   if (!current_password || !new_password) return res.status(400).json({ error: 'Both passwords required' });

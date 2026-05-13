@@ -48,31 +48,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemo = async (demoEmail: string) => {
-    setLoading(true);
-    try {
-      const data: any = await auth.demoLogin(demoEmail);
-      if (data?.requires_choice && data?.chooser_token) {
-        try {
-          sessionStorage.setItem('sf_pending_chooser', JSON.stringify({
-            chooser_token: data.chooser_token,
-            memberships: data.memberships || [],
-            user: data.user,
-          }));
-        } catch (_) {}
-        router.replace('/auth/choose-school');
-        return;
-      }
-      setSession(data.token, data.user, data.school);
-      toast.success(`Welcome to the demo!`);
-      redirectToDashboard(router);
-    } catch (err: any) {
-      toast.error(err?.error || 'Demo sign-in failed.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', padding: 20 }}>
       <div style={{ width: '100%', maxWidth: 400 }}>
@@ -156,27 +131,14 @@ export default function LoginPage() {
                 </button>
               </form>
 
-              {/* Demo account */}
-              <div style={{ marginTop: 22, padding: 14, background: 'var(--surface)', borderRadius: 10, fontSize: 12, color: 'var(--muted)', borderLeft: '3px solid var(--border)' }}>
-                <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text)' }}>Just exploring?</div>
-                <button
-                  type="button"
-                  onClick={() => handleDemo('teacher@manchq.com')}
-                  disabled={loading}
-                  style={{ width: '100%', padding: '9px 12px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, cursor: loading ? 'not-allowed' : 'pointer', fontSize: 12, color: 'var(--text)', fontWeight: 600 }}
-                >
-                  Try the demo →
-                </button>
-              </div>
-
               {/* Register link */}
               <div style={{ marginTop: 22, textAlign: 'center', fontSize: 14, color: 'var(--muted)' }}>
-                Don't have a school?{' '}
+                New to ManchQ?{' '}
                 <button
                   onClick={() => router.push('/register')}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6a7fdb', fontWeight: 700, padding: 0, textDecoration: 'underline' }}
                 >
-                  Register here
+                  Register your studio — free for 30 days →
                 </button>
               </div>
             </>

@@ -7,7 +7,6 @@ export const auth = {
   // Magic-link auth — primary path
   requestMagicLink: (email: string) => api.post('/auth/magic-link', { email }),
   consumeMagicLink: (token: string) => api.post('/auth/magic-link/consume', { token }),
-  demoLogin: (email: string) => api.post('/auth/demo-login', { email }),
   // Multi-school chooser
   chooseSchool: (chooser_token: string, school_id: number) =>
     api.post('/auth/choose-school', { chooser_token, school_id }),

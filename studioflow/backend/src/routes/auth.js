@@ -17,9 +17,6 @@ router.post('/magic-link/consume', c.consumeMagicLink);
 router.post('/choose-school',      c.chooseSchool);
 router.post('/switch-school',      auth(), c.requestSwitch);
 
-// Demo accounts — server-issued token, no credentials in HTML
-router.post('/demo-login',      c.demoLogin);
-
 router.get('/me',               auth(), c.me);
 router.put('/change-password',  auth(), c.changePassword);
 
