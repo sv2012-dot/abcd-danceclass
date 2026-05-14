@@ -75,7 +75,7 @@ const SLIDES: Slide[] = [
       'M22 2l-7 20-4-9-9-4z',
     ],
     title: 'Public Invites',
-    body: 'Share recital RSVP links with any guest — no login or account needed for invitees.',
+    body: 'Share public recital invites with any guest. No login, no account, no app needed for invitees.',
   },
   {
     // 5. Manage Classes — calendar
@@ -196,14 +196,17 @@ export default function RegisterCarousel({ compact = false }: { compact?: boolea
             <LineIcon paths={slide.iconPaths} size={compact ? 28 : 38} color="#fff" sw={1.5} />
           </div>
 
-          {/* Title — white, large, single-line */}
+          {/* Title — white, large, single-line.
+              lineHeight 1.25 + small pad-bottom so descenders ("g", "p", "y")
+              don't get clipped by overflow:hidden. */}
           <h3 style={{
             fontSize: compact ? 32 : 44,
             fontWeight: 800,
             margin: '0 0 14px',
+            paddingBottom: 2,
             letterSpacing: '-0.6px',
             color: '#fff',
-            lineHeight: 1.1,
+            lineHeight: 1.25,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
