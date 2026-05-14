@@ -82,7 +82,9 @@ export default function LoginPage() {
   };
 
   // Mobile-tuned padding so the island fits within visible viewport.
-  const cardPadding = isMobile ? '26px 22px 24px' : '40px 44px 32px';
+  // Tighter horizontal on mobile so the Google button + welcome line read
+  // as full-width affordances rather than crowded slivers.
+  const cardPadding = isMobile ? '24px 16px 22px' : '40px 44px 32px';
 
   return (
     <AuthBackground>
@@ -139,13 +141,27 @@ export default function LoginPage() {
             <h2 style={{ fontSize: isMobile ? 19 : 20, fontWeight: 700, margin: '0 0 8px', color: C.text, textAlign: 'center' }}>
               Sign in to ManchQ
             </h2>
-            {/* Welcome-back — single text style throughout */}
-            <p style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55, margin: '0 0 22px', textAlign: 'center' }}>
+            {/* Welcome-back — single text style throughout. Explicit
+                width:100% + display:block to defeat Mobile Safari's
+                flex-item sizing quirks inside the nested flex layout. */}
+            <p style={{
+              fontSize: 12.5,
+              color: C.muted,
+              lineHeight: 1.55,
+              margin: '0 0 22px',
+              textAlign: 'center',
+              width: '100%',
+              display: 'block',
+              boxSizing: 'border-box',
+            }}>
               Welcome back to ManchQ! Use the same option — Google or email — you picked at signup to enter your studio. Have a great time!
             </p>
 
-            {/* Google */}
-            <GoogleSignIn />
+            {/* Google — wrapped in an explicit full-width div so iOS Safari
+                doesn't shrink the flex-display button to content width. */}
+            <div style={{ width: '100%', display: 'block' }}>
+              <GoogleSignIn />
+            </div>
 
             {/* Divider */}
             <div style={{ display: 'flex', alignItems: 'center', margin: '18px 0', gap: 12 }}>
@@ -159,7 +175,7 @@ export default function LoginPage() {
               No password &mdash; we'll send a one-time link.
             </p>
 
-            <form onSubmit={handleMagicLink}>
+            <form onSubmit={handleMagicLink} style={{ width: '100%', display: 'block', margin: 0 }}>
               <input
                 type="email"
                 required
