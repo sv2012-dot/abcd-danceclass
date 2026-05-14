@@ -21,6 +21,7 @@ import { useAuth } from '@/lib/context/AuthContext';
 import { redirectToDashboard } from '@/lib/redirectToDashboard';
 import GoogleSignIn from '@/components/GoogleSignIn';
 import RegisterCarousel from '@/components/RegisterCarousel';
+import Confetti from '@/components/Confetti';
 
 const PURPLE = '#7C3AED';
 const MAGENTA = '#DC4EFF';
@@ -83,6 +84,14 @@ function RegisterForm() {
 
   // Post-email-signup "check inbox" state
   const [linkSentTo, setLinkSentTo] = useState<string | null>(null);
+
+  // Post-Google-signup celebration screen — shown briefly before redirect.
+  const [welcomeData, setWelcomeData] = useState<{
+    schoolName: string;
+    token: string;
+    user: any;
+    school: any;
+  } | null>(null);
 
   // If already logged in, kick to dashboard — must sign out first to register another
   useEffect(() => {
@@ -148,9 +157,15 @@ function RegisterForm() {
         return;
       }
       if (data.token) {
-        setSession(data.token, data.user, data.school || null);
-        toast.success('Welcome to ManchQ!');
-        redirectToDashboard(router);
+        // Hold off setSession until the user clicks "Enter" on the welcome
+        // screen — that way the dashboard route guard doesn't yank them out
+        // of the celebration.
+        setWelcomeData({
+          schoolName: form.schoolName.trim() || 'your studio',
+          token: data.token,
+          user: data.user,
+          school: data.school || null,
+        });
         return;
       }
       if (data.magic_link_sent) {
@@ -204,14 +219,100 @@ function RegisterForm() {
     router.push('/login');
   }
 
+  // ── Welcome / celebration state (Google sign-up success) ─────────────
+  if (welcomeData) {
+    const enterStudio = () => {
+      setSession(welcomeData.token, welcomeData.user, welcomeData.school);
+      redirectToDashboard(router);
+    };
+    return (
+      <BackgroundFrame>
+        <Confetti pieces={90} durationSec={5} />
+        <div style={{
+          width: '100%',
+          maxWidth: 480,
+          background: 'var(--card)',
+          borderRadius: 20,
+          padding: 36,
+          textAlign: 'center',
+          boxShadow: '0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)',
+          position: 'relative',
+          zIndex: 4,
+        }}>
+          {/* Celebration icon — line-art star/spark on gradient halo */}
+          <div style={{
+            width: 80, height: 80,
+            margin: '0 auto 18px',
+            borderRadius: '50%',
+            background: GRAD,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 12px 40px rgba(124,58,237,0.55)',
+          }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
+          </div>
+          <h2 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text)', margin: '0 0 8px', letterSpacing: '-0.5px' }}>
+            Welcome to ManchQ!
+          </h2>
+          <p style={{ fontSize: 15, color: 'var(--muted)', margin: '0 0 28px', lineHeight: 1.55 }}>
+            <strong style={{ color: 'var(--text)' }}>{welcomeData.schoolName}</strong> is all set up and ready to go. Let's bring your studio to life.
+          </p>
+          <button
+            onClick={enterStudio}
+            style={{
+              width: '100%',
+              padding: '14px',
+              background: GRAD,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 12,
+              fontSize: 16,
+              fontWeight: 800,
+              cursor: 'pointer',
+              letterSpacing: '0.01em',
+              boxShadow: '0 6px 24px rgba(124,58,237,0.45)',
+            }}
+          >
+            Enter your studio →
+          </button>
+        </div>
+      </BackgroundFrame>
+    );
+  }
+
   // ── Magic-link sent state ────────────────────────────────────────────
   if (linkSentTo) {
     return (
       <BackgroundFrame>
-        <div style={{ width: '100%', maxWidth: 440, background: 'var(--card)', borderRadius: 16, padding: 36, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.45)' }}>
-          <div style={{ fontSize: 40, marginBottom: 14 }}>✉️</div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', margin: '0 0 8px' }}>Studio created!</h2>
-          <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 22px' }}>
+        <Confetti pieces={90} durationSec={5} />
+        <div style={{
+          width: '100%',
+          maxWidth: 460,
+          background: 'var(--card)',
+          borderRadius: 20,
+          padding: 36,
+          textAlign: 'center',
+          boxShadow: '0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)',
+          position: 'relative',
+          zIndex: 4,
+        }}>
+          <div style={{
+            width: 72, height: 72,
+            margin: '0 auto 16px',
+            borderRadius: '50%',
+            background: GRAD,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 10px 32px rgba(124,58,237,0.5)',
+          }}>
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
+          </div>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', margin: '0 0 10px', letterSpacing: '-0.4px' }}>
+            Studio created!
+          </h2>
+          <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.65, margin: '0 0 24px' }}>
             We sent a sign-in link to <strong style={{ color: 'var(--text)' }}>{linkSentTo}</strong>. Open it to enter your new studio. The link expires in 15 minutes.
           </p>
           <button
@@ -305,7 +406,7 @@ function RegisterForm() {
       <div style={{ marginTop: 16 }}>
         <GoogleSignIn
           mode="register"
-          label="Sign up with Google →"
+          label="Sign up with Google"
           onToken={handleGoogleToken}
           disabled={!baseFormComplete || submitting}
           disabledTitle={disabledTitle}

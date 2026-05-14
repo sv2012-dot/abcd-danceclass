@@ -56,7 +56,7 @@ const SLIDES: Slide[] = [
       'M12 8l1.4 2.6L16 12l-2.6 1.4L12 16l-1.4-2.6L8 12l2.6-1.4z',
     ],
     title: 'Smart Features',
-    body: 'AI turns plain-text prompts into scheduled classes in seconds. Draft WhatsApp-ready parent messages in one click.',
+    body: 'AI turns plain-text prompts into scheduled classes. Draft WhatsApp-ready messages in one click.',
   },
   {
     // 3. Manage Recitals — music note (matches the homepage recital icon)
@@ -86,7 +86,7 @@ const SLIDES: Slide[] = [
       'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
     ],
     title: 'Manage Classes',
-    body: 'Easy scheduling with batch-level preferences and reminders. Mark a whole class present in one tap; swipe individuals as exceptions.',
+    body: 'Easy scheduling and batch preferences. Mark a whole class present in one tap; swipe exceptions.',
   },
 ];
 
@@ -148,7 +148,9 @@ export default function RegisterCarousel({ compact = false }: { compact?: boolea
         width: '100%',
         height: '100%',
         minHeight: compact ? 220 : 460,
-        background: 'linear-gradient(160deg, #1a0e30 0%, #110820 55%, #1a0e30 100%)',
+        // Lighter purple base so the panel reads as distinct from the
+        // near-black page background instead of bleeding into it.
+        background: 'linear-gradient(160deg, #3a2070 0%, #281550 55%, #3a2070 100%)',
         // No own border-radius — the parent island clips us. Edges are flush.
         borderRadius: 0,
         overflow: 'hidden',
@@ -159,14 +161,15 @@ export default function RegisterCarousel({ compact = false }: { compact?: boolea
         boxSizing: 'border-box',
       }}
     >
-      {/* Soft gradient blobs */}
+      {/* Brighter, more visible corner glows so the panel separates from
+          the dark video background instead of bleeding into it. */}
       <div aria-hidden style={{
-        position: 'absolute', top: -60, right: -40, width: 220, height: 220, borderRadius: '50%',
-        background: `radial-gradient(circle, ${MAGENTA}55 0%, transparent 70%)`, pointerEvents: 'none',
+        position: 'absolute', top: -60, right: -40, width: 240, height: 240, borderRadius: '50%',
+        background: `radial-gradient(circle, ${MAGENTA}80 0%, transparent 72%)`, pointerEvents: 'none',
       }} />
       <div aria-hidden style={{
-        position: 'absolute', bottom: -80, left: -60, width: 260, height: 260, borderRadius: '50%',
-        background: `radial-gradient(circle, ${PURPLE}55 0%, transparent 70%)`, pointerEvents: 'none',
+        position: 'absolute', bottom: -80, left: -60, width: 280, height: 280, borderRadius: '50%',
+        background: `radial-gradient(circle, ${PURPLE}80 0%, transparent 72%)`, pointerEvents: 'none',
       }} />
 
       {/* Slide content */}
