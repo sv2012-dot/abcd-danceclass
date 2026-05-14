@@ -92,16 +92,15 @@ export default function LoginPage() {
           boxShadow: '0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)',
         }}
       >
-        {/* Header — logo + wordmark */}
-        <div style={{ textAlign: 'center', marginBottom: 18 }}>
+        {/* Header — logo only; "ManchQ" appears in the welcome line below */}
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
           <button
             onClick={() => router.push('/')}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, borderRadius: '50%', display: 'inline-flex', marginBottom: 10 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, borderRadius: '50%', display: 'inline-flex' }}
             title="Go to homepage"
           >
-            <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ width: isMobile ? 54 : 64, height: isMobile ? 54 : 64, borderRadius: '50%', display: 'block' }} />
+            <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ width: isMobile ? 56 : 68, height: isMobile ? 56 : 68, borderRadius: '50%', display: 'block' }} />
           </button>
-          <h1 style={{ fontFamily: 'var(--font-d)', fontSize: isMobile ? 22 : 24, color: 'var(--text)', margin: 0, letterSpacing: '-0.5px' }}>ManchQ</h1>
         </div>
 
         {linkSent ? (
@@ -127,9 +126,20 @@ export default function LoginPage() {
             <h2 style={{ fontSize: isMobile ? 19 : 20, fontWeight: 700, margin: '0 0 8px', color: 'var(--text)', textAlign: 'center' }}>
               Sign in to ManchQ
             </h2>
-            {/* Welcome-back — reminds users to use the same option they chose at signup */}
+            {/* Welcome-back — reminds users to use the same option they chose at
+                signup. Trailing "Have a great time!" tag styled as a subtle
+                purple accent so it pops as a friendly flourish. */}
             <p style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55, margin: '0 0 22px', textAlign: 'center' }}>
-              Welcome back to ManchQ! Use the same option — Google or email — you picked at signup to enter your studio.
+              Welcome back to ManchQ! Use the same option — Google or email — you picked at signup to enter your studio.{' '}
+              <span style={{
+                background: GRAD,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+              }}>
+                Have a great time! ✨
+              </span>
             </p>
 
             {/* Google */}
