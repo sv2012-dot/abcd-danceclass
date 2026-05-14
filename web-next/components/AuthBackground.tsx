@@ -10,7 +10,11 @@ export default function AuthBackground({ children }: { children: ReactNode }) {
   return (
     <div style={{
       position: 'relative',
-      minHeight: '100vh',
+      // 100dvh = dynamic viewport height. Excludes mobile browser chrome
+      // (URL bar etc.) so the island ends up vertically centered in the
+      // actually visible viewport on iOS Safari / mobile Chrome. Older
+      // browsers fall back to natural height which is still acceptable.
+      minHeight: '100dvh',
       width: '100%',
       overflow: 'hidden',
       background: '#08060F',
