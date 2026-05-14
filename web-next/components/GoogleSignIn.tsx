@@ -16,7 +16,17 @@ const GoogleIcon = () => (
   </svg>
 );
 
-export default function GoogleSignIn() {
+type Props = {
+  // 'login' (default): runs the full sign-in flow — call /auth/google and handle
+  //                    requires_choice / token / requiresRegistration branches.
+  // 'register':       just collect a Google access token and hand it back to
+  //                    the parent via onToken(). Parent decides what to do with it.
+  mode?: 'login' | 'register';
+  onToken?: (accessToken: string, profile: { email: string; name: string; picture?: string }) => void;
+  label?: string;
+};
+
+export default function GoogleSignIn({ mode = 'login', onToken, label }: Props = {}) {
   const router = useRouter();
   const { setSession } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -24,7 +34,34 @@ export default function GoogleSignIn() {
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setLoading(true);
-      // Single customer-facing toast that persists until we redirect or fail
+
+      // REGISTER MODE: don't call /auth/google. Just fetch the profile to confirm
+      // the token is real and hand it up to the parent component.
+      if (mode === 'register' && onToken) {
+        try {
+          const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+          });
+          if (!userInfoRes.ok) {
+            toast.error("Couldn't read your Google profile. Please try again.");
+            setLoading(false);
+            return;
+          }
+          const ui = await userInfoRes.json();
+          onToken(tokenResponse.access_token, {
+            email: ui.email,
+            name: ui.name,
+            picture: ui.picture,
+          });
+        } catch (e) {
+          toast.error("Couldn't reach Google. Check your connection.");
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
+      // LOGIN MODE (default): full sign-in flow against our backend.
       const t = toast.loading('Getting you in…');
       try {
         const apiUrl = (process.env.NEXT_PUBLIC_API_URL?.trim()) || 'http://localhost:5000/api';
@@ -37,7 +74,6 @@ export default function GoogleSignIn() {
 
         if (response.ok) {
           if (data.requires_choice && data.chooser_token) {
-            // Multi-school: stash chooser payload, route to /auth/choose-school
             try {
               sessionStorage.setItem('sf_pending_chooser', JSON.stringify({
                 chooser_token: data.chooser_token,
@@ -58,7 +94,6 @@ export default function GoogleSignIn() {
             toast.error("Something didn't add up — please try again.", { id: t });
           }
         } else {
-          // Keep technical details in console for debugging; user sees a friendly line
           console.error('[GoogleSignIn] backend error', response.status, data);
           toast.error("We couldn't sign you in. Please try again.", { id: t });
         }
@@ -74,6 +109,8 @@ export default function GoogleSignIn() {
       toast.error("Google sign-in was cancelled or blocked.");
     },
   });
+
+  const buttonLabel = label || (mode === 'register' ? 'Continue with Google' : 'Continue with Google');
 
   return (
     <button
@@ -114,7 +151,7 @@ export default function GoogleSignIn() {
       }}
     >
       {!loading && <GoogleIcon />}
-      {loading ? 'Signing in…' : 'Continue with Google'}
+      {loading ? (mode === 'register' ? 'Connecting…' : 'Signing in…') : buttonLabel}
     </button>
   );
 }

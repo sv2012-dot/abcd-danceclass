@@ -648,23 +648,74 @@ async function seedDummyData(schoolId, danceStyle) {
 exports.seedSampleData = seedDummyData;
 
 // Register School (Self-Service)
+//
+// Accepts EITHER:
+//   - { ownerName, ownerEmail, schoolName, city?, danceStyle? }  → email path
+//     (no password; we send a magic-link for first sign-in)
+//   - { ownerName, schoolName, city?, danceStyle?, google_access_token }
+//     → Google path (verifies the token, extracts a trusted email)
+//
+// If the resolved email already has a user account, we DO NOT silently merge.
+// We return { existing_user: true, schools: [...] } so the frontend can
+// explicitly ask the user whether they meant to register another studio or
+// sign in. The caller re-submits with `acknowledge_existing: true` to proceed.
 exports.registerSchool = async (req, res) => {
-  const { ownerName, ownerEmail, schoolName, city, danceStyle } = req.body;
+  let { ownerName, ownerEmail, schoolName, city, danceStyle,
+        google_access_token, acknowledge_existing } = req.body;
 
-  // Validation
-  if (!ownerEmail || !ownerName || !schoolName) {
-    return res.status(400).json({ error: 'Owner email, name, and school name are required' });
+  if (!schoolName || !ownerName) {
+    return res.status(400).json({ error: 'Owner name and school name are required.' });
   }
+
+  // If a Google token is supplied, that's our source of email + name.
+  if (google_access_token) {
+    try {
+      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${google_access_token}` },
+      });
+      if (!userInfoRes.ok) {
+        return res.status(401).json({ error: 'Google sign-in failed. Please try again.' });
+      }
+      const userInfo = await userInfoRes.json();
+      ownerEmail = (userInfo.email || '').toLowerCase();
+      // Prefer the Google name only if no name was provided
+      if (!ownerName || !ownerName.trim()) ownerName = userInfo.name || ownerEmail.split('@')[0];
+    } catch (e) {
+      return res.status(401).json({ error: 'Could not verify Google sign-in.' });
+    }
+  }
+
+  if (!ownerEmail) {
+    return res.status(400).json({ error: 'Owner email is required.' });
+  }
+  ownerEmail = ownerEmail.toLowerCase();
 
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
-    // Check if email already exists
-    const [existingEmail] = await conn.query('SELECT id FROM users WHERE email = ?', [ownerEmail.toLowerCase()]);
-    if (existingEmail[0]) {
+    // Check if this email already has an account on ManchQ
+    const [existingUsers] = await conn.query(
+      `SELECT id, name, email FROM users WHERE email = ? LIMIT 1`,
+      [ownerEmail]
+    );
+    if (existingUsers[0] && !acknowledge_existing) {
+      // Surface their existing schools so the UI can show a confirm dialog
+      const [memberships] = await conn.query(
+        `SELECT s.name AS school_name, s.city AS school_city
+           FROM school_memberships sm
+           JOIN schools s ON s.id = sm.school_id
+          WHERE sm.user_id = ? AND sm.removed_at IS NULL
+            AND s.deleted_at IS NULL AND s.is_active = 1`,
+        [existingUsers[0].id]
+      );
       await conn.rollback();
-      return res.status(400).json({ error: 'Email already registered' });
+      return res.status(200).json({
+        existing_user: true,
+        email: ownerEmail,
+        schools: memberships,
+        message: 'This email already has an account on ManchQ.',
+      });
     }
 
     // Create school — new schools start with a 30-day trial of paid features
@@ -725,20 +776,41 @@ exports.registerSchool = async (req, res) => {
     const userObj = {
       id: userId,
       name: ownerName,
-      email: ownerEmail.toLowerCase(),
+      email: ownerEmail,
       role: 'school_admin',
       school_id: schoolId,
       is_active: 1,
       is_owner: 1,
     };
 
-    // Run through finalizeAuth — if the user already had other schools,
-    // they'll be routed through the chooser. New users (single membership)
-    // get dropped straight into their fresh studio.
-    const result = await finalizeAuth(userObj);
-    res.status(201).json({
-      ...result,
-      message: 'School registered successfully! Welcome email sent.',
+    // Google path → already verified email, sign them in immediately.
+    // Email path → send a magic-link sign-in so the email gets verified,
+    //              return "check your inbox" instead of a JWT.
+    if (google_access_token) {
+      const result = await finalizeAuth(userObj);
+      return res.status(201).json({
+        ...result,
+        message: 'School registered successfully!',
+      });
+    }
+
+    // Email path → issue a magic-link sign-in to verify the email
+    const linkToken = generateToken();
+    await pool.query(
+      `INSERT INTO magic_tokens (token, email, purpose, expires_at)
+       VALUES (?, ?, 'signin', DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+      [linkToken, ownerEmail, MAGIC_LINK_TTL_MIN]
+    );
+    const link = `${APP_URL()}/auth/magic?token=${linkToken}`;
+    sendMagicLinkEmail(ownerEmail, link).catch(err =>
+      console.error('Welcome magic-link email failed:', err.message)
+    );
+
+    return res.status(201).json({
+      magic_link_sent: true,
+      email: ownerEmail,
+      school: { id: schoolId, name: schoolName },
+      message: 'School created. Check your inbox to sign in.',
     });
   } catch (error) {
     await conn.rollback();

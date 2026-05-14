@@ -99,7 +99,7 @@ function scrollToSection(id: string) {
   window.scrollTo({ top, behavior: 'smooth' });
 }
 
-function NavBar({ onLogin, isMobile, onPricing }: { onLogin: () => void, isMobile: boolean, onPricing: () => void }) {
+function NavBar({ onLogin, onRegister, isMobile, onPricing }: { onLogin: () => void, onRegister: () => void, isMobile: boolean, onPricing: () => void }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -145,11 +145,16 @@ function NavBar({ onLogin, isMobile, onPricing }: { onLogin: () => void, isMobil
             <button onClick={() => scrollToSection('community')} style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', background:'none', border:'none', padding:'8px 14px', cursor:'pointer' }}>Community</button>
             <button onClick={onPricing} style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', background:'none', border:'none', padding:'8px 14px', cursor:'pointer' }}>Pricing</button>
             <button onClick={onLogin} style={{
+              fontSize:13, fontWeight:600, color:'#fff',
+              background:'none', border:'1.5px solid rgba(255,255,255,0.2)',
+              padding:'8px 18px', borderRadius:10, cursor:'pointer',
+            }}>Sign in</button>
+            <button onClick={onRegister} style={{
               padding:'9px 22px', borderRadius:10, border:'none',
               background:BTN_GRAD, color:'#fff',
               fontWeight:700, fontSize:13, cursor:'pointer',
               boxShadow:'0 2px 14px rgba(124,58,237,0.42)', whiteSpace:'nowrap',
-            }}>Log in →</button>
+            }}>Register →</button>
           </div>
         )}
 
@@ -195,11 +200,17 @@ function NavBar({ onLogin, isMobile, onPricing }: { onLogin: () => void, isMobil
               <button key={label} onClick={action} style={NAV_LINK_STYLE}>{label}</button>
             ))}
           </nav>
-          <div style={{ padding:'20px 24px', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
-            <button onClick={() => navTo(onLogin)} style={{
+          <div style={{ padding:'20px 24px', borderTop:'1px solid rgba(255,255,255,0.08)', display:'flex', flexDirection:'column', gap:10 }}>
+            <button onClick={() => navTo(onRegister)} style={{
               width:'100%', padding:'14px', borderRadius:12, border:'none',
               background:BTN_GRAD, color:'#fff', fontWeight:700, fontSize:15, cursor:'pointer',
-            }}>Log in →</button>
+            }}>Register →</button>
+            <button onClick={() => navTo(onLogin)} style={{
+              width:'100%', padding:'14px', borderRadius:12,
+              border:'1.5px solid rgba(255,255,255,0.18)',
+              background:'rgba(255,255,255,0.04)', color:'#fff',
+              fontWeight:600, fontSize:14, cursor:'pointer',
+            }}>Sign in</button>
           </div>
         </div>
       )}
@@ -221,11 +232,15 @@ export default function Home() {
     }
   };
 
+  // Sign-up always goes to /register; route guard there will bounce already-
+  // signed-in users to dashboard so they can sign out first.
+  const goRegister = () => { router.push('/register'); };
+
   const goPricing = () => { router.push('/pricing'); };
 
   return (
     <div style={{ fontFamily:'var(--font-sans)', background:'#08060F', minHeight:'100vh', color:'#fff', overflowX:'hidden' }}>
-      <NavBar onLogin={goLogin} isMobile={isMobile} onPricing={goPricing} />
+      <NavBar onLogin={goLogin} onRegister={goRegister} isMobile={isMobile} onPricing={goPricing} />
 
       {/* Hero */}
       <section style={{
@@ -259,27 +274,32 @@ export default function Home() {
             Focus on your passion — ManchQ handles the rest. Schedules, students, recitals — no spreadsheets, no WhatsApp chaos, just freedom to dance.
           </p>
           <div style={{ display:'flex', flexDirection: isMobile ? 'column' : 'row', gap:12, justifyContent:'center', alignItems:'center' }}>
-            <button onClick={goLogin} style={{
+            <button onClick={goRegister} style={{
               padding: isMobile ? '15px 32px' : '16px 36px',
               width: isMobile ? '100%' : 'auto', maxWidth: isMobile ? 320 : 'none',
               borderRadius:14, border:'none', background:BTN_GRAD, color:'#fff',
               fontWeight:800, fontSize: isMobile ? 16 : 17, cursor:'pointer',
               boxShadow:'0 4px 28px rgba(124,58,237,0.50)', display:'flex', alignItems:'center', justifyContent:'center', gap:8,
             }}>
-              Try ManchQ free <Icon paths={IC.arrow} size={16} stroke="#fff" sw={2} />
+              Register your studio <Icon paths={IC.arrow} size={16} stroke="#fff" sw={2} />
             </button>
-            <button onClick={() => scrollToSection('features')} style={{
+            <button onClick={goLogin} style={{
               padding: isMobile ? '14px 32px' : '16px 32px',
               width: isMobile ? '100%' : 'auto', maxWidth: isMobile ? 320 : 'none',
-              borderRadius:14, border:'1.5px solid rgba(255,255,255,0.12)',
-              background:'rgba(255,255,255,0.04)', color:'#D1D5DB', fontWeight:700, fontSize:15,
+              borderRadius:14, border:'1.5px solid rgba(255,255,255,0.18)',
+              background:'rgba(255,255,255,0.06)', color:'#fff', fontWeight:700, fontSize:15,
               cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
               backdropFilter:'blur(8px)', boxSizing:'border-box',
             }}>
+              Sign in
+            </button>
+          </div>
+          <div style={{ marginTop:14, display:'flex', justifyContent:'center' }}>
+            <button onClick={() => scrollToSection('features')} style={{ background:'none', border:'none', color:'#9CA3AF', fontSize:13, cursor:'pointer', padding:'6px 12px' }}>
               See what's inside ↓
             </button>
           </div>
-          <div style={{ marginTop:16, fontSize:13, color:'#9CA3AF' }}>No credit card required to start. Set up in minutes</div>
+          <div style={{ marginTop:8, fontSize:13, color:'#9CA3AF' }}>No credit card required · Set up in minutes</div>
         </div>
         {!isMobile && (
           <div style={{ position:'relative', zIndex:2, display:'flex', gap:64, marginTop:88, flexWrap:'wrap', justifyContent:'center' }}>
@@ -495,15 +515,26 @@ export default function Home() {
             <span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>More dance.</span>
           </h2>
           <p style={{ fontSize: isMobile ? 15 : 17, color:'#6B7280', margin:'0 0 36px', lineHeight:1.75 }}>Everything your studio needs. None of what it doesn't.</p>
-          <button onClick={goLogin} style={{
-            padding: isMobile ? '16px 36px' : '18px 48px',
-            width: isMobile ? '100%' : 'auto', maxWidth: isMobile ? 320 : 'none',
-            borderRadius:16, border:'none', background:BTN_GRAD, color:'#fff',
-            fontWeight:900, fontSize: isMobile ? 16 : 18, cursor:'pointer',
-            boxShadow:'0 4px 32px rgba(124,58,237,0.60)', letterSpacing:'.02em',
-          }}>
-            Get started with ManchQ →
-          </button>
+          <div style={{ display:'flex', flexDirection: isMobile ? 'column' : 'row', gap:12, justifyContent:'center', alignItems:'center' }}>
+            <button onClick={goRegister} style={{
+              padding: isMobile ? '16px 36px' : '18px 48px',
+              width: isMobile ? '100%' : 'auto', maxWidth: isMobile ? 320 : 'none',
+              borderRadius:16, border:'none', background:BTN_GRAD, color:'#fff',
+              fontWeight:900, fontSize: isMobile ? 16 : 18, cursor:'pointer',
+              boxShadow:'0 4px 32px rgba(124,58,237,0.60)', letterSpacing:'.02em',
+            }}>
+              Register your studio →
+            </button>
+            <button onClick={goLogin} style={{
+              padding: isMobile ? '14px 32px' : '16px 36px',
+              width: isMobile ? '100%' : 'auto', maxWidth: isMobile ? 320 : 'none',
+              borderRadius:16, border:'1.5px solid rgba(255,255,255,0.18)',
+              background:'rgba(255,255,255,0.06)', color:'#fff', fontWeight:700, fontSize: isMobile ? 15 : 16,
+              cursor:'pointer',
+            }}>
+              Sign in
+            </button>
+          </div>
           <div style={{ marginTop:18, fontSize:13, color:'#9CA3AF' }}>No credit card required · Set up in minutes</div>
         </div>
       </section>
