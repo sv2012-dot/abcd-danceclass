@@ -22,6 +22,7 @@ import { redirectToDashboard } from '@/lib/redirectToDashboard';
 import GoogleSignIn from '@/components/GoogleSignIn';
 import RegisterCarousel from '@/components/RegisterCarousel';
 import Confetti from '@/components/Confetti';
+import AuthBackground from '@/components/AuthBackground';
 
 const PURPLE = '#7C3AED';
 const MAGENTA = '#DC4EFF';
@@ -226,7 +227,7 @@ function RegisterForm() {
       redirectToDashboard(router);
     };
     return (
-      <BackgroundFrame>
+      <AuthBackground>
         <Confetti pieces={90} durationSec={5} />
         <div style={{
           width: '100%',
@@ -277,14 +278,14 @@ function RegisterForm() {
             Enter your studio →
           </button>
         </div>
-      </BackgroundFrame>
+      </AuthBackground>
     );
   }
 
   // ── Magic-link sent state ────────────────────────────────────────────
   if (linkSentTo) {
     return (
-      <BackgroundFrame>
+      <AuthBackground>
         <Confetti pieces={90} durationSec={5} />
         <div style={{
           width: '100%',
@@ -322,7 +323,7 @@ function RegisterForm() {
             ← Back to sign-in
           </button>
         </div>
-      </BackgroundFrame>
+      </AuthBackground>
     );
   }
 
@@ -503,7 +504,7 @@ function RegisterForm() {
 
   // ── Layout — island on dynamic video background ──────────────────────
   return (
-    <BackgroundFrame>
+    <AuthBackground>
       {/* Top bar */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <button onClick={() => router.push('/')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -596,51 +597,11 @@ function RegisterForm() {
           </div>
         </div>
       )}
-    </BackgroundFrame>
+    </AuthBackground>
   );
 }
 
 // ── Dynamic video background wrapper ─────────────────────────────────────
-function BackgroundFrame({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{
-      position: 'relative',
-      minHeight: '100vh',
-      width: '100%',
-      overflow: 'hidden',
-      background: '#08060F',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px 20px',
-      boxSizing: 'border-box',
-    }}>
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        aria-hidden
-        style={{
-          position: 'absolute', inset: 0, width: '100%', height: '100%',
-          // Heavier blur so the video reads as soft, abstract texture.
-          // scale prevents the blurred edges from leaking past the viewport.
-          objectFit: 'cover', filter: 'blur(14px)', transform: 'scale(1.1)', zIndex: 0,
-        }}
-      >
-        <source src="/manchq-hero-bg-long.mp4" type="video/mp4" />
-      </video>
-      {/* Darker overlay so the island pops more — roughly 2x the prior darkness */}
-      <div aria-hidden style={{
-        position: 'absolute', inset: 0, zIndex: 1,
-        background: 'linear-gradient(to bottom, rgba(8,6,15,0.94) 0%, rgba(8,6,15,0.80) 30%, rgba(8,6,15,0.80) 70%, rgba(8,6,15,0.96) 100%)',
-        pointerEvents: 'none',
-      }} />
-      {children}
-    </div>
-  );
-}
-
 export default function RegisterPage() {
   return (
     <Suspense fallback={

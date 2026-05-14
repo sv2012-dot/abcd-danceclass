@@ -1,14 +1,25 @@
 'use client';
 
+// /login — sign in to an existing studio.
+// Layout mirrors /register: video background + rounded island card,
+// just single-column (no carousel since the user is returning, not learning).
+//
+// Welcome-back microcopy reminds users to use the same auth method they
+// chose at signup (Google or email). No password ever.
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import GoogleSignIn from '@/components/GoogleSignIn';
+import AuthBackground from '@/components/AuthBackground';
 import toast from 'react-hot-toast';
 import { redirectToDashboard } from '@/lib/redirectToDashboard';
 import { auth } from '@/lib/api';
 
-// Placeholder-as-label input — matches the /register page pattern.
+const PURPLE = '#7C3AED';
+const MAGENTA = '#DC4EFF';
+const GRAD = `linear-gradient(135deg, ${PURPLE} 0%, ${MAGENTA} 100%)`;
+
 const inputStyle: React.CSSProperties = {
   width: '100%',
   background: 'var(--surface)',
@@ -62,127 +73,125 @@ export default function LoginPage() {
     }
   };
 
-  // Sizes tuned so the whole page fits inside a 640px-tall mobile viewport
-  // without scrolling — small logo, compact card, no superfluous lines.
-  const logoSize = isMobile ? 56 : 76;
-  const headerMargin = isMobile ? 18 : 28;
-  const cardPadding = isMobile ? 22 : 30;
-  const titleSize = isMobile ? 18 : 20;
+  // Mobile-safe sizing — fits in a 640px-tall viewport without scroll.
+  const cardPadding = isMobile ? '28px 22px 26px' : '40px 44px 32px';
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#000',
-      padding: isMobile ? '16px 18px' : 20,
-      boxSizing: 'border-box',
-    }}>
-      <div style={{ width: '100%', maxWidth: 400 }}>
-        {/* Header — compact on mobile */}
-        <div style={{ textAlign: 'center', marginBottom: headerMargin }}>
-          <div style={{ marginBottom: isMobile ? 8 : 12, display: 'flex', justifyContent: 'center' }}>
+    <AuthBackground>
+      {/* Island */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 4,
+          width: '100%',
+          maxWidth: 460,
+          background: 'var(--card)',
+          borderRadius: 20,
+          padding: cardPadding,
+          boxSizing: 'border-box',
+          boxShadow: '0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)',
+        }}
+      >
+        {/* Header — logo + wordmark */}
+        <div style={{ textAlign: 'center', marginBottom: 18 }}>
+          <button
+            onClick={() => router.push('/')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, borderRadius: '50%', display: 'inline-flex', marginBottom: 10 }}
+            title="Go to homepage"
+          >
+            <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ width: isMobile ? 54 : 64, height: isMobile ? 54 : 64, borderRadius: '50%', display: 'block' }} />
+          </button>
+          <h1 style={{ fontFamily: 'var(--font-d)', fontSize: isMobile ? 22 : 24, color: 'var(--text)', margin: 0, letterSpacing: '-0.5px' }}>ManchQ</h1>
+        </div>
+
+        {linkSent ? (
+          <div style={{ textAlign: 'center', padding: '4px 0' }}>
+            <div style={{ fontSize: 38, marginBottom: 10 }}>✉️</div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: 'var(--text)' }}>Check your inbox</h2>
+            <p style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 16 }}>
+              We sent a sign-in link to <strong style={{ color: 'var(--text)' }}>{email}</strong>. It expires in 15 minutes.
+            </p>
             <button
-              onClick={() => router.push('/')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, borderRadius: '50%', display: 'flex' }}
-              title="Go to homepage"
+              onClick={() => { setLinkSent(false); setEmail(''); }}
+              style={{ background: 'none', border: 'none', color: '#6a7fdb', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
             >
-              <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ width: logoSize, height: logoSize, borderRadius: '50%', display: 'block' }} />
+              ← Use a different email
             </button>
-          </div>
-          <h1 style={{ fontFamily: 'var(--font-d)', fontSize: isMobile ? 22 : 26, color: '#fff', margin: 0, letterSpacing: '-0.5px' }}>ManchQ</h1>
-        </div>
-
-        {/* Card */}
-        <div style={{ background: 'var(--card)', borderRadius: 16, padding: cardPadding, boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }}>
-          {linkSent ? (
-            <div style={{ textAlign: 'center', padding: '6px 0' }}>
-              <div style={{ fontSize: 36, marginBottom: 10 }}>✉️</div>
-              <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6, color: 'var(--text)' }}>Check your inbox</h2>
-              <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.55, marginBottom: 14 }}>
-                We sent a sign-in link to <strong style={{ color: 'var(--text)' }}>{email}</strong>. It expires in 15 minutes.
-              </p>
-              <button
-                onClick={() => { setLinkSent(false); setEmail(''); }}
-                style={{ background: 'none', border: 'none', color: '#6a7fdb', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
-              >
-                ← Use a different email
-              </button>
-              <div style={{ marginTop: 16, padding: '10px 12px', background: 'var(--surface)', borderRadius: 9, fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.55, textAlign: 'left' }}>
-                <strong style={{ color: 'var(--text)' }}>Didn't get it?</strong> Check spam or
-                {' '}<a href="mailto:support@manchq.com" style={{ color: '#6a7fdb' }}>email support</a>.
-              </div>
+            <div style={{ marginTop: 18, padding: '10px 12px', background: 'var(--surface)', borderRadius: 9, fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.55, textAlign: 'left' }}>
+              <strong style={{ color: 'var(--text)' }}>Didn't get it?</strong> Check spam or
+              {' '}<a href="mailto:support@manchq.com" style={{ color: '#6a7fdb' }}>email support</a>.
             </div>
-          ) : (
-            <>
-              <h2 style={{ fontSize: titleSize, fontWeight: 700, margin: '0 0 14px', color: 'var(--text)', textAlign: 'center' }}>
-                Sign in to ManchQ
-              </h2>
+          </div>
+        ) : (
+          <>
+            <h2 style={{ fontSize: isMobile ? 19 : 20, fontWeight: 700, margin: '0 0 8px', color: 'var(--text)', textAlign: 'center' }}>
+              Sign in to ManchQ
+            </h2>
+            {/* Welcome-back — reminds users to use the same option they chose at signup */}
+            <p style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55, margin: '0 0 22px', textAlign: 'center' }}>
+              Welcome back to ManchQ! Use the same option — Google or email — you picked at signup to enter your studio.
+            </p>
 
-              {/* Google */}
-              <GoogleSignIn />
-              <p style={{ fontSize: 11.5, color: 'var(--muted)', margin: '6px 0 0', textAlign: 'center' }}>
-                Fastest way back in.
-              </p>
+            {/* Google */}
+            <GoogleSignIn />
 
-              {/* Divider */}
-              <div style={{ display: 'flex', alignItems: 'center', margin: '14px 0', gap: 12 }}>
-                <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
-                <span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.08em' }}>Or</span>
-                <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
-              </div>
+            {/* Divider */}
+            <div style={{ display: 'flex', alignItems: 'center', margin: '18px 0', gap: 12 }}>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+              <span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.08em' }}>Or</span>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+            </div>
 
-              {/* Email — placeholder-as-label, matches /register */}
-              <form onSubmit={handleMagicLink}>
-                <input
-                  type="email"
-                  required
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email *"
-                  aria-label="Email"
-                  style={inputStyle}
-                />
-                <button
-                  type="submit"
-                  disabled={loading || !email.trim()}
-                  style={{
-                    width: '100%',
-                    marginTop: 10,
-                    padding: '13px',
-                    background: loading || !email.trim() ? '#555' : '#111',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 10,
-                    fontSize: 14,
-                    fontWeight: 700,
-                    cursor: loading || !email.trim() ? 'not-allowed' : 'pointer',
-                    letterSpacing: '0.01em',
-                  }}
-                >
-                  {loading ? 'Sending link…' : 'Email me a sign-in link'}
-                </button>
-                <p style={{ fontSize: 11.5, color: 'var(--muted)', margin: '8px 0 0', textAlign: 'center' }}>
-                  No password &mdash; we'll send a one-time link.
-                </p>
-              </form>
+            {/* No-password hint — moved here, above the email field */}
+            <p style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center', margin: '0 0 14px' }}>
+              No password &mdash; we'll send a one-time link.
+            </p>
 
-              {/* Register link */}
-              <div style={{ marginTop: 16, textAlign: 'center', fontSize: 13, color: 'var(--muted)' }}>
-                New to ManchQ?{' '}
-                <button
-                  onClick={() => router.push('/register')}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6a7fdb', fontWeight: 700, padding: 0, textDecoration: 'underline' }}
-                >
-                  Register your studio →
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+            <form onSubmit={handleMagicLink}>
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email *"
+                aria-label="Email"
+                style={inputStyle}
+              />
+              <button
+                type="submit"
+                disabled={loading || !email.trim()}
+                style={{
+                  width: '100%',
+                  marginTop: 12,
+                  padding: '13px',
+                  background: loading || !email.trim() ? '#555' : '#111',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 10,
+                  fontSize: 14.5,
+                  fontWeight: 700,
+                  cursor: loading || !email.trim() ? 'not-allowed' : 'pointer',
+                  letterSpacing: '0.01em',
+                }}
+              >
+                {loading ? 'Sending link…' : 'Email me a sign-in link'}
+              </button>
+            </form>
+
+            {/* Register link — smaller, no arrow */}
+            <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: 'var(--muted)' }}>
+              New to ManchQ?{' '}
+              <button
+                onClick={() => router.push('/register')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6a7fdb', fontWeight: 700, padding: 0, textDecoration: 'underline', fontSize: 12 }}
+              >
+                Register your studio
+              </button>
+            </div>
+          </>
+        )}
       </div>
-    </div>
+    </AuthBackground>
   );
 }
