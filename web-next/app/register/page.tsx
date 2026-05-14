@@ -242,11 +242,11 @@ function RegisterForm() {
   // ── Form column ──────────────────────────────────────────────────────
   const formColumn = (
     <div style={{ width: '100%', padding: isMobile ? '24px 22px 28px' : '44px 48px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px', letterSpacing: '-0.5px' }}>
-        Get started with ManchQ
+      <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
+        Ready to Transform Your Studio?
       </h1>
-      <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
-        30-day free trial · No credit card · Cancel anytime
+      <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 22px', lineHeight: 1.55 }}>
+        Step into your new digital home for seamless management.
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -535,14 +535,16 @@ function BackgroundFrame({ children }: { children: React.ReactNode }) {
         aria-hidden
         style={{
           position: 'absolute', inset: 0, width: '100%', height: '100%',
-          objectFit: 'cover', filter: 'blur(3px)', transform: 'scale(1.04)', zIndex: 0,
+          // Doubled blur from 3px → 6px so the video reads as ambient texture
+          objectFit: 'cover', filter: 'blur(6px)', transform: 'scale(1.06)', zIndex: 0,
         }}
       >
         <source src="/manchq-hero-bg-long.mp4" type="video/mp4" />
       </video>
+      {/* Darker overlay so the island pops more — roughly 2x the prior darkness */}
       <div aria-hidden style={{
         position: 'absolute', inset: 0, zIndex: 1,
-        background: 'linear-gradient(to bottom, rgba(8,6,15,0.86) 0%, rgba(8,6,15,0.58) 30%, rgba(8,6,15,0.58) 70%, rgba(8,6,15,0.92) 100%)',
+        background: 'linear-gradient(to bottom, rgba(8,6,15,0.94) 0%, rgba(8,6,15,0.80) 30%, rgba(8,6,15,0.80) 70%, rgba(8,6,15,0.96) 100%)',
         pointerEvents: 'none',
       }} />
       {children}
