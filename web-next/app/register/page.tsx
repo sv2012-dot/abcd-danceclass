@@ -424,12 +424,49 @@ function RegisterForm() {
             Manch<span style={{ background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Q</span>
           </span>
         </button>
-        <button
-          onClick={() => router.push('/login')}
-          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: 13, fontWeight: 600, padding: '7px 16px', borderRadius: 8, cursor: 'pointer', backdropFilter: 'blur(8px)' }}
-        >
-          Sign in
-        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            onClick={() => router.push('/login')}
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: 13, fontWeight: 600, padding: '7px 16px', borderRadius: 8, cursor: 'pointer', backdropFilter: 'blur(8px)' }}
+          >
+            Sign in
+          </button>
+
+          {/* Easy cancel — escape hatch back to homepage */}
+          <button
+            onClick={() => router.push('/')}
+            aria-label="Cancel and go back to homepage"
+            title="Cancel"
+            style={{
+              width: 36, height: 36,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: 10,
+              color: '#fff',
+              cursor: 'pointer',
+              backdropFilter: 'blur(8px)',
+              transition: 'background .15s, border-color .15s, transform .12s',
+              padding: 0,
+            }}
+            onMouseEnter={e => {
+              const el = e.currentTarget as HTMLElement;
+              el.style.background = 'rgba(255,255,255,0.14)';
+              el.style.borderColor = 'rgba(255,255,255,0.32)';
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget as HTMLElement;
+              el.style.background = 'rgba(255,255,255,0.06)';
+              el.style.borderColor = 'rgba(255,255,255,0.18)';
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* The unified island */}
