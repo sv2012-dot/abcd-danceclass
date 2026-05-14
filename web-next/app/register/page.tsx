@@ -26,26 +26,20 @@ const PURPLE = '#7C3AED';
 const MAGENTA = '#DC4EFF';
 const GRAD = `linear-gradient(135deg, ${PURPLE} 0%, ${MAGENTA} 100%)`;
 
+// Placeholder-as-label inputs: the field name sits inside the input by default
+// and vanishes as soon as the user starts typing. No external <label> element.
 const inputStyle: React.CSSProperties = {
   width: '100%',
   background: 'var(--surface)',
   border: '1.5px solid var(--border)',
   borderRadius: 10,
-  padding: '12px 14px',
+  padding: '14px 16px',
   fontSize: 15,
+  fontWeight: 500,
   color: 'var(--text)',
   boxSizing: 'border-box',
   outline: 'none',
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: '0.06em',
-  textTransform: 'uppercase',
-  color: 'var(--muted)',
-  marginBottom: 6,
+  transition: 'border-color .15s, box-shadow .15s',
 };
 
 function useIsMobile(bp = 900) {
@@ -242,59 +236,51 @@ function RegisterForm() {
   // ── Form column ──────────────────────────────────────────────────────
   const formColumn = (
     <div style={{ width: '100%', padding: isMobile ? '24px 22px 28px' : '44px 48px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
+      <h1 style={{ fontSize: isMobile ? 26 : 34, fontWeight: 800, color: 'var(--text)', margin: '0 0 8px', letterSpacing: '-0.7px', lineHeight: 1.15 }}>
         Ready to Transform Your Studio?
       </h1>
-      <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 22px', lineHeight: 1.55 }}>
+      <p style={{ fontSize: isMobile ? 13 : 14, color: 'var(--muted)', margin: '0 0 24px', lineHeight: 1.55 }}>
         Step into your new digital home for seamless management.
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div>
-          <label style={labelStyle}>Owner name *</label>
-          <input
-            type="text"
-            value={form.ownerName}
-            onChange={e => setForm({ ...form, ownerName: e.target.value })}
-            placeholder="Your full name"
-            disabled={submitting}
-            style={inputStyle}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>Studio name *</label>
-          <input
-            type="text"
-            value={form.schoolName}
-            onChange={e => setForm({ ...form, schoolName: e.target.value })}
-            placeholder="e.g. Bloom Dance Academy"
-            disabled={submitting}
-            style={inputStyle}
-          />
-        </div>
+        <input
+          type="text"
+          value={form.schoolName}
+          onChange={e => setForm({ ...form, schoolName: e.target.value })}
+          placeholder="Studio name *"
+          aria-label="Studio name"
+          disabled={submitting}
+          style={inputStyle}
+        />
+        <input
+          type="text"
+          value={form.ownerName}
+          onChange={e => setForm({ ...form, ownerName: e.target.value })}
+          placeholder="Owner name *"
+          aria-label="Owner name"
+          disabled={submitting}
+          style={inputStyle}
+        />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div>
-            <label style={labelStyle}>City</label>
-            <input
-              type="text"
-              value={form.city}
-              onChange={e => setForm({ ...form, city: e.target.value })}
-              placeholder="Seattle"
-              disabled={submitting}
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>Dance style</label>
-            <input
-              type="text"
-              value={form.danceStyle}
-              onChange={e => setForm({ ...form, danceStyle: e.target.value })}
-              placeholder="Contemporary"
-              disabled={submitting}
-              style={inputStyle}
-            />
-          </div>
+          <input
+            type="text"
+            value={form.city}
+            onChange={e => setForm({ ...form, city: e.target.value })}
+            placeholder="City"
+            aria-label="City"
+            disabled={submitting}
+            style={inputStyle}
+          />
+          <input
+            type="text"
+            value={form.danceStyle}
+            onChange={e => setForm({ ...form, danceStyle: e.target.value })}
+            placeholder="Dance style"
+            aria-label="Dance style"
+            disabled={submitting}
+            style={inputStyle}
+          />
         </div>
 
         {/* Terms */}
@@ -362,15 +348,16 @@ function RegisterForm() {
         </button>
       ) : (
         <form onSubmit={handleEmailSubmit} style={{ marginTop: 12 }}>
-          <label style={labelStyle}>Your email</label>
           <input
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="you@example.com"
+            placeholder="Your email *"
+            aria-label="Email"
             disabled={submitting}
             required
             style={inputStyle}
+            autoFocus
           />
           <button
             type="submit"
@@ -424,49 +411,12 @@ function RegisterForm() {
             Manch<span style={{ background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Q</span>
           </span>
         </button>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button
-            onClick={() => router.push('/login')}
-            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: 13, fontWeight: 600, padding: '7px 16px', borderRadius: 8, cursor: 'pointer', backdropFilter: 'blur(8px)' }}
-          >
-            Sign in
-          </button>
-
-          {/* Easy cancel — escape hatch back to homepage */}
-          <button
-            onClick={() => router.push('/')}
-            aria-label="Cancel and go back to homepage"
-            title="Cancel"
-            style={{
-              width: 36, height: 36,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              borderRadius: 10,
-              color: '#fff',
-              cursor: 'pointer',
-              backdropFilter: 'blur(8px)',
-              transition: 'background .15s, border-color .15s, transform .12s',
-              padding: 0,
-            }}
-            onMouseEnter={e => {
-              const el = e.currentTarget as HTMLElement;
-              el.style.background = 'rgba(255,255,255,0.14)';
-              el.style.borderColor = 'rgba(255,255,255,0.32)';
-            }}
-            onMouseLeave={e => {
-              const el = e.currentTarget as HTMLElement;
-              el.style.background = 'rgba(255,255,255,0.06)';
-              el.style.borderColor = 'rgba(255,255,255,0.18)';
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
+        <button
+          onClick={() => router.push('/login')}
+          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: 13, fontWeight: 600, padding: '7px 16px', borderRadius: 8, cursor: 'pointer', backdropFilter: 'blur(8px)' }}
+        >
+          Sign in
+        </button>
       </div>
 
       {/* The unified island */}
@@ -572,8 +522,9 @@ function BackgroundFrame({ children }: { children: React.ReactNode }) {
         aria-hidden
         style={{
           position: 'absolute', inset: 0, width: '100%', height: '100%',
-          // Doubled blur from 3px → 6px so the video reads as ambient texture
-          objectFit: 'cover', filter: 'blur(6px)', transform: 'scale(1.06)', zIndex: 0,
+          // Heavier blur so the video reads as soft, abstract texture.
+          // scale prevents the blurred edges from leaking past the viewport.
+          objectFit: 'cover', filter: 'blur(14px)', transform: 'scale(1.1)', zIndex: 0,
         }}
       >
         <source src="/manchq-hero-bg-long.mp4" type="video/mp4" />

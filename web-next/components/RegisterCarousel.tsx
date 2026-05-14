@@ -74,7 +74,7 @@ const SLIDES: Slide[] = [
       'M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
       'M3 8h6M3 12h4M3 16h5',
     ],
-    title: 'One-tap attendance',
+    title: 'Smart Attendance',
     body: 'Mark a whole class present in a single tap. Swipe individuals as exceptions.',
   },
   {
@@ -192,14 +192,17 @@ export default function RegisterCarousel({ compact = false }: { compact?: boolea
             <LineIcon paths={slide.iconPaths} size={compact ? 28 : 38} color="#fff" sw={1.5} />
           </div>
 
-          {/* Title — white, large (2x previous size) */}
+          {/* Title — white, large, single-line */}
           <h3 style={{
-            fontSize: compact ? 40 : 56,
+            fontSize: compact ? 32 : 44,
             fontWeight: 800,
             margin: '0 0 14px',
-            letterSpacing: '-1px',
+            letterSpacing: '-0.6px',
             color: '#fff',
-            lineHeight: 1.05,
+            lineHeight: 1.1,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}>
             {slide.title}
           </h3>
