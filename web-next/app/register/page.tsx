@@ -1,12 +1,18 @@
 'use client';
 
 // /register — sign up a new studio.
-// Layout: carousel left, form right on desktop. Compact carousel on top, form below on mobile.
-// Auth options: Google (primary CTA) + email fallback ("or use email instead").
+// Layout: one rounded "island" card centered on a dynamic video background.
+// The island splits internally into two columns:
+//   - Left  (desktop) / top   (mobile): carousel
+//   - Right (desktop) / below (mobile): form + Google CTA + email fallback
+//
+// Auth options:
+//   - "Sign up with Google →" (primary CTA — disabled until form + terms are complete)
+//   - "or use email instead" (secondary button — also disabled until form + terms are complete)
 //
 // Confirmation flow: if the resolved email already has a ManchQ account,
 // backend returns { existing_user: true, schools: [...] } and the page shows
-// a confirm dialog: "Create new anyway" / "Sign in to existing studios".
+// an explicit modal — "Create new anyway" or "Sign in to existing studios".
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -30,6 +36,16 @@ const inputStyle: React.CSSProperties = {
   color: 'var(--text)',
   boxSizing: 'border-box',
   outline: 'none',
+};
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  color: 'var(--muted)',
+  marginBottom: 6,
 };
 
 function useIsMobile(bp = 900) {
@@ -69,7 +85,6 @@ function RegisterForm() {
 
   // Existing-user confirm modal
   const [existing, setExisting] = useState<ExistingPrompt | null>(null);
-  // Last submitted payload, so "Create new anyway" can re-submit with acknowledge_existing=true
   const [pendingPayload, setPendingPayload] = useState<any | null>(null);
 
   // Post-email-signup "check inbox" state
@@ -94,12 +109,16 @@ function RegisterForm() {
 
   const apiUrl = (process.env.NEXT_PUBLIC_API_URL?.trim()) || 'http://localhost:5000/api';
 
-  function validate(): string | null {
-    if (!form.ownerName.trim()) return 'Owner name is required.';
-    if (!form.schoolName.trim()) return 'Studio name is required.';
-    if (!agreeToTerms) return 'You must agree to the Terms and Privacy Policy.';
-    return null;
-  }
+  // Required fields for either auth path: owner name, studio name, terms.
+  // City + Dance style stay optional. Email is required only for the email path.
+  const baseFormComplete =
+    form.ownerName.trim().length > 0 &&
+    form.schoolName.trim().length > 0 &&
+    agreeToTerms;
+
+  const disabledTitle = !agreeToTerms
+    ? 'Agree to the Terms and Privacy Policy to continue'
+    : 'Fill in your name and studio name to continue';
 
   async function submitRegister(payload: any) {
     setSubmitting(true);
@@ -119,9 +138,7 @@ function RegisterForm() {
         return;
       }
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Registration failed.');
-      }
+      if (!res.ok) throw new Error(data.error || 'Registration failed.');
 
       // Google path → JWT or chooser
       if (data.requires_choice && data.chooser_token) {
@@ -142,8 +159,6 @@ function RegisterForm() {
         redirectToDashboard(router);
         return;
       }
-
-      // Email path → magic-link sent, show "check inbox"
       if (data.magic_link_sent) {
         setLinkSentTo(data.email);
         return;
@@ -158,8 +173,7 @@ function RegisterForm() {
   }
 
   function handleGoogleToken(token: string) {
-    const err = validate();
-    if (err) { toast.error(err); return; }
+    if (!baseFormComplete) { toast.error(disabledTitle); return; }
     submitRegister({
       ownerName: form.ownerName.trim(),
       schoolName: form.schoolName.trim(),
@@ -171,8 +185,7 @@ function RegisterForm() {
 
   function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const err = validate();
-    if (err) { toast.error(err); return; }
+    if (!baseFormComplete) { toast.error(disabledTitle); return; }
     if (!email.trim() || !email.includes('@')) {
       toast.error('Please enter a valid email.');
       return;
@@ -200,8 +213,8 @@ function RegisterForm() {
   // ── Magic-link sent state ────────────────────────────────────────────
   if (linkSentTo) {
     return (
-      <div style={{ minHeight: '100vh', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-        <div style={{ width: '100%', maxWidth: 440, background: 'var(--card)', borderRadius: 16, padding: 36, textAlign: 'center', boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }}>
+      <BackgroundFrame>
+        <div style={{ width: '100%', maxWidth: 440, background: 'var(--card)', borderRadius: 16, padding: 36, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.45)' }}>
           <div style={{ fontSize: 40, marginBottom: 14 }}>✉️</div>
           <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', margin: '0 0 8px' }}>Studio created!</h2>
           <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 22px' }}>
@@ -214,7 +227,7 @@ function RegisterForm() {
             ← Back to sign-in
           </button>
         </div>
-      </div>
+      </BackgroundFrame>
     );
   }
 
@@ -226,155 +239,185 @@ function RegisterForm() {
     );
   }
 
-  // ── Form column (used in both layouts) ───────────────────────────────
+  // ── Form column ──────────────────────────────────────────────────────
   const formColumn = (
-    <div style={{ width: '100%', padding: isMobile ? '24px 20px 32px' : '48px 56px' }}>
-      <div style={{ maxWidth: 420, margin: '0 auto' }}>
-        <h1 style={{ fontSize: isMobile ? 24 : 28, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px', letterSpacing: '-0.5px' }}>
-          Start your studio in 60 seconds
-        </h1>
-        <p style={{ fontSize: 14, color: 'var(--muted)', margin: '0 0 24px', lineHeight: 1.5 }}>
-          30-day free trial · No credit card · Cancel anytime
-        </p>
+    <div style={{ width: '100%', padding: isMobile ? '24px 22px 28px' : '44px 48px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px', letterSpacing: '-0.5px' }}>
+        Get started with ManchQ
+      </h1>
+      <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
+        30-day free trial · No credit card · Cancel anytime
+      </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <label style={labelStyle}>Owner name *</label>
-            <input
-              type="text"
-              value={form.ownerName}
-              onChange={e => setForm({ ...form, ownerName: e.target.value })}
-              placeholder="Your full name"
-              disabled={submitting}
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>Studio name *</label>
-            <input
-              type="text"
-              value={form.schoolName}
-              onChange={e => setForm({ ...form, schoolName: e.target.value })}
-              placeholder="e.g. Bloom Dance Academy"
-              disabled={submitting}
-              style={inputStyle}
-            />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div>
-              <label style={labelStyle}>City</label>
-              <input
-                type="text"
-                value={form.city}
-                onChange={e => setForm({ ...form, city: e.target.value })}
-                placeholder="Seattle"
-                disabled={submitting}
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Dance style</label>
-              <input
-                type="text"
-                value={form.danceStyle}
-                onChange={e => setForm({ ...form, danceStyle: e.target.value })}
-                placeholder="Contemporary"
-                disabled={submitting}
-                style={inputStyle}
-              />
-            </div>
-          </div>
-
-          {/* Terms */}
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px', background: 'var(--surface)', borderRadius: 8, borderLeft: '3px solid var(--border)', cursor: submitting ? 'not-allowed' : 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={agreeToTerms}
-              onChange={e => setAgreeToTerms(e.target.checked)}
-              disabled={submitting}
-              style={{ width: 17, height: 17, marginTop: 2, flexShrink: 0, cursor: submitting ? 'not-allowed' : 'pointer' }}
-            />
-            <span style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.55, flex: 1 }}>
-              I agree to ManchQ's{' '}
-              <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#7C3AED', textDecoration: 'none', fontWeight: 600 }}>Terms</a>
-              {' '}and{' '}
-              <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#7C3AED', textDecoration: 'none', fontWeight: 600 }}>Privacy Policy</a>
-            </span>
-          </label>
-        </div>
-
-        {/* Google primary CTA */}
-        <div style={{ marginTop: 18 }}>
-          <GoogleSignIn
-            mode="register"
-            label="Sign up with Google →"
-            onToken={handleGoogleToken}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div>
+          <label style={labelStyle}>Owner name *</label>
+          <input
+            type="text"
+            value={form.ownerName}
+            onChange={e => setForm({ ...form, ownerName: e.target.value })}
+            placeholder="Your full name"
+            disabled={submitting}
+            style={inputStyle}
           />
         </div>
-
-        {/* Email fallback */}
-        {!showEmail ? (
-          <div style={{ textAlign: 'center', marginTop: 14 }}>
-            <button
-              type="button"
-              onClick={() => setShowEmail(true)}
-              style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 13, cursor: 'pointer', padding: 6, textDecoration: 'underline' }}
-            >
-              or use email instead
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleEmailSubmit} style={{ marginTop: 16 }}>
-            <label style={labelStyle}>Your email</label>
+        <div>
+          <label style={labelStyle}>Studio name *</label>
+          <input
+            type="text"
+            value={form.schoolName}
+            onChange={e => setForm({ ...form, schoolName: e.target.value })}
+            placeholder="e.g. Bloom Dance Academy"
+            disabled={submitting}
+            style={inputStyle}
+          />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div>
+            <label style={labelStyle}>City</label>
             <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              type="text"
+              value={form.city}
+              onChange={e => setForm({ ...form, city: e.target.value })}
+              placeholder="Seattle"
               disabled={submitting}
-              required
               style={inputStyle}
             />
-            <button
-              type="submit"
+          </div>
+          <div>
+            <label style={labelStyle}>Dance style</label>
+            <input
+              type="text"
+              value={form.danceStyle}
+              onChange={e => setForm({ ...form, danceStyle: e.target.value })}
+              placeholder="Contemporary"
               disabled={submitting}
-              style={{
-                marginTop: 10,
-                width: '100%',
-                padding: '12px 14px',
-                background: submitting ? '#555' : '#111',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 10,
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: submitting ? 'wait' : 'pointer',
-              }}
-            >
-              {submitting ? 'Creating…' : 'Create studio & email me a link'}
-            </button>
-          </form>
-        )}
-
-        {/* Sign-in link */}
-        <div style={{ marginTop: 24, textAlign: 'center', fontSize: 13, color: 'var(--muted)' }}>
-          Already have an account?{' '}
-          <button
-            onClick={() => router.push('/login')}
-            style={{ background: 'none', border: 'none', color: '#6a7fdb', cursor: 'pointer', fontWeight: 700, padding: 0, textDecoration: 'underline' }}
-          >
-            Sign in here →
-          </button>
+              style={inputStyle}
+            />
+          </div>
         </div>
+
+        {/* Terms */}
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 12px', background: 'var(--surface)', borderRadius: 8, borderLeft: '3px solid var(--border)', cursor: submitting ? 'not-allowed' : 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={agreeToTerms}
+            onChange={e => setAgreeToTerms(e.target.checked)}
+            disabled={submitting}
+            style={{ width: 17, height: 17, marginTop: 2, flexShrink: 0, cursor: submitting ? 'not-allowed' : 'pointer' }}
+          />
+          <span style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.55, flex: 1 }}>
+            I agree to ManchQ's{' '}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#7C3AED', textDecoration: 'none', fontWeight: 600 }}>Terms</a>
+            {' '}and{' '}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#7C3AED', textDecoration: 'none', fontWeight: 600 }}>Privacy Policy</a>
+          </span>
+        </label>
+      </div>
+
+      {/* Google primary CTA */}
+      <div style={{ marginTop: 16 }}>
+        <GoogleSignIn
+          mode="register"
+          label="Sign up with Google →"
+          onToken={handleGoogleToken}
+          disabled={!baseFormComplete || submitting}
+          disabledTitle={disabledTitle}
+        />
+      </div>
+
+      {/* Email fallback — now a button (not a text link) */}
+      {!showEmail ? (
+        <button
+          type="button"
+          onClick={() => setShowEmail(true)}
+          disabled={!baseFormComplete || submitting}
+          title={!baseFormComplete ? disabledTitle : undefined}
+          style={{
+            marginTop: 10,
+            width: '100%',
+            padding: '11px 14px',
+            background: 'transparent',
+            border: '1.5px solid var(--border)',
+            borderRadius: 9,
+            fontSize: 14,
+            fontWeight: 600,
+            color: 'var(--text)',
+            cursor: (!baseFormComplete || submitting) ? 'not-allowed' : 'pointer',
+            opacity: (!baseFormComplete || submitting) ? 0.55 : 1,
+            transition: 'background .15s, border-color .15s, opacity .15s',
+          }}
+          onMouseEnter={e => {
+            if (baseFormComplete && !submitting) {
+              (e.currentTarget as HTMLElement).style.borderColor = PURPLE;
+              (e.currentTarget as HTMLElement).style.color = PURPLE;
+            }
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
+            (e.currentTarget as HTMLElement).style.color = 'var(--text)';
+          }}
+        >
+          or use email instead
+        </button>
+      ) : (
+        <form onSubmit={handleEmailSubmit} style={{ marginTop: 12 }}>
+          <label style={labelStyle}>Your email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            disabled={submitting}
+            required
+            style={inputStyle}
+          />
+          <button
+            type="submit"
+            disabled={!baseFormComplete || submitting || !email.trim()}
+            style={{
+              marginTop: 10,
+              width: '100%',
+              padding: '12px 14px',
+              background: (!baseFormComplete || submitting || !email.trim()) ? '#555' : '#111',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: (!baseFormComplete || submitting || !email.trim()) ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {submitting ? 'Creating…' : 'Create studio & email me a link'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowEmail(false)}
+            style={{ marginTop: 6, background: 'none', border: 'none', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', padding: 4 }}
+          >
+            ← Back to Google sign-up
+          </button>
+        </form>
+      )}
+
+      {/* Sign-in link */}
+      <div style={{ marginTop: 18, textAlign: 'center', fontSize: 13, color: 'var(--muted)' }}>
+        Already have an account?{' '}
+        <button
+          onClick={() => router.push('/login')}
+          style={{ background: 'none', border: 'none', color: '#6a7fdb', cursor: 'pointer', fontWeight: 700, padding: 0, textDecoration: 'underline' }}
+        >
+          Sign in →
+        </button>
       </div>
     </div>
   );
 
-  // ── Layout ────────────────────────────────────────────────────────────
+  // ── Layout — island on dynamic video background ──────────────────────
   return (
-    <div style={{ minHeight: '100vh', background: '#000', display: 'flex', flexDirection: 'column' }}>
-      {/* Top bar with logo + back-to-home */}
-      <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <BackgroundFrame>
+      {/* Top bar */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <button onClick={() => router.push('/')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
           <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ width: 28, height: 28, display: 'block' }} />
           <span style={{ fontWeight: 800, fontSize: 16, color: '#fff' }}>
@@ -383,20 +426,38 @@ function RegisterForm() {
         </button>
         <button
           onClick={() => router.push('/login')}
-          style={{ background: 'none', border: '1px solid rgba(255,255,255,0.18)', color: '#fff', fontSize: 13, fontWeight: 600, padding: '7px 16px', borderRadius: 8, cursor: 'pointer' }}
+          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: 13, fontWeight: 600, padding: '7px 16px', borderRadius: 8, cursor: 'pointer', backdropFilter: 'blur(8px)' }}
         >
           Sign in
         </button>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'stretch' }}>
-        {/* Left (or top on mobile): carousel */}
-        <div style={{ flex: isMobile ? 'none' : '0 0 44%', padding: isMobile ? '16px 16px 0' : '32px 24px 24px 56px', display: 'flex' }}>
-          <RegisterCarousel compact={isMobile} />
+      {/* The unified island */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 4,
+          width: '100%',
+          maxWidth: isMobile ? 480 : 1040,
+          margin: isMobile ? '70px auto 32px' : '0 auto',
+          background: 'var(--card)',
+          borderRadius: 20,
+          boxShadow: '0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: 'stretch',
+        }}
+      >
+        {/* Left / top: carousel */}
+        <div style={{ flex: isMobile ? 'none' : '0 0 44%', minHeight: isMobile ? 200 : 'auto', display: 'flex' }}>
+          <div style={{ flex: 1, display: 'flex' }}>
+            <RegisterCarousel compact={isMobile} />
+          </div>
         </div>
 
-        {/* Right (or below on mobile): form */}
-        <div style={{ flex: 1, background: 'var(--background)', display: 'flex', alignItems: 'center' }}>
+        {/* Right / bottom: form */}
+        <div style={{ flex: 1, display: 'flex', minWidth: 0 }}>
           {formColumn}
         </div>
       </div>
@@ -447,19 +508,47 @@ function RegisterForm() {
           </div>
         </div>
       )}
-    </div>
+    </BackgroundFrame>
   );
 }
 
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: '0.06em',
-  textTransform: 'uppercase',
-  color: 'var(--muted)',
-  marginBottom: 6,
-};
+// ── Dynamic video background wrapper ─────────────────────────────────────
+function BackgroundFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      position: 'relative',
+      minHeight: '100vh',
+      width: '100%',
+      overflow: 'hidden',
+      background: '#08060F',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px 20px',
+      boxSizing: 'border-box',
+    }}>
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        aria-hidden
+        style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover', filter: 'blur(3px)', transform: 'scale(1.04)', zIndex: 0,
+        }}
+      >
+        <source src="/manchq-hero-bg-long.mp4" type="video/mp4" />
+      </video>
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, zIndex: 1,
+        background: 'linear-gradient(to bottom, rgba(8,6,15,0.86) 0%, rgba(8,6,15,0.58) 30%, rgba(8,6,15,0.58) 70%, rgba(8,6,15,0.92) 100%)',
+        pointerEvents: 'none',
+      }} />
+      {children}
+    </div>
+  );
+}
 
 export default function RegisterPage() {
   return (

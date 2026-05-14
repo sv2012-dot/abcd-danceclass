@@ -24,9 +24,11 @@ type Props = {
   mode?: 'login' | 'register';
   onToken?: (accessToken: string, profile: { email: string; name: string; picture?: string }) => void;
   label?: string;
+  disabled?: boolean;          // when true, the button is non-interactive
+  disabledTitle?: string;      // tooltip explaining why
 };
 
-export default function GoogleSignIn({ mode = 'login', onToken, label }: Props = {}) {
+export default function GoogleSignIn({ mode = 'login', onToken, label, disabled = false, disabledTitle }: Props = {}) {
   const router = useRouter();
   const { setSession } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -112,10 +114,12 @@ export default function GoogleSignIn({ mode = 'login', onToken, label }: Props =
 
   const buttonLabel = label || (mode === 'register' ? 'Continue with Google' : 'Continue with Google');
 
+  const isDisabled = loading || disabled;
   return (
     <button
       onClick={() => login()}
-      disabled={loading}
+      disabled={isDisabled}
+      title={disabled && disabledTitle ? disabledTitle : undefined}
       style={{
         width: '100%',
         display: 'flex',
@@ -129,14 +133,14 @@ export default function GoogleSignIn({ mode = 'login', onToken, label }: Props =
         fontSize: 15,
         fontWeight: 600,
         color: '#3c4043',
-        cursor: loading ? 'not-allowed' : 'pointer',
-        opacity: loading ? 0.7 : 1,
+        cursor: isDisabled ? 'not-allowed' : 'pointer',
+        opacity: isDisabled ? 0.55 : 1,
         boxSizing: 'border-box',
-        transition: 'background .15s, border-color .15s, box-shadow .15s',
+        transition: 'background .15s, border-color .15s, box-shadow .15s, opacity .15s',
         letterSpacing: '0.01em',
       }}
       onMouseEnter={(e) => {
-        if (!loading) {
+        if (!isDisabled) {
           const target = e.currentTarget;
           target.style.background = '#f8f9fa';
           target.style.borderColor = '#c0c4c9';
