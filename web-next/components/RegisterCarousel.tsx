@@ -35,15 +35,15 @@ type Slide = {
 
 const SLIDES: Slide[] = [
   {
-    // 1. Free trial — leading hook
+    // 1. Free forever — leading hook
     iconPaths: [
       'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z',
     ],
-    title: 'Free for 30 days',
-    body: 'No credit card. Cancel anytime. Just $5.99/month per studio after.',
+    title: 'Free forever',
+    body: 'Free base plan forever. Pro is free for 30 days — no credit card. Just $5.99/month per studio after that.',
   },
   {
-    // 2. Smart Add — wand / sparkle
+    // 2. Smart Features — wand / sparkle
     iconPaths: [
       'M12 3v3',
       'M12 18v3',
@@ -55,37 +55,38 @@ const SLIDES: Slide[] = [
       'M16.3 7.7l2.1-2.1',
       'M12 8l1.4 2.6L16 12l-2.6 1.4L12 16l-1.4-2.6L8 12l2.6-1.4z',
     ],
-    title: 'Smart Add',
-    body: 'Paste your week as plain text. AI turns it into scheduled classes in seconds.',
+    title: 'Smart Features',
+    body: 'AI turns plain-text prompts into scheduled classes in seconds. Draft WhatsApp-ready parent messages in one click.',
   },
   {
-    // 3. Smart Plan — checklist
+    // 3. Manage Recitals — music note (matches the homepage recital icon)
     iconPaths: [
-      'M9 11l3 3L22 4',
-      'M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+      'M9 18V5l12-2v13',
+      'M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+      'M18 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
     ],
-    title: 'Smart Plan',
-    body: 'Tell ManchQ when your recital is — we generate the full countdown to-do list.',
+    title: 'Manage Recitals',
+    body: 'Plan and run your whole recital from one place. AI generates the full countdown to-do list for you.',
   },
   {
-    // 4. Attendance — check-square
+    // 4. Public Invites — paper plane / send
     iconPaths: [
-      'M9 11l3 3L22 4',
-      'M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
-      'M3 8h6M3 12h4M3 16h5',
+      'M22 2L11 13',
+      'M22 2l-7 20-4-9-9-4z',
     ],
-    title: 'Smart Attendance',
-    body: 'Mark a whole class present in a single tap. Swipe individuals as exceptions.',
+    title: 'Public Invites',
+    body: 'Share recital RSVP links with any guest — no login or account needed for invitees.',
   },
   {
-    // 5. Smart Reply — message/chat
+    // 5. Manage Classes — calendar
     iconPaths: [
-      'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
-      'M8 9h8',
-      'M8 13h5',
+      'M8 2v4',
+      'M16 2v4',
+      'M3 10h18',
+      'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
     ],
-    title: 'Smart Reply',
-    body: 'Draft parent messages with the right tone in 3 seconds.',
+    title: 'Manage Classes',
+    body: 'Easy scheduling with batch-level preferences and reminders. Mark a whole class present in one tap; swipe individuals as exceptions.',
   },
 ];
 
