@@ -40,7 +40,7 @@ const SLIDES: Slide[] = [
       'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z',
     ],
     title: 'Free forever',
-    body: 'Free base plan forever. Pro is free for 30 days — no credit card. Just $5.99/month per studio after that.',
+    body: 'Free base plan forever. Try Pro free for 30 days — no credit card. Just $5.99/month per studio after that.',
   },
   {
     // 2. Smart Features — wand / sparkle
@@ -56,7 +56,7 @@ const SLIDES: Slide[] = [
       'M12 8l1.4 2.6L16 12l-2.6 1.4L12 16l-1.4-2.6L8 12l2.6-1.4z',
     ],
     title: 'Smart Features',
-    body: 'AI turns plain-text prompts into scheduled classes. Draft WhatsApp-ready messages in one click.',
+    body: 'AI turns plain-text prompts into scheduled classes in seconds. Draft WhatsApp-ready messages in one click.',
   },
   {
     // 3. Manage Recitals — music note (matches the homepage recital icon)
@@ -66,7 +66,7 @@ const SLIDES: Slide[] = [
       'M18 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
     ],
     title: 'Manage Recitals',
-    body: 'Plan and run your whole recital from one place. AI generates the full countdown to-do list for you.',
+    body: 'Plan and run your whole recital from one place. AI generates the full countdown to-do list — done for you.',
   },
   {
     // 4. Public Invites — paper plane / send
@@ -75,7 +75,7 @@ const SLIDES: Slide[] = [
       'M22 2l-7 20-4-9-9-4z',
     ],
     title: 'Public Invites',
-    body: 'Share public recital invites with any guest. No login, no account, no app needed for invitees.',
+    body: 'Share public recital invites with any guest. No login, no account, and no app required for your invitees.',
   },
   {
     // 5. Manage Classes — calendar
@@ -86,7 +86,7 @@ const SLIDES: Slide[] = [
       'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
     ],
     title: 'Manage Classes',
-    body: 'Easy scheduling and batch preferences. Mark a whole class present in one tap; swipe exceptions.',
+    body: 'Easy scheduling and batch-level preferences. Mark a class present in one tap; swipe individual exceptions.',
   },
 ];
 
