@@ -1355,148 +1355,160 @@ export default function SchedulePage() {
           {panelMode === 'view' && detailEvent && (() => {
             const e = detailEvent;
             const color = TYPE_COLORS[e.type] || "#8a7a9a";
+
+            // Resolve the primary batch — used for hero cover photo + secondary line.
+            const evBatches = e.batches?.length ? e.batches : (e.batch_name ? [{ id: e.batch_id, name: e.batch_name }] : []);
+            const primaryBatch = evBatches[0]
+              ? batches.find(x => x.id === evBatches[0].id || String(x.id) === String(evBatches[0].id))
+              : null;
+            const heroImg = primaryBatch?.cover_url || null;
+
             return (
               <>
-                {/* Event hero — Netflix style on mobile, classic on desktop */}
-                {isMobile ? (
-                  <div style={{ background:"linear-gradient(160deg,#1a1035 0%,#2a1a55 100%)", flexShrink:0, overflow:"hidden" }}>
-                    <div style={{ height:4, background:color }} />
-                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 16px" }}>
-                      <button onClick={() => { setDetailEvent(null); setPanelMode('view'); }} style={{
-                        display:"flex", alignItems:"center", gap:6, padding:"7px 14px", borderRadius:20,
-                        background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)",
-                        border:"1px solid rgba(255,255,255,.22)",
-                        color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer",
-                      }}>
-                        ← Close
+                {/* ── Unified hero (mobile + desktop) ────────────────────────
+                    Matches the recital detail page: a tall image-or-gradient
+                    hero with the event title large, type chip + batch chip
+                    below, and a minimal top toolbar (Close + Delete only).
+                */}
+                <div style={{
+                  position:"relative", flexShrink:0, overflow:"hidden",
+                  background: heroImg ? "#000" : `linear-gradient(160deg,#1a1035 0%, ${color}66 50%, #2a1a55 100%)`,
+                }}>
+                  {heroImg && (
+                    <div style={{ width:"100%", paddingTop:"56.25%", position:"relative" }}>
+                      <img src={heroImg} alt={primaryBatch?.name || e.title}
+                        style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                    </div>
+                  )}
+                  {!heroImg && <div style={{ minHeight: isMobile ? 200 : 180 }} />}
+                  {/* Bottom-up gradient so title reads on any image */}
+                  <div style={{ position:"absolute", inset:0, background:"linear-gradient(to top, rgba(0,0,0,.82) 0%, rgba(0,0,0,.18) 55%, transparent 100%)" }} />
+
+                  {/* Top row: Close + (admin) Delete only */}
+                  <div style={{ position:"absolute", top:0, left:0, right:0, padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:10 }}>
+                    <button onClick={() => { setDetailEvent(null); setPanelMode('view'); }} style={{
+                      display:"flex", alignItems:"center", gap:6, padding:"7px 14px", borderRadius:20,
+                      background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)",
+                      border:"1px solid rgba(255,255,255,.22)",
+                      color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer",
+                    }}>← Close</button>
+                    {isAdmin && !e._isSchedule && (
+                      <button
+                        onClick={() => { if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }}
+                        title="Delete event"
+                        style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
+                      >
+                        <SvgIcon name="trash" size={15} color="rgba(255,255,255,.85)" />
                       </button>
-                      {isAdmin && !e._isSchedule && (
-                        <div style={{ display:"flex", gap:8 }}>
-                          <button onClick={() => openEdit(e)} title="Edit event" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-                            <SvgIcon name="pencil" size={15} color="rgba(255,255,255,.85)" />
-                          </button>
-                          <button onClick={() => setAttendanceEvent(e)} title="Take attendance" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(16,185,129,0.55)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#fff" }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                          </button>
-                          <button onClick={() => setSmartReplyEvent(e)} title="Message parents" style={{ width:34, height:34, borderRadius:"50%", background:"linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#fff" }}>
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
-                            </svg>
-                          </button>
-                          <button onClick={() => { if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} title="Delete event" style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-                            <SvgIcon name="trash" size={15} color="rgba(255,255,255,.75)" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ padding:"4px 16px 22px" }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,.5)", textTransform:"uppercase", letterSpacing:".14em", marginBottom:6 }}>Event</div>
-                      <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"#fff", marginBottom:10, lineHeight:1.2 }}>{e.title}</div>
-                      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                        <span style={{ fontSize:11, color:"rgba(255,255,255,.85)", fontWeight:600, background:"rgba(0,0,0,.35)", border:"1px solid rgba(255,255,255,.2)", borderRadius:20, padding:"3px 10px" }}>{e.type}</span>
-                        {!!e.requires_studio && <span style={{ fontSize:11, color:"rgba(255,255,255,.85)", fontWeight:600, background:e.studio_booked?"rgba(82,196,160,.25)":"rgba(224,92,106,.25)", border:`1px solid ${e.studio_booked?"rgba(82,196,160,.5)":"rgba(224,92,106,.5)"}`, borderRadius:20, padding:"3px 10px" }}>{e.studio_booked?"Studio ✓":"Studio ⚠"}</span>}
-                      </div>
-                    </div>
+                    )}
                   </div>
-                ) : (
-                  <div style={{ padding:"22px 22px 18px", borderBottom:"1px solid var(--border)", flexShrink:0, background:"var(--surface)" }}>
-                    <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:12 }}>
-                      <div style={{ width:6, height:48, borderRadius:3, background:color, flexShrink:0, marginTop:2 }} />
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, marginBottom:8, lineHeight:1.2 }}>{e.title}</div>
-                        <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                          <Badge color={color}>{e.type}</Badge>
-                          {!!e.requires_studio && <Badge color={e.studio_booked?"#52c4a0":"#e05c6a"}>{e.studio_booked?"Studio ✓":"Studio ⚠"}</Badge>}
-                        </div>
-                      </div>
+
+                  {/* Title block — recital-style typography */}
+                  <div style={{ position:"absolute", bottom:0, left:0, right:0, padding: isMobile ? "16px 18px 20px" : "20px 24px 22px", zIndex:5 }}>
+                    <div style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,.6)", textTransform:"uppercase", letterSpacing:".14em", marginBottom:6 }}>
+                      {e.type}{e._isSchedule ? " · ↻ Recurring" : ""}
                     </div>
+                    <div style={{ fontFamily:"var(--font-d)", fontSize: isMobile ? 26 : 30, fontWeight:800, color:"#fff", lineHeight:1.15, letterSpacing:"-0.5px", marginBottom: primaryBatch ? 8 : 0 }}>
+                      {e.title}
+                    </div>
+                    {primaryBatch && (
+                      <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                        <button type="button"
+                          onClick={()=>{ setDetailEvent(null); setPanelMode('view'); router.push("/batches"); }}
+                          style={{ display:"inline-flex",alignItems:"center",gap:6, background:"rgba(255,255,255,.14)",border:"1px solid rgba(255,255,255,.28)", borderRadius:20,padding:"5px 12px",cursor:"pointer", fontSize:13,fontWeight:600,color:"#fff",backdropFilter:"blur(8px)" }}
+                          onMouseEnter={ev=>{ev.currentTarget.style.background="rgba(255,255,255,.22)";}}
+                          onMouseLeave={ev=>{ev.currentTarget.style.background="rgba(255,255,255,.14)";}}
+                        >
+                          <SvgIcon name="book-open" size={12} color="#fff" />
+                          {primaryBatch.name}
+                          {primaryBatch.student_count != null && <span style={{fontSize:11,opacity:0.75}}>· {primaryBatch.student_count} students</span>}
+                          <span style={{fontSize:10,opacity:0.6}}>→</span>
+                        </button>
+                        {evBatches.length > 1 && (
+                          <span style={{ fontSize:11, color:"rgba(255,255,255,.55)", fontWeight:600 }}>
+                            + {evBatches.length - 1} more
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
-                {/* Scrollable body */}
-                <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
+                </div>
+
+                {/* ── Scrollable body ──────────────────────────────────── */}
+                <div style={{ flex:1, overflowY:"auto", padding: isMobile ? "18px 16px 24px" : "22px 22px 28px" }}>
+                  {/* Detail rows — date, time, location, notes */}
                   <div style={{ display:"grid", gap:14, marginBottom:20 }}>
                     <PDetailRow icon="calendar" label="Date">{fmtDate(e.start_datetime)}</PDetailRow>
                     <PDetailRow icon="clock" label="Time">{fmtTime(e.start_datetime)} – {fmtTime(e.end_datetime)}</PDetailRow>
                     {e.location && <PDetailRow icon="map-pin" label="Location">{e.location}</PDetailRow>}
-                    {(e.batches?.length > 0 || e.batch_name) && (
-                      <PDetailRow icon="book-open" label={`Batch${(e.batches?.length||0) > 1 ? "es" : ""}`}>
-                        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:4}}>
-                          {(e.batches?.length ? e.batches : [{id:e.batch_id, name:e.batch_name}]).map(b => {
-                            const full = batches.find(x => x.id===b.id || String(x.id)===String(b.id));
-                            return (
-                              <button key={b.id} type="button"
-                                onClick={()=>{ setDetailEvent(null); setPanelMode('view'); router.push("/batches"); }}
-                                style={{ display:"inline-flex",alignItems:"center",gap:5, background:"#6a7fdb15",border:"1.5px solid #6a7fdb44", borderRadius:20,padding:"4px 13px",cursor:"pointer", fontSize:12,fontWeight:700,color:"#6a7fdb",transition:"all .15s" }}
-                                onMouseEnter={ev=>{ev.currentTarget.style.background="#6a7fdb28";ev.currentTarget.style.borderColor="#6a7fdb99";}}
-                                onMouseLeave={ev=>{ev.currentTarget.style.background="#6a7fdb15";ev.currentTarget.style.borderColor="#6a7fdb44";}}
-                              >
-                                {b.name}
-                                {full && <span style={{fontSize:10,fontWeight:400,color:"#6a7fdb99"}}>· {full.student_count} students</span>}
-                                <span style={{fontSize:10,opacity:0.5}}>→</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </PDetailRow>
-                    )}
                     {e.notes && <PDetailRow icon="file-text" label="Notes">{e.notes}</PDetailRow>}
                   </div>
-                  {e._isSchedule && (
-                    <div style={{ padding:"12px 14px", borderRadius:10, background:"var(--surface)", border:"1px solid var(--border)", marginBottom:16 }}>
-                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-                        <span style={{ fontSize:12, color:"var(--muted)", fontWeight:600 }}>↻ Recurring class</span>
-                        <button onClick={()=>{ setDetailEvent(null); setPanelMode('view'); router.push("/batches"); }} style={{ fontSize:11, fontWeight:700, color:"var(--accent)", background:"none", border:"none", cursor:"pointer", padding:0 }}>Manage in Batches →</button>
-                      </div>
-                      {isAdmin && (
-                        <>
-                          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                            <button onClick={() => openOverride(e)} style={{ flex:1, padding:"7px 12px", borderRadius:8, border:"1.5px solid var(--accent)", background:"transparent", color:"var(--accent)", cursor:"pointer", fontSize:12, fontWeight:700 }}>
-                              Edit this class
-                            </button>
-                            <button
-                              onClick={() => { if (window.confirm("Skip this class on " + fmtDate(e.start_datetime) + "?")) skipMutation.mutate({ scheduleId: e._scheduleId, date: e.start_datetime.slice(0,10) }); }}
-                              disabled={skipMutation.isPending}
-                              style={{ flex:1, padding:"7px 12px", borderRadius:8, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:12, fontWeight:700 }}
-                            >
-                              {skipMutation.isPending ? "Skipping…" : "Skip this class"}
-                            </button>
-                          </div>
-                          <div style={{ display:"flex", gap:8, marginTop:8, flexWrap:"wrap" }}>
-                            <button onClick={()=>setAttendanceEvent(e)} style={{ flex:"1 1 auto", padding:"7px 12px", borderRadius:8, border:"1.5px solid #10B981", background:"rgba(16,185,129,0.08)", color:"#10B981", cursor:"pointer", fontSize:12, fontWeight:700 }}>
-                              ✓ Attendance
-                            </button>
-                            <button onClick={()=>handleMarkAllPresent(e)} disabled={markingAllId === e.id}
-                              style={{ flex:"1 1 auto", padding:"7px 12px", borderRadius:8, border:"none", background:"linear-gradient(135deg,#059669,#10B981)", color:"#fff", cursor: markingAllId === e.id ? "wait" : "pointer", fontSize:12, fontWeight:700, opacity: markingAllId === e.id ? 0.7 : 1 }}>
-                              {markingAllId === e.id ? "Marking…" : "⚡ All Present"}
-                            </button>
-                            <SmartButton onClick={() => setSmartReplyEvent(e)} variant="secondary" size="md" style={{ flex:"1 1 auto" }}>Message</SmartButton>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
+
+                  {/* Studio booking warning (still surfaces inline) */}
                   {!!e.requires_studio && (
-                    <div style={{ padding:"12px 14px", borderRadius:10, background:e.studio_booked?"#52c4a008":"#e05c6a08", border:`1.5px solid ${e.studio_booked?"#52c4a033":"#e05c6a33"}`, marginBottom:20 }}>
+                    <div style={{ padding:"12px 14px", borderRadius:10, background:e.studio_booked?"#52c4a008":"#e05c6a08", border:`1.5px solid ${e.studio_booked?"#52c4a033":"#e05c6a33"}`, marginBottom:16 }}>
                       <div style={{ fontSize:12, fontWeight:700, color:e.studio_booked?"#52c4a0":"#e05c6a" }}>
                         {e.studio_booked ? "✓ Studio booking confirmed" : "⚠ Studio booking needed"}
                       </div>
+                      {!e.studio_booked && (
+                        <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true,batch_ids:(e.batches||[]).map(b=>b.id)}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{ marginTop:8, padding:"6px 12px", borderRadius:7, border:"1.5px solid #52c4a0", background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:12, fontWeight:600 }}>Mark Studio Booked</button>
+                      )}
                     </div>
                   )}
-                  {isAdmin && !e._isSchedule && (!isMobile || (!!e.requires_studio && !e.studio_booked)) && (
-                    <div style={{ display:"flex", flexDirection:"column", gap:9, borderTop:"1px solid var(--border)", paddingTop:20 }}>
-                      {!isMobile && <button onClick={()=>openEdit(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="pencil" size={14} color="#fff" /> Edit Event</button>}
-                      <button onClick={()=>setAttendanceEvent(e)} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #10B981", background:"rgba(16,185,129,0.08)", color:"#10B981", cursor:"pointer", fontSize:13, fontWeight:700, display:"inline-flex", alignItems:"center", gap:7 }}>✓ Attendance</button>
-                      <button onClick={()=>handleMarkAllPresent(e)} disabled={markingAllId === e.id} title="Mark every student in this class as present"
-                        style={{ padding:"9px 14px", borderRadius:9, border:"none", background:"linear-gradient(135deg,#059669,#10B981)", color:"#fff", cursor: markingAllId === e.id ? "wait" : "pointer", fontSize:13, fontWeight:700, display:"inline-flex", alignItems:"center", gap:7, boxShadow:"0 2px 8px rgba(16,185,129,0.3)", opacity: markingAllId === e.id ? 0.7 : 1 }}>
-                        {markingAllId === e.id ? "Marking…" : "⚡ All Present"}
+
+                  {/* ── Main action buttons — full-width, stacked vertically ──
+                      Consistent for ALL events (recurring + one-off). Order:
+                        1. Edit Class       — primary
+                        2. All Present      — accent (attendance shortcut)
+                        3. Attendance       — full attendance modal
+                        4. Message          — Smart Announce
+                        5. Skip this class  — destructive, recurring-only
+                  */}
+                  {isAdmin && (
+                    <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                      <button
+                        onClick={() => e._isSchedule ? openOverride(e) : openEdit(e)}
+                        style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"none", background:"linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", color:"#fff", cursor:"pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:"0 2px 12px rgba(124,58,237,0.32)" }}
+                      >
+                        <SvgIcon name="pencil" size={15} color="#fff" /> {e._isSchedule ? "Edit This Class" : "Edit Event"}
                       </button>
-                      <SmartButton onClick={() => setSmartReplyEvent(e)} variant="secondary" size="md">Message</SmartButton>
-                      {!!e.requires_studio && !e.studio_booked && (
-                        <button onClick={()=>{ api.update(sid,e.id,{...e,studio_booked:true,batch_ids:(e.batches||[]).map(b=>b.id)}).then(()=>{ qc.invalidateQueries({queryKey:["events"],exact:false}); setDetailEvent({...e,studio_booked:true}); toast.success("Studio marked as booked!"); }); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #52c4a0", background:"transparent", color:"#52c4a0", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="check-circle" size={14} color="#52c4a0" /> Mark Studio Booked</button>
+                      <button
+                        onClick={() => handleMarkAllPresent(e)}
+                        disabled={markingAllId === e.id}
+                        title="Mark every student in this class as present"
+                        style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"none", background:"linear-gradient(135deg,#059669,#10B981)", color:"#fff", cursor: markingAllId === e.id ? "wait" : "pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:"0 2px 12px rgba(16,185,129,0.3)", opacity: markingAllId === e.id ? 0.7 : 1 }}
+                      >
+                        ⚡ {markingAllId === e.id ? "Marking…" : "Mark All Present"}
+                      </button>
+                      <button
+                        onClick={() => setAttendanceEvent(e)}
+                        style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #10B981", background:"transparent", color:"#10B981", cursor:"pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8 }}
+                      >
+                        ✓ Take Attendance
+                      </button>
+                      <button
+                        onClick={() => setSmartReplyEvent(e)}
+                        style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid var(--border)", background:"var(--surface)", color:"var(--text)", cursor:"pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8 }}
+                      >
+                        <SvgIcon name="mail" size={14} color="var(--text)" /> Message Parents
+                      </button>
+                      {e._isSchedule && (
+                        <button
+                          onClick={() => { if (window.confirm("Skip this class on " + fmtDate(e.start_datetime) + "?")) skipMutation.mutate({ scheduleId: e._scheduleId, date: e.start_datetime.slice(0,10) }); }}
+                          disabled={skipMutation.isPending}
+                          style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor: skipMutation.isPending ? "wait" : "pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8 }}
+                        >
+                          {skipMutation.isPending ? "Skipping…" : "Skip This Class"}
+                        </button>
                       )}
-                      {!isMobile && <button onClick={()=>{ if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }} style={{ padding:"9px 16px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontWeight:600, display:"inline-flex", alignItems:"center", gap:7 }}><SvgIcon name="trash" size={14} color="#e05c6a" /> Delete Event</button>}
+                      {/* Recurring → Manage in Batches link (subtle, below the action stack) */}
+                      {e._isSchedule && (
+                        <div style={{ textAlign:"center", marginTop:6 }}>
+                          <button onClick={()=>{ setDetailEvent(null); setPanelMode('view'); router.push("/batches"); }} style={{ fontSize:12, fontWeight:600, color:"var(--muted)", background:"none", border:"none", cursor:"pointer", padding:6 }}>
+                            Manage in Batches →
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
