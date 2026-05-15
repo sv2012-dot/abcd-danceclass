@@ -1,10 +1,10 @@
 // @ts-nocheck
 'use client';
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/context/AuthContext";
-import { batches as api, students as studentsApi, schedules as schedulesApi, recitals as recitalsApi } from "@/lib/api";
+import { batches as api, students as studentsApi, schedules as schedulesApi, events as eventsApi } from "@/lib/api";
 import toast from "react-hot-toast";
 import Card, { CARD_TOKENS as CT } from "@/components/shared/Card";
 import Button from "@/components/shared/Button";
@@ -266,17 +266,39 @@ export default function BatchesPage() {
   const { data: list=[], isLoading } = useQuery({ queryKey:["batches",sid], queryFn:()=>api.list(sid), enabled:!!sid });
   const { data: allStudents=[]     } = useQuery({ queryKey:["students",sid], queryFn:()=>studentsApi.list(sid), enabled:!!sid });
   const { data: allSchedules=[]   } = useQuery({ queryKey:["schedules",sid], queryFn:()=>schedulesApi.list(sid), enabled:!!sid });
-  const { data: allRecitals=[]    } = useQuery({ queryKey:["recitals",sid],  queryFn:()=>recitalsApi.list(sid), enabled:!!sid });
+
+  // Pull upcoming calendar events for the next 6 months. Each event row
+  // includes a `batches: [{ id, name }]` array (from event_batches join) so
+  // we can filter to events that actually involve the active batch.
+  const eventsFrom = useMemo(() => new Date().toISOString(), []);
+  const eventsTo   = useMemo(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 6);
+    return d.toISOString();
+  }, []);
+  const { data: allEvents=[] } = useQuery({
+    queryKey: ["events", sid, eventsFrom, eventsTo],
+    queryFn:  () => eventsApi.list(sid, { from: eventsFrom, to: eventsTo }),
+    enabled:  !!sid,
+  });
 
   const activeBatch    = list.find(b => b.id === activeId) || null;
   const colorIndex     = activeBatch ? list.indexOf(activeBatch) : 0;
   const activeColor    = BATCH_COLORS[colorIndex % BATCH_COLORS.length];
   const batchSchedules = allSchedules.filter(s => s.batch_id === activeId);
   const sortedSchedules = [...batchSchedules].sort((a,b) => DAY_ORDER.indexOf(a.day_of_week) - DAY_ORDER.indexOf(b.day_of_week));
-  const upcomingRecitals = allRecitals
-    .filter(r => new Date(r.event_date) >= new Date() && r.status !== "Cancelled")
-    .sort((a,b) => new Date(a.event_date) - new Date(b.event_date))
-    .slice(0, 3);
+  // Events that actually involve THIS batch — filter by event_batches join.
+  // Backend attaches `batches: [{ id, name }]` to each event row.
+  const upcomingForBatch = activeId
+    ? allEvents
+        .filter(e => {
+          const tied = (e.batches && e.batches.some(b => b.id === activeId))
+            || e.batch_id === activeId;
+          return tied && new Date(e.start_datetime) >= new Date();
+        })
+        .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime))
+        .slice(0, 5)
+    : [];
   const pct = activeBatch?.max_size
     ? Math.min(100, Math.round(((activeBatch.student_count||0) / activeBatch.max_size) * 100))
     : null;
@@ -694,26 +716,45 @@ export default function BatchesPage() {
                 }
               </PSection>
 
-              {/* Upcoming Events */}
+              {/* Upcoming Events — actually scoped to this batch */}
               <PSection title="Upcoming Events">
-                {upcomingRecitals.length === 0 ? (
-                  <p style={{ fontSize:12, color:"var(--muted)", margin:0 }}>No upcoming events.</p>
+                {upcomingForBatch.length === 0 ? (
+                  <p style={{ fontSize:12, color:"var(--muted)", margin:0 }}>
+                    No upcoming events for this batch.
+                  </p>
                 ) : (
                   <div style={{ display:"grid", gap:7 }}>
-                    {upcomingRecitals.map(r => {
-                      const d  = new Date(r.event_date);
-                      const sc = { Planning:"#6a7fdb", Confirmed:"#52c4a0", Rehearsals:"#f4a041", Completed:"#8ab4c0" }[r.status] || "#888";
+                    {upcomingForBatch.map(e => {
+                      const d  = new Date(e.start_datetime);
+                      // Color per event type — falls back to neutral grey.
+                      const typeColor = {
+                        Class:       "#6a7fdb",
+                        Recital:     "#DC4EFF",
+                        Rehearsal:   "#f4a041",
+                        Workshop:    "#52c4a0",
+                        Performance: "#DC4EFF",
+                      }[e.type] || "#888";
+                      const time = `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
                       return (
-                        <div key={r.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:8, background:"var(--surface)" }}>
-                          <div style={{ textAlign:"center", minWidth:36, background:sc+"20", borderRadius:7, padding:"4px 3px", flexShrink:0 }}>
-                            <div style={{ fontSize:13, fontWeight:800, color:sc, lineHeight:1 }}>{d.getDate()}</div>
+                        <div key={e.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:8, background:"var(--surface)" }}>
+                          <div style={{ textAlign:"center", minWidth:36, background:typeColor+"20", borderRadius:7, padding:"4px 3px", flexShrink:0 }}>
+                            <div style={{ fontSize:13, fontWeight:800, color:typeColor, lineHeight:1 }}>{d.getDate()}</div>
                             <div style={{ fontSize:8, color:"var(--muted)", textTransform:"uppercase" }}>{d.toLocaleString("default",{month:"short"})}</div>
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontWeight:600, fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.title}</div>
-                            {r.venue && <div style={{ fontSize:10, color:"var(--muted)", display:"flex", alignItems:"center" }}><SvgIcon name="map-pin" size={10} color="var(--muted)" style={{marginRight:4}} />{r.venue}</div>}
+                            <div style={{ fontWeight:600, fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{e.title}</div>
+                            <div style={{ fontSize:10, color:"var(--muted)", display:"flex", alignItems:"center", gap:8, marginTop:2 }}>
+                              <span style={{ display:"flex", alignItems:"center" }}>
+                                <SvgIcon name="clock" size={10} color="var(--muted)" style={{marginRight:4}} />{time}
+                              </span>
+                              {e.location && (
+                                <span style={{ display:"flex", alignItems:"center", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1, minWidth:0 }}>
+                                  <SvgIcon name="map-pin" size={10} color="var(--muted)" style={{marginRight:4}} />{e.location}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <Badge>{r.status}</Badge>
+                          {e.type && <Badge>{e.type}</Badge>}
                         </div>
                       );
                     })}
