@@ -1,9 +1,8 @@
 'use client';
 
 // /login — sign in to an existing studio.
-// Layout mirrors /register: video background + rounded island card,
-// single-column. The island is FORCED-LIGHT (always white) regardless of the
-// app's theme setting — colours are hardcoded below, not `var(--*)` tokens.
+// Theme-aware: island uses var(--card)/var(--text)/var(--muted)/var(--border)/
+// var(--surface) tokens so it adapts to whichever mode the user is in.
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -14,29 +13,19 @@ import toast from 'react-hot-toast';
 import { redirectToDashboard } from '@/lib/redirectToDashboard';
 import { auth } from '@/lib/api';
 
-// ── Light palette — used regardless of app-wide dark mode ────────────────
-const C = {
-  cardBg:   '#FFFFFF',
-  surface:  '#F3F4F6',
-  border:   '#E5E7EB',
-  text:     '#111827',
-  textSoft: '#1F2937',
-  muted:    '#6B7280',
-  mutedSub: '#9CA3AF',
-  link:     '#6A7FDB',
-  primary:  '#111827', // CTA bg
-  primaryDisabled: '#9CA3AF',
-};
+const PURPLE = '#7C3AED';
+const MAGENTA = '#DC4EFF';
+const GRAD = `linear-gradient(135deg, ${PURPLE} 0%, ${MAGENTA} 100%)`;
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  background: C.surface,
-  border: `1.5px solid ${C.border}`,
+  background: 'var(--surface)',
+  border: '1.5px solid var(--border)',
   borderRadius: 10,
   padding: '14px 16px',
   fontSize: 15,
   fontWeight: 500,
-  color: C.text,
+  color: 'var(--text)',
   boxSizing: 'border-box',
   outline: 'none',
   transition: 'border-color .15s, box-shadow .15s',
@@ -81,26 +70,23 @@ export default function LoginPage() {
     }
   };
 
-  // Mobile-tuned padding so the island fits within visible viewport.
-  // Tighter horizontal on mobile so the Google button + welcome line read
-  // as full-width affordances rather than crowded slivers.
   const cardPadding = isMobile ? '24px 16px 22px' : '40px 44px 32px';
 
   return (
     <AuthBackground>
-      {/* Island — forced light (white) regardless of dark mode */}
+      {/* Island — theme-aware via var(--card)/var(--text)/etc. */}
       <div
         style={{
           position: 'relative',
           zIndex: 4,
           width: '100%',
           maxWidth: 460,
-          background: C.cardBg,
-          color: C.text,
+          background: 'var(--card)',
+          color: 'var(--text)',
           borderRadius: 20,
           padding: cardPadding,
           boxSizing: 'border-box',
-          boxShadow: '0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)',
+          boxShadow: '0 30px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.06)',
         }}
       >
         {/* Header — logo only */}
@@ -121,32 +107,29 @@ export default function LoginPage() {
         {linkSent ? (
           <div style={{ textAlign: 'center', padding: '4px 0' }}>
             <div style={{ fontSize: 38, marginBottom: 10 }}>✉️</div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: C.text }}>Check your inbox</h2>
-            <p style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.6, marginBottom: 16 }}>
-              We sent a sign-in link to <strong style={{ color: C.text }}>{email}</strong>. It expires in 15 minutes.
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: 'var(--text)' }}>Check your inbox</h2>
+            <p style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 16 }}>
+              We sent a sign-in link to <strong style={{ color: 'var(--text)' }}>{email}</strong>. It expires in 15 minutes.
             </p>
             <button
               onClick={() => { setLinkSent(false); setEmail(''); }}
-              style={{ background: 'none', border: 'none', color: C.link, fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
+              style={{ background: 'none', border: 'none', color: '#6a7fdb', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
             >
               ← Use a different email
             </button>
-            <div style={{ marginTop: 18, padding: '10px 12px', background: C.surface, borderRadius: 9, fontSize: 11.5, color: C.muted, lineHeight: 1.55, textAlign: 'left' }}>
-              <strong style={{ color: C.text }}>Didn't get it?</strong> Check spam or
-              {' '}<a href="mailto:support@manchq.com" style={{ color: C.link }}>email support</a>.
+            <div style={{ marginTop: 18, padding: '10px 12px', background: 'var(--surface)', borderRadius: 9, fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.55, textAlign: 'left' }}>
+              <strong style={{ color: 'var(--text)' }}>Didn't get it?</strong> Check spam or
+              {' '}<a href="mailto:support@manchq.com" style={{ color: '#6a7fdb' }}>email support</a>.
             </div>
           </div>
         ) : (
           <>
-            <h2 style={{ fontSize: isMobile ? 19 : 20, fontWeight: 700, margin: '0 0 8px', color: C.text, textAlign: 'center' }}>
+            <h2 style={{ fontSize: isMobile ? 19 : 20, fontWeight: 700, margin: '0 0 8px', color: 'var(--text)', textAlign: 'center' }}>
               Sign in to ManchQ
             </h2>
-            {/* Welcome-back — single text style throughout. Explicit
-                width:100% + display:block to defeat Mobile Safari's
-                flex-item sizing quirks inside the nested flex layout. */}
             <p style={{
               fontSize: 12.5,
-              color: C.muted,
+              color: 'var(--muted)',
               lineHeight: 1.55,
               margin: '0 0 22px',
               textAlign: 'center',
@@ -157,21 +140,17 @@ export default function LoginPage() {
               Welcome back to ManchQ! Use the same option — Google or email — you picked at signup to enter your studio. Have a great time!
             </p>
 
-            {/* Google — wrapped in an explicit full-width div so iOS Safari
-                doesn't shrink the flex-display button to content width. */}
             <div style={{ width: '100%', display: 'block' }}>
               <GoogleSignIn />
             </div>
 
-            {/* Divider */}
             <div style={{ display: 'flex', alignItems: 'center', margin: '18px 0', gap: 12 }}>
-              <div style={{ flex: 1, height: '1px', background: C.border }} />
-              <span style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.08em' }}>Or</span>
-              <div style={{ flex: 1, height: '1px', background: C.border }} />
+              <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+              <span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.08em' }}>Or</span>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
             </div>
 
-            {/* No-password hint, sits above the email field */}
-            <p style={{ fontSize: 12, color: C.muted, textAlign: 'center', margin: '0 0 14px' }}>
+            <p style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center', margin: '0 0 14px' }}>
               No password &mdash; we'll send a one-time link.
             </p>
 
@@ -193,25 +172,26 @@ export default function LoginPage() {
                   width: '100%',
                   marginTop: 12,
                   padding: '13px',
-                  background: loading || !email.trim() ? C.primaryDisabled : C.primary,
-                  color: '#fff',
+                  background: loading || !email.trim() ? 'var(--muted)' : 'var(--text)',
+                  color: 'var(--card)',
                   border: 'none',
                   borderRadius: 10,
                   fontSize: 14.5,
                   fontWeight: 700,
                   cursor: loading || !email.trim() ? 'not-allowed' : 'pointer',
                   letterSpacing: '0.01em',
+                  opacity: loading || !email.trim() ? 0.7 : 1,
                 }}
               >
                 {loading ? 'Sending link…' : 'Email me a sign-in link'}
               </button>
             </form>
 
-            <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: C.muted }}>
+            <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: 'var(--muted)' }}>
               New to ManchQ?{' '}
               <button
                 onClick={() => router.push('/register')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.link, fontWeight: 700, padding: 0, textDecoration: 'underline', fontSize: 12 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6a7fdb', fontWeight: 700, padding: 0, textDecoration: 'underline', fontSize: 12 }}
               >
                 Register your studio
               </button>

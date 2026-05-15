@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/api';
 import { useAuth } from '@/lib/context/AuthContext';
 import { redirectToDashboard } from '@/lib/redirectToDashboard';
+import AuthBackground from '@/components/AuthBackground';
 import toast from 'react-hot-toast';
 
 type Membership = {
@@ -155,16 +156,16 @@ export default function ChooseSchoolPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#000', padding: '32px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
-      <div style={{ width: '100%', maxWidth: 520 }}>
+    <AuthBackground>
+      <div style={{ width: '100%', maxWidth: 520, position: 'relative', zIndex: 4 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'center' }}>
             <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ width: 64, height: 64, borderRadius: '50%' }} />
           </div>
-          <h1 style={{ color: '#fff', fontSize: 22, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.4px' }}>
+          <h1 style={{ color: 'var(--text)', fontSize: 22, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.4px' }}>
             Choose a studio
           </h1>
-          <p style={{ color: '#888', fontSize: 13, margin: 0 }}>
+          <p style={{ color: 'var(--muted)', fontSize: 13, margin: 0 }}>
             You're a member of {memberships.length} studios. Pick one to enter.
           </p>
         </div>
@@ -229,23 +230,23 @@ export default function ChooseSchoolPage() {
               try { localStorage.clear(); sessionStorage.clear(); } catch (_) {}
               router.push('/login');
             }}
-            style={{ background: 'none', border: 'none', color: '#888', fontSize: 12, cursor: 'pointer', padding: 6 }}
+            style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', padding: 6 }}
           >
             Not you? Sign out →
           </button>
         </div>
       </div>
-    </div>
+    </AuthBackground>
   );
 }
 
 function Frame({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ width: '100%', maxWidth: 420, background: 'var(--card)', borderRadius: 16, padding: 36, textAlign: 'center', boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }}>
+    <AuthBackground>
+      <div style={{ width: '100%', maxWidth: 420, background: 'var(--card)', borderRadius: 16, padding: 36, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.06)', position: 'relative', zIndex: 4 }}>
         {children}
       </div>
-    </div>
+    </AuthBackground>
   );
 }
-const primaryBtn: React.CSSProperties = { background: '#111', color: '#fff', border: 'none', padding: '11px 22px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer' };
+const primaryBtn: React.CSSProperties = { background: 'var(--text)', color: 'var(--card)', border: 'none', padding: '11px 22px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer' };
