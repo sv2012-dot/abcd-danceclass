@@ -16,6 +16,7 @@ import Badge from "@/components/shared/Badge";
 import { Field, Input, Select, Textarea } from "@/components/shared/Field";
 import SvgIcon from "@/components/shared/SvgIcon";
 import { TodoKeyframeStyles, TodoRow } from "@/components/shared/TodoItem";
+import CoverCropModal from "@/components/shared/CoverCropModal";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -333,17 +334,27 @@ function RecitalImageCard({ r, index, onClick, schoolId, onPosterUpdate, canEdit
   const gradBg  = RECITAL_CARD_GRADS[index % RECITAL_CARD_GRADS.length];
   const inputRef = React.useRef();
   const [uploading, setUploading] = React.useState(false);
+  const [cropFile, setCropFile]   = React.useState(null);
 
-  const handleUpload = async (e) => {
+  // Step 1: file picked → open crop modal (matches recital details page UX).
+  const handleFilePick = (e) => {
     e.stopPropagation();
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { toast.error("Image too large (max 10 MB)"); return; }
+    e.target.value = "";
+    setCropFile(file);
+  };
+
+  // Step 2: crop confirmed → upload cropped dataUrl
+  const handleCropConfirm = async (dataUrl) => {
+    setCropFile(null);
     setUploading(true);
     try {
-      const dataUrl = await compressImage(file);
-      await recitalApi.uploadPoster(schoolId, r.id, dataUrl);
-      onPosterUpdate && onPosterUpdate(r.id, dataUrl);
-    } catch { /* silent */ }
+      const { url } = await import('@/lib/api').then(m => m.upload.image(dataUrl));
+      await recitalApi.uploadPoster(schoolId, r.id, url);
+      onPosterUpdate && onPosterUpdate(r.id, url);
+    } catch { toast.error('Failed to save cover photo'); }
     setUploading(false);
   };
 
@@ -363,12 +374,19 @@ function RecitalImageCard({ r, index, onClick, schoolId, onPosterUpdate, canEdit
       </div>
       {canEdit && (
         <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:10, right:10 }}>
-          <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleUpload} />
+          <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleFilePick} />
           <button onClick={e=>{e.stopPropagation();inputRef.current?.click();}} disabled={uploading}
             style={{ background:'rgba(0,0,0,.45)', border:'none', borderRadius:8, color:'#fff', fontSize:11, fontWeight:700, padding:'5px 10px', cursor:'pointer', backdropFilter:'blur(4px)' }}>
             {uploading ? '…' : poster ? '+' : '+ Photo'}
           </button>
         </div>
+      )}
+      {cropFile && (
+        <CoverCropModal
+          file={cropFile}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropFile(null)}
+        />
       )}
     </div>
   );
@@ -378,17 +396,25 @@ function FeaturedRecitalCard({ r, onClick, schoolId, onPosterUpdate, canEdit }) 
   const poster   = r.poster_url || null;
   const inputRef = React.useRef();
   const [uploading, setUploading] = React.useState(false);
+  const [cropFile, setCropFile]   = React.useState(null);
 
-  const handleUpload = async (e) => {
+  const handleFilePick = (e) => {
     e.stopPropagation();
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { toast.error("Image too large (max 10 MB)"); return; }
+    e.target.value = "";
+    setCropFile(file);
+  };
+
+  const handleCropConfirm = async (dataUrl) => {
+    setCropFile(null);
     setUploading(true);
     try {
-      const dataUrl = await compressImage(file);
-      await recitalApi.uploadPoster(schoolId, r.id, dataUrl);
-      onPosterUpdate && onPosterUpdate(r.id, dataUrl);
-    } catch { /* silent */ }
+      const { url } = await import('@/lib/api').then(m => m.upload.image(dataUrl));
+      await recitalApi.uploadPoster(schoolId, r.id, url);
+      onPosterUpdate && onPosterUpdate(r.id, url);
+    } catch { toast.error('Failed to save cover photo'); }
     setUploading(false);
   };
 
@@ -407,12 +433,19 @@ function FeaturedRecitalCard({ r, onClick, schoolId, onPosterUpdate, canEdit }) 
       </div>
       {canEdit && (
         <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:10, right:10 }}>
-          <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleUpload} />
+          <input ref={inputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleFilePick} />
           <button onClick={e=>{e.stopPropagation();inputRef.current?.click();}} disabled={uploading}
             style={{ background:'rgba(0,0,0,.45)', border:'none', borderRadius:8, color:'#fff', fontSize:11, fontWeight:700, padding:'5px 10px', cursor:'pointer', backdropFilter:'blur(4px)' }}>
             {uploading ? '…' : poster ? '+' : '+ Photo'}
           </button>
         </div>
+      )}
+      {cropFile && (
+        <CoverCropModal
+          file={cropFile}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropFile(null)}
+        />
       )}
     </div>
   );

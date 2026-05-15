@@ -560,9 +560,15 @@ export default function BatchesPage() {
               style={{ background:"none", border:"none", cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6, display:"flex", alignItems:"center" }}><SvgIcon name="x" size={18} /></button>
           </div>
 
-          {/* ── VIEW mode: batch hero ── */}
+          {/* ── VIEW mode: hero + scrollable body in one container ──
+              Previously the hero block was flexShrink:0 (pinned at top) and
+              only the body below it scrolled — meaning the cover image
+              stayed put while you scrolled. Now both share a single
+              overflowY:auto wrapper so the image scrolls with the content
+              (matches /recitals detail page behavior). */}
           {panelMode === "view" && activeBatch && (
-            <div style={{ flexShrink:0, borderBottom:"1px solid var(--border)" }}>
+            <div style={{ flex:1, overflowY:"auto", minHeight:0 }}>
+            <div style={{ borderBottom:"1px solid var(--border)" }}>
               {activeBatch.cover_url ? (
                 /* ── Has cover photo ── */
                 <>
@@ -604,7 +610,7 @@ export default function BatchesPage() {
                   </div>
                 </>
               ) : (
-                /* ── No cover photo — original info bar + Add cover button ── */
+                /* ── No cover photo — info bar + Add cover button ── */
                 <div style={{ padding:"18px 22px 14px", background:"var(--surface)" }}>
                   <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:6 }}>
                     <div style={{ width:6, height:42, borderRadius:3, background:activeColor, flexShrink:0, marginTop:2 }} />
@@ -633,11 +639,8 @@ export default function BatchesPage() {
                 </div>
               )}
             </div>
-          )}
-
-          {/* ── VIEW mode: scrollable body ── */}
-          {panelMode === "view" && activeBatch && (
-            <div style={{ flex:1, overflowY:"auto", padding:"14px 18px" }}>
+            {/* Scrollable body — lives in the same overflow container as the hero */}
+            <div style={{ padding:"14px 18px" }}>
               {/* Class Schedule */}
               <PSection title="Class Schedule">
                 <div style={{ display:"flex", gap:3, marginBottom:12 }}>
@@ -745,6 +748,7 @@ export default function BatchesPage() {
                 <button onClick={() => { if(window.confirm(`Delete "${activeBatch.name}"?`)) deleteMutation.mutate(activeBatch.id); }}
                   style={{ padding:"9px 14px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontFamily:"var(--font-b)", flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }}><SvgIcon name="trash" size={14} color="#e05c6a" /></button>
               </div>
+            </div>
             </div>
           )}
 

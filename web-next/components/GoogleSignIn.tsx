@@ -6,6 +6,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
 import { redirectToDashboard } from '@/lib/redirectToDashboard';
 import { useAuth } from '@/lib/context/AuthContext';
+import { useTheme } from '@/lib/context/ThemeContext';
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
@@ -31,7 +32,16 @@ type Props = {
 export default function GoogleSignIn({ mode = 'login', onToken, label, disabled = false, disabledTitle }: Props = {}) {
   const router = useRouter();
   const { setSession } = useAuth();
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
+
+  // Google brand-approved palette pair. Both variants are blessed in
+  // Google's branding guidelines — we just can't invent our own.
+  // https://developers.google.com/identity/branding-guidelines
+  const isDark = theme === 'dark';
+  const palette = isDark
+    ? { bg: '#131314', text: '#E3E3E3', border: '#3C4043', hoverBg: '#1F2122', hoverBorder: '#5F6368' }
+    : { bg: '#FFFFFF', text: '#1F1F1F', border: '#DADCE0', hoverBg: '#F8F9FA', hoverBorder: '#C0C4C9' };
 
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
@@ -127,12 +137,12 @@ export default function GoogleSignIn({ mode = 'login', onToken, label, disabled 
         justifyContent: 'center',
         gap: 10,
         padding: '11px 14px',
-        background: '#fff',
-        border: '1.5px solid #dadce0',
+        background: palette.bg,
+        border: `1.5px solid ${palette.border}`,
         borderRadius: 9,
         fontSize: 15,
         fontWeight: 600,
-        color: '#3c4043',
+        color: palette.text,
         cursor: isDisabled ? 'not-allowed' : 'pointer',
         opacity: isDisabled ? 0.55 : 1,
         boxSizing: 'border-box',
@@ -142,15 +152,15 @@ export default function GoogleSignIn({ mode = 'login', onToken, label, disabled 
       onMouseEnter={(e) => {
         if (!isDisabled) {
           const target = e.currentTarget;
-          target.style.background = '#f8f9fa';
-          target.style.borderColor = '#c0c4c9';
-          target.style.boxShadow = '0 1px 6px rgba(0,0,0,0.12)';
+          target.style.background = palette.hoverBg;
+          target.style.borderColor = palette.hoverBorder;
+          target.style.boxShadow = isDark ? '0 1px 6px rgba(0,0,0,0.5)' : '0 1px 6px rgba(0,0,0,0.12)';
         }
       }}
       onMouseLeave={(e) => {
         const target = e.currentTarget;
-        target.style.background = '#fff';
-        target.style.borderColor = '#dadce0';
+        target.style.background = palette.bg;
+        target.style.borderColor = palette.border;
         target.style.boxShadow = 'none';
       }}
     >
