@@ -25,6 +25,10 @@ type Props = {
   // The specific class date (YYYY-MM-DD)
   classDate: string;
   eventTitle?: string;
+  // When true, renders inline (no overlay, no body-scroll lock, no max-height).
+  // Used when the consumer wants the attendance UI to appear inside a parent
+  // section rather than as a top-level dialog.
+  inline?: boolean;
 };
 
 const STATUS_CONFIG: { value: AttendanceStatus; label: string; color: string; icon: string }[] = [
@@ -173,15 +177,15 @@ function SwipeRow({
   );
 }
 
-export default function AttendanceModal({ open, onClose, schoolId, eventId, scheduleId, classDate, eventTitle }: Props) {
+export default function AttendanceModal({ open, onClose, schoolId, eventId, scheduleId, classDate, eventTitle, inline = false }: Props) {
   const [students, setStudents] = useState<Student[]>([]);
   const [marks, setMarks] = useState<Record<number, AttendanceStatus>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Lock body scroll while open + ESC to close
+  // Lock body scroll while open + ESC to close — only in modal mode.
   useEffect(() => {
-    if (!open) return;
+    if (!open || inline) return;
     const orig = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -190,7 +194,7 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
       document.body.style.overflow = orig;
       window.removeEventListener('keydown', onKey);
     };
-  }, [open, onClose]);
+  }, [open, onClose, inline]);
 
   // Load roster + existing marks when modal opens
   useEffect(() => {
@@ -266,22 +270,19 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
     } catch { return classDate; }
   })();
 
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
-        backdropFilter: 'blur(4px)', zIndex: 600,
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        padding: '40px 16px', overflowY: 'auto',
-      }}
-    >
+  // Card body — shared between modal and inline renderings
+  const cardBody = (
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'var(--card)', borderRadius: 16, width: '100%', maxWidth: 580,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.4)', border: '1px solid var(--border)',
-          display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 80px)',
+          background: 'var(--card)',
+          borderRadius: inline ? 12 : 16,
+          width: '100%',
+          maxWidth: inline ? undefined : 580,
+          boxShadow: inline ? 'none' : '0 20px 60px rgba(0,0,0,0.4)',
+          border: '1px solid var(--border)',
+          display: 'flex', flexDirection: 'column',
+          maxHeight: inline ? undefined : 'calc(100vh - 80px)',
         }}
       >
         {/* Header */}
@@ -388,6 +389,21 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
           </div>
         </div>
       </div>
+  );
+
+  if (inline) return cardBody;
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(4px)', zIndex: 600,
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+        padding: '40px 16px', overflowY: 'auto',
+      }}
+    >
+      {cardBody}
     </div>
   );
 }

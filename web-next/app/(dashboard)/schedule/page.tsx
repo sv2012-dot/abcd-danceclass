@@ -391,6 +391,7 @@ export default function SchedulePage() {
     }
     setDetailEvent(ev);
     setPanelMode('view');
+    setInlineSection(null); // collapse any prior inline expansion
   };
 
   // Calendar state
@@ -414,8 +415,12 @@ export default function SchedulePage() {
   const [showLegend, setShowLegend] = useState(false);
   const [selectedDay, setSelectedDay] = useState(today);
   const [showSmartAdd, setShowSmartAdd] = useState(false);
-  const [smartReplyEvent, setSmartReplyEvent] = useState(null);   // event obj or null
-  const [attendanceEvent, setAttendanceEvent] = useState(null);   // event obj or null
+  const [smartReplyEvent, setSmartReplyEvent] = useState(null);   // event obj or null (overlay modal)
+  const [attendanceEvent, setAttendanceEvent] = useState(null);   // event obj or null (overlay modal)
+  // Inline dialog inside the panel — only one open at a time.
+  // 'attendance' → renders <AttendanceModal inline /> below the action stack
+  // 'message'    → renders <SmartAnnounceModal inline /> below the action stack
+  const [inlineSection, setInlineSection] = useState(null);
   const [markingAllId, setMarkingAllId] = useState(null);          // event id currently being processed
 
   // ── Quick "Mark All Present" — fetches the roster and saves everyone as
@@ -616,11 +621,19 @@ export default function SchedulePage() {
       router.replace('/schedule');
     }
   }, []); // eslint-disable-line
+  // Match against BOTH real DB events (rawEvents) AND synthetic schedule
+  // instances (scheduleEvents). The dashboard sends ids like `sched_42_2026-05-21`
+  // for recurring class instances, which previously had no match here and
+  // silently failed to open the panel.
   useEffect(() => {
-    if (!pendingEventIdRef.current || !rawEvents.length) return;
-    const ev = rawEvents.find(e => String(e.id) === String(pendingEventIdRef.current));
+    if (!pendingEventIdRef.current) return;
+    const target = String(pendingEventIdRef.current);
+    let ev = rawEvents.find(e => String(e.id) === target);
+    if (!ev) {
+      ev = scheduleEvents.find(e => String(e.id) === target);
+    }
     if (ev) { pendingEventIdRef.current = null; handleEventClick(ev); }
-  }, [rawEvents]); // eslint-disable-line
+  }, [rawEvents, scheduleEvents]); // eslint-disable-line
 
   // ── Mutations ────────────────────────────────────────────────────────────
   const saveMutation = useMutation({
@@ -1403,26 +1416,32 @@ export default function SchedulePage() {
                     )}
                   </div>
 
-                  {/* Title block — recital-style typography */}
+                  {/* Title block — recital-style typography.
+                      Hierarchy: TYPE as the big heading, batch / class name
+                      as the subhead beneath it. The event title (often
+                      identical to the batch name for recurring instances)
+                      shows as a small eyebrow on top. */}
                   <div style={{ position:"absolute", bottom:0, left:0, right:0, padding: isMobile ? "16px 18px 20px" : "20px 24px 22px", zIndex:5 }}>
                     <div style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,.6)", textTransform:"uppercase", letterSpacing:".14em", marginBottom:6 }}>
-                      {e.type}{e._isSchedule ? " · ↻ Recurring" : ""}
+                      {e._isSchedule ? "↻ Recurring" : "Event"}
                     </div>
-                    <div style={{ fontFamily:"var(--font-d)", fontSize: isMobile ? 26 : 30, fontWeight:800, color:"#fff", lineHeight:1.15, letterSpacing:"-0.5px", marginBottom: primaryBatch ? 8 : 0 }}>
-                      {e.title}
+                    <div style={{ fontFamily:"var(--font-d)", fontSize: isMobile ? 28 : 34, fontWeight:800, color:"#fff", lineHeight:1.1, letterSpacing:"-0.6px", marginBottom: 6 }}>
+                      {e.type}
+                    </div>
+                    {/* Subhead — batch name (or fall back to event title) */}
+                    <div style={{ fontSize: isMobile ? 15 : 17, fontWeight:600, color:"rgba(255,255,255,.85)", lineHeight:1.3, marginBottom: primaryBatch ? 10 : 0 }}>
+                      {primaryBatch?.name || e.title}
                     </div>
                     {primaryBatch && (
                       <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                         <button type="button"
                           onClick={()=>{ setDetailEvent(null); setPanelMode('view'); router.push("/batches"); }}
-                          style={{ display:"inline-flex",alignItems:"center",gap:6, background:"rgba(255,255,255,.14)",border:"1px solid rgba(255,255,255,.28)", borderRadius:20,padding:"5px 12px",cursor:"pointer", fontSize:13,fontWeight:600,color:"#fff",backdropFilter:"blur(8px)" }}
+                          style={{ display:"inline-flex",alignItems:"center",gap:5, background:"rgba(255,255,255,.14)",border:"1px solid rgba(255,255,255,.28)", borderRadius:20,padding:"4px 10px",cursor:"pointer", fontSize:11,fontWeight:600,color:"rgba(255,255,255,.9)",backdropFilter:"blur(8px)" }}
                           onMouseEnter={ev=>{ev.currentTarget.style.background="rgba(255,255,255,.22)";}}
                           onMouseLeave={ev=>{ev.currentTarget.style.background="rgba(255,255,255,.14)";}}
                         >
-                          <SvgIcon name="book-open" size={12} color="#fff" />
-                          {primaryBatch.name}
-                          {primaryBatch.student_count != null && <span style={{fontSize:11,opacity:0.75}}>· {primaryBatch.student_count} students</span>}
-                          <span style={{fontSize:10,opacity:0.6}}>→</span>
+                          {primaryBatch.student_count != null ? `${primaryBatch.student_count} students` : 'View batch'}
+                          <span style={{fontSize:9,opacity:0.6}}>→</span>
                         </button>
                         {evBatches.length > 1 && (
                           <span style={{ fontSize:11, color:"rgba(255,255,255,.55)", fontWeight:600 }}>
@@ -1481,16 +1500,22 @@ export default function SchedulePage() {
                         ⚡ {markingAllId === e.id ? "Marking…" : "Mark All Present"}
                       </button>
                       <button
-                        onClick={() => setAttendanceEvent(e)}
-                        style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #10B981", background:"transparent", color:"#10B981", cursor:"pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8 }}
+                        onClick={() => setInlineSection(s => s === 'attendance' ? null : 'attendance')}
+                        style={{ width:"100%", padding:"12px 16px", borderRadius:10,
+                          border:"1.5px solid #10B981",
+                          background: inlineSection === 'attendance' ? "rgba(16,185,129,0.12)" : "transparent",
+                          color:"#10B981", cursor:"pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8 }}
                       >
-                        ✓ Take Attendance
+                        ✓ Take Attendance {inlineSection === 'attendance' ? '▲' : '▼'}
                       </button>
                       <button
-                        onClick={() => setSmartReplyEvent(e)}
-                        style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid var(--border)", background:"var(--surface)", color:"var(--text)", cursor:"pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8 }}
+                        onClick={() => setInlineSection(s => s === 'message' ? null : 'message')}
+                        style={{ width:"100%", padding:"12px 16px", borderRadius:10,
+                          border:"1.5px solid var(--border)",
+                          background: inlineSection === 'message' ? "rgba(124,58,237,0.08)" : "var(--surface)",
+                          color:"var(--text)", cursor:"pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8 }}
                       >
-                        <SvgIcon name="mail" size={14} color="var(--text)" /> Message Parents
+                        <SvgIcon name="mail" size={14} color="var(--text)" /> Message Parents {inlineSection === 'message' ? '▲' : '▼'}
                       </button>
                       {e._isSchedule && (
                         <button
@@ -1507,6 +1532,48 @@ export default function SchedulePage() {
                           <button onClick={()=>{ setDetailEvent(null); setPanelMode('view'); router.push("/batches"); }} style={{ fontSize:12, fontWeight:600, color:"var(--muted)", background:"none", border:"none", cursor:"pointer", padding:6 }}>
                             Manage in Batches →
                           </button>
+                        </div>
+                      )}
+
+                      {/* ── Inline expansion — Attendance ── */}
+                      {inlineSection === 'attendance' && (
+                        <div style={{ marginTop:14 }}>
+                          <AttendanceModal
+                            open
+                            inline
+                            onClose={() => setInlineSection(null)}
+                            schoolId={String(sid)}
+                            eventId={!e._isSchedule ? e.id : undefined}
+                            scheduleId={e._isSchedule ? e._scheduleId : undefined}
+                            classDate={e.start_datetime ? String(e.start_datetime).slice(0, 10) : new Date().toISOString().slice(0, 10)}
+                            eventTitle={e.title}
+                          />
+                        </div>
+                      )}
+
+                      {/* ── Inline expansion — Smart Announce ── */}
+                      {inlineSection === 'message' && (
+                        <div style={{ marginTop:14 }}>
+                          <SmartAnnounceModal
+                            open
+                            inline
+                            onClose={() => setInlineSection(null)}
+                            ctx={(() => {
+                              const s = e.start_datetime ? new Date(e.start_datetime) : null;
+                              const en = e.end_datetime ? new Date(e.end_datetime) : null;
+                              const fmtT = (d) => d ? d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
+                              return {
+                                contextType: e._isRecital ? 'recital' : 'event',
+                                contextId: e._isRecital ? e._recitalId : e.id,
+                                title: e.title,
+                                subtitle: e.type,
+                                dateLabel: s ? s.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : undefined,
+                                timeLabel: s && en ? `${fmtT(s)} – ${fmtT(en)}` : (s ? fmtT(s) : undefined),
+                                location: e.location || undefined,
+                                color: color,
+                              };
+                            })()}
+                          />
                         </div>
                       )}
                     </div>

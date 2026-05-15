@@ -36,6 +36,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   ctx: AnnounceContextData | null;
+  inline?: boolean;
 };
 
 const PURPLE = '#7C3AED';
@@ -104,7 +105,7 @@ function EventCard({ ctx, color }: { ctx: AnnounceContextData; color: string }) 
   );
 }
 
-export default function SmartAnnounceModal({ open, onClose, ctx }: Props) {
+export default function SmartAnnounceModal({ open, onClose, ctx, inline = false }: Props) {
   const [presetId, setPresetId] = useState('reminder');
   const [tone, setTone] = useState<SmartReplyTone>('friendly');
   const [custom, setCustom] = useState('');
@@ -200,6 +201,7 @@ export default function SmartAnnounceModal({ open, onClose, ctx }: Props) {
       title="Smart Announce"
       subtitle={ctx ? `About: ${ctx.title}` : 'Draft a parent-facing announcement.'}
       maxWidth={620}
+      inline={inline}
     >
       {!body ? (
         <>

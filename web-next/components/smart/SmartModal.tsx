@@ -10,6 +10,9 @@ type Props = {
   children: React.ReactNode;
   footer?: React.ReactNode;
   maxWidth?: number;
+  // When true, renders inline (no fixed overlay, no body-scroll lock).
+  // Used when embedding the modal content directly inside a parent panel.
+  inline?: boolean;
 };
 
 const SparkleHeader = () => (
@@ -32,10 +35,12 @@ export default function SmartModal({
   children,
   footer,
   maxWidth = 640,
+  inline = false,
 }: Props) {
-  // Lock body scroll while modal open + ESC to close
+  // Only lock body scroll / ESC in modal mode. Inline embedding shouldn't
+  // hijack global keyboard or scroll behavior.
   useEffect(() => {
-    if (!open) return;
+    if (!open || inline) return;
     const orig = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
@@ -46,40 +51,28 @@ export default function SmartModal({
       document.body.style.overflow = orig;
       window.removeEventListener('keydown', onKey);
     };
-  }, [open, onClose]);
+  }, [open, onClose, inline]);
 
   if (!open) return null;
 
-  return (
+  // Inline = render the card content directly with no overlay / centering.
+  // Used when the consumer wants the dialog body to appear inside a parent
+  // section instead of as a top-level overlay.
+  const card = (
     <div
-      onClick={onClose}
+      onClick={(e) => e.stopPropagation()}
       style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.55)',
-        backdropFilter: 'blur(4px)',
-        zIndex: 500,
+        background: 'var(--card)',
+        borderRadius: inline ? 12 : 16,
+        width: '100%',
+        maxWidth: inline ? undefined : maxWidth,
+        boxShadow: inline ? 'none' : '0 20px 60px rgba(0,0,0,0.4)',
+        border: '1px solid var(--border)',
         display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-        padding: '40px 16px',
-        overflowY: 'auto',
+        flexDirection: 'column',
+        maxHeight: inline ? undefined : 'calc(100vh - 80px)',
       }}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--card)',
-          borderRadius: 16,
-          width: '100%',
-          maxWidth,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-          border: '1px solid var(--border)',
-          display: 'flex',
-          flexDirection: 'column',
-          maxHeight: 'calc(100vh - 80px)',
-        }}
-      >
         {/* Header */}
         <div
           style={{
@@ -141,6 +134,29 @@ export default function SmartModal({
           </div>
         )}
       </div>
+  );
+
+  // Inline mode: just the card, no overlay
+  if (inline) return card;
+
+  // Modal mode: overlay + click-outside-to-close
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(4px)',
+        zIndex: 500,
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        padding: '40px 16px',
+        overflowY: 'auto',
+      }}
+    >
+      {card}
     </div>
   );
 }
