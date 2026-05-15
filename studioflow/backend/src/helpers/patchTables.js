@@ -466,6 +466,37 @@ async function patchTables() {
       console.log(`  🔗 Backfilled ${orphans.length} membership(s) from users.school_id`);
     }
 
+    // Heal "orphaned ownerships" — a school registered with a user's email
+    // but no school_memberships row pointing at it. This happens when the
+    // user accepted an invite to a second school before the multi-school
+    // sprint shipped, which overwrote users.school_id and silently dropped
+    // their connection to their original studio. We restore by reading the
+    // schools.email field as the canonical owner signal.
+    const [orphanedOwnerships] = await pool.query(`
+      SELECT s.id AS school_id, u.id AS user_id, u.email
+        FROM schools s
+        JOIN users u ON LOWER(u.email) = LOWER(s.email)
+        LEFT JOIN school_memberships sm
+          ON sm.user_id = u.id AND sm.school_id = s.id
+       WHERE s.deleted_at IS NULL
+         AND s.is_active = 1
+         AND u.removed_at IS NULL
+         AND u.is_active = 1
+         AND sm.id IS NULL
+    `);
+    for (const o of orphanedOwnerships) {
+      try {
+        await pool.query(
+          `INSERT INTO school_memberships (user_id, school_id, role, is_owner, joined_at)
+           VALUES (?, ?, 'school_admin', 1, NOW())`,
+          [o.user_id, o.school_id]
+        );
+      } catch (_) { /* uniq key collision = already healed */ }
+    }
+    if (orphanedOwnerships.length > 0) {
+      console.log(`  🩹 Restored ${orphanedOwnerships.length} orphaned ownership(s)`);
+    }
+
     console.log('✅ patchTables complete');
   } catch (err) {
     // Non-fatal — log but don't crash the server
