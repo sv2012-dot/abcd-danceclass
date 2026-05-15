@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/context/AuthContext";
 import { batches as api, students as studentsApi, schedules as schedulesApi, events as eventsApi } from "@/lib/api";
@@ -240,7 +241,19 @@ export default function BatchesPage() {
   const sid = user?.school_id;
   const qc  = useQueryClient();
 
+  const router       = useRouter();
+  const searchParams = useSearchParams();
   const [activeId,       setActiveId]       = useState(null);
+
+  // Auto-open a specific batch when deep-linked via ?openBatchId=X (e.g.
+  // when a class event panel's batch chip routes here).
+  useEffect(() => {
+    const openId = searchParams.get('openBatchId');
+    if (openId) {
+      setActiveId(Number(openId) || openId);
+      router.replace('/batches');
+    }
+  }, []); // eslint-disable-line
   const [view,           setView]           = useState("grid");
   const [panelMode,      setPanelMode]      = useState("view"); // "view" | "edit" | "add"
   const [form,           setForm]           = useState(EMPTY);

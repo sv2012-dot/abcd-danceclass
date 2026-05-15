@@ -62,6 +62,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Doing this in React-land (no window.location.reload) preserves the
     // smooth Google-login flow.
     const onUnauthorized = () => {
+      // Clear from both storage tiers (sessionStorage is legacy — left in for
+      // backward compat with sessions issued before we switched to localStorage)
       sessionStorage.removeItem('sf_token');
       localStorage.removeItem('sf_token');
       localStorage.removeItem('sf_user');
@@ -71,8 +73,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener('sf:unauthorized', onUnauthorized);
 
-    // Check if there's a valid token
-    const token = sessionStorage.getItem('sf_token') || localStorage.getItem('sf_token');
+    // localStorage is the primary store. sessionStorage fallback only for
+    // sessions issued before the switch (will get migrated on next login).
+    const token = localStorage.getItem('sf_token') || sessionStorage.getItem('sf_token');
 
     if (token) {
       // Verify token with backend
@@ -84,7 +87,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setMemberships(data.memberships || []);
         })
         .catch(() => {
-          // Token is invalid or expired, clear everything
           sessionStorage.removeItem('sf_token');
           localStorage.removeItem('sf_token');
           localStorage.removeItem('sf_user');
@@ -108,7 +110,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string): Promise<User> => {
     const data: any = await auth.login({ email, password });
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('sf_token', data.token);
+      // localStorage — persists across tab switches, app backgrounding (iOS
+      // Safari aggressively wipes sessionStorage when the tab loses focus,
+      // which was logging mobile users out unexpectedly).
+      localStorage.setItem('sf_token', data.token);
       localStorage.setItem('sf_user', JSON.stringify(data.user));
     }
     setUser(data.user);
@@ -129,7 +134,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // into context so route guards see the authenticated state immediately.
   const setSession = (token: string, u: User, s: School | null = null) => {
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('sf_token', token);
+      // localStorage — survives iOS Safari backgrounding the tab.
+      localStorage.setItem('sf_token', token);
       localStorage.setItem('sf_user', JSON.stringify(u));
     }
     setUser(u);

@@ -14,7 +14,9 @@ const api = axios.create({
 // Request interceptor: add auth token if available (client-side only)
 if (typeof window !== 'undefined') {
   api.interceptors.request.use(config => {
-    const token = sessionStorage.getItem('sf_token') || localStorage.getItem('sf_token');
+    // localStorage primary (survives iOS Safari backgrounding) + session
+    // fallback for any legacy in-flight sessions issued before the switch.
+    const token = localStorage.getItem('sf_token') || sessionStorage.getItem('sf_token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   });

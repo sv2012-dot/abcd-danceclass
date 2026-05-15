@@ -609,10 +609,15 @@ export default function SchedulePage() {
 
   // If navigated with ?openEventId=… (e.g. from dashboard THIS WEEK row), jump to date + open panel
   const pendingEventIdRef = useRef(null);
+  // Remember the entry origin so Close can route back to /home if the user
+  // arrived from the dashboard. We have to stash this in a ref because
+  // router.replace below strips the query params from the URL.
+  const cameFromDashboardRef = useRef(false);
   useEffect(() => {
     const openEventId = searchParams.get('openEventId');
     if (openEventId) {
       pendingEventIdRef.current = Number(openEventId) || openEventId;
+      cameFromDashboardRef.current = searchParams.get('from') === 'dashboard';
       const eventDate = searchParams.get('eventDate');
       if (eventDate) {
         const d = new Date(eventDate);
@@ -1376,15 +1381,39 @@ export default function SchedulePage() {
               : null;
             const heroImg = primaryBatch?.cover_url || null;
 
+            // Close — if the user got here from the dashboard, route them
+            // back to /home; otherwise just clear the panel in place.
+            const handleClose = () => {
+              const goHome = cameFromDashboardRef.current;
+              cameFromDashboardRef.current = false;
+              setDetailEvent(null);
+              setPanelMode('view');
+              setInlineSection(null);
+              if (goHome) router.push('/home');
+            };
+
+            // Delete handles both one-off events (DELETE /events/:id) and
+            // recurring class instances (skip-this-date — formerly the
+            // 'Skip this class' button).
+            const handleDelete = () => {
+              if (e._isSchedule) {
+                if (window.confirm("Skip this class on " + fmtDate(e.start_datetime) + "? (recurring class — only this date is cancelled, the schedule continues)")) {
+                  skipMutation.mutate({ scheduleId: e._scheduleId, date: e.start_datetime.slice(0,10) });
+                }
+              } else {
+                if (window.confirm("Delete this event?")) deleteMutation.mutate(e.id);
+              }
+            };
+
             return (
               <>
-                {/* ── Unified hero (mobile + desktop) ────────────────────────
-                    Matches the recital detail page: a tall image-or-gradient
-                    hero with the event title large, type chip + batch chip
-                    below, and a minimal top toolbar (Close + Delete only).
-                */}
+                {/* Single overflow container — wraps the hero + body so the
+                    cover image scrolls with the page (mirrors /recitals
+                    detail and the fixed /batches behavior). */}
+                <div style={{ flex:1, overflowY:"auto", minHeight:0 }}>
+                {/* ── Hero (inside the scroll container) ──────────────── */}
                 <div style={{
-                  position:"relative", flexShrink:0, overflow:"hidden",
+                  position:"relative", overflow:"hidden",
                   background: heroImg ? "#000" : `linear-gradient(160deg,#1a1035 0%, ${color}66 50%, #2a1a55 100%)`,
                 }}>
                   {heroImg && (
@@ -1394,33 +1423,38 @@ export default function SchedulePage() {
                     </div>
                   )}
                   {!heroImg && <div style={{ minHeight: isMobile ? 200 : 180 }} />}
-                  {/* Bottom-up gradient so title reads on any image */}
                   <div style={{ position:"absolute", inset:0, background:"linear-gradient(to top, rgba(0,0,0,.82) 0%, rgba(0,0,0,.18) 55%, transparent 100%)" }} />
 
-                  {/* Top row: Close + (admin) Delete only */}
+                  {/* Top row: Close (left) + Edit + Delete (right, admin) —
+                      mirrors the /recitals detail toolbar exactly. */}
                   <div style={{ position:"absolute", top:0, left:0, right:0, padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:10 }}>
-                    <button onClick={() => { setDetailEvent(null); setPanelMode('view'); }} style={{
+                    <button onClick={handleClose} style={{
                       display:"flex", alignItems:"center", gap:6, padding:"7px 14px", borderRadius:20,
                       background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)",
                       border:"1px solid rgba(255,255,255,.22)",
                       color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer",
                     }}>← Close</button>
-                    {isAdmin && !e._isSchedule && (
-                      <button
-                        onClick={() => { if(window.confirm("Delete this event?")) deleteMutation.mutate(e.id); }}
-                        title="Delete event"
-                        style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
-                      >
-                        <SvgIcon name="trash" size={15} color="rgba(255,255,255,.85)" />
-                      </button>
+                    {isAdmin && (
+                      <div style={{ display:"flex", gap:8 }}>
+                        <button
+                          onClick={() => e._isSchedule ? openOverride(e) : openEdit(e)}
+                          title="Edit"
+                          style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
+                        >
+                          <SvgIcon name="pencil" size={15} color="rgba(255,255,255,.85)" />
+                        </button>
+                        <button
+                          onClick={handleDelete}
+                          title={e._isSchedule ? "Cancel this class instance" : "Delete event"}
+                          style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
+                        >
+                          <SvgIcon name="trash" size={15} color="rgba(255,255,255,.85)" />
+                        </button>
+                      </div>
                     )}
                   </div>
 
-                  {/* Title block — recital-style typography.
-                      Hierarchy: TYPE as the big heading, batch / class name
-                      as the subhead beneath it. The event title (often
-                      identical to the batch name for recurring instances)
-                      shows as a small eyebrow on top. */}
+                  {/* Title block — TYPE big, batch name as subhead. */}
                   <div style={{ position:"absolute", bottom:0, left:0, right:0, padding: isMobile ? "16px 18px 20px" : "20px 24px 22px", zIndex:5 }}>
                     <div style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,.6)", textTransform:"uppercase", letterSpacing:".14em", marginBottom:6 }}>
                       {e._isSchedule ? "↻ Recurring" : "Event"}
@@ -1428,14 +1462,15 @@ export default function SchedulePage() {
                     <div style={{ fontFamily:"var(--font-d)", fontSize: isMobile ? 28 : 34, fontWeight:800, color:"#fff", lineHeight:1.1, letterSpacing:"-0.6px", marginBottom: 6 }}>
                       {e.type}
                     </div>
-                    {/* Subhead — batch name (or fall back to event title) */}
                     <div style={{ fontSize: isMobile ? 15 : 17, fontWeight:600, color:"rgba(255,255,255,.85)", lineHeight:1.3, marginBottom: primaryBatch ? 10 : 0 }}>
                       {primaryBatch?.name || e.title}
                     </div>
                     {primaryBatch && (
                       <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                        {/* Batch chip — click opens THIS batch in the Classes
+                            panel (not the batches list). Uses openBatchId. */}
                         <button type="button"
-                          onClick={()=>{ setDetailEvent(null); setPanelMode('view'); router.push("/batches"); }}
+                          onClick={()=>{ setDetailEvent(null); setPanelMode('view'); router.push(`/batches?openBatchId=${primaryBatch.id}`); }}
                           style={{ display:"inline-flex",alignItems:"center",gap:5, background:"rgba(255,255,255,.14)",border:"1px solid rgba(255,255,255,.28)", borderRadius:20,padding:"4px 10px",cursor:"pointer", fontSize:11,fontWeight:600,color:"rgba(255,255,255,.9)",backdropFilter:"blur(8px)" }}
                           onMouseEnter={ev=>{ev.currentTarget.style.background="rgba(255,255,255,.22)";}}
                           onMouseLeave={ev=>{ev.currentTarget.style.background="rgba(255,255,255,.14)";}}
@@ -1453,9 +1488,8 @@ export default function SchedulePage() {
                   </div>
                 </div>
 
-                {/* ── Scrollable body ──────────────────────────────────── */}
-                <div style={{ flex:1, overflowY:"auto", padding: isMobile ? "18px 16px 24px" : "22px 22px 28px" }}>
-                  {/* Detail rows — date, time, location, notes */}
+                {/* ── Body content (still inside the shared scroll container) ── */}
+                <div style={{ padding: isMobile ? "18px 16px 24px" : "22px 22px 28px" }}>
                   <div style={{ display:"grid", gap:14, marginBottom:20 }}>
                     <PDetailRow icon="calendar" label="Date">{fmtDate(e.start_datetime)}</PDetailRow>
                     <PDetailRow icon="clock" label="Time">{fmtTime(e.start_datetime)} – {fmtTime(e.end_datetime)}</PDetailRow>
@@ -1463,7 +1497,6 @@ export default function SchedulePage() {
                     {e.notes && <PDetailRow icon="file-text" label="Notes">{e.notes}</PDetailRow>}
                   </div>
 
-                  {/* Studio booking warning (still surfaces inline) */}
                   {!!e.requires_studio && (
                     <div style={{ padding:"12px 14px", borderRadius:10, background:e.studio_booked?"#52c4a008":"#e05c6a08", border:`1.5px solid ${e.studio_booked?"#52c4a033":"#e05c6a33"}`, marginBottom:16 }}>
                       <div style={{ fontSize:12, fontWeight:700, color:e.studio_booked?"#52c4a0":"#e05c6a" }}>
@@ -1475,29 +1508,22 @@ export default function SchedulePage() {
                     </div>
                   )}
 
-                  {/* ── Main action buttons — full-width, stacked vertically ──
-                      Consistent for ALL events (recurring + one-off). Order:
-                        1. Edit Class       — primary
-                        2. All Present      — accent (attendance shortcut)
-                        3. Attendance       — full attendance modal
-                        4. Message          — Smart Announce
-                        5. Skip this class  — destructive, recurring-only
-                  */}
+                  {/* ── Main action stack ──────────────────────────────────
+                      Order:
+                        1. Message Parents — primary (purple gradient)
+                        2. Take Attendance — inline expansion
+                        3. Mark All Present — bulk shortcut
+                      Edit and Delete have been moved to the top-right toolbar.
+                      'Skip this class' is now folded into Delete (recurring).
+                      'Manage in Batches' link removed — batch chip in hero
+                      opens the batch directly. */}
                   {isAdmin && (
                     <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                       <button
-                        onClick={() => e._isSchedule ? openOverride(e) : openEdit(e)}
+                        onClick={() => setSmartReplyEvent(e)}
                         style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"none", background:"linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", color:"#fff", cursor:"pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:"0 2px 12px rgba(124,58,237,0.32)" }}
                       >
-                        <SvgIcon name="pencil" size={15} color="#fff" /> {e._isSchedule ? "Edit This Class" : "Edit Event"}
-                      </button>
-                      <button
-                        onClick={() => handleMarkAllPresent(e)}
-                        disabled={markingAllId === e.id}
-                        title="Mark every student in this class as present"
-                        style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"none", background:"linear-gradient(135deg,#059669,#10B981)", color:"#fff", cursor: markingAllId === e.id ? "wait" : "pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:"0 2px 12px rgba(16,185,129,0.3)", opacity: markingAllId === e.id ? 0.7 : 1 }}
-                      >
-                        ⚡ {markingAllId === e.id ? "Marking…" : "Mark All Present"}
+                        <SvgIcon name="mail" size={15} color="#fff" /> Message Parents
                       </button>
                       <button
                         onClick={() => setInlineSection(s => s === 'attendance' ? null : 'attendance')}
@@ -1509,35 +1535,17 @@ export default function SchedulePage() {
                         ✓ Take Attendance {inlineSection === 'attendance' ? '▲' : '▼'}
                       </button>
                       <button
-                        onClick={() => setInlineSection(s => s === 'message' ? null : 'message')}
-                        style={{ width:"100%", padding:"12px 16px", borderRadius:10,
-                          border:"1.5px solid var(--border)",
-                          background: inlineSection === 'message' ? "rgba(124,58,237,0.08)" : "var(--surface)",
-                          color:"var(--text)", cursor:"pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8 }}
+                        onClick={() => handleMarkAllPresent(e)}
+                        disabled={markingAllId === e.id}
+                        title="Mark every student in this class as present"
+                        style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"none", background:"linear-gradient(135deg,#059669,#10B981)", color:"#fff", cursor: markingAllId === e.id ? "wait" : "pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:"0 2px 12px rgba(16,185,129,0.3)", opacity: markingAllId === e.id ? 0.7 : 1 }}
                       >
-                        <SvgIcon name="mail" size={14} color="var(--text)" /> Message Parents {inlineSection === 'message' ? '▲' : '▼'}
+                        ⚡ {markingAllId === e.id ? "Marking…" : "Mark All Present"}
                       </button>
-                      {e._isSchedule && (
-                        <button
-                          onClick={() => { if (window.confirm("Skip this class on " + fmtDate(e.start_datetime) + "?")) skipMutation.mutate({ scheduleId: e._scheduleId, date: e.start_datetime.slice(0,10) }); }}
-                          disabled={skipMutation.isPending}
-                          style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor: skipMutation.isPending ? "wait" : "pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8 }}
-                        >
-                          {skipMutation.isPending ? "Skipping…" : "Skip This Class"}
-                        </button>
-                      )}
-                      {/* Recurring → Manage in Batches link (subtle, below the action stack) */}
-                      {e._isSchedule && (
-                        <div style={{ textAlign:"center", marginTop:6 }}>
-                          <button onClick={()=>{ setDetailEvent(null); setPanelMode('view'); router.push("/batches"); }} style={{ fontSize:12, fontWeight:600, color:"var(--muted)", background:"none", border:"none", cursor:"pointer", padding:6 }}>
-                            Manage in Batches →
-                          </button>
-                        </div>
-                      )}
 
-                      {/* ── Inline expansion — Attendance ── */}
+                      {/* Inline expansion — Take Attendance */}
                       {inlineSection === 'attendance' && (
-                        <div style={{ marginTop:14 }}>
+                        <div style={{ marginTop:4 }}>
                           <AttendanceModal
                             open
                             inline
@@ -1550,34 +1558,9 @@ export default function SchedulePage() {
                           />
                         </div>
                       )}
-
-                      {/* ── Inline expansion — Smart Announce ── */}
-                      {inlineSection === 'message' && (
-                        <div style={{ marginTop:14 }}>
-                          <SmartAnnounceModal
-                            open
-                            inline
-                            onClose={() => setInlineSection(null)}
-                            ctx={(() => {
-                              const s = e.start_datetime ? new Date(e.start_datetime) : null;
-                              const en = e.end_datetime ? new Date(e.end_datetime) : null;
-                              const fmtT = (d) => d ? d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
-                              return {
-                                contextType: e._isRecital ? 'recital' : 'event',
-                                contextId: e._isRecital ? e._recitalId : e.id,
-                                title: e.title,
-                                subtitle: e.type,
-                                dateLabel: s ? s.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : undefined,
-                                timeLabel: s && en ? `${fmtT(s)} – ${fmtT(en)}` : (s ? fmtT(s) : undefined),
-                                location: e.location || undefined,
-                                color: color,
-                              };
-                            })()}
-                          />
-                        </div>
-                      )}
                     </div>
                   )}
+                </div>
                 </div>
               </>
             );

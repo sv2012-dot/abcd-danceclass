@@ -358,10 +358,17 @@ function RecitalImageCard({ r, index, onClick, schoolId, onPosterUpdate, canEdit
     setUploading(false);
   };
 
+  // Card click — only navigate if no crop modal is active. Belt-and-braces
+  // alongside the modal's own stopPropagation.
+  const handleCardClick = (ev) => {
+    if (cropFile || uploading) { ev.stopPropagation(); return; }
+    onClick?.();
+  };
+
   const cardMeta = [fmtCardDate(r.event_date), r.event_time && fmtCardTime(r.event_time), r.venue].filter(Boolean);
 
   return (
-    <div onClick={onClick} style={{ position:'relative', width:'100%', height:190, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) top/cover no-repeat` : gradBg, transition:'transform .15s,box-shadow .15s', boxSizing:'border-box' }}
+    <div onClick={handleCardClick} style={{ position:'relative', width:'100%', height:190, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) top/cover no-repeat` : gradBg, transition:'transform .15s,box-shadow .15s', boxSizing:'border-box' }}
       {...conditionalHover(
         e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';},
         e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}
@@ -418,8 +425,15 @@ function FeaturedRecitalCard({ r, onClick, schoolId, onPosterUpdate, canEdit }) 
     setUploading(false);
   };
 
+  // Card click — only navigate if no crop modal is active. Belt-and-braces
+  // alongside the modal's own stopPropagation.
+  const handleCardClick = (ev) => {
+    if (cropFile || uploading) { ev.stopPropagation(); return; }
+    onClick?.();
+  };
+
   return (
-    <div onClick={onClick} style={{ position:'relative', width:'100%', height:280, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) top/cover no-repeat` : RECITAL_CARD_GRADS[0], transition:'transform .15s,box-shadow .15s', boxSizing:'border-box' }}
+    <div onClick={handleCardClick} style={{ position:'relative', width:'100%', height:280, borderRadius:16, overflow:'hidden', cursor:'pointer', background:poster ? `url(${poster}) top/cover no-repeat` : RECITAL_CARD_GRADS[0], transition:'transform .15s,box-shadow .15s', boxSizing:'border-box' }}
       {...conditionalHover(
         e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.22)';},
         e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}
@@ -735,11 +749,15 @@ function SchoolHomePage() {
     onSuccess: () => qc.invalidateQueries(['todos', sid]),
   });
 
-  // Update poster_url in the recitals query cache immediately after upload
+  // Update poster_url in the recitals query cache immediately after upload,
+  // and invalidate all recital-* keys so the schedule page's detail panel
+  // (and any other consumer) re-fetches with the fresh URL.
   const handlePosterUpdate = (recitalId, dataUrl) => {
     qc.setQueryData(['recitals', sid], old =>
       Array.isArray(old) ? old.map(r => r.id === recitalId ? { ...r, poster_url: dataUrl } : r) : old
     );
+    qc.invalidateQueries({ queryKey: ['recitals'], exact: false });
+    qc.invalidateQueries({ queryKey: ['recital-detail'], exact: false });
   };
 
   const openAdd = () => {
@@ -963,7 +981,7 @@ function SchoolHomePage() {
               <div style={{ background:C.white, borderRadius:16, border:`1.5px solid ${C.border}`, overflow:'hidden', marginBottom:36 }}>
                 {thisWeekEvents.length === 0
                   ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center' }}>No events this week</div>
-                  : thisWeekEvents.slice(0,5).map(e => <ThisWeekRow key={e.id} e={e} onNavigate={()=>router.push(`/schedule?openEventId=${e.id}&eventDate=${encodeURIComponent(e.start_datetime || '')}`)} />)
+                  : thisWeekEvents.slice(0,5).map(e => <ThisWeekRow key={e.id} e={e} onNavigate={()=>router.push(`/schedule?openEventId=${e.id}&eventDate=${encodeURIComponent(e.start_datetime || '')}&from=dashboard`)} />)
                 }
               </div>
               <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>router.push('/schedule')} />
@@ -1044,7 +1062,7 @@ function SchoolHomePage() {
                 const color = e.color || TYPE_COLORS[e.type] || "#8a7a9a";
                 const d     = parseLocalDate((e.start_datetime||"").slice(0,10));
                 return (
-                  <div key={e.id} onClick={()=>router.push(`/schedule?openEventId=${e.id}&eventDate=${encodeURIComponent(e.start_datetime || '')}`)}
+                  <div key={e.id} onClick={()=>router.push(`/schedule?openEventId=${e.id}&eventDate=${encodeURIComponent(e.start_datetime || '')}&from=dashboard`)}
                     style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderTop:`1px solid ${C.border}`,cursor:"pointer",transition:"background .1s"}}
                     {...conditionalHover(
                       ev=>{ev.currentTarget.style.background=C.surface;},

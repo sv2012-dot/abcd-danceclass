@@ -205,7 +205,13 @@ export default function CoverCropModal({ file, onConfirm, onCancel }: Props) {
   };
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:3000, background:'#0c0c0c', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
+    // stopPropagation on the overlay so clicks inside the modal (especially
+    // the 'Use this photo' confirm) don't bubble up to a parent card's
+    // onClick — that was navigating the user away after a successful upload.
+    <div
+      onClick={e => e.stopPropagation()}
+      style={{ position:'fixed', inset:0, zIndex:3000, background:'#0c0c0c', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}
+    >
       <div style={{ width: isMob ? '100%' : CW, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 20px', boxSizing:'border-box', flexShrink:0 }}>
         <div>
           <div style={{ color:'#fff', fontWeight:700, fontSize:15 }}>Set Cover Photo</div>
