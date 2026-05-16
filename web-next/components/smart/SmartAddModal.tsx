@@ -61,29 +61,67 @@ type Props = {
 // Static fallback used when the studio has no batches / recitals yet.
 // Once real data loads, buildDynamicExamples() returns school-specific
 // example prompts that the AI is more likely to parse correctly because
-// the names already exist in the database.
+// the names already exist AND the prompts contain concrete date anchors.
 const STATIC_EXAMPLES = [
-  'Hip Hop Mon Wed Fri 5pm March',
-  'Bharatanatyam Beg Tuesdays 6pm for next 6 weeks',
-  'Create a 10-week summer class series starting June 15',
+  'Hip Hop Mon Wed Fri 5pm starting next Monday for 6 weeks',
+  'Bharatanatyam Beg Tuesdays 6pm for the next 6 weeks',
+  'Weekly Saturday class at 5pm starting June 7 for 10 weeks',
 ];
+
+// ── helpers used to build parser-friendly prompts ─────────────────────────
+// The Smart Add parser needs concrete dates. Abstract phrases like
+// "ad-hoc" or "leading up to" don't extract — we have to bake the dates
+// directly into the prompt text using real recital/batch info.
+
+function fmtMonthDay(dateStr: string): string {
+  // Accepts "YYYY-MM-DD" (or ISO with T). Returns "May 21" style.
+  const d = (dateStr || '').slice(0, 10);
+  const [y, m, day] = d.split('-').map(Number);
+  if (!y || !m || !day) return dateStr;
+  return new Date(y, m - 1, day).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+}
+
+function nextSaturdayMonthDay(): string {
+  const d = new Date();
+  const daysUntilSat = (6 - d.getDay() + 7) % 7 || 7; // never today
+  d.setDate(d.getDate() + daysUntilSat);
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+}
 
 function buildDynamicExamples(
   recitalName: string | null,
+  recitalDate: string | null,
   batchName: string | null
 ): string[] {
   const examples: string[] = [];
-  if (recitalName) {
+
+  // 1. Recital prep — anchored to the recital's real event_date so the
+  //    parser can compute "dress rehearsal the day before" etc.
+  if (recitalName && recitalDate) {
+    const dateLabel = fmtMonthDay(recitalDate);
     examples.push(
-      `For ${recitalName} create three practice sessions leading up to the recital, including a dress rehearsal and a tech rehearsal.`
+      `${recitalName} is on ${dateLabel}. Schedule a tech rehearsal one week before at 5pm, a dress rehearsal the day before at 5pm, and a final practice three days before at 5pm.`
+    );
+  } else if (recitalName) {
+    // No date on the recital → fall through to a generic version that
+    // still names the recital but uses relative dates the parser handles.
+    examples.push(
+      `${recitalName}: add a tech rehearsal next Friday at 5pm and a dress rehearsal next Saturday at 5pm.`
     );
   }
+
+  // 2. Batch ad-hoc make-ups — concrete day + time + duration.
   if (batchName) {
     examples.push(
-      `For ${batchName}, add a few ad-hoc make-up classes on Saturday afternoons over the next month.`
+      `For ${batchName}, add make-up classes on Saturdays at 4pm for the next 4 weeks.`
     );
   }
-  examples.push('Create a seasonal class series — 10 class events for the summer break.');
+
+  // 3. Seasonal series — anchored to the next real Saturday.
+  examples.push(
+    `Weekly Saturday class at 5pm starting ${nextSaturdayMonthDay()} for 10 weeks.`
+  );
+
   return examples.length >= 3 ? examples.slice(0, 3) : [...examples, ...STATIC_EXAMPLES].slice(0, 3);
 }
 
@@ -129,6 +167,7 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
   // modal opens so the suggested chips reference REAL data the studio
   // already has. Falls back to STATIC_EXAMPLES when empty.
   const [sampleRecitalName, setSampleRecitalName] = useState<string | null>(null);
+  const [sampleRecitalDate, setSampleRecitalDate] = useState<string | null>(null);
   const [sampleBatchName,   setSampleBatchName]   = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -159,6 +198,7 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
         .sort((a: any, b: any) => (a.event_date || '').localeCompare(b.event_date || ''));
       const pickRecital = upcoming[0] || (recs || []).slice(-1)[0] || null;
       setSampleRecitalName(pickRecital?.title || null);
+      setSampleRecitalDate(pickRecital?.event_date || null);
       setSampleBatchName((bats || [])[0]?.name || null);
       if (bats && bats.length) {
         setBatchesCache((bats as any[]).map((b: any) => ({ id: b.id, name: b.name })));
@@ -167,7 +207,7 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
     return () => { cancelled = true; };
   }, [open, schoolId]);
 
-  const examples = buildDynamicExamples(sampleRecitalName, sampleBatchName);
+  const examples = buildDynamicExamples(sampleRecitalName, sampleRecitalDate, sampleBatchName);
 
   const reset = () => {
     setText('');
