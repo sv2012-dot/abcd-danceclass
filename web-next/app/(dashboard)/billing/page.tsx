@@ -239,43 +239,21 @@ function BillingContent() {
           </div>
         </div>
 
-        {/* Trial countdown banner */}
+        {/* Trial copy — flat paragraph inside the main plan card. The
+            inner "Subscribe" button + bordered sub-box were redundant
+            with the primary Subscribe CTA in the top-right of this card. */}
         {isTrial && daysLeft !== null && (
-          <div
-            style={{
-              marginTop: 18,
-              padding: '12px 14px',
-              background: daysLeft <= 5 ? 'rgba(245,158,11,0.1)' : 'rgba(124,58,237,0.08)',
-              border: `1px solid ${daysLeft <= 5 ? 'rgba(245,158,11,0.3)' : 'rgba(124,58,237,0.25)'}`,
-              borderRadius: 10,
-              fontSize: 13,
-              color: daysLeft <= 5 ? '#B45309' : 'var(--text)',
-            }}
-          >
+          <p style={{
+            marginTop: 16, marginBottom: 0,
+            fontSize: 13, lineHeight: 1.55,
+            color: daysLeft <= 5 ? '#B45309' : 'var(--muted)',
+          }}>
             {daysLeft <= 5 ? (
-              <>⏰ Your trial ends in <strong>{daysLeft} day{daysLeft === 1 ? '' : 's'}</strong>. Add a payment method to keep unlimited everything.</>
+              <>⏰ Your trial ends in <strong style={{ color: '#B45309' }}>{daysLeft} day{daysLeft === 1 ? '' : 's'}</strong>. Add a payment method to keep unlimited everything.</>
             ) : (
               <>You're on a free trial. After {daysLeft} days you'll drop to the Debut plan unless you subscribe — then you'll never lose access to your data.</>
             )}
-            <div style={{ marginTop: 10 }}>
-              <button
-                onClick={handleUpgrade}
-                disabled={busy !== null}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: 8,
-                  border: 'none',
-                  background: GRAD,
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: 12,
-                  cursor: busy === null ? 'pointer' : 'wait',
-                }}
-              >
-                {busy === 'checkout' ? 'Loading…' : '☕ Subscribe — $5.99/mo'}
-              </button>
-            </div>
-          </div>
+          </p>
         )}
       </div>
 
@@ -314,21 +292,6 @@ function BillingContent() {
           </button>
         </div>
       )}
-
-      {/* Coffee hook footer */}
-      <div
-        style={{
-          textAlign: 'center',
-          padding: '18px 16px',
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 12,
-          fontSize: 13,
-          color: 'var(--muted)',
-        }}
-      >
-        ☕ ManchQ is $5.99/month per studio — about the price of a coffee. Less than the time you'd save in the first week.
-      </div>
 
       {/* Danger zone — owner-only delete */}
       {info.is_owner && (
