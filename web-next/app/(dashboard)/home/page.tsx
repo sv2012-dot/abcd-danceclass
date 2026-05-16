@@ -1003,7 +1003,7 @@ function SchoolHomePage() {
                 {featuredRecital && (
                   <div>
                     <SectionTitle first="FEATURED" accent="RECITAL" />
-                    <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push(`/schedule?recitalId=${featuredRecital.id}`)} />
+                    <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push(`/schedule?recitalId=${featuredRecital.id}&from=dashboard`)} />
                   </div>
                 )}
                 {renderTodoSection}
@@ -1017,7 +1017,7 @@ function SchoolHomePage() {
               {featuredRecital && (
                 <div>
                   <SectionTitle first="FEATURED" accent="RECITAL" />
-                  <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push(`/schedule?recitalId=${featuredRecital.id}`)} />
+                  <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push(`/schedule?recitalId=${featuredRecital.id}&from=dashboard`)} />
                 </div>
               )}
               {renderTodoSection}
@@ -1044,7 +1044,7 @@ function SchoolHomePage() {
                   </div>
                 )}
                 {featuredRecital && (
-                  <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push(`/schedule?recitalId=${featuredRecital.id}`)} />
+                  <FeaturedRecitalCard r={featuredRecital} schoolId={sid} canEdit={isAdmin} onPosterUpdate={handlePosterUpdate} onClick={()=>router.push(`/schedule?recitalId=${featuredRecital.id}&from=dashboard`)} />
                 )}
               </div>
           }

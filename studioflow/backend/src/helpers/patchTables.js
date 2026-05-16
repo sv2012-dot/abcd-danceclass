@@ -22,6 +22,22 @@ async function addColumnIfMissing(table, column, definition) {
   }
 }
 
+/** Widen a VARCHAR column to at least N chars. Idempotent. */
+async function ensureMinVarcharLength(table, column, minLen) {
+  const [rows] = await pool.query(
+    `SELECT CHARACTER_MAXIMUM_LENGTH AS len, IS_NULLABLE AS nullable
+       FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [table, column]
+  );
+  if (!rows[0] || rows[0].len == null) return;
+  if (rows[0].len < minLen) {
+    const nullable = rows[0].nullable === 'YES' ? 'NULL' : 'NOT NULL';
+    await pool.query(`ALTER TABLE \`${table}\` MODIFY COLUMN \`${column}\` VARCHAR(${minLen}) ${nullable}`);
+    console.log(`  ⤴  Widened ${table}.${column} from VARCHAR(${rows[0].len}) → VARCHAR(${minLen})`);
+  }
+}
+
 /** Ensure an existing column is nullable — fixes old schemas where it was NOT NULL */
 async function ensureColumnNullable(table, column, fullDefinition) {
   const [rows] = await pool.query(
@@ -105,7 +121,11 @@ async function patchTables() {
     // Column patches — uses INFORMATION_SCHEMA so they work on MySQL 5.7+
     await ensureColumnNullable('todos', 'user_id', 'INT UNSIGNED NULL');
     await addColumnIfMissing('schools',   'profile_json',      'LONGTEXT NULL');
-    await addColumnIfMissing('students',  'avatar',            'VARCHAR(100) NULL');
+    await addColumnIfMissing('students',  'avatar',            'VARCHAR(512) NULL');
+    // Widen avatar on legacy schemas — Cloudinary URLs are ~80–100 chars
+    // plus the 'photo:' prefix, blew past VARCHAR(100) and triggered
+    // 'Data too long for column avatar' on save.
+    await ensureMinVarcharLength('students', 'avatar', 512);
     await addColumnIfMissing('todos',     'assigned_to',       'VARCHAR(100) NULL');
     await addColumnIfMissing('recitals',  'is_featured',       'TINYINT(1) NOT NULL DEFAULT 0');
     await addColumnIfMissing('recitals',  'poster_url',        'MEDIUMTEXT NULL');

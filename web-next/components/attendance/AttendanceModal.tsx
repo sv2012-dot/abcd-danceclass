@@ -285,28 +285,39 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
           maxHeight: inline ? undefined : 'calc(100vh - 80px)',
         }}
       >
-        {/* Header */}
-        <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        {/* Header — inline mode strips the batch/date subtitle and the
+            close X (the parent panel handles those). Heading also changes
+            from 'Attendance' → 'Take Attendance' to match the event panel
+            section title spec. */}
+        <div style={{ padding: inline ? '14px 18px 10px' : '18px 20px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
             <div>
-              <h2 style={{ fontSize: 17, fontWeight: 800, margin: 0, color: 'var(--text)' }}>Attendance</h2>
-              <p style={{ fontSize: 12, margin: '3px 0 0', color: 'var(--muted)' }}>
-                {eventTitle ? `${eventTitle} · ` : ''}{niceDate}
-              </p>
+              <h2 style={{ fontSize: inline ? 15 : 17, fontWeight: 800, margin: 0, color: 'var(--text)' }}>
+                {inline ? 'Take Attendance' : 'Attendance'}
+              </h2>
+              {!inline && (
+                <p style={{ fontSize: 12, margin: '3px 0 0', color: 'var(--muted)' }}>
+                  {eventTitle ? `${eventTitle} · ` : ''}{niceDate}
+                </p>
+              )}
             </div>
-            <button
-              onClick={onClose}
-              aria-label="Close"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: 4, display: 'flex', alignItems: 'center' }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
+            {!inline && (
+              <button
+                onClick={onClose}
+                aria-label="Close"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: 4, display: 'flex', alignItems: 'center' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
           </div>
 
-          {/* Bulk mark + summary */}
-          {!loading && students.length > 0 && (
+          {/* Inline mode skips the in-header Mark-all button — the parent
+              event panel already has a 'Mark All Present' button just above
+              this section, so duplicating it here is redundant. */}
+          {!inline && !loading && students.length > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
               <button
                 onClick={() => markAll('present')}
@@ -331,7 +342,6 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
             </p>
           ) : (
             <>
-              {/* Touch hint — only show on devices that have touch */}
               <p style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center', margin: '0 0 10px', display: 'block' }}>
                 Tip: swipe right for Present, left for Absent
               </p>
@@ -345,6 +355,14 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
                   />
                 ))}
               </div>
+              {/* Marked-count summary — inline mode shows it BELOW the list
+                  (per spec); modal mode keeps it in the header to free up
+                  vertical space. */}
+              {inline && (
+                <div style={{ textAlign: 'center', marginTop: 14, fontSize: 12, color: 'var(--muted)' }}>
+                  {markedCount} of {students.length} marked
+                </div>
+              )}
             </>
           )}
         </div>
@@ -363,13 +381,16 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
             })}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={onClose}
-              disabled={saving}
-              style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 14px', fontWeight: 600, fontSize: 13, color: 'var(--muted)', cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
+            {/* Inline mode drops Cancel — the parent panel's Close handles it. */}
+            {!inline && (
+              <button
+                onClick={onClose}
+                disabled={saving}
+                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 14px', fontWeight: 600, fontSize: 13, color: 'var(--muted)', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            )}
             <button
               onClick={handleSave}
               disabled={saving || markedCount === 0 || students.length === 0}

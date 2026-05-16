@@ -634,10 +634,18 @@ export default function SchedulePage() {
     if (!pendingEventIdRef.current) return;
     const target = String(pendingEventIdRef.current);
     let ev = rawEvents.find(e => String(e.id) === target);
-    if (!ev) {
-      ev = scheduleEvents.find(e => String(e.id) === target);
+    if (!ev) ev = scheduleEvents.find(e => String(e.id) === target);
+    if (ev) {
+      pendingEventIdRef.current = null;
+      handleEventClick(ev);
+      return;
     }
-    if (ev) { pendingEventIdRef.current = null; handleEventClick(ev); }
+    // Debug: if we've polled both arrays and still don't find it, log so we
+    // can diagnose. Only logs when both lists have actually loaded.
+    if (rawEvents.length > 0 || scheduleEvents.length > 0) {
+      console.warn('[schedule] could not match openEventId', target,
+        '— raw events:', rawEvents.length, 'schedule events:', scheduleEvents.length);
+    }
   }, [rawEvents, scheduleEvents]); // eslint-disable-line
 
   // ── Mutations ────────────────────────────────────────────────────────────
@@ -1526,15 +1534,6 @@ export default function SchedulePage() {
                         <SvgIcon name="mail" size={15} color="#fff" /> Message Parents
                       </button>
                       <button
-                        onClick={() => setInlineSection(s => s === 'attendance' ? null : 'attendance')}
-                        style={{ width:"100%", padding:"12px 16px", borderRadius:10,
-                          border:"1.5px solid #10B981",
-                          background: inlineSection === 'attendance' ? "rgba(16,185,129,0.12)" : "transparent",
-                          color:"#10B981", cursor:"pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8 }}
-                      >
-                        ✓ Take Attendance {inlineSection === 'attendance' ? '▲' : '▼'}
-                      </button>
-                      <button
                         onClick={() => handleMarkAllPresent(e)}
                         disabled={markingAllId === e.id}
                         title="Mark every student in this class as present"
@@ -1543,21 +1542,21 @@ export default function SchedulePage() {
                         ⚡ {markingAllId === e.id ? "Marking…" : "Mark All Present"}
                       </button>
 
-                      {/* Inline expansion — Take Attendance */}
-                      {inlineSection === 'attendance' && (
-                        <div style={{ marginTop:4 }}>
-                          <AttendanceModal
-                            open
-                            inline
-                            onClose={() => setInlineSection(null)}
-                            schoolId={String(sid)}
-                            eventId={!e._isSchedule ? e.id : undefined}
-                            scheduleId={e._isSchedule ? e._scheduleId : undefined}
-                            classDate={e.start_datetime ? String(e.start_datetime).slice(0, 10) : new Date().toISOString().slice(0, 10)}
-                            eventTitle={e.title}
-                          />
-                        </div>
-                      )}
+                      {/* Always-visible Take Attendance section — no toggle.
+                          AttendanceModal in inline mode renders its own
+                          'Take Attendance' heading + student list + Save. */}
+                      <div style={{ marginTop:4 }}>
+                        <AttendanceModal
+                          open
+                          inline
+                          onClose={() => {}}
+                          schoolId={String(sid)}
+                          eventId={!e._isSchedule ? e.id : undefined}
+                          scheduleId={e._isSchedule ? e._scheduleId : undefined}
+                          classDate={e.start_datetime ? String(e.start_datetime).slice(0, 10) : new Date().toISOString().slice(0, 10)}
+                          eventTitle={e.title}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
