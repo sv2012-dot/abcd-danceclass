@@ -532,7 +532,9 @@ export default function SchedulePage() {
   // Convert batch schedules (recurring weekly slots) → calendar event instances
   const SCHED_DOW = { Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6, Sun:0 };
   const scheduleEvents = useMemo(() => {
-    if (!allSchedules.length || !batches.length) return [];
+    // Batches may not have loaded yet — we still generate synthetic events
+    // from allSchedules and fall back to schedule.batch_name in the loop.
+    if (!allSchedules.length) return [];
     const rangeFrom = new Date(view === "list" ? listFrom : from);
     const rangeTo   = new Date(view === "list" ? listTo   : to);
     // Build a set of skipped dates: "scheduleId_YYYY-MM-DD"
@@ -546,29 +548,34 @@ export default function SchedulePage() {
     const exceptionKeys = new Set(allExceptions.map(ex => `${ex.schedule_id}_${fmtExcDate(ex.exception_date)}`));
     const result = [];
     for (const sch of allSchedules) {
+      // Try the batches list first, but fall back to data on the schedule
+      // row itself if no batch matches — happens when a batch was deleted
+      // OR when batches haven't loaded yet. Previously we did `continue`
+      // here, which silently dropped synthetic events and broke dashboard
+      // navigation for users whose batch list lagged behind.
       const batch = batches.find(b => String(b.id) === String(sch.batch_id));
-      if (!batch) continue;
+      const batchName = batch?.name || sch.batch_name || 'Class';
       const dow = SCHED_DOW[sch.day_of_week];
       if (dow === undefined) continue;
-      // Advance to first matching weekday at or after rangeFrom
       const cur = new Date(rangeFrom);
       const diff = ((dow - cur.getDay()) + 7) % 7;
       cur.setDate(cur.getDate() + diff);
       while (cur <= rangeTo) {
         const ds = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
-        // Skip cancelled instances
         if (!exceptionKeys.has(`${sch.id}_${ds}`)) {
           result.push({
             id:             `sched_${sch.id}_${ds}`,
-            title:          batch.name,
+            title:          batchName,
             type:           "Class",
             start_datetime: `${ds}T${sch.start_time || "00:00"}`,
             end_datetime:   `${ds}T${sch.end_time   || "01:00"}`,
             location:       sch.room || "",
-            batches:        [{ id: batch.id, name: batch.name, student_count: batch.student_count }],
+            batches:        batch
+              ? [{ id: batch.id, name: batch.name, student_count: batch.student_count }]
+              : (sch.batch_id ? [{ id: sch.batch_id, name: batchName }] : []),
             _isSchedule:    true,
             _scheduleId:    sch.id,
-            _batchId:       batch.id,
+            _batchId:       batch?.id ?? sch.batch_id ?? null,
           });
         }
         cur.setDate(cur.getDate() + 7);
