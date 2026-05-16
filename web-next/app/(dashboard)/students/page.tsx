@@ -11,6 +11,7 @@ import Button from "@/components/shared/Button";
 import { Field, Input, Textarea } from "@/components/shared/Field";
 import ProfileCropModal from "@/components/shared/ProfileCropModal";
 import SmartAnnounceModal from "@/components/smart/SmartAnnounceModal";
+import SvgIcon from "@/components/shared/SvgIcon";
 import { upload as uploadApi } from "@/lib/api";
 import StudentAttendancePanel from "@/components/attendance/StudentAttendancePanel";
 import PageTabs from "@/components/shared/PageTabs";
