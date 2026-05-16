@@ -4,7 +4,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/context/AuthContext";
-import { students as api, batches as batchApi, schools as schoolApi } from "@/lib/api";
+import { students as api, batches as batchApi, schools as schoolApi, attendance as attendanceApi } from "@/lib/api";
+import { formatDate } from "@/lib/date";
 import toast from "react-hot-toast";
 import Card from "@/components/shared/Card";
 import Button from "@/components/shared/Button";
@@ -261,6 +262,134 @@ function PanelSection({ title, children }) {
   );
 }
 
+// ─── Variant-B profile-panel helpers ──────────────────────────────────────
+// All scoped to the new dark-gradient student detail panel. Kept inside this
+// file to avoid creating another shared component until the pattern is
+// proven on /students; promote upstream if /batches or /recitals adopt it.
+
+const BATCH_COVERS = [
+  "linear-gradient(135deg, #c4527a, #e8607a)",
+  "linear-gradient(135deg, #6a7fdb, #b47fe8)",
+  "linear-gradient(135deg, #52c4a0, #4FD1C5)",
+  "linear-gradient(135deg, #f4a041, #FFB347)",
+  "linear-gradient(135deg, #7C3AED, #DC4EFF)",
+];
+
+const ATT_META = {
+  present: { label: "Present", color: "#34c759" },
+  late:    { label: "Late",    color: "#F59E0B" },
+  excused: { label: "Excused", color: "#6366F1" },
+  absent:  { label: "Absent",  color: "#EF5350" },
+};
+
+const secondaryActionStyle = {
+  flex: 1,
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  color: "#F2F2F5",
+  padding: "9px 10px",
+  borderRadius: 20,
+  fontSize: 11,
+  fontWeight: 700,
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  textDecoration: "none",
+};
+
+const editInputStyle = {
+  width: "100%",
+  background: "rgba(255,255,255,0.06)",
+  border: "1.5px solid rgba(255,255,255,0.12)",
+  borderRadius: 10,
+  padding: "10px 14px",
+  color: "#F2F2F5",
+  fontSize: 13,
+  fontWeight: 500,
+  fontFamily: "var(--font-sans)",
+  outline: "none",
+};
+
+// Stat tile (used in 2×2 grid)
+function StatTile({ icon, n, label, accent = null, onClick = undefined }) {
+  const iconNode = icon === 'clock' ? (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+  ) : icon === 'check' ? (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  ) : icon === 'calendar' ? (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+  ) : icon === 'dollar' ? (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+  ) : null;
+  return (
+    <div onClick={onClick} style={{
+      background: "rgba(255,255,255,0.04)",
+      border: "1px solid rgba(255,255,255,0.06)",
+      borderRadius: 16,
+      padding: "16px 12px 14px",
+      textAlign: "center",
+      cursor: onClick ? "pointer" : "default",
+      transition: "transform .12s, border-color .12s",
+    }}
+      onMouseEnter={e => { if (onClick) e.currentTarget.style.borderColor = "#DC4EFF"; }}
+      onMouseLeave={e => { if (onClick) e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}
+    >
+      <div style={{ width: 36, height: 36, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: accent ? accent + "26" : "linear-gradient(135deg, rgba(124,58,237,0.22) 0%, rgba(220,78,255,0.12) 100%)", color: accent || "#DC4EFF", marginBottom: 8 }}>
+        {iconNode}
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: accent || "#F2F2F5", margin: "0 0 2px" }}>{n}</div>
+      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", color: "var(--muted)", textTransform: "uppercase" }}>{label}</div>
+    </div>
+  );
+}
+
+// Section block (consistent dark card with icon + title)
+function SectionB({ title, icon, link = null, children }) {
+  const iconNode = icon === 'clock' ? (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+  ) : icon === 'check' ? (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  ) : icon === 'calendar' ? (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+  ) : icon === 'phone' ? (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+  ) : icon === 'users' ? (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+  ) : icon === 'file' ? (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+  ) : null;
+  return (
+    <div style={{
+      background: "rgba(255,255,255,0.03)",
+      border: "1px solid rgba(255,255,255,0.06)",
+      borderRadius: 16,
+      padding: "14px 14px 12px",
+      marginBottom: 12,
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+        <h3 style={{ fontSize: 12, fontWeight: 800, margin: 0, color: "#F2F2F5", display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 22, height: 22, borderRadius: "50%", background: "linear-gradient(135deg, rgba(124,58,237,0.22) 0%, rgba(220,78,255,0.12) 100%)", color: "#DC4EFF", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{iconNode}</span>
+          {title}
+        </h3>
+        {link && <span style={{ fontSize: 10, fontWeight: 700, color: "#DC4EFF", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.08em" }}>{link}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// Mini stat (used inside the Attendance section)
+function AttMini({ n, label, color }) {
+  return (
+    <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 6px", textAlign: "center" }}>
+      <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.02em", color }}>{n}</div>
+      <div style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 2 }}>{label}</div>
+    </div>
+  );
+}
+
 const EMPTY = { name: "", age: "", phone: "", email: "", guardian_name: "", guardian_phone: "", guardian_email: "", join_date: "", notes: "", avatar: "" };
 
 // Modern placeholder-as-label input style (matches /register and /login).
@@ -317,6 +446,27 @@ export default function StudentsPage() {
   const photoInputRef = useRef(null);
   // Fee reminder via Smart Announce — null = closed, student = open
   const [feeReminderStudent, setFeeReminderStudent] = useState(null);
+
+  // ── Variant-B hero data: 90-day attendance summary for the profile tiles
+  //    and the Recent Classes / Attendance breakdown sections. Refetches
+  //    whenever the user opens a different student. Mirrors the request
+  //    StudentAttendancePanel makes internally so totals match exactly.
+  const [profileAtt, setProfileAtt] = useState({ loading: false, stats: null, records: [] });
+  useEffect(() => {
+    if (!selected?.id || !sid) { setProfileAtt({ loading: false, stats: null, records: [] }); return; }
+    let cancelled = false;
+    setProfileAtt(p => ({ ...p, loading: true }));
+    const today = new Date();
+    const from = new Date(); from.setDate(today.getDate() - 90);
+    attendanceApi
+      .forStudent(String(sid), selected.id, {
+        from: from.toISOString().slice(0, 10),
+        to:   today.toISOString().slice(0, 10),
+      })
+      .then((d: any) => { if (!cancelled) setProfileAtt({ loading: false, stats: d.stats || null, records: d.records || [] }); })
+      .catch(() => { if (!cancelled) setProfileAtt({ loading: false, stats: null, records: [] }); });
+    return () => { cancelled = true; };
+  }, [selected?.id, sid]);
 
   const PANEL_W = 400;
 
@@ -768,201 +918,278 @@ export default function StudentsPage() {
             );
           })()}
 
-          {/* ── VIEW / EDIT mode — unified scrollable layout ──
-              The hero (large avatar + name) flows with the content instead
-              of being pinned at the top. Edit toggles fields inline rather
-              than swapping the whole layout. Save/Cancel commits or reverts. */}
-          {!showAdd && selected && (
-            <div style={{ flex: 1, overflowY: "auto" }}>
-              {/* Top toolbar — Edit + Delete (admin) on the right, matches
-                  the recital/event panels. In edit mode, swap Edit/Delete
-                  for Save/Cancel. */}
-              <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 16px 0", gap: 8 }}>
+          {/* ── VIEW / EDIT mode — Variant B layout ──
+              Dark gradient hero with a glow-ring avatar, 2×2 stat tiles,
+              primary CTA + secondary actions. Below the fold: drill-down
+              sections for Recent Classes, Attendance breakdown, Batches,
+              Fees, and Notes. Edit mode keeps inline fields inside the
+              same dark frame so the page doesn't reflow on toggle. */}
+          {!showAdd && selected && (() => {
+            const stats   = profileAtt.stats || { total: 0, present: 0, late: 0, absent: 0, excused: 0, rate: null };
+            const records = profileAtt.records || [];
+            const batchNames = String(selected.batches || "").split(",").map(x => x.trim()).filter(Boolean);
+            const batchCount = batchNames.length;
+            const fee = feeSettings.enabled ? feeBadgeProps(selected.current_fee_status, feeSettings.dueDay) : null;
+            const feeShort = fee ? fee.label.replace(/^[^A-Za-z]+/, '') : '—';
+            return (
+            <div style={{ flex: 1, overflowY: "auto", background: "linear-gradient(160deg, #2A1248 0%, #14081E 60%, #0B0712 100%)" }}>
+              {/* Hero bar with toolbar buttons */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px 0", color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+                <span style={{ opacity: 0.85 }}>{isEditing ? "Editing" : "Profile"}</span>
                 {!isEditing ? (
-                  <>
+                  <div style={{ display: "flex", gap: 6 }}>
                     <button onClick={startEdit} title="Edit profile"
-                      style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--surface)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text)" }}>
-                      <SvgIcon name="pencil" size={14} color="currentColor" />
+                      style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <SvgIcon name="pencil" size={13} color="currentColor" />
                     </button>
                     <button onClick={() => { if (window.confirm("Remove this student?")) deleteMutation.mutate(selected.id); }} title="Delete student"
-                      style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--surface)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text)" }}>
-                      <SvgIcon name="trash" size={14} color="currentColor" />
+                      style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <SvgIcon name="trash" size={13} color="currentColor" />
                     </button>
-                  </>
+                  </div>
                 ) : (
-                  <>
-                    <button onClick={() => editMutation.mutate(editForm)} disabled={!editForm.name || editMutation.isPending}
-                      style={{ padding: "6px 16px", borderRadius: 18, background: "var(--accent)", border: "none", color: "#fff", fontWeight: 700, fontSize: 12, cursor: editMutation.isPending ? "wait" : "pointer" }}>
-                      {editMutation.isPending ? "Saving…" : "Save"}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => editMutation.mutate(editForm)} disabled={!editForm.name || editMutation.isPending} title="Save"
+                      style={{ width: 34, height: 34, borderRadius: "50%", background: "#fff", border: "none", color: "#7C3AED", cursor: editMutation.isPending ? "wait" : "pointer", fontSize: 14, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      ✓
                     </button>
-                    <button onClick={() => setIsEditing(false)} disabled={editMutation.isPending}
-                      style={{ padding: "6px 16px", borderRadius: 18, background: "transparent", border: "1.5px solid var(--border)", color: "var(--muted)", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
-                      Cancel
+                    <button onClick={() => setIsEditing(false)} disabled={editMutation.isPending} title="Cancel"
+                      style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "none", color: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      ✕
                     </button>
-                  </>
+                  </div>
                 )}
               </div>
 
-              {/* Profile hero — large circular avatar (3× the prior size).
-                  Click anywhere on the avatar in edit mode to upload a photo;
-                  a small ✕ overlay clears it. Compact 'pick sticker' link
-                  sits below the avatar in edit mode. */}
-              <div style={{ padding: "10px 24px 18px", textAlign: "center" }}>
-                <div style={{ position: "relative", width: 240, height: 240, margin: "0 auto 14px" }}>
-                  <StudentAvatar
-                    student={isEditing ? editForm : selected}
-                    size={240}
-                    border="4px solid var(--accent)"
-                    onClick={isEditing ? () => openPhotoUploadFor("edit") : undefined}
-                  />
+              {/* Avatar — glow ring; in edit mode shows camera + remove overlays */}
+              <div style={{ display: "flex", justifyContent: "center", padding: "22px 0 16px", position: "relative" }}>
+                <div style={{ width: 144, height: 144, borderRadius: "50%", padding: 6, background: "conic-gradient(from 220deg, #DC4EFF, #7C3AED, #DC4EFF)", boxShadow: "0 0 32px rgba(124,58,237,0.5), 0 0 60px rgba(220,78,255,0.18)", position: "relative" }}>
+                  <div style={{ width: "100%", height: "100%", borderRadius: "50%", border: "4px solid #14081E", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <StudentAvatar student={isEditing ? editForm : selected} size={132}
+                      onClick={isEditing ? () => openPhotoUploadFor("edit") : undefined} />
+                  </div>
                   {isEditing && (
                     <>
                       <button onClick={() => openPhotoUploadFor("edit")} disabled={uploadingPhoto} title="Upload photo"
-                        style={{ position: "absolute", bottom: 4, right: 4, width: 44, height: 44, borderRadius: "50%", background: "var(--accent)", border: "3px solid var(--card)", color: "#fff", fontSize: 18, cursor: uploadingPhoto ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <SvgIcon name="camera" size={18} color="#fff" />
+                        style={{ position: "absolute", bottom: -2, right: -2, width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", border: "3px solid #14081E", color: "#fff", cursor: uploadingPhoto ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.32)" }}>
+                        <SvgIcon name="camera" size={16} color="#fff" />
                       </button>
                       {editForm.avatar && (
                         <button onClick={() => clearPhoto("edit")} title="Remove photo"
-                          style={{ position: "absolute", top: 6, right: 6, width: 32, height: 32, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: "2px solid var(--card)", color: "#fff", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, backdropFilter: "blur(4px)" }}>
+                          style={{ position: "absolute", top: 0, right: 0, width: 30, height: 30, borderRadius: "50%", background: "rgba(0,0,0,0.6)", border: "2px solid #14081E", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, backdropFilter: "blur(4px)" }}>
                           ✕
                         </button>
                       )}
                     </>
                   )}
                 </div>
-                {!isEditing ? (
-                  <div style={{ fontFamily: "var(--font-d)", fontSize: 22, fontWeight: 800, marginBottom: 6 }}>{selected.name}</div>
-                ) : (
+              </div>
+
+              {/* Name + role */}
+              {!isEditing ? (
+                <>
+                  <h2 style={{ textAlign: "center", fontSize: 22, fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.02em", color: "#F2F2F5" }}>{selected.name}</h2>
+                  <p style={{ textAlign: "center", fontSize: 12, color: "#DC4EFF", fontWeight: 700, letterSpacing: "0.06em", margin: "0 0 22px", padding: "0 22px" }}>
+                    {batchNames.length > 0 ? batchNames.join(" · ") : "Not enrolled in any batch"}
+                  </p>
+                </>
+              ) : (
+                <div style={{ padding: "0 22px 18px" }}>
                   <input value={editForm.name || ""} onChange={e => setEditForm({ ...editForm, name: e.target.value })} placeholder="Full name *" aria-label="Full name"
-                    style={{ ...MODERN_INPUT, textAlign: "center", fontFamily: "var(--font-d)", fontSize: 20, fontWeight: 800, marginBottom: 8, maxWidth: 320, marginLeft: "auto", marginRight: "auto" }} />
-                )}
-                {isEditing && (
-                  <div style={{ display: "flex", justifyContent: "center", gap: 8, fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>
+                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1.5px solid #DC4EFF", borderRadius: 10, padding: "10px 14px", color: "#F2F2F5", fontSize: 18, fontWeight: 800, textAlign: "center", fontFamily: "var(--font-d)", marginBottom: 8 }} />
+                  <div style={{ textAlign: "center" }}>
                     <button type="button" onClick={() => openPickerFor("edit")}
-                      style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", textDecoration: "underline", fontSize: 11 }}>
+                      style={{ background: "none", border: "none", color: "#DC4EFF", cursor: "pointer", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>
                       Pick a sticker instead
                     </button>
                   </div>
-                )}
-                {(selected.batches || (isEditing && (editForm.batches || editForm.batch_ids))) && (
-                  <div style={{ display: "flex", gap: 5, justifyContent: "center", flexWrap: "wrap" }}>
-                    {String(selected.batches || "").split(",").filter(Boolean).map((b, i) => (
-                      <span key={i} style={{ fontSize: 11, background: "var(--accent)22", color: "var(--accent)", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>{b.trim()}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Body sections — inline-editable fields. View mode shows
-                  read-only InfoRows, Edit mode shows inputs with the same
-                  visual rhythm so the page doesn't reflow on toggle. */}
-              <div style={{ padding: "8px 24px 22px" }}>
-                <PanelSection title="Contact">
-                  {isEditing ? (
-                    <div style={{ display: "grid", gap: 10 }}>
-                      <input value={editForm.phone || ""} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Student / Guardian phone" aria-label="Student / Guardian phone" style={MODERN_INPUT} />
-                      <input type="email" value={editForm.email || ""} onChange={e => setEditForm({ ...editForm, email: e.target.value })} placeholder="Student / Guardian email" aria-label="Student / Guardian email" style={MODERN_INPUT} />
-                    </div>
-                  ) : (
-                    <>
-                      <InfoRow icon="📞" label="Phone" value={selected.phone || selected.guardian_phone} />
-                      <InfoRow icon="✉️" label="Email" value={selected.email || selected.guardian_email} />
-                      {!selected.email && !selected.phone && !selected.guardian_phone && !selected.guardian_email &&
-                        <p style={{ fontSize: 12, color: "var(--muted)" }}>No contact info on record</p>}
-                    </>
-                  )}
-                </PanelSection>
+              {/* ── 2×2 stat tiles (view mode only) ── */}
+              {!isEditing && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "0 18px 14px" }}>
+                  <StatTile icon="clock" n={String(stats.total || 0)} label="Classes" />
+                  <StatTile icon="check" n={stats.rate != null ? `${stats.rate}%` : "—"} label="Attendance"
+                    accent={stats.rate != null && stats.rate >= 80 ? "#34c759" : stats.rate != null && stats.rate >= 60 ? "#F59E0B" : stats.rate != null ? "#EF5350" : null} />
+                  <StatTile icon="calendar" n={String(batchCount)} label="Batches" />
+                  <StatTile icon="dollar" n={feeShort} label={feeSettings.enabled ? `Fees · ${new Date().toLocaleDateString('en',{month:'short'})}` : "Fees"}
+                    accent={fee?.color}
+                    onClick={feeSettings.enabled ? () => feeToggleMutation.mutate({ studentId: selected.id }) : undefined} />
+                </div>
+              )}
 
-                <PanelSection title="Enrollment">
-                  {isEditing ? (
-                    <DateField value={(editForm.join_date || "").split("T")[0]} onChange={v => setEditForm({ ...editForm, join_date: v })} />
-                  ) : (
-                    <InfoRow icon="📅" label="Joined" value={fmtLong(selected.join_date)} />
-                  )}
-                  {!isEditing && feeSettings.enabled && (() => {
-                    const bp = feeBadgeProps(selected.current_fee_status, feeSettings.dueDay);
-                    return (
-                      <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>Monthly Fee</span>
-                        <button type="button" onClick={() => feeToggleMutation.mutate({ studentId: selected.id })}
-                          title="Click to toggle Paid / Unpaid"
-                          style={{ padding: "4px 14px", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: 700, border: `1.5px solid ${bp.border}`, background: bp.bg, color: bp.color }}>
-                          {bp.label}
-                        </button>
-                      </div>
-                    );
-                  })()}
-                </PanelSection>
-
-                {isEditing && (
-                  <div style={{ marginTop: 4, marginBottom: 14 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 8 }}>
-                      Enrolled Batches
-                    </div>
-                    {batchList.length === 0 && (
-                      <span style={{ fontSize: 12, color: "var(--muted)" }}>No batches yet — create one in Batches.</span>
+              {/* ── Primary CTA + secondary actions (view mode only) ── */}
+              {!isEditing && (
+                <div style={{ padding: "0 18px 12px" }}>
+                  <button onClick={() => setFeeReminderStudent(selected)}
+                    style={{ width: "100%", padding: "13px 16px", borderRadius: 24, border: "none", background: "linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 8px 22px rgba(124,58,237,0.45)" }}>
+                    <SvgIcon name="mail" size={14} color="#fff" /> Send fee reminder
+                  </button>
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    {selected.phone || selected.guardian_phone ? (
+                      <a href={`tel:${selected.phone || selected.guardian_phone}`} style={secondaryActionStyle}>
+                        <SvgIcon name="phone" size={12} color="currentColor" /> Call
+                      </a>
+                    ) : (
+                      <span style={{ ...secondaryActionStyle, opacity: 0.4, cursor: "not-allowed" }}>
+                        <SvgIcon name="phone" size={12} color="currentColor" /> Call
+                      </span>
                     )}
-                    {batchList.length > 0 && batchList.length < 5 ? (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                        {batchList.map(b => {
-                          const on = (editForm.batch_ids || []).includes(b.id);
-                          return (
-                            <button key={b.id} type="button"
-                              onClick={() => setEditForm(f => ({ ...f, batch_ids: on ? (f.batch_ids || []).filter(x => x !== b.id) : [...(f.batch_ids || []), b.id] }))}
-                              style={{ padding: "6px 15px", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: 700, border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent)" : "transparent", color: on ? "#fff" : "var(--muted)" }}>
-                              {on && "✓ "}{b.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : batchList.length >= 5 ? (
-                      <div style={{ maxHeight: 168, overflowY: "auto", borderRadius: 9, border: "1.5px solid var(--border)", background: "var(--surface)" }}>
-                        {batchList.map(b => {
-                          const on = (editForm.batch_ids || []).includes(b.id);
-                          return (
-                            <label key={b.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 13px", cursor: "pointer", background: on ? "var(--accent)14" : "transparent", borderBottom: "1px solid var(--border)" }}>
-                              <input type="checkbox" checked={on}
-                                onChange={() => setEditForm(f => ({ ...f, batch_ids: on ? (f.batch_ids || []).filter(x => x !== b.id) : [...(f.batch_ids || []), b.id] }))}
-                                style={{ accentColor: "var(--accent)", width: 15, height: 15, flexShrink: 0 }} />
-                              <span style={{ fontSize: 13, fontWeight: on ? 600 : 400, color: on ? "var(--accent)" : "var(--text)" }}>{b.name}</span>
-                              {b.dance_style && <span style={{ fontSize: 10, color: "var(--muted)", marginLeft: "auto" }}>{b.dance_style}</span>}
-                            </label>
-                          );
-                        })}
-                      </div>
-                    ) : null}
+                    {selected.phone || selected.guardian_phone ? (
+                      <a href={`https://wa.me/${(selected.phone || selected.guardian_phone || '').replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer" style={secondaryActionStyle}>
+                        <SvgIcon name="mail" size={12} color="currentColor" /> Message
+                      </a>
+                    ) : (
+                      <span style={{ ...secondaryActionStyle, opacity: 0.4, cursor: "not-allowed" }}>
+                        <SvgIcon name="mail" size={12} color="currentColor" /> Message
+                      </span>
+                    )}
+                    <button onClick={startEdit} style={secondaryActionStyle}>
+                      <SvgIcon name="pencil" size={12} color="currentColor" /> Edit
+                    </button>
                   </div>
+                </div>
+              )}
+
+              {/* ── Drill-down sections ── */}
+              <div style={{ padding: "10px 18px 22px" }}>
+                {/* Recent Classes */}
+                {!isEditing && (
+                  <SectionB title="Recent Classes" icon="clock" link={records.length > 0 ? "View all" : null}>
+                    {profileAtt.loading ? (
+                      <p style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", padding: "12px 0", margin: 0 }}>Loading…</p>
+                    ) : records.length === 0 ? (
+                      <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6, margin: 0 }}>
+                        No attendance yet. Mark some classes from the schedule page.
+                      </p>
+                    ) : (
+                      <div>
+                        {records.slice(0, 5).map(r => {
+                          const meta = ATT_META[r.status] || ATT_META.absent;
+                          const d = (r.class_date || '').slice(0, 10);
+                          const [y, m, day] = d.split('-').map(Number);
+                          const dt = (y && m && day) ? new Date(y, m - 1, day) : null;
+                          return (
+                            <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                              <div style={{ flex: "0 0 44px", textAlign: "center" }}>
+                                <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1, color: "#F2F2F5" }}>{dt ? dt.getDate() : "—"}</div>
+                                <div style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{dt ? dt.toLocaleDateString('en', { month: 'short' }) : ""}</div>
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: "#F2F2F5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {r.event_title || r.batch_name || "Class"}
+                                </div>
+                                <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 600 }}>
+                                  {dt ? dt.toLocaleDateString('en', { weekday: 'short' }) : ""}
+                                </div>
+                              </div>
+                              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", padding: "4px 9px", borderRadius: 12, background: meta.color + "26", color: meta.color }}>
+                                {meta.label}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </SectionB>
                 )}
 
-                <PanelSection title="Notes">
-                  {isEditing ? (
-                    <textarea value={editForm.notes || ""} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Any notes…" rows={3} style={{ ...MODERN_INPUT, resize: "vertical", minHeight: 70, lineHeight: 1.5 }} />
-                  ) : (
-                    selected.notes
-                      ? <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, background: "var(--surface)", borderRadius: 9, padding: "10px 12px", margin: 0 }}>{selected.notes}</p>
-                      : <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>No notes</p>
-                  )}
-                </PanelSection>
+                {/* Attendance breakdown */}
+                {!isEditing && stats.total > 0 && (
+                  <SectionB title="Attendance" icon="check" link="Last 90 days">
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+                      <AttMini n={stats.present} label="Present" color="#34c759" />
+                      <AttMini n={stats.late}    label="Late"    color="#F59E0B" />
+                      <AttMini n={stats.absent}  label="Absent"  color="#EF5350" />
+                    </div>
+                    <div style={{ height: 8, background: "rgba(255,255,255,0.05)", borderRadius: 4, overflow: "hidden", display: "flex" }}>
+                      {stats.present > 0 && <div style={{ flex: stats.present, background: "#34c759" }} />}
+                      {stats.late    > 0 && <div style={{ flex: stats.late,    background: "#F59E0B" }} />}
+                      {stats.absent  > 0 && <div style={{ flex: stats.absent,  background: "#EF5350" }} />}
+                    </div>
+                  </SectionB>
+                )}
 
-                {!isEditing && (
+                {/* Enrolled batches (view mode) — list with cover photo if any */}
+                {!isEditing && batchCount > 0 && (
+                  <SectionB title="Enrolled in" icon="calendar">
+                    <div style={{ display: "grid", gap: 8 }}>
+                      {batchNames.map((bn, i) => (
+                        <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", padding: 10, background: "rgba(255,255,255,0.04)", borderRadius: 12 }}>
+                          <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: BATCH_COVERS[i % BATCH_COVERS.length] }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#F2F2F5" }}>{bn}</div>
+                          </div>
+                          <span style={{ color: "var(--muted)", fontSize: 14 }}>›</span>
+                        </div>
+                      ))}
+                    </div>
+                  </SectionB>
+                )}
+
+                {/* ── Contact + Enrollment + Batches (edit mode only) ── */}
+                {isEditing && (
                   <>
-                    <PanelSection title="Attendance">
-                      <StudentAttendancePanel schoolId={String(sid)} studentId={selected.id} />
-                    </PanelSection>
+                    <SectionB title="Contact" icon="phone">
+                      <div style={{ display: "grid", gap: 10 }}>
+                        <input value={editForm.phone || ""} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Student / Guardian phone"
+                          style={editInputStyle} />
+                        <input type="email" value={editForm.email || ""} onChange={e => setEditForm({ ...editForm, email: e.target.value })} placeholder="Student / Guardian email"
+                          style={editInputStyle} />
+                      </div>
+                    </SectionB>
 
-                    {/* Primary action — Smart Announce fee reminder.
-                        Opens SmartAnnounceModal with student context so the
-                        teacher can draft a friendly, parent-facing fee
-                        reminder in one click. */}
-                    <button onClick={() => setFeeReminderStudent(selected)}
-                      style={{ width: "100%", marginTop: 16, padding: "12px 16px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", color: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 2px 12px rgba(124,58,237,0.32)" }}>
-                      <SvgIcon name="mail" size={15} color="#fff" /> Send fee reminder
-                    </button>
+                    <SectionB title="Enrollment" icon="calendar">
+                      <DateField value={(editForm.join_date || "").split("T")[0]} onChange={v => setEditForm({ ...editForm, join_date: v })} />
+                    </SectionB>
+
+                    <SectionB title="Batches" icon="users">
+                      {batchList.length === 0 && (
+                        <span style={{ fontSize: 12, color: "var(--muted)" }}>No batches yet — create one in Batches.</span>
+                      )}
+                      {batchList.length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                          {batchList.map(b => {
+                            const on = (editForm.batch_ids || []).includes(b.id);
+                            return (
+                              <button key={b.id} type="button"
+                                onClick={() => setEditForm(f => ({ ...f, batch_ids: on ? (f.batch_ids || []).filter(x => x !== b.id) : [...(f.batch_ids || []), b.id] }))}
+                                style={{ padding: "6px 14px", borderRadius: 18, cursor: "pointer", fontSize: 12, fontWeight: 700, border: `1.5px solid ${on ? "#DC4EFF" : "rgba(255,255,255,0.12)"}`, background: on ? "#7C3AED" : "transparent", color: on ? "#fff" : "var(--muted)" }}>
+                                {on && "✓ "}{b.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </SectionB>
                   </>
+                )}
+
+                {/* Notes — view shows entries, edit shows textarea */}
+                <SectionB title="Notes" icon="file">
+                  {isEditing ? (
+                    <textarea value={editForm.notes || ""} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Any notes…" rows={3}
+                      style={{ ...editInputStyle, resize: "vertical", minHeight: 70, lineHeight: 1.5 }} />
+                  ) : selected.notes ? (
+                    <div style={{ background: "rgba(255,255,255,0.04)", borderLeft: "3px solid #DC4EFF", borderRadius: 10, padding: "12px 14px" }}>
+                      <p style={{ fontSize: 12, color: "#F2F2F5", lineHeight: 1.5, margin: 0 }}>{selected.notes}</p>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>No notes</p>
+                  )}
+                </SectionB>
+
+                {/* Joined date footer (view mode) */}
+                {!isEditing && selected.join_date && (
+                  <p style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", marginTop: 20, marginBottom: 0, fontWeight: 600 }}>
+                    Joined {fmtLong(selected.join_date)}
+                  </p>
                 )}
               </div>
             </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
