@@ -13,6 +13,8 @@ import Card from "@/components/shared/Card";
 import Button from "@/components/shared/Button";
 import Badge from "@/components/shared/Badge";
 import { Field, Input, Select, Textarea } from "@/components/shared/Field";
+import { WhenField, DateField, TimeField, DurationField } from "@/components/shared/date/Picker";
+import { formatTime as sharedFormatTime } from "@/lib/date";
 import SmartButton from "@/components/smart/SmartButton";
 import SmartAddModal from "@/components/smart/SmartAddModal";
 import SmartAnnounceModal from "@/components/smart/SmartAnnounceModal";
@@ -42,39 +44,22 @@ const EMPTY_FORM = {
   recurrence:"none", recurrence_end:"", color:"", notes:"",
 };
 
-// ── Time options for recital forms: 15-min increments, 12h display ──────────
-const TIME_OPTIONS = (() => {
-  const opts = [];
-  for (let h = 0; h < 24; h++) {
-    for (const m of [0, 15, 30, 45]) {
-      const val = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-      const period = h < 12 ? 'AM' : 'PM';
-      const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-      opts.push({ val, label: `${h12}:${String(m).padStart(2,'0')} ${period}` });
-    }
-  }
-  return opts;
-})();
-
+// Display formatter — accepts canonical "HH:MM" 24h or legacy "HH:MM AM/PM"
 function fmtRecitalTime(t) {
   if (!t) return null;
   if (/[ap]m/i.test(t)) return t;
-  const [h, m] = t.split(':').map(Number);
-  if (isNaN(h)) return t;
-  return new Date(2000, 0, 1, h, m || 0).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+  return sharedFormatTime(t);
 }
 
+// Local copy of duration options — extended set including 15 min and 2.5/3/4 hr
+// for one-off events; the standard dance-class set lives in lib/date.ts.
 const DURATION_OPTIONS = [
-  { value:15,  label:"15 min" },
   { value:30,  label:"30 min" },
   { value:45,  label:"45 min" },
   { value:60,  label:"1 hr" },
-  { value:75,  label:"1 hr 15 min" },
-  { value:90,  label:"1 hr 30 min" },
+  { value:75,  label:"1 hr 15" },
+  { value:90,  label:"1 hr 30" },
   { value:120, label:"2 hr" },
-  { value:150, label:"2 hr 30 min" },
-  { value:180, label:"3 hr" },
-  { value:240, label:"4 hr" },
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -100,206 +85,7 @@ function computeEndFromDuration(startStr, durationMins) {
   return toLocalInput(new Date(s.getTime() + Number(durationMins) * 60000));
 }
 
-// ── DateTimePicker component ─────────────────────────────────────────────────
-const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const DAYS_SHORT   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
-
-function DateTimePicker({ label, value, onChange, minDate }) {
-  const [open, setOpen] = useState(false);
-  const [tab, setTab]   = useState("date"); // "date" | "time"
-  const ref = useRef(null);
-
-  // Parse current value
-  const parsed = useMemo(() => {
-    if (!value) return null;
-    const d = new Date(value);
-    return isNaN(d) ? null : d;
-  }, [value]);
-
-  const displayVal = useMemo(() => {
-    if (!parsed) return null;
-    return {
-      date: parsed.toLocaleDateString([], { weekday:"short", month:"short", day:"numeric", year:"numeric" }),
-      time: parsed.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit", hour12:true }),
-    };
-  }, [parsed]);
-
-  // Calendar state
-  const [cal, setCal] = useState(() => {
-    const d = parsed || new Date();
-    return { year: d.getFullYear(), month: d.getMonth() };
-  });
-
-  // Time state
-  const [hour, setHour]     = useState(() => parsed ? parsed.getHours() : 18);
-  const [minute, setMinute] = useState(() => parsed ? Math.floor(parsed.getMinutes()/15)*15 : 0);
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  const emit = useCallback((y, mo, d, h, min) => {
-    const pad = n => String(n).padStart(2,"0");
-    onChange(`${y}-${pad(mo+1)}-${pad(d)}T${pad(h)}:${pad(min)}`);
-  }, [onChange]);
-
-  const selectDay = day => {
-    emit(cal.year, cal.month, day, hour, minute);
-    setTab("time");
-  };
-
-  const selectTime = (h, m) => {
-    setHour(h); setMinute(m);
-    if (parsed) emit(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), h, m);
-    else {
-      const t = new Date();
-      emit(cal.year, cal.month, t.getDate(), h, m);
-    }
-  };
-
-  const confirm = () => setOpen(false);
-
-  // Build calendar grid (week starts Sunday: Sun=0 … Sat=6)
-  const firstDow = new Date(cal.year, cal.month, 1).getDay();
-  const daysInMo = new Date(cal.year, cal.month+1, 0).getDate();
-  const cells = [];
-  for (let i = 0; i < firstDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMo; d++) cells.push(d);
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  const today = new Date();
-  const isToday   = d => d && cal.year===today.getFullYear() && cal.month===today.getMonth() && d===today.getDate();
-  const isSelected = d => d && parsed && cal.year===parsed.getFullYear() && cal.month===parsed.getMonth() && d===parsed.getDate();
-
-  const HOURS   = Array.from({length:24},(_,i)=>i);
-  const MINUTES = [0,15,30,45];
-
-  return (
-    <div ref={ref} style={{position:"relative"}}>
-      <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:5}}>{label}</div>
-
-      {/* Trigger */}
-      <button type="button" onClick={()=>setOpen(p=>!p)} style={{
-        width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
-        background:"var(--surface)",border:`1.5px solid ${open?"var(--accent)":"var(--border)"}`,
-        borderRadius:9,padding:"9px 13px",cursor:"pointer",
-        boxShadow:open?"0 0 0 3px rgba(196,82,122,0.1)":"none",
-        transition:"all .15s",textAlign:"left",
-      }}>
-        {displayVal ? (
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <span style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>{displayVal.date}</span>
-            <span style={{fontSize:12,color:"var(--muted)",background:"var(--surface)",padding:"2px 8px",borderRadius:6,fontWeight:600}}>{displayVal.time}</span>
-          </div>
-        ) : (
-          <span style={{fontSize:13,color:"var(--muted)"}}>Pick date & time…</span>
-        )}
-        <SvgIcon name="calendar" size={14} color="var(--muted)" style={{flexShrink:0}} />
-      </button>
-
-      {/* Popover */}
-      {open && (
-        <div style={{
-          position:"absolute",top:"calc(100% + 8px)",left:0,zIndex:300,
-          background:"var(--card)",borderRadius:16,
-          boxShadow:"0 12px 40px rgba(0,0,0,0.16)",border:"1px solid var(--border)",
-          width:300,overflow:"hidden",
-        }}>
-          {/* Tabs */}
-          <div style={{display:"flex",borderBottom:`1px solid var(--border)`}}>
-            {["date","time"].map(t => (
-              <button key={t} type="button" onClick={()=>setTab(t)} style={{
-                flex:1,padding:"11px 0",fontSize:12,fontWeight:700,border:"none",cursor:"pointer",
-                background:tab===t?"var(--card)":"var(--surface)",
-                color:tab===t?"var(--accent)":"var(--muted)",
-                borderBottom:tab===t?"2px solid var(--accent)":"2px solid transparent",
-              }}>{t==="date"?"Date":"Time"}</button>
-            ))}
-          </div>
-
-          {tab==="date" && (
-            <div style={{padding:14}}>
-              {/* Month nav */}
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-                <button type="button" onClick={()=>setCal(c=>c.month===0?{year:c.year-1,month:11}:{...c,month:c.month-1})}
-                  style={{background:"var(--surface)",border:"none",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:14}}>‹</button>
-                <span style={{fontWeight:700,fontSize:13}}>{MONTHS_SHORT[cal.month]} {cal.year}</span>
-                <button type="button" onClick={()=>setCal(c=>c.month===11?{year:c.year+1,month:0}:{...c,month:c.month+1})}
-                  style={{background:"var(--surface)",border:"none",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:14}}>›</button>
-              </div>
-              {/* Day headers */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:4}}>
-                {DAYS_SHORT.map(d=><div key={d} style={{textAlign:"center",fontSize:10,fontWeight:700,color:"var(--muted)",padding:"2px 0"}}>{d}</div>)}
-              </div>
-              {/* Day cells */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
-                {cells.map((day,i) => (
-                  <button key={i} type="button" disabled={!day} onClick={()=>day&&selectDay(day)} style={{
-                    padding:"6px 0",textAlign:"center",fontSize:12,fontWeight:500,border:"none",cursor:day?"pointer":"default",
-                    borderRadius:8,
-                    background:isSelected(day)?"var(--accent)":isToday(day)?"var(--surface)":"transparent",
-                    color:isSelected(day)?"#fff":isToday(day)?"var(--accent)":day?"var(--text)":"transparent",
-                    fontWeight:isToday(day)||isSelected(day)?700:500,
-                  }}>{day||""}</button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {tab==="time" && (
-            <div style={{padding:14}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,maxHeight:220,overflow:"hidden"}}>
-                {/* Hours */}
-                <div>
-                  <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:6}}>Hour</div>
-                  <div style={{maxHeight:190,overflowY:"auto",display:"grid",gap:2}}>
-                    {HOURS.map(h => {
-                      const label = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h-12} PM`;
-                      return (
-                        <button key={h} type="button" onClick={()=>selectTime(h, minute)} style={{
-                          padding:"5px 8px",borderRadius:6,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",
-                          background:hour===h?"var(--accent)":"transparent",
-                          color:hour===h?"#fff":"var(--text)",
-                        }}>{label}</button>
-                      );
-                    })}
-                  </div>
-                </div>
-                {/* Minutes */}
-                <div>
-                  <div style={{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:6}}>Minute</div>
-                  <div style={{display:"grid",gap:2}}>
-                    {MINUTES.map(m => (
-                      <button key={m} type="button" onClick={()=>selectTime(hour, m)} style={{
-                        padding:"5px 8px",borderRadius:6,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",
-                        background:minute===m?"var(--accent)":"transparent",
-                        color:minute===m?"#fff":"var(--text)",
-                      }}>:{String(m).padStart(2,"0")}</button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Footer */}
-          <div style={{borderTop:`1px solid var(--border)`,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontSize:12,color:"var(--muted)",fontWeight:500}}>
-              {displayVal ? `${displayVal.date} ${displayVal.time}` : "No date selected"}
-            </span>
-            <Button type="button" size="sm" onClick={confirm}>Done</Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
+// ── DateTimePicker replaced by shared <WhenField> (components/shared/date) ──
 function startOfMonth(year, month) { return new Date(year, month, 1); }
 function daysInMonth(year, month)  { return new Date(year, month+1, 0).getDate(); }
 
@@ -1608,11 +1394,16 @@ export default function SchedulePage() {
                     {batches.length === 0 && <span style={{fontSize:12,color:"var(--muted)"}}>No batches yet</span>}
                   </div>
                 </div>
-                <DateTimePicker label="Start *" value={form.start_datetime} onChange={v=>setForm(f=>({...f,start_datetime:v,end_datetime:computeEndFromDuration(v,f.duration)}))} />
+                <Field label="Start *">
+                  <WhenField value={form.start_datetime} onChange={v=>setForm(f=>({...f,start_datetime:v,end_datetime:computeEndFromDuration(v,f.duration)}))} />
+                </Field>
                 <Field label="Duration">
-                  <Select value={form.duration} onChange={e=>{ const d=Number(e.target.value); setForm(f=>({...f,duration:d,end_datetime:computeEndFromDuration(f.start_datetime,d)})); }}>
-                    {DURATION_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-                  </Select>
+                  <DurationField
+                    value={form.duration}
+                    onChange={d=>setForm(f=>({...f,duration:d,end_datetime:computeEndFromDuration(f.start_datetime,d)}))}
+                    startTime={form.start_datetime}
+                    options={DURATION_OPTIONS}
+                  />
                 </Field>
                 <div style={{gridColumn:"1/-1", marginBottom:12}}>
                   <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Location / Room</div>
@@ -1646,7 +1437,9 @@ export default function SchedulePage() {
                   </Select>
                 </Field>
                 {form.recurrence !== "none" && panelMode === 'add' && (
-                  <DateTimePicker label="Repeat Until" value={form.recurrence_end ? form.recurrence_end+"T00:00" : ""} onChange={v=>setForm({...form,recurrence_end:v.slice(0,10)})} />
+                  <Field label="Repeat Until">
+                    <DateField value={form.recurrence_end || ""} onChange={v=>setForm({...form,recurrence_end:v})} futureOnly />
+                  </Field>
                 )}
               </div>
               {/* Studio booking */}
@@ -1686,19 +1479,12 @@ export default function SchedulePage() {
                     autoFocus
                   />
                 </Field>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:"0 12px" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:"0 12px" }}>
                   <Field label="Date *">
-                    <Input
-                      type="date"
-                      value={recitalForm.event_date}
-                      onChange={e => setRecitalForm(f => ({ ...f, event_date: e.target.value }))}
-                    />
+                    <DateField value={recitalForm.event_date} onChange={v => setRecitalForm(f => ({ ...f, event_date: v }))} futureOnly />
                   </Field>
-                  <Field label="Time">
-                    <Select value={recitalForm.event_time} onChange={e => setRecitalForm(f => ({ ...f, event_time: e.target.value }))}>
-                      <option value="">— No time —</option>
-                      {TIME_OPTIONS.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-                    </Select>
+                  <Field label="Doors / Start Time">
+                    <TimeField value={recitalForm.event_time} onChange={v => setRecitalForm(f => ({ ...f, event_time: v }))} nullable />
                   </Field>
                 </div>
                 <Field label="Venue / Location">

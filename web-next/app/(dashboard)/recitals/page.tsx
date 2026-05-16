@@ -13,6 +13,8 @@ import Card from "@/components/shared/Card";
 import Button from "@/components/shared/Button";
 import Modal from "@/components/shared/Modal";
 import { Field, Input, Select, Textarea } from "@/components/shared/Field";
+import { DateField, TimeField } from "@/components/shared/date/Picker";
+import { formatTime } from "@/lib/date";
 import SvgIcon from "@/components/shared/SvgIcon";
 import SmartButton from "@/components/smart/SmartButton";
 import SmartPlanModal from "@/components/smart/SmartPlanModal";
@@ -21,28 +23,12 @@ import SmartAnnounceModal from "@/components/smart/SmartAnnounceModal";
 const RECITAL_COLOR = "#6a7fdb";
 const EMPTY = { title:"", event_date:"", event_time:"18:00", venue:"", description:"" };
 
-// ── Time options: 15-min increments for recital forms ────────────────────────
-const TIME_OPTIONS = (() => {
-  const opts = [];
-  for (let h = 0; h < 24; h++) {
-    for (const m of [0, 15, 30, 45]) {
-      const val = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-      const period = h < 12 ? 'AM' : 'PM';
-      const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-      opts.push({ val, label: `${h12}:${String(m).padStart(2,'0')} ${period}` });
-    }
-  }
-  return opts;
-})();
-
+// Display formatter — accepts either canonical "HH:MM" 24h or legacy strings
+// that already contain "AM"/"PM" (older records). Defers to shared formatTime.
 function fmtRecitalTime(t) {
   if (!t) return null;
   if (/[ap]m/i.test(t)) return t; // already formatted legacy string
-  const [h, m] = t.split(':').map(Number);
-  if (isNaN(h)) return t;
-  const hr12 = h % 12 || 12;
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  return `${hr12}:${String(m || 0).padStart(2, '0')} ${ampm}`;
+  return formatTime(t);
 }
 
 // ── Image compression helper ──────────────────────────────────────────────────
@@ -1181,17 +1167,16 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                   <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                     {m.id === 'date' && (
                       <>
-                        <input type="date" value={metaForm.date || ''} onChange={e => setMetaForm(f => ({...f, date: e.target.value}))} style={{ flex:1, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:13 }} />
-                        <button onClick={e => { e.stopPropagation(); setMetaForm(f => ({...f, date: null})); }} style={{ padding:"2px 8px", fontSize:11, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:4, cursor:"pointer", color:"var(--text)" }}>TBD</button>
+                        <div style={{ flex:1 }}>
+                          <DateField value={metaForm.date || ''} onChange={v => setMetaForm(f => ({...f, date: v}))} size="sm" placeholder="Pick a date…" />
+                        </div>
+                        <button onClick={e => { e.stopPropagation(); setMetaForm(f => ({...f, date: null})); }} style={{ padding:"4px 10px", fontSize:11, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:6, cursor:"pointer", color:"var(--text)" }}>TBD</button>
                       </>
                     )}
                     {m.id === 'time' && (
-                      <>
-                        <select value={metaForm.time || ''} onChange={e => setMetaForm(f => ({...f, time: e.target.value}))} style={{ flex:1, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:13 }}>
-                          <option value="">TBD</option>
-                          {TIME_OPTIONS.map(t => <option key={t.val} value={t.val}>{t.label}</option>)}
-                        </select>
-                      </>
+                      <div style={{ flex:1 }}>
+                        <TimeField value={metaForm.time || ''} onChange={v => setMetaForm(f => ({...f, time: v}))} size="sm" nullable placeholder="TBD" />
+                      </div>
                     )}
                     {m.id === 'venue' && (
                       <input type="text" placeholder="e.g. Lincoln Center" value={metaForm.venue || ''} onChange={e => setMetaForm(f => ({...f, venue: e.target.value}))} style={{ flex:1, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:13 }} />
@@ -1368,15 +1353,16 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                     <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
                       {m.id === 'date' && (
                         <>
-                          <input type="date" value={metaForm.date || ''} onChange={e => setMetaForm(f => ({...f, date: e.target.value}))} onKeyDown={e => e.key === 'Escape' && setMetaEditing(null)} style={{ flex:1, minWidth:100, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:12 }} />
-                          <button onClick={e => { e.stopPropagation(); setMetaForm(f => ({...f, date: null})); }} style={{ padding:"2px 6px", fontSize:10, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:4, cursor:"pointer", whiteSpace:"nowrap", color:"var(--text)" }}>TBD</button>
+                          <div style={{ flex:1, minWidth:120 }}>
+                            <DateField value={metaForm.date || ''} onChange={v => setMetaForm(f => ({...f, date: v}))} size="sm" placeholder="Pick a date…" />
+                          </div>
+                          <button onClick={e => { e.stopPropagation(); setMetaForm(f => ({...f, date: null})); }} style={{ padding:"4px 8px", fontSize:11, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:6, cursor:"pointer", whiteSpace:"nowrap", color:"var(--text)" }}>TBD</button>
                         </>
                       )}
                       {m.id === 'time' && (
-                        <select value={metaForm.time || ''} onChange={e => setMetaForm(f => ({...f, time: e.target.value}))} style={{ flex:1, minWidth:100, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:12 }}>
-                          <option value="">TBD</option>
-                          {TIME_OPTIONS.map(t => <option key={t.val} value={t.val}>{t.label}</option>)}
-                        </select>
+                        <div style={{ flex:1, minWidth:120 }}>
+                          <TimeField value={metaForm.time || ''} onChange={v => setMetaForm(f => ({...f, time: v}))} size="sm" nullable placeholder="TBD" />
+                        </div>
                       )}
                       {m.id === 'venue' && (
                         <input type="text" placeholder="Venue" value={metaForm.venue || ''} onChange={e => setMetaForm(f => ({...f, venue: e.target.value}))} style={{ flex:1, minWidth:100, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:12 }} />
@@ -1666,36 +1652,12 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
               <Field label="Event Title">
                 <Input value={editForm.title} onChange={e => setEditForm(p=>({...p,title:e.target.value}))} required />
               </Field>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:12 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:12 }}>
                 <Field label="Date">
-                  <Input type="date" value={editForm.event_date} onChange={e => setEditForm(p=>({...p,event_date:e.target.value}))} />
+                  <DateField value={editForm.event_date} onChange={v => setEditForm(p=>({...p,event_date:v}))} />
                 </Field>
-                <Field label="Time">
-                  <div style={{ display:"flex", gap:10 }}>
-                    <Select value={editForm.event_time ? editForm.event_time.split(':')[0] : ''} onChange={e => {
-                      const h = e.target.value;
-                      if (!h) {
-                        setEditForm(p=>({...p,event_time:''}));
-                      } else {
-                        const m = editForm.event_time?.split(':')[1] || '00';
-                        setEditForm(p=>({...p,event_time:`${String(h).padStart(2,'0')}:${m}`}));
-                      }
-                    }} style={{ flex:1 }}>
-                      <option value="">— No time —</option>
-                      {Array.from({length:24}, (_, i) => <option key={i} value={String(i).padStart(2,'0')}>{i < 12 ? (i === 0 ? 12 : i) : (i === 12 ? 12 : i - 12)} {i < 12 ? 'AM' : 'PM'}</option>)}
-                    </Select>
-                    <Select value={editForm.event_time ? editForm.event_time.split(':')[1] : ''} onChange={e => {
-                      const m = e.target.value;
-                      const h = editForm.event_time?.split(':')[0] || '00';
-                      setEditForm(p=>({...p,event_time:`${h}:${m}`}));
-                    }} style={{ flex:0.8 }}>
-                      <option value="">—</option>
-                      <option value="00">:00</option>
-                      <option value="15">:15</option>
-                      <option value="30">:30</option>
-                      <option value="45">:45</option>
-                    </Select>
-                  </div>
+                <Field label="Doors / Start Time">
+                  <TimeField value={editForm.event_time} onChange={v => setEditForm(p=>({...p,event_time:v}))} nullable />
                 </Field>
               </div>
               <Field label="Venue / Location">
@@ -3269,9 +3231,14 @@ export default function RecitalsPage() {
               <Field label="Event Title">
                 <Input value={form.title} onChange={e => setForm(p => ({ ...p, title:e.target.value }))} required />
               </Field>
-              <Field label="Date">
-                <Input type="date" value={form.event_date} onChange={e => setForm(p => ({ ...p, event_date:e.target.value }))} required />
-              </Field>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:12 }}>
+                <Field label="Date">
+                  <DateField value={form.event_date} onChange={v => setForm(p => ({ ...p, event_date:v }))} futureOnly />
+                </Field>
+                <Field label="Doors / Start Time">
+                  <TimeField value={form.event_time} onChange={v => setForm(p => ({ ...p, event_time:v }))} nullable />
+                </Field>
+              </div>
               <Field label="Venue / Location">
                 <Input value={form.venue} onChange={e => setForm(p => ({ ...p, venue:e.target.value }))} placeholder="e.g. Main Theater" />
               </Field>

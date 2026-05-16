@@ -12,6 +12,8 @@ import Button from "@/components/shared/Button";
 import Badge from "@/components/shared/Badge";
 import Modal from "@/components/shared/Modal";
 import { Field, Input, Select, Textarea } from "@/components/shared/Field";
+import { TimeField, DurationField, DayOfWeekField } from "@/components/shared/date/Picker";
+import { dowCodeToIndex, dowIndexToCode, addMinutesToTime, diffMinutes, formatTime as sharedFormatTime } from "@/lib/date";
 import SvgIcon from "@/components/shared/SvgIcon";
 import BatchAttendanceGrid from "@/components/attendance/BatchAttendanceGrid";
 import PageTabs from "@/components/shared/PageTabs";
@@ -26,12 +28,10 @@ const BATCH_COLORS = ["#e8607a","#6a7fdb","#f4a041","#52c4a0","#b47fe8","#e87a52
 const DAY_ORDER = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const DAY_FULL  = { Mon:"Monday", Tue:"Tuesday", Wed:"Wednesday", Thu:"Thursday", Fri:"Friday", Sat:"Saturday", Sun:"Sunday" };
 const EMPTY     = { name:"", dance_style:"", level:"Beginner", teacher_name:"", max_size:"", notes:"" };
-const EMPTY_SCH = { day_of_week:"Mon", start_time:"09:00", end_time:"10:00", room:"" };
-const TIME_SLOTS = Array.from({ length:24*4 }, (_,i) => {
-  const h = String(Math.floor(i/4)).padStart(2,"0");
-  const m = String((i%4)*15).padStart(2,"0");
-  return `${h}:${m}`;
-});
+// A "block" is one weekly time slot that may repeat on several days.
+// e.g. "M / W / F · 5:00 PM · 1 hr · Studio A" is one block that expands
+// to three rows on the backend on save (one schedule_row per day).
+const EMPTY_BLOCK = { daysOfWeek: [1], start_time: "17:00", duration: 60, room: "" };
 
 // ── Batch cover crop modal — 4:3 landscape, saves at 800×600 ────────────────
 function BatchCoverCropModal({ file, onConfirm, onCancel }) {
@@ -261,7 +261,7 @@ export default function BatchesPage() {
   const [enrollSel,      setEnrollSel]      = useState([]);
   const [detailStudents, setDetailStudents] = useState([]);
   const [loadingDetail,  setLoadingDetail]  = useState(false);
-  const [formSchedules,  setFormSchedules]  = useState([]);
+  const [formBlocks,     setFormBlocks]     = useState([]);
   const [saving,         setSaving]         = useState(false);
   const [coverCropFile,  setCoverCropFile]  = useState(null);
   const coverInputRef = useRef(null);
@@ -344,14 +344,36 @@ export default function BatchesPage() {
       if (batchId) { await api.update(sid, batchId, form); }
       else         { const c = await api.create(sid, form); batchId = c.id; }
 
-      const existingIds = batchSchedules.map(s => s.id);
-      const keptIds     = formSchedules.filter(s => s.id).map(s => s.id);
-      await Promise.all(existingIds.filter(id => !keptIds.includes(id)).map(id => schedulesApi.remove(sid, id)));
-      for (const sch of formSchedules) {
-        const payload = { batch_id:batchId, day_of_week:sch.day_of_week, start_time:sch.start_time, end_time:sch.end_time, room:sch.room||null };
-        if (sch.id) await schedulesApi.update(sid, sch.id, payload);
-        else        await schedulesApi.create(sid, payload);
+      // Expand blocks → per-day schedule rows, matching existing IDs by
+      // (day_of_week, start_time, end_time, room). Anything left unmatched
+      // gets created; anything in batchSchedules not matched gets deleted.
+      const existingByKey = new Map();
+      for (const s of batchSchedules) {
+        const k = `${s.day_of_week}|${s.start_time?.slice(0,5)}|${s.end_time?.slice(0,5)}|${s.room || ''}`;
+        existingByKey.set(k, s.id);
       }
+      const usedIds = new Set();
+      const opsForExisting = [];
+      const opsForNew = [];
+      for (const block of formBlocks) {
+        const end_time = addMinutesToTime(block.start_time, block.duration);
+        for (const dowIdx of block.daysOfWeek) {
+          const day_of_week = dowIndexToCode(dowIdx);
+          const payload = { batch_id: batchId, day_of_week, start_time: block.start_time, end_time, room: block.room || null };
+          const key = `${day_of_week}|${block.start_time}|${end_time}|${block.room || ''}`;
+          const existingId = existingByKey.get(key);
+          if (existingId && !usedIds.has(existingId)) {
+            usedIds.add(existingId);
+            opsForExisting.push(schedulesApi.update(sid, existingId, payload));
+          } else {
+            opsForNew.push(schedulesApi.create(sid, payload));
+          }
+        }
+      }
+      const toDelete = batchSchedules.filter(s => !usedIds.has(s.id));
+      await Promise.all(toDelete.map(s => schedulesApi.remove(sid, s.id)));
+      await Promise.all(opsForExisting);
+      await Promise.all(opsForNew);
       qc.invalidateQueries(["batches",sid]);
       qc.invalidateQueries(["schedules",sid]);
       toast.success(panelMode === "edit" ? "Batch updated" : "Batch created");
@@ -389,9 +411,28 @@ export default function BatchesPage() {
 
   const openAdd = () => {
     setForm(EMPTY);
-    setFormSchedules([]);
+    setFormBlocks([]);
     setActiveId(null);
     setPanelMode("add");
+  };
+
+  // Group existing schedule rows into "blocks" by (start_time, end_time, room).
+  // A block that meets on M/W/F gets a single row in the UI with three pills
+  // selected, even though the backend stores three rows.
+  const groupSchedulesIntoBlocks = (schedules) => {
+    const map = new Map();
+    for (const s of schedules) {
+      const start = s.start_time?.slice(0,5) || "09:00";
+      const end   = s.end_time?.slice(0,5)   || "10:00";
+      const room  = s.room || "";
+      const key = `${start}|${end}|${room}`;
+      if (!map.has(key)) {
+        map.set(key, { daysOfWeek: [], start_time: start, duration: diffMinutes(start, end) || 60, room });
+      }
+      const idx = dowCodeToIndex(s.day_of_week);
+      if (idx >= 0) map.get(key).daysOfWeek.push(idx);
+    }
+    return Array.from(map.values()).map(b => ({ ...b, daysOfWeek: b.daysOfWeek.sort((a,b)=>a-b) }));
   };
 
   const openEdit = (batch) => {
@@ -399,7 +440,7 @@ export default function BatchesPage() {
     if (!target) return;
     const targetSchedules = allSchedules.filter(s => s.batch_id === target.id);
     setForm({ name:target.name||"", dance_style:target.dance_style||"", level:target.level||"Beginner", teacher_name:target.teacher_name||"", max_size:target.max_size||"", notes:target.notes||"" });
-    setFormSchedules(targetSchedules.map(s => ({ id:s.id, day_of_week:s.day_of_week, start_time:s.start_time?.slice(0,5)||"09:00", end_time:s.end_time?.slice(0,5)||"10:00", room:s.room||"" })));
+    setFormBlocks(groupSchedulesIntoBlocks(targetSchedules));
     setActiveId(target.id);
     setPanelMode("edit");
   };
@@ -693,7 +734,7 @@ export default function BatchesPage() {
                       <div key={s.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderRadius:9, background:activeColor+"12", border:`1px solid ${activeColor}25` }}>
                         <div style={{ fontWeight:800, fontSize:12, color:activeColor, minWidth:30 }}>{s.day_of_week}</div>
                         <div style={{ flex:1 }}>
-                          <div style={{ fontSize:12, fontWeight:600 }}>{s.start_time?.slice(0,5)} – {s.end_time?.slice(0,5)}</div>
+                          <div style={{ fontSize:12, fontWeight:600 }}>{sharedFormatTime(s.start_time?.slice(0,5))} – {sharedFormatTime(s.end_time?.slice(0,5))}</div>
                           {s.room && <div style={{ fontSize:10, color:"var(--muted)", display:"flex", alignItems:"center" }}><SvgIcon name="map-pin" size={10} color="var(--muted)" style={{marginRight:4}} />{s.room}</div>}
                         </div>
                       </div>
@@ -823,44 +864,46 @@ export default function BatchesPage() {
                 </div>
               </div>
 
-              {/* Class Schedule */}
+              {/* Class Schedule — multi-day blocks. One block = one weekly time
+                  slot meeting on N days (e.g. "M/W/F · 5pm · 1 hr · Studio A"). */}
               <div style={{ marginBottom:18 }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
                   <div style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".06em" }}>Class Schedule</div>
-                  <Button size="sm" variant="ghost" onClick={() => setFormSchedules([...formSchedules,{...EMPTY_SCH}])}>+ Add Class</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setFormBlocks([...formBlocks, {...EMPTY_BLOCK}])}>+ Add Time Slot</Button>
                 </div>
-                {formSchedules.length === 0 ? (
-                  <p style={{ fontSize:13, color:"var(--muted)", margin:0 }}>No classes added yet. Click "+ Add Class" to schedule days.</p>
+                {formBlocks.length === 0 ? (
+                  <p style={{ fontSize:13, color:"var(--muted)", margin:0 }}>No classes added yet. Click "+ Add Time Slot" to schedule.</p>
                 ) : (
                   <div style={{ display:"grid", gap:10 }}>
-                    {formSchedules.map((sch,idx) => (
-                      <div key={idx} style={{ padding:"14px 16px", borderRadius:10, background:"var(--surface)", border:"1px solid var(--border)" }}>
-                        <div style={{ display:"flex", gap:8, alignItems:"flex-end", flexWrap:"wrap" }}>
-                          <Field label="Day" style={{ flex:"0 0 130px", marginBottom:0 }}>
-                            <Select value={sch.day_of_week} onChange={e=>{const u=[...formSchedules];u[idx]={...u[idx],day_of_week:e.target.value};setFormSchedules(u);}}>
-                              {DAY_ORDER.map(d=><option key={d} value={d}>{DAY_FULL[d]}</option>)}
-                            </Select>
-                          </Field>
-                          <Field label="Start" style={{ flex:"0 0 100px", marginBottom:0 }}>
-                            <Select value={sch.start_time} onChange={e=>{const u=[...formSchedules];u[idx]={...u[idx],start_time:e.target.value};setFormSchedules(u);}}>
-                              {TIME_SLOTS.map(t=><option key={t} value={t}>{t}</option>)}
-                            </Select>
-                          </Field>
-                          <Field label="End" style={{ flex:"0 0 100px", marginBottom:0 }}>
-                            <Select value={sch.end_time} onChange={e=>{const u=[...formSchedules];u[idx]={...u[idx],end_time:e.target.value};setFormSchedules(u);}}>
-                              {TIME_SLOTS.map(t=><option key={t} value={t}>{t}</option>)}
-                            </Select>
-                          </Field>
-                          <button onClick={()=>setFormSchedules(formSchedules.filter((_,i)=>i!==idx))}
-                            style={{ background:"none", border:"none", color:"var(--danger)", cursor:"pointer", fontSize:16, padding:"4px 8px", borderRadius:6, flexShrink:0, marginBottom:2 }}>✕</button>
-                        </div>
-                        <div style={{ marginTop:10 }}>
+                    {formBlocks.map((block, idx) => {
+                      const update = (patch) => {
+                        const u = [...formBlocks];
+                        u[idx] = { ...u[idx], ...patch };
+                        setFormBlocks(u);
+                      };
+                      return (
+                        <div key={idx} style={{ padding:"14px 16px", borderRadius:10, background:"var(--surface)", border:"1px solid var(--border)" }}>
+                          <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:8 }}>
+                            <button onClick={()=>setFormBlocks(formBlocks.filter((_,i)=>i!==idx))}
+                              style={{ background:"none", border:"none", color:"var(--danger)", cursor:"pointer", fontSize:14, padding:"2px 6px", borderRadius:6 }}>✕ Remove</button>
+                          </div>
+                          <div style={{ marginBottom:14 }}>
+                            <DayOfWeekField value={block.daysOfWeek} onChange={v => update({ daysOfWeek: v })} />
+                          </div>
+                          <div style={{ display:"grid", gridTemplateColumns:"minmax(140px,1fr) 2fr", gap:12, marginBottom:12 }}>
+                            <Field label="Start time" style={{ marginBottom:0 }}>
+                              <TimeField value={block.start_time} onChange={v => update({ start_time: v })} />
+                            </Field>
+                            <Field label="Duration" style={{ marginBottom:0 }}>
+                              <DurationField value={block.duration} onChange={d => update({ duration: d })} startTime={block.start_time} />
+                            </Field>
+                          </div>
                           <Field label="Studio / Location" style={{ marginBottom:0 }}>
-                            <Input value={sch.room} onChange={e=>{const u=[...formSchedules];u[idx]={...u[idx],room:e.target.value};setFormSchedules(u);}} placeholder="e.g. Studio A, Hall 2" />
+                            <Input value={block.room} onChange={e => update({ room: e.target.value })} placeholder="e.g. Studio A, Hall 2" />
                           </Field>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

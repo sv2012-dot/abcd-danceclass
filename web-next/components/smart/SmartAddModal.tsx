@@ -7,6 +7,7 @@ import SmartButton from './SmartButton';
 import SmartUsageFooter from './SmartUsageFooter';
 import { smart, type SmartParsedEvent } from '@/lib/api/smart';
 import { events as eventsApi, batches as batchesApi } from '@/lib/api';
+import { DateField, TimeField } from '@/components/shared/date/Picker';
 
 // Centralised friendly mapping for AI errors
 function friendlyError(e: any): string {
@@ -278,13 +279,9 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
           <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
               Default time when missing:
-              <input
-                type="time"
-                value={defaultTime}
-                onChange={(e) => setDefaultTime(e.target.value)}
-                disabled={parsing}
-                style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12 }}
-              />
+              <div style={{ minWidth: 140 }}>
+                <TimeField value={defaultTime} onChange={(v: string) => setDefaultTime(v)} size="sm" />
+              </div>
             </label>
             <SmartButton onClick={doParse} loading={parsing} disabled={!text.trim()} size="md">
               {parsing ? 'Thinking…' : 'Create Events'}
@@ -361,18 +358,8 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
                   // ── Mobile: stacked card layout ──
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      <input
-                        type="date"
-                        value={r._editDate}
-                        onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDate: e.target.value } : row)))}
-                        style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)', fontSize: 13 }}
-                      />
-                      <input
-                        type="time"
-                        value={r._editTime}
-                        onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editTime: e.target.value } : row)))}
-                        style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)', fontSize: 13 }}
-                      />
+                      <DateField value={r._editDate} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDate: v } : row)))} size="sm" />
+                      <TimeField value={r._editTime} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editTime: v } : row)))} size="sm" />
                     </div>
                     <select
                       value={r.batch_id ?? ''}
@@ -411,18 +398,8 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
                 ) : (
                   // ── Desktop: inline grid columns ──
                   <>
-                    <input
-                      type="date"
-                      value={r._editDate}
-                      onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDate: e.target.value } : row)))}
-                      style={{ padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)', fontSize: 12 }}
-                    />
-                    <input
-                      type="time"
-                      value={r._editTime}
-                      onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editTime: e.target.value } : row)))}
-                      style={{ padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)', fontSize: 12 }}
-                    />
+                    <DateField value={r._editDate} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDate: v } : row)))} size="sm" />
+                    <TimeField value={r._editTime} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editTime: v } : row)))} size="sm" />
                     <select
                       value={r.batch_id ?? ''}
                       onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, batch_id: e.target.value ? Number(e.target.value) : null, proposed_batch_name: null } : row)))}

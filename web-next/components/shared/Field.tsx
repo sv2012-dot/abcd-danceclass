@@ -14,9 +14,9 @@ const inp: React.CSSProperties = {
   transition: 'background .2s, border-color .2s',
 };
 
-export function Field({ label, children }: { label: string; children: any }) {
+export function Field({ label, children, style }: { label: string; children: any; style?: React.CSSProperties }) {
   return (
-    <div style={{ marginBottom: 14 }}>
+    <div style={{ marginBottom: 14, ...style }}>
       <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 5 }}>{label}</label>
       {children}
     </div>

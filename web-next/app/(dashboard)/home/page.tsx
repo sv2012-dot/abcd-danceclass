@@ -14,6 +14,8 @@ import Card from "@/components/shared/Card";
 import Modal from "@/components/shared/Modal";
 import Badge from "@/components/shared/Badge";
 import { Field, Input, Select, Textarea } from "@/components/shared/Field";
+import { WhenField, DateField, TimeField, DurationField } from "@/components/shared/date/Picker";
+import { formatTime as sharedFormatTime, parseLocalDate as sharedParseLocalDate, computeEndDateTime, nowDateTimeISO } from "@/lib/date";
 import SvgIcon from "@/components/shared/SvgIcon";
 import { TodoKeyframeStyles, TodoRow } from "@/components/shared/TodoItem";
 import CoverCropModal from "@/components/shared/CoverCropModal";
@@ -34,19 +36,7 @@ const C = {
   createBtnHov: 'rgba(124,58,237,0.18)',
 };
 
-// ── Time options: 15-min increments for recital forms ─────────────────────────
-const TIME_OPTIONS = (() => {
-  const opts = [];
-  for (let h = 0; h < 24; h++) {
-    for (const m of [0, 15, 30, 45]) {
-      const val = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-      const period = h < 12 ? 'AM' : 'PM';
-      const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-      opts.push({ val, label: `${h12}:${String(m).padStart(2,'0')} ${period}` });
-    }
-  }
-  return opts;
-})();
+// TIME_OPTIONS removed — use shared <TimeField> from @/components/shared/date
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const EVENT_TYPES = ["Class", "Recital", "Rehearsal", "Workshop", "Other"];
@@ -65,16 +55,12 @@ const EMPTY_EVENT = {
 };
 
 const DURATION_OPTIONS = [
-  { value:15,  label:"15 min" },
   { value:30,  label:"30 min" },
   { value:45,  label:"45 min" },
   { value:60,  label:"1 hr" },
-  { value:75,  label:"1 hr 15 min" },
-  { value:90,  label:"1 hr 30 min" },
+  { value:75,  label:"1 hr 15" },
+  { value:90,  label:"1 hr 30" },
   { value:120, label:"2 hr" },
-  { value:150, label:"2 hr 30 min" },
-  { value:180, label:"3 hr" },
-  { value:240, label:"4 hr" },
 ];
 
 function computeEndFromDuration(startStr, durationMins) {
@@ -108,134 +94,6 @@ function parseLocalDate(str) {
   const s = (str || "").slice(0, 10);
   const [y, m, d] = s.split("-").map(Number);
   return (y && m && d) ? new Date(y, m - 1, d) : new Date(NaN);
-}
-
-// ── DateTimePicker ────────────────────────────────────────────────────────────
-function DateTimePicker({ label, value, onChange }) {
-  const [open, setOpen] = useState(false);
-  const [tab, setTab]   = useState("date");
-  const ref = useRef(null);
-  const parsed = useMemo(() => { if (!value) return null; const d = new Date(value); return isNaN(d)?null:d; }, [value]);
-  const displayVal = useMemo(() => {
-    if (!parsed) return null;
-    return {
-      date: parsed.toLocaleDateString([], { weekday:"short", month:"short", day:"numeric", year:"numeric" }),
-      time: parsed.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit", hour12:true }),
-    };
-  }, [parsed]);
-  const [cal, setCal]  = useState(() => { const d = parsed||new Date(); return { year:d.getFullYear(), month:d.getMonth() }; });
-  const [hour, setHour] = useState(() => parsed ? parsed.getHours() : 18);
-  const [minute, setMin] = useState(() => parsed ? Math.floor(parsed.getMinutes()/15)*15 : 0);
-
-  useEffect(() => {
-    if (!open) return;
-    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, [open]);
-
-  const emit = useCallback((y,mo,d,h,min) => onChange(`${y}-${pad(mo+1)}-${pad(d)}T${pad(h)}:${pad(min)}`), [onChange]);
-  const selectDay  = day => { emit(cal.year,cal.month,day,hour,minute); setTab("time"); };
-  const selectTime = (h,m) => {
-    setHour(h); setMin(m);
-    if (parsed) emit(parsed.getFullYear(),parsed.getMonth(),parsed.getDate(),h,m);
-    else { const t=new Date(); emit(cal.year,cal.month,t.getDate(),h,m); }
-  };
-
-  const dow = new Date(cal.year,cal.month,1).getDay();
-  const firstDow = dow === 0 ? 6 : dow - 1;
-  const dim      = new Date(cal.year,cal.month+1,0).getDate();
-  const cells    = [];
-  for (let i=0;i<firstDow;i++) cells.push(null);
-  for (let d=1;d<=dim;d++) cells.push(d);
-  while (cells.length%7!==0) cells.push(null);
-
-  const today      = new Date();
-  const isToday    = d => d && cal.year===today.getFullYear() && cal.month===today.getMonth() && d===today.getDate();
-  const isSelected = d => d && parsed && cal.year===parsed.getFullYear() && cal.month===parsed.getMonth() && d===parsed.getDate();
-  const HOURS = Array.from({length:24},(_,i)=>i);
-  const MINS  = [0,15,30,45];
-
-  return (
-    <div ref={ref} style={{position:"relative"}}>
-      <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:5}}>{label}</div>
-      <button type="button" onClick={()=>setOpen(p=>!p)} style={{
-        width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
-        background:"var(--surface)",border:`1.5px solid ${open?"var(--accent)":"var(--border)"}`,
-        borderRadius:9,padding:"9px 13px",cursor:"pointer",
-        boxShadow:open?"0 0 0 3px rgba(196,82,122,0.1)":"none",transition:"all .15s",textAlign:"left",
-      }}>
-        {displayVal
-          ? <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>{displayVal.date}</span>
-              <span style={{fontSize:12,color:"var(--muted)",background:"var(--surface)",padding:"2px 8px",borderRadius:6,fontWeight:600}}>{displayVal.time}</span>
-            </div>
-          : <span style={{fontSize:13,color:"var(--muted)"}}>Pick date & time…</span>
-        }
-        <SvgIcon name="calendar" size={14} color="var(--muted)" style={{flexShrink:0}} />
-      </button>
-      {open && (
-        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,zIndex:400,background:"var(--card)",borderRadius:16,boxShadow:"0 12px 40px rgba(0,0,0,0.16)",border:"1px solid var(--border)",width:"min(300px,calc(100vw - 20px))",maxWidth:300,overflow:"hidden"}}>
-          <div style={{display:"flex",borderBottom:`1px solid var(--border)`}}>
-            {["date","time"].map(t => (
-              <button key={t} type="button" onClick={()=>setTab(t)} style={{
-                flex:1,padding:"11px 0",fontSize:12,fontWeight:700,border:"none",cursor:"pointer",
-                background:tab===t?"var(--card)":"var(--surface)",color:tab===t?"var(--accent)":"var(--muted)",
-                borderBottom:tab===t?"2px solid var(--accent)":"2px solid transparent",
-              }}>{t==="date"?"Date":"Time"}</button>
-            ))}
-          </div>
-          {tab==="date" && (
-            <div style={{padding:"10px 10px"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,gap:4}}>
-                <button type="button" onClick={()=>setCal(c=>c.month===0?{year:c.year-1,month:11}:{...c,month:c.month-1})} style={{background:"var(--surface)",border:"none",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:13,flex:0.5}}>‹</button>
-                <span style={{fontWeight:700,fontSize:12}}>{MONTHS_SHORT[cal.month]} {cal.year}</span>
-                <button type="button" onClick={()=>setCal(c=>c.month===11?{year:c.year+1,month:0}:{...c,month:c.month+1})} style={{background:"var(--surface)",border:"none",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:13,flex:0.5}}>›</button>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:3,gap:1}}>
-                {DAYS_SHORT.map(d=><div key={d} style={{textAlign:"center",fontSize:9,fontWeight:700,color:"var(--muted)",padding:"1px 0"}}>{d}</div>)}
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1}}>
-                {cells.map((day,i) => (
-                  <button key={i} type="button" disabled={!day} onClick={()=>day&&selectDay(day)} style={{
-                    padding:"5px 0",textAlign:"center",fontSize:11,fontWeight:500,border:"none",cursor:day?"pointer":"default",borderRadius:6,
-                    background:isSelected(day)?"var(--accent)":isToday(day)?"var(--surface)":"transparent",
-                    color:isSelected(day)?"#fff":isToday(day)?"var(--accent)":day?"var(--text)":"transparent",
-                    fontWeight:isToday(day)||isSelected(day)?700:500,
-                  }}>{day||""}</button>
-                ))}
-              </div>
-            </div>
-          )}
-          {tab==="time" && (
-            <div style={{padding:"10px 10px"}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,maxHeight:200,overflow:"hidden"}}>
-                <div>
-                  <div style={{fontSize:9,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>Hour</div>
-                  <div style={{maxHeight:170,overflowY:"auto",display:"grid",gap:1}}>
-                    {HOURS.map(h => {
-                      const lbl = h===0?"12 AM":h<12?`${h} AM`:h===12?"12 PM":`${h-12} PM`;
-                      return <button key={h} type="button" onClick={()=>selectTime(h,minute)} style={{padding:"4px 6px",borderRadius:5,border:"none",cursor:"pointer",fontSize:11,fontWeight:500,textAlign:"left",background:hour===h?"var(--accent)":"transparent",color:hour===h?"#fff":"var(--text)"}}>{lbl}</button>;
-                    })}
-                  </div>
-                </div>
-                <div>
-                  <div style={{fontSize:9,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>Minute</div>
-                  <div style={{display:"grid",gap:1}}>
-                    {MINS.map(m => <button key={m} type="button" onClick={()=>selectTime(hour,m)} style={{padding:"4px 6px",borderRadius:5,border:"none",cursor:"pointer",fontSize:11,fontWeight:500,textAlign:"left",background:minute===m?"var(--accent)":"transparent",color:minute===m?"#fff":"var(--text)"}}>:{String(m).padStart(2,"0")}</button>)}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          <div style={{borderTop:`1px solid var(--border)`,padding:"8px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-            <span style={{fontSize:11,color:"var(--muted)",fontWeight:500}}>{displayVal?`${displayVal.date} ${displayVal.time}`:"No date selected"}</span>
-            <button type="button" onClick={()=>setOpen(false)} style={{background:"var(--accent)",color:"#fff",border:"none",borderRadius:6,padding:"5px 14px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>Done</button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
@@ -1126,7 +984,9 @@ function SchoolHomePage() {
             <Field label="Phone"><Input value={studentForm.phone} onChange={e=>setStudentForm({...studentForm,phone:e.target.value})} placeholder="e.g. 212-555-0101" /></Field>
             <Field label="Guardian Name"><Input value={studentForm.guardian_name} onChange={e=>setStudentForm({...studentForm,guardian_name:e.target.value})} placeholder="e.g. Meera Patel" /></Field>
             <Field label="Guardian Phone"><Input value={studentForm.guardian_phone} onChange={e=>setStudentForm({...studentForm,guardian_phone:e.target.value})} placeholder="e.g. 212-555-0100" /></Field>
-            <Field label="Enrollment Date" style={{gridColumn:"1/-1"}}><Input type="date" value={studentForm.enrollment_date} onChange={e=>setStudentForm({...studentForm,enrollment_date:e.target.value})} /></Field>
+            <Field label="Enrollment Date" style={{gridColumn:"1/-1"}}>
+              <DateField value={studentForm.enrollment_date} onChange={v=>setStudentForm({...studentForm,enrollment_date:v})} />
+            </Field>
             <Field label="Notes" style={{gridColumn:"1/-1"}}><Textarea value={studentForm.notes} onChange={e=>setStudentForm({...studentForm,notes:e.target.value})} placeholder="Any additional notes…" /></Field>
           </div>
           <div style={{display:"flex",gap:9,marginTop:8}}>
@@ -1166,12 +1026,11 @@ function SchoolHomePage() {
           <div style={{height:4,background:"linear-gradient(90deg,#c4527a,#e8607a)",borderRadius:4,marginBottom:16}} />
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"0 16px"}}>
             <Field label="Recital Title *" style={{gridColumn:"1/-1"}}><Input value={recitalForm.title} onChange={e=>setRecitalForm({...recitalForm,title:e.target.value})} placeholder="e.g. Spring Showcase 2026" /></Field>
-            <Field label="Date *"><Input type="date" value={recitalForm.event_date} onChange={e=>setRecitalForm({...recitalForm,event_date:e.target.value})} /></Field>
-            <Field label="Time">
-              <Select value={recitalForm.event_time} onChange={e=>setRecitalForm({...recitalForm,event_time:e.target.value})}>
-                <option value="">— No time —</option>
-                {TIME_OPTIONS.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-              </Select>
+            <Field label="Date *">
+              <DateField value={recitalForm.event_date} onChange={v=>setRecitalForm({...recitalForm,event_date:v})} futureOnly />
+            </Field>
+            <Field label="Doors / Start Time">
+              <TimeField value={recitalForm.event_time} onChange={v=>setRecitalForm({...recitalForm,event_time:v})} nullable />
             </Field>
             <Field label="Venue" style={{gridColumn:"1/-1"}}><Input value={recitalForm.venue} onChange={e=>setRecitalForm({...recitalForm,venue:e.target.value})} placeholder="e.g. Riverside Auditorium" /></Field>
             <Field label="Notes" style={{gridColumn:"1/-1"}}><Textarea value={recitalForm.description} onChange={e=>setRecitalForm({...recitalForm,description:e.target.value})} placeholder="Any notes about the recital…" /></Field>
@@ -1205,11 +1064,16 @@ function SchoolHomePage() {
                 {batches.length===0 && <span style={{fontSize:12,color:"var(--muted)"}}>No batches yet</span>}
               </div>
             </div>
-            <DateTimePicker label="Start *" value={form.start_datetime} onChange={v=>setForm(f=>({...f,start_datetime:v,end_datetime:computeEndFromDuration(v,f.duration)}))} />
+            <Field label="Start *">
+              <WhenField value={form.start_datetime} onChange={v=>setForm(f=>({...f,start_datetime:v,end_datetime:computeEndFromDuration(v,f.duration)}))} />
+            </Field>
             <Field label="Duration">
-              <Select value={form.duration} onChange={e=>{ const d=Number(e.target.value); setForm(f=>({...f,duration:d,end_datetime:computeEndFromDuration(f.start_datetime,d)})); }}>
-                {DURATION_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-              </Select>
+              <DurationField
+                value={form.duration}
+                onChange={d=>setForm(f=>({...f,duration:d,end_datetime:computeEndFromDuration(f.start_datetime,d)}))}
+                startTime={form.start_datetime}
+                options={DURATION_OPTIONS}
+              />
             </Field>
             <Field label="Location / Room" style={{gridColumn:"1/-1"}}><Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder="e.g. Studio A" /></Field>
             <Field label="Repeat">
@@ -1220,7 +1084,9 @@ function SchoolHomePage() {
               </Select>
             </Field>
             {form.recurrence!=="none" && !modal.id && (
-              <DateTimePicker label="Repeat Until" value={form.recurrence_end?form.recurrence_end+"T00:00":""} onChange={v=>setForm({...form,recurrence_end:v.slice(0,10)})} />
+              <Field label="Repeat Until">
+                <DateField value={form.recurrence_end || ""} onChange={v=>setForm({...form,recurrence_end:v})} futureOnly />
+              </Field>
             )}
           </div>
           <div style={{display:"flex",alignItems:"center",gap:12,margin:"10px 0",padding:12,background:"var(--surface)",borderRadius:10}}>

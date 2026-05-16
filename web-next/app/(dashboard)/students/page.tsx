@@ -12,6 +12,8 @@ import { Field, Input, Textarea } from "@/components/shared/Field";
 import ProfileCropModal from "@/components/shared/ProfileCropModal";
 import SmartAnnounceModal from "@/components/smart/SmartAnnounceModal";
 import SvgIcon from "@/components/shared/SvgIcon";
+import { DateField } from "@/components/shared/date/Picker";
+import { todayISO } from "@/lib/date";
 import { upload as uploadApi } from "@/lib/api";
 import StudentAttendancePanel from "@/components/attendance/StudentAttendancePanel";
 import PageTabs from "@/components/shared/PageTabs";
@@ -421,7 +423,7 @@ export default function StudentsPage() {
       : { label: "Fee due",   bg: "var(--surface)", border: "var(--border)", color: "var(--muted)" };
   };
 
-  const openAdd    = () => { setAddForm({ ...EMPTY, join_date: new Date().toISOString().split("T")[0] }); setSelected(null); setIsEditing(false); setShowAdd(true); };
+  const openAdd    = () => { setAddForm({ ...EMPTY, join_date: todayISO() }); setSelected(null); setIsEditing(false); setShowAdd(true); };
   const pick       = s  => { setSelected(s); setIsEditing(false); };
   const startEdit  = ()  => { setEditForm({ ...selected, batch_ids: parseBatchIds(selected.batch_ids) }); setIsEditing(true); };
 
@@ -753,7 +755,7 @@ export default function StudentsPage() {
                   <input value={addForm.guardian_name} onChange={e => setAddForm({ ...addForm, guardian_name: e.target.value })} placeholder="Guardian name" aria-label="Guardian name" style={MODERN_INPUT} />
                   <input value={addForm.guardian_phone} onChange={e => setAddForm({ ...addForm, guardian_phone: e.target.value })} placeholder="Guardian phone" aria-label="Guardian phone" style={MODERN_INPUT} />
                   <input type="email" value={addForm.guardian_email} onChange={e => setAddForm({ ...addForm, guardian_email: e.target.value })} placeholder="Guardian email" aria-label="Guardian email" style={MODERN_INPUT} />
-                  <input type="date" value={addForm.join_date} onChange={e => setAddForm({ ...addForm, join_date: e.target.value })} aria-label="Join date" style={MODERN_INPUT} />
+                  <DateField label="Join date" value={addForm.join_date} onChange={v => setAddForm({ ...addForm, join_date: v })} />
                   <textarea value={addForm.notes} onChange={e => setAddForm({ ...addForm, notes: e.target.value })} placeholder="Notes" aria-label="Notes" rows={3} style={{ ...MODERN_INPUT, resize: "vertical", minHeight: 70, lineHeight: 1.5 }} />
                 </div>
                 <div style={{ display: "flex", gap: 9, marginTop: 16 }}>
@@ -873,7 +875,7 @@ export default function StudentsPage() {
 
                 <PanelSection title="Enrollment">
                   {isEditing ? (
-                    <input type="date" value={(editForm.join_date || "").split("T")[0]} onChange={e => setEditForm({ ...editForm, join_date: e.target.value })} aria-label="Join date" style={MODERN_INPUT} />
+                    <DateField value={(editForm.join_date || "").split("T")[0]} onChange={v => setEditForm({ ...editForm, join_date: v })} />
                   ) : (
                     <InfoRow icon="📅" label="Joined" value={fmtLong(selected.join_date)} />
                   )}
