@@ -380,6 +380,81 @@ function SectionB({ title, icon, link = null, children }) {
   );
 }
 
+// Bio card — inline-editable section that lives ABOVE the drill-downs.
+// Independent of the page-wide Edit toggle: clicking the pencil enters
+// edit-just-this-field mode; Save commits via the dedicated saveBio
+// handler; Cancel reverts. View mode shows a soft accent-bordered quote.
+function BioCard({ bio, editing, draft, saving, onStart, onChange, onSave, onCancel }) {
+  return (
+    <div style={{
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
+      borderRadius: 16,
+      padding: "14px 14px 12px",
+      marginBottom: 12,
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <h3 style={{ fontSize: 12, fontWeight: 800, margin: 0, color: "var(--text)", display: "inline-flex", alignItems: "center", gap: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <span style={{ color: "var(--accent)", display: "inline-flex" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            </svg>
+          </span>
+          Bio
+        </h3>
+        {!editing && (
+          <button onClick={onStart} title="Edit bio"
+            style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <SvgIcon name="pencil" size={11} color="currentColor" />
+            {bio ? "Edit" : "Add"}
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <>
+          <textarea
+            value={draft}
+            onChange={e => onChange(e.target.value)}
+            placeholder="A short bio — what they love, what they're working on, anything parent-facing…"
+            rows={3}
+            autoFocus
+            style={{
+              width: "100%",
+              background: "var(--card)",
+              border: "1.5px solid var(--accent)",
+              borderRadius: 10,
+              padding: "10px 12px",
+              color: "var(--text)",
+              fontSize: 13,
+              fontFamily: "var(--font-sans)",
+              lineHeight: 1.5,
+              outline: "none",
+              resize: "vertical",
+              minHeight: 70,
+            }}
+          />
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+            <button onClick={onCancel} disabled={saving}
+              style={{ padding: "6px 14px", borderRadius: 16, border: "1.5px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+              Cancel
+            </button>
+            <button onClick={onSave} disabled={saving}
+              style={{ padding: "6px 16px", borderRadius: 16, border: "none", background: "var(--accent)", color: "#fff", fontSize: 11, fontWeight: 700, cursor: saving ? "wait" : "pointer" }}>
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </>
+      ) : bio ? (
+        <div style={{ background: "var(--card)", borderLeft: "3px solid var(--accent)", borderRadius: 10, padding: "10px 12px" }}>
+          <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5, margin: 0, fontStyle: "italic" }}>{bio}</p>
+        </div>
+      ) : (
+        <p style={{ fontSize: 12, color: "var(--muted)", margin: 0, fontStyle: "italic" }}>No bio yet — tap Add to write a short intro.</p>
+      )}
+    </div>
+  );
+}
+
 // Mini stat (used inside the Attendance section)
 function AttMini({ n, label, color }) {
   return (
@@ -446,6 +521,11 @@ export default function StudentsPage() {
   const photoInputRef = useRef(null);
   // Fee reminder via Smart Announce — null = closed, student = open
   const [feeReminderStudent, setFeeReminderStudent] = useState(null);
+  // Bio inline editor — independent of the global edit toggle. Click to
+  // edit just the bio field without entering the page-wide edit mode.
+  const [bioEditing, setBioEditing] = useState(false);
+  const [bioDraft, setBioDraft] = useState("");
+  const [bioSaving, setBioSaving] = useState(false);
 
   // ── Variant-B hero data: 90-day attendance summary for the profile tiles
   //    and the Recent Classes / Attendance breakdown sections. Refetches
@@ -523,6 +603,23 @@ export default function StudentsPage() {
     },
     onError: err => toast.error(err?.error || "Failed to save"),
   });
+
+  // Bio save — independent of the page-wide edit mode. Fires only when the
+  // user clicks Save on the bio card; everything else stays read-only.
+  const saveBio = async () => {
+    if (!selected) return;
+    setBioSaving(true);
+    try {
+      await api.update(sid, selected.id, { bio: bioDraft });
+      setSelected(s => ({ ...s, bio: bioDraft }));
+      qc.invalidateQueries(["students", sid]);
+      setBioEditing(false);
+    } catch (e) {
+      toast.error(e?.error || "Failed to save bio");
+    } finally {
+      setBioSaving(false);
+    }
+  };
 
   const deleteMutation = useMutation({
     mutationFn: id => api.remove(sid, id),
@@ -634,17 +731,26 @@ export default function StudentsPage() {
           <p style={{ color: "var(--muted)", fontSize: 12 }}>{list.length} enrolled</p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto" }}>
-          <div style={{ display: "flex", border: "1.5px solid var(--border)", borderRadius: 9, overflow: "hidden" }}>
-            <button onClick={() => setView("grid")} title="Grid view"
-              style={{ padding: "7px 13px", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, transition: "all .15s",
-                background: view === "grid" ? "var(--accent)" : "transparent",
-                color: view === "grid" ? "#fff" : "var(--muted)" }}>⊞</button>
-            <button onClick={() => setView("table")} title="Table view"
-              style={{ padding: "7px 13px", border: "none", borderLeft: "1.5px solid var(--border)", cursor: "pointer", fontSize: 16, lineHeight: 1, transition: "all .15s",
-                background: view === "table" ? "var(--accent)" : "transparent",
-                color: view === "table" ? "#fff" : "var(--muted)" }}>☰</button>
-          </div>
-          <Button onClick={openAdd} icon="➕">Add Student</Button>
+          {/* View toggle — desktop only. On mobile we always show the
+              responsive table-list and don't expose a grid option. */}
+          {!isMobile && (
+            <div style={{ display: "flex", border: "1.5px solid var(--border)", borderRadius: 9, overflow: "hidden" }}>
+              <button onClick={() => setView("grid")} title="Grid view"
+                style={{ padding: "7px 13px", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, transition: "all .15s",
+                  background: view === "grid" ? "var(--accent)" : "transparent",
+                  color: view === "grid" ? "#fff" : "var(--muted)" }}>⊞</button>
+              <button onClick={() => setView("table")} title="Table view"
+                style={{ padding: "7px 13px", border: "none", borderLeft: "1.5px solid var(--border)", cursor: "pointer", fontSize: 16, lineHeight: 1, transition: "all .15s",
+                  background: view === "table" ? "var(--accent)" : "transparent",
+                  color: view === "table" ? "#fff" : "var(--muted)" }}>☰</button>
+            </div>
+          )}
+          <Button onClick={openAdd}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <SvgIcon name="plus" size={14} color="currentColor" />
+              Add Student
+            </span>
+          </Button>
         </div>
       </div>
 
@@ -733,7 +839,7 @@ export default function StudentsPage() {
           <Button onClick={openAdd}>Add Student</Button>
         </Card>
 
-      ) : view === "grid" ? (
+      ) : view === "grid" && !isMobile ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 16 }}>
           {filtered.map(s => {
             const active   = selected?.id === s.id;
@@ -1095,6 +1201,21 @@ export default function StudentsPage() {
 
               {/* ── Drill-down sections ── */}
               <div style={{ padding: "10px 18px 22px" }}>
+                {/* Bio — inline-editable, independent of the global edit mode.
+                    Pencil = open editor; Save persists immediately. */}
+                {!isEditing && (
+                  <BioCard
+                    bio={selected.bio}
+                    editing={bioEditing}
+                    draft={bioDraft}
+                    saving={bioSaving}
+                    onStart={() => { setBioDraft(selected.bio || ""); setBioEditing(true); }}
+                    onChange={setBioDraft}
+                    onSave={saveBio}
+                    onCancel={() => { setBioEditing(false); setBioDraft(""); }}
+                  />
+                )}
+
                 {/* Recent Classes */}
                 {!isEditing && (
                   <SectionB title="Recent Classes" icon="clock" link={records.length > 0 ? "View all" : null}>

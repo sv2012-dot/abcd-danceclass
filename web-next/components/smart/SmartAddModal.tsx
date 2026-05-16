@@ -6,7 +6,7 @@ import SmartModal from './SmartModal';
 import SmartButton from './SmartButton';
 import SmartUsageFooter from './SmartUsageFooter';
 import { smart, type SmartParsedEvent } from '@/lib/api/smart';
-import { events as eventsApi, batches as batchesApi } from '@/lib/api';
+import { events as eventsApi, batches as batchesApi, recitals as recitalsApi } from '@/lib/api';
 import { DateField, TimeField } from '@/components/shared/date/Picker';
 
 // Centralised friendly mapping for AI errors
@@ -58,11 +58,34 @@ type Props = {
   onCreated?: () => void;        // refetch hook
 };
 
-const EXAMPLES = [
+// Static fallback used when the studio has no batches / recitals yet.
+// Once real data loads, buildDynamicExamples() returns school-specific
+// example prompts that the AI is more likely to parse correctly because
+// the names already exist in the database.
+const STATIC_EXAMPLES = [
   'Hip Hop Mon Wed Fri 5pm March',
-  'Junio batch May 21, June 26 27, July 20',
   'Bharatanatyam Beg Tuesdays 6pm for next 6 weeks',
+  'Create a 10-week summer class series starting June 15',
 ];
+
+function buildDynamicExamples(
+  recitalName: string | null,
+  batchName: string | null
+): string[] {
+  const examples: string[] = [];
+  if (recitalName) {
+    examples.push(
+      `For ${recitalName} create three practice sessions leading up to the recital, including a dress rehearsal and a tech rehearsal.`
+    );
+  }
+  if (batchName) {
+    examples.push(
+      `For ${batchName}, add a few ad-hoc make-up classes on Saturday afternoons over the next month.`
+    );
+  }
+  examples.push('Create a seasonal class series — 10 class events for the summer break.');
+  return examples.length >= 3 ? examples.slice(0, 3) : [...examples, ...STATIC_EXAMPLES].slice(0, 3);
+}
 
 type Row = SmartParsedEvent & {
   _selected: boolean;
@@ -102,6 +125,11 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
   const [yearAssumed, setYearAssumed] = useState<number | null>(null);
   const [defaultTime, setDefaultTime] = useState('17:00'); // 5 PM
   const [batchesCache, setBatchesCache] = useState<{ id: number; name: string }[]>([]);
+  // Sample names used to build example prompts — pulled once when the
+  // modal opens so the suggested chips reference REAL data the studio
+  // already has. Falls back to STATIC_EXAMPLES when empty.
+  const [sampleRecitalName, setSampleRecitalName] = useState<string | null>(null);
+  const [sampleBatchName,   setSampleBatchName]   = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const narrow = useNarrow();
@@ -113,6 +141,33 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
       return () => clearTimeout(t);
     }
   }, [open, rows.length]);
+
+  // Preload one recital + one batch name on open. These power dynamic
+  // example prompts. Pick the soonest upcoming recital (or most recent
+  // if none upcoming) and the first available batch.
+  useEffect(() => {
+    if (!open || !schoolId) return;
+    let cancelled = false;
+    Promise.all([
+      recitalsApi.list(schoolId).catch(() => []) as Promise<any[]>,
+      batchesApi.list(schoolId).catch(() => []) as Promise<any[]>,
+    ]).then(([recs, bats]) => {
+      if (cancelled) return;
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const upcoming = (recs || [])
+        .filter((r: any) => (r.event_date || '').slice(0, 10) >= todayStr)
+        .sort((a: any, b: any) => (a.event_date || '').localeCompare(b.event_date || ''));
+      const pickRecital = upcoming[0] || (recs || []).slice(-1)[0] || null;
+      setSampleRecitalName(pickRecital?.title || null);
+      setSampleBatchName((bats || [])[0]?.name || null);
+      if (bats && bats.length) {
+        setBatchesCache((bats as any[]).map((b: any) => ({ id: b.id, name: b.name })));
+      }
+    });
+    return () => { cancelled = true; };
+  }, [open, schoolId]);
+
+  const examples = buildDynamicExamples(sampleRecitalName, sampleBatchName);
 
   const reset = () => {
     setText('');
@@ -264,7 +319,7 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
           />
           <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
             <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Try:</span>
-            {EXAMPLES.map((ex) => (
+            {examples.map((ex) => (
               <button
                 key={ex}
                 onClick={() => setText(ex)}

@@ -426,7 +426,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         />
       )}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-        <header style={{ height: 56, background: 'var(--sidebar)', borderBottom: '1px solid var(--sidebar-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0, zIndex: 200 }}>
+        <header style={{ height: 56, background: 'var(--sidebar)', borderBottom: '1px solid var(--sidebar-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0, zIndex: 1000 }}>
           <div
             onClick={() => router.push('/home')}
             style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1, minWidth: 0 }}
@@ -455,7 +455,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {menuOpen && (
           <div
             onClick={() => setMenuOpen(false)}
-            style={{ position: 'fixed', inset: 0, top: 56, background: 'rgba(0,0,0,0.45)', zIndex: 299 }}
+            style={{ position: 'fixed', inset: 0, top: 56, background: 'rgba(0,0,0,0.45)', zIndex: 999 }}
           />
         )}
 
@@ -465,7 +465,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           borderRight: '1px solid var(--sidebar-border)',
           transform: menuOpen ? 'translateX(0)' : 'translateX(-100%)',
           transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
-          zIndex: 300, overflowY: 'auto',
+          zIndex: 1001, overflowY: 'auto',
         }}>
           <SidebarContent {...sidebarProps} showBrand={false} />
         </div>

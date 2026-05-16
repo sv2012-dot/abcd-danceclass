@@ -5,7 +5,7 @@
 // Renamed from "Smart Reply" — semantically these are announcements, not
 // replies to a thread.
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SmartModal from './SmartModal';
 import SmartButton from './SmartButton';
 import SmartUsageFooter from './SmartUsageFooter';
@@ -42,13 +42,25 @@ type Props = {
 const PURPLE = '#7C3AED';
 const MAGENTA = '#DC4EFF';
 
-// Purpose presets — each maps to a HEADLINE shown above the message body
+// Purpose presets — each maps to a HEADLINE shown above the message body.
+// The default set fits Class / Event / Recital / Batch contexts.
 const PURPOSE_PRESETS: { id: string; label: string; headline: string; purpose: string; tone: SmartReplyTone }[] = [
   { id: 'confirm',  label: 'Confirm — class is on as scheduled', headline: 'Class confirmed',    purpose: 'Confirm the class is on as scheduled and reassure parents.',                       tone: 'friendly'   },
   { id: 'cancel',   label: 'Cancel / reschedule',                headline: 'Class cancelled',    purpose: 'Cancel or reschedule this. Briefly explain without private details.',             tone: 'apologetic' },
   { id: 'reminder', label: 'Reminder day-before',                headline: 'Reminder',           purpose: 'Friendly reminder the day before. Mention any prep or items to bring.',           tone: 'friendly'   },
   { id: 'rsvp',     label: 'Ask for RSVP',                       headline: 'Please RSVP',        purpose: 'Politely ask parents to RSVP via the public page so we can plan accordingly.',    tone: 'friendly'   },
   { id: 'custom',   label: 'Custom (write yourself)',            headline: 'Announcement',       purpose: '',                                                                                  tone: 'friendly'   },
+];
+
+// Student-specific presets — surfaced ONLY when contextType === 'student'.
+// A teacher messaging an individual parent has different intents than a
+// batch-wide announcement: fees, praise, recital appreciation, etc.
+const STUDENT_PRESETS: { id: string; label: string; headline: string; purpose: string; tone: SmartReplyTone }[] = [
+  { id: 'fees',          label: 'Send fees reminder',           headline: 'Fee reminder',          purpose: "Friendly, parent-facing reminder that this student's monthly fee is due. Mention the convenient way to pay and that we appreciate timely payment.", tone: 'friendly' },
+  { id: 'praise_class',  label: 'Appreciate for class',         headline: 'A note about today',    purpose: "Tell the parent something specific and positive this student did in class today — effort, progress, attitude, a moment that stood out.",            tone: 'friendly' },
+  { id: 'praise_recital',label: 'Appreciation for recital',     headline: 'Thank you for the recital', purpose: "Thank the parent for bringing their child to the recital. Mention how the student performed and what it meant to have them there.",         tone: 'friendly' },
+  { id: 'thanks',        label: 'Thank you',                    headline: 'Thank you',             purpose: "A short, warm thank-you to the parent — for support, attendance, payment, or just being part of the studio community.",                            tone: 'friendly' },
+  { id: 'custom',        label: 'Custom (write yourself)',      headline: 'Message',               purpose: '',                                                                                                                                                  tone: 'friendly' },
 ];
 
 const TONE_OPTIONS: { id: SmartReplyTone; label: string }[] = [
@@ -106,7 +118,14 @@ function EventCard({ ctx, color }: { ctx: AnnounceContextData; color: string }) 
 }
 
 export default function SmartAnnounceModal({ open, onClose, ctx, inline = false }: Props) {
-  const [presetId, setPresetId] = useState('reminder');
+  // Student profile uses a different preset set (fees / praise / thanks /
+  // recital appreciation / custom). Everything else (event / batch /
+  // recital announcements) keeps the default preset list.
+  const isStudent = ctx?.contextType === 'student';
+  const presets = isStudent ? STUDENT_PRESETS : PURPOSE_PRESETS;
+  const defaultPresetId = isStudent ? 'fees' : 'reminder';
+
+  const [presetId, setPresetId] = useState(defaultPresetId);
   const [tone, setTone] = useState<SmartReplyTone>('friendly');
   const [custom, setCustom] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -115,11 +134,23 @@ export default function SmartAnnounceModal({ open, onClose, ctx, inline = false 
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Re-sync the default preset when the modal opens for a different
+  // context type (otherwise switching from event → student carries the
+  // previous selection, which may not exist in the new preset list).
+  useEffect(() => {
+    if (open) {
+      setPresetId(defaultPresetId);
+      const fallback = presets.find(p => p.id === defaultPresetId);
+      if (fallback) setTone(fallback.tone);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isStudent]);
+
   const reset = () => {
     setBody('');
     setCopied(false);
     setCustom('');
-    setPresetId('reminder');
+    setPresetId(defaultPresetId);
     setError(null);
   };
 
@@ -129,15 +160,15 @@ export default function SmartAnnounceModal({ open, onClose, ctx, inline = false 
     onClose();
   };
 
-  // Sync tone with preset when preset changes (UX: cancellations default to apologetic)
+  // Sync tone with preset when preset changes
   const pickPreset = (id: string) => {
     setPresetId(id);
-    const p = PURPOSE_PRESETS.find((x) => x.id === id);
+    const p = presets.find((x) => x.id === id);
     if (p) setTone(p.tone);
     if (error) setError(null);
   };
 
-  const preset = PURPOSE_PRESETS.find((p) => p.id === presetId);
+  const preset = presets.find((p) => p.id === presetId);
   const headline = preset?.headline || 'Announcement';
 
   const doGenerate = async () => {
@@ -217,7 +248,7 @@ export default function SmartAnnounceModal({ open, onClose, ctx, inline = false 
               Purpose
             </label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {PURPOSE_PRESETS.map((p) => (
+              {presets.map((p) => (
                 <label
                   key={p.id}
                   style={{

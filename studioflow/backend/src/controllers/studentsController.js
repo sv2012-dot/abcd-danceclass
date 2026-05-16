@@ -48,12 +48,12 @@ const get = async (req, res) => {
 
 const create = async (req, res) => {
   try {
-    const { name, age, phone, email, guardian_name, guardian_phone, guardian_email, join_date, notes } = req.body;
+    const { name, age, phone, email, guardian_name, guardian_phone, guardian_email, join_date, notes, bio } = req.body;
     if (!name) return res.status(400).json({ error: 'Student name required' });
     const [result] = await pool.query(
-      `INSERT INTO students (school_id, name, age, phone, email, guardian_name, guardian_phone, guardian_email, join_date, notes)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      [req.params.schoolId, name, age||null, phone||null, email||null, guardian_name||null, guardian_phone||null, guardian_email||null, toDateOnly(join_date), notes||null]
+      `INSERT INTO students (school_id, name, age, phone, email, guardian_name, guardian_phone, guardian_email, join_date, notes, bio)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      [req.params.schoolId, name, age||null, phone||null, email||null, guardian_name||null, guardian_phone||null, guardian_email||null, toDateOnly(join_date), notes||null, bio||null]
     );
     const [student] = await pool.query('SELECT * FROM students WHERE id = ?', [result.insertId]);
     res.status(201).json({ student: student[0] });
@@ -62,16 +62,16 @@ const create = async (req, res) => {
 
 const update = async (req, res) => {
   try {
-    const { name, age, phone, email, guardian_name, guardian_phone, guardian_email, join_date, notes, is_active } = req.body;
+    const { name, age, phone, email, guardian_name, guardian_phone, guardian_email, join_date, notes, bio, is_active } = req.body;
     await pool.query(
       `UPDATE students SET
         name=COALESCE(?,name), age=COALESCE(?,age), phone=COALESCE(?,phone),
         email=COALESCE(?,email), guardian_name=COALESCE(?,guardian_name),
         guardian_phone=COALESCE(?,guardian_phone), guardian_email=COALESCE(?,guardian_email),
-        join_date=COALESCE(?,join_date), notes=COALESCE(?,notes),
+        join_date=COALESCE(?,join_date), notes=COALESCE(?,notes), bio=COALESCE(?,bio),
         is_active=COALESCE(?,is_active)
        WHERE id = ? AND school_id = ?`,
-      [name,age,phone,email,guardian_name,guardian_phone,guardian_email,toDateOnly(join_date),notes,is_active, req.params.studentId, req.params.schoolId]
+      [name,age,phone,email,guardian_name,guardian_phone,guardian_email,toDateOnly(join_date),notes,bio,is_active, req.params.studentId, req.params.schoolId]
     );
     const [updated] = await pool.query('SELECT * FROM students WHERE id = ?', [req.params.studentId]);
     res.json({ student: updated[0] });

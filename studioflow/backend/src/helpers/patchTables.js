@@ -126,6 +126,9 @@ async function patchTables() {
     // plus the 'photo:' prefix, blew past VARCHAR(100) and triggered
     // 'Data too long for column avatar' on save.
     await ensureMinVarcharLength('students', 'avatar', 512);
+    // Bio — short, parent-facing self-description that lives on the
+    // student profile (distinct from `notes`, which is teacher-only).
+    await addColumnIfMissing('students',  'bio',               'TEXT NULL');
     await addColumnIfMissing('todos',     'assigned_to',       'VARCHAR(100) NULL');
     await addColumnIfMissing('recitals',  'is_featured',       'TINYINT(1) NOT NULL DEFAULT 0');
     await addColumnIfMissing('recitals',  'poster_url',        'MEDIUMTEXT NULL');
