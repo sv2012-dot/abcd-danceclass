@@ -284,9 +284,9 @@ const ATT_META = {
 
 const secondaryActionStyle = {
   flex: 1,
-  background: "rgba(255,255,255,0.06)",
-  border: "1px solid rgba(255,255,255,0.08)",
-  color: "#F2F2F5",
+  background: "var(--surface)",
+  border: "1px solid var(--border)",
+  color: "var(--text)",
   padding: "9px 10px",
   borderRadius: 20,
   fontSize: 11,
@@ -301,79 +301,79 @@ const secondaryActionStyle = {
 
 const editInputStyle = {
   width: "100%",
-  background: "rgba(255,255,255,0.06)",
-  border: "1.5px solid rgba(255,255,255,0.12)",
+  background: "var(--card)",
+  border: "1.5px solid var(--border)",
   borderRadius: 10,
   padding: "10px 14px",
-  color: "#F2F2F5",
+  color: "var(--text)",
   fontSize: 13,
   fontWeight: 500,
   fontFamily: "var(--font-sans)",
   outline: "none",
 };
 
-// Stat tile (used in 2×2 grid)
+// Stat tile — line-art icon (no circular background), big number, label.
 function StatTile({ icon, n, label, accent = null, onClick = undefined }) {
+  const iconNode = icon === 'clock' ? (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+  ) : icon === 'check' ? (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  ) : icon === 'calendar' ? (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+  ) : icon === 'dollar' ? (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+  ) : null;
+  return (
+    <div onClick={onClick} style={{
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
+      borderRadius: 16,
+      padding: "16px 12px 14px",
+      textAlign: "center",
+      cursor: onClick ? "pointer" : "default",
+      transition: "border-color .12s",
+    }}
+      onMouseEnter={e => { if (onClick) e.currentTarget.style.borderColor = "var(--accent)"; }}
+      onMouseLeave={e => { if (onClick) e.currentTarget.style.borderColor = "var(--border)"; }}
+    >
+      <div style={{ color: accent || "var(--accent)", marginBottom: 8, display: "inline-flex" }}>
+        {iconNode}
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: accent || "var(--text)", margin: "0 0 2px" }}>{n}</div>
+      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", color: "var(--muted)", textTransform: "uppercase" }}>{label}</div>
+    </div>
+  );
+}
+
+// Section block — line-art icon inline with the title (no circle around it).
+function SectionB({ title, icon, link = null, children }) {
   const iconNode = icon === 'clock' ? (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
   ) : icon === 'check' ? (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
   ) : icon === 'calendar' ? (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-  ) : icon === 'dollar' ? (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-  ) : null;
-  return (
-    <div onClick={onClick} style={{
-      background: "rgba(255,255,255,0.04)",
-      border: "1px solid rgba(255,255,255,0.06)",
-      borderRadius: 16,
-      padding: "16px 12px 14px",
-      textAlign: "center",
-      cursor: onClick ? "pointer" : "default",
-      transition: "transform .12s, border-color .12s",
-    }}
-      onMouseEnter={e => { if (onClick) e.currentTarget.style.borderColor = "#DC4EFF"; }}
-      onMouseLeave={e => { if (onClick) e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}
-    >
-      <div style={{ width: 36, height: 36, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: accent ? accent + "26" : "linear-gradient(135deg, rgba(124,58,237,0.22) 0%, rgba(220,78,255,0.12) 100%)", color: accent || "#DC4EFF", marginBottom: 8 }}>
-        {iconNode}
-      </div>
-      <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: accent || "#F2F2F5", margin: "0 0 2px" }}>{n}</div>
-      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", color: "var(--muted)", textTransform: "uppercase" }}>{label}</div>
-    </div>
-  );
-}
-
-// Section block (consistent dark card with icon + title)
-function SectionB({ title, icon, link = null, children }) {
-  const iconNode = icon === 'clock' ? (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-  ) : icon === 'check' ? (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-  ) : icon === 'calendar' ? (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
   ) : icon === 'phone' ? (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
   ) : icon === 'users' ? (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
   ) : icon === 'file' ? (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
   ) : null;
   return (
     <div style={{
-      background: "rgba(255,255,255,0.03)",
-      border: "1px solid rgba(255,255,255,0.06)",
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
       borderRadius: 16,
       padding: "14px 14px 12px",
       marginBottom: 12,
     }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-        <h3 style={{ fontSize: 12, fontWeight: 800, margin: 0, color: "#F2F2F5", display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 22, height: 22, borderRadius: "50%", background: "linear-gradient(135deg, rgba(124,58,237,0.22) 0%, rgba(220,78,255,0.12) 100%)", color: "#DC4EFF", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{iconNode}</span>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <h3 style={{ fontSize: 12, fontWeight: 800, margin: 0, color: "var(--text)", display: "inline-flex", alignItems: "center", gap: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <span style={{ color: "var(--accent)", display: "inline-flex" }}>{iconNode}</span>
           {title}
         </h3>
-        {link && <span style={{ fontSize: 10, fontWeight: 700, color: "#DC4EFF", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.08em" }}>{link}</span>}
+        {link && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.08em" }}>{link}</span>}
       </div>
       {children}
     </div>
@@ -383,7 +383,7 @@ function SectionB({ title, icon, link = null, children }) {
 // Mini stat (used inside the Attendance section)
 function AttMini({ n, label, color }) {
   return (
-    <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 6px", textAlign: "center" }}>
+    <div style={{ background: "var(--card)", borderRadius: 10, padding: "10px 6px", textAlign: "center", border: "1px solid var(--border)" }}>
       <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.02em", color }}>{n}</div>
       <div style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 2 }}>{label}</div>
     </div>
@@ -801,7 +801,43 @@ export default function StudentsPage() {
           })}
         </div>
 
+      ) : isMobile ? (
+        // ── Mobile list view — table collapses to a stack of compact rows.
+        //    Each row shows avatar + name + (batch chip on its own line) and
+        //    contact / joined as one secondary line. Tap = open profile.
+        <div style={{ background: "var(--card)", borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden" }}>
+          {filtered.map((s, i) => {
+            const active = selected?.id === s.id;
+            const firstBatch = s.batches ? String(s.batches).split(",")[0].trim() : null;
+            const contact = s.email || s.phone || s.guardian_phone || null;
+            return (
+              <div key={s.id} onClick={() => pick(s)} style={{
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "12px 14px",
+                cursor: "pointer",
+                background: active ? "var(--accent)0d" : "transparent",
+                borderTop: i === 0 ? "none" : "1px solid var(--border)",
+                transition: "background .1s",
+              }}>
+                <StudentAvatar student={s} size={40} active={active} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: 1 }}>{s.name}</span>
+                    {firstBatch && (
+                      <span style={{ fontSize: 10, background: "var(--accent)18", color: "var(--accent)", borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{firstBatch}</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {[contact, fmtShort(s.join_date) && `Joined ${fmtShort(s.join_date)}`].filter(Boolean).join(" · ") || "No contact"}
+                  </div>
+                </div>
+                <span style={{ color: "var(--muted)", fontSize: 16, flexShrink: 0 }}>›</span>
+              </div>
+            );
+          })}
+        </div>
       ) : (
+        // ── Desktop table view ──
         <div style={{ background: "var(--card)", borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -857,14 +893,18 @@ export default function StudentsPage() {
           display: "flex", flexDirection: "column",
           boxShadow: isMobile ? "0 -4px 32px rgba(0,0,0,.14)" : "-6px 0 32px rgba(0,0,0,.09)",
         }}>
-          {/* Panel header */}
-          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".08em" }}>
-              {showAdd ? "New Student" : isEditing ? "Edit Student" : "Student Profile"}
-            </span>
-            <button onClick={() => { setSelected(null); setIsEditing(false); setShowAdd(false); }}
-              style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--muted)", lineHeight: 1, padding: 4, borderRadius: 6 }}>✕</button>
-          </div>
+          {/* Panel header — hidden in profile view on mobile (the back-arrow
+              in the hero bar takes over). Add mode keeps the header so users
+              still have a way to close the new-student form. */}
+          {!(isMobile && selected && !showAdd) && (
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".08em" }}>
+                {showAdd ? "New Student" : isEditing ? "Edit Student" : "Student Profile"}
+              </span>
+              <button onClick={() => { setSelected(null); setIsEditing(false); setShowAdd(false); }}
+                style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--muted)", lineHeight: 1, padding: 4, borderRadius: 6 }}>✕</button>
+            </div>
+          )}
 
           {/* ── ADD mode ── */}
           {showAdd && (() => {
@@ -932,51 +972,59 @@ export default function StudentsPage() {
             const fee = feeSettings.enabled ? feeBadgeProps(selected.current_fee_status, feeSettings.dueDay) : null;
             const feeShort = fee ? fee.label.replace(/^[^A-Za-z]+/, '') : '—';
             return (
-            <div style={{ flex: 1, overflowY: "auto", background: "linear-gradient(160deg, #2A1248 0%, #14081E 60%, #0B0712 100%)" }}>
-              {/* Hero bar with toolbar buttons */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px 0", color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>
-                <span style={{ opacity: 0.85 }}>{isEditing ? "Editing" : "Profile"}</span>
+            <div style={{ flex: 1, overflowY: "auto", background: "var(--card)" }}>
+              {/* Hero bar — back-arrow (left) + Edit/Delete or Save/Cancel
+                  toolbar (right). The back button replaces the panel-header
+                  "Profile" label on mobile; on desktop it's an additional
+                  way to close the side panel. */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px 0" }}>
+                <button onClick={() => { setSelected(null); setIsEditing(false); }} title="Back"
+                  style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <SvgIcon name="arrow-left" size={14} color="currentColor" />
+                </button>
                 {!isEditing ? (
                   <div style={{ display: "flex", gap: 6 }}>
                     <button onClick={startEdit} title="Edit profile"
-                      style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <SvgIcon name="pencil" size={13} color="currentColor" />
                     </button>
                     <button onClick={() => { if (window.confirm("Remove this student?")) deleteMutation.mutate(selected.id); }} title="Delete student"
-                      style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <SvgIcon name="trash" size={13} color="currentColor" />
                     </button>
                   </div>
                 ) : (
                   <div style={{ display: "flex", gap: 6 }}>
                     <button onClick={() => editMutation.mutate(editForm)} disabled={!editForm.name || editMutation.isPending} title="Save"
-                      style={{ width: 34, height: 34, borderRadius: "50%", background: "#fff", border: "none", color: "#7C3AED", cursor: editMutation.isPending ? "wait" : "pointer", fontSize: 14, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--accent)", border: "none", color: "#fff", cursor: editMutation.isPending ? "wait" : "pointer", fontSize: 14, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       ✓
                     </button>
                     <button onClick={() => setIsEditing(false)} disabled={editMutation.isPending} title="Cancel"
-                      style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "none", color: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", cursor: "pointer", fontSize: 14, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       ✕
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* Avatar — glow ring; in edit mode shows camera + remove overlays */}
-              <div style={{ display: "flex", justifyContent: "center", padding: "22px 0 16px", position: "relative" }}>
-                <div style={{ width: 144, height: 144, borderRadius: "50%", padding: 6, background: "conic-gradient(from 220deg, #DC4EFF, #7C3AED, #DC4EFF)", boxShadow: "0 0 32px rgba(124,58,237,0.5), 0 0 60px rgba(220,78,255,0.18)", position: "relative" }}>
-                  <div style={{ width: "100%", height: "100%", borderRadius: "50%", border: "4px solid #14081E", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {/* Avatar — brand-purple glow ring; in edit mode camera + remove
+                  overlays. Ring stays vivid in both themes; the inner border
+                  uses var(--card) so the ring frames properly on light too. */}
+              <div style={{ display: "flex", justifyContent: "center", padding: "16px 0 14px", position: "relative" }}>
+                <div style={{ width: 144, height: 144, borderRadius: "50%", padding: 6, background: "conic-gradient(from 220deg, #DC4EFF, #7C3AED, #DC4EFF)", boxShadow: "0 0 28px rgba(124,58,237,0.32), 0 0 60px rgba(220,78,255,0.12)", position: "relative" }}>
+                  <div style={{ width: "100%", height: "100%", borderRadius: "50%", border: "4px solid var(--card)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <StudentAvatar student={isEditing ? editForm : selected} size={132}
                       onClick={isEditing ? () => openPhotoUploadFor("edit") : undefined} />
                   </div>
                   {isEditing && (
                     <>
                       <button onClick={() => openPhotoUploadFor("edit")} disabled={uploadingPhoto} title="Upload photo"
-                        style={{ position: "absolute", bottom: -2, right: -2, width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", border: "3px solid #14081E", color: "#fff", cursor: uploadingPhoto ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.32)" }}>
+                        style={{ position: "absolute", bottom: -2, right: -2, width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", border: "3px solid var(--card)", color: "#fff", cursor: uploadingPhoto ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.32)" }}>
                         <SvgIcon name="camera" size={16} color="#fff" />
                       </button>
                       {editForm.avatar && (
                         <button onClick={() => clearPhoto("edit")} title="Remove photo"
-                          style={{ position: "absolute", top: 0, right: 0, width: 30, height: 30, borderRadius: "50%", background: "rgba(0,0,0,0.6)", border: "2px solid #14081E", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, backdropFilter: "blur(4px)" }}>
+                          style={{ position: "absolute", top: 0, right: 0, width: 30, height: 30, borderRadius: "50%", background: "rgba(0,0,0,0.6)", border: "2px solid var(--card)", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, backdropFilter: "blur(4px)" }}>
                           ✕
                         </button>
                       )}
@@ -988,43 +1036,39 @@ export default function StudentsPage() {
               {/* Name + role */}
               {!isEditing ? (
                 <>
-                  <h2 style={{ textAlign: "center", fontSize: 22, fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.02em", color: "#F2F2F5" }}>{selected.name}</h2>
-                  <p style={{ textAlign: "center", fontSize: 12, color: "#DC4EFF", fontWeight: 700, letterSpacing: "0.06em", margin: "0 0 22px", padding: "0 22px" }}>
+                  <h2 style={{ textAlign: "center", fontSize: 22, fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.02em", color: "var(--text)" }}>{selected.name}</h2>
+                  <p style={{ textAlign: "center", fontSize: 12, color: "var(--accent)", fontWeight: 700, letterSpacing: "0.06em", margin: "0 0 18px", padding: "0 22px" }}>
                     {batchNames.length > 0 ? batchNames.join(" · ") : "Not enrolled in any batch"}
                   </p>
                 </>
               ) : (
-                <div style={{ padding: "0 22px 18px" }}>
+                <div style={{ padding: "0 22px 14px" }}>
                   <input value={editForm.name || ""} onChange={e => setEditForm({ ...editForm, name: e.target.value })} placeholder="Full name *" aria-label="Full name"
-                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1.5px solid #DC4EFF", borderRadius: 10, padding: "10px 14px", color: "#F2F2F5", fontSize: 18, fontWeight: 800, textAlign: "center", fontFamily: "var(--font-d)", marginBottom: 8 }} />
+                    style={{ width: "100%", background: "var(--surface)", border: "1.5px solid var(--accent)", borderRadius: 10, padding: "10px 14px", color: "var(--text)", fontSize: 18, fontWeight: 800, textAlign: "center", fontFamily: "var(--font-d)", marginBottom: 8 }} />
                   <div style={{ textAlign: "center" }}>
                     <button type="button" onClick={() => openPickerFor("edit")}
-                      style={{ background: "none", border: "none", color: "#DC4EFF", cursor: "pointer", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>
+                      style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>
                       Pick a sticker instead
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* ── 2×2 stat tiles (view mode only) ── */}
+              {/* ── 2 stat tiles in 1 row: Attendance + Batches ── */}
               {!isEditing && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "0 18px 14px" }}>
-                  <StatTile icon="clock" n={String(stats.total || 0)} label="Classes" />
                   <StatTile icon="check" n={stats.rate != null ? `${stats.rate}%` : "—"} label="Attendance"
                     accent={stats.rate != null && stats.rate >= 80 ? "#34c759" : stats.rate != null && stats.rate >= 60 ? "#F59E0B" : stats.rate != null ? "#EF5350" : null} />
                   <StatTile icon="calendar" n={String(batchCount)} label="Batches" />
-                  <StatTile icon="dollar" n={feeShort} label={feeSettings.enabled ? `Fees · ${new Date().toLocaleDateString('en',{month:'short'})}` : "Fees"}
-                    accent={fee?.color}
-                    onClick={feeSettings.enabled ? () => feeToggleMutation.mutate({ studentId: selected.id }) : undefined} />
                 </div>
               )}
 
-              {/* ── Primary CTA + secondary actions (view mode only) ── */}
+              {/* ── Primary CTA (Smart Announce w/ megaphone) + Call / Message ── */}
               {!isEditing && (
                 <div style={{ padding: "0 18px 12px" }}>
                   <button onClick={() => setFeeReminderStudent(selected)}
-                    style={{ width: "100%", padding: "13px 16px", borderRadius: 24, border: "none", background: "linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 8px 22px rgba(124,58,237,0.45)" }}>
-                    <SvgIcon name="mail" size={14} color="#fff" /> Send fee reminder
+                    style={{ width: "100%", padding: "13px 16px", borderRadius: 24, border: "none", background: "linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 8px 22px rgba(124,58,237,0.32)" }}>
+                    <SvgIcon name="megaphone" size={15} color="#fff" /> Smart Announce
                   </button>
                   <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                     {selected.phone || selected.guardian_phone ? (
@@ -1045,9 +1089,6 @@ export default function StudentsPage() {
                         <SvgIcon name="mail" size={12} color="currentColor" /> Message
                       </span>
                     )}
-                    <button onClick={startEdit} style={secondaryActionStyle}>
-                      <SvgIcon name="pencil" size={12} color="currentColor" /> Edit
-                    </button>
                   </div>
                 </div>
               )}
@@ -1071,13 +1112,13 @@ export default function StudentsPage() {
                           const [y, m, day] = d.split('-').map(Number);
                           const dt = (y && m && day) ? new Date(y, m - 1, day) : null;
                           return (
-                            <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                            <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
                               <div style={{ flex: "0 0 44px", textAlign: "center" }}>
-                                <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1, color: "#F2F2F5" }}>{dt ? dt.getDate() : "—"}</div>
+                                <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1, color: "var(--text)" }}>{dt ? dt.getDate() : "—"}</div>
                                 <div style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{dt ? dt.toLocaleDateString('en', { month: 'short' }) : ""}</div>
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 12, fontWeight: 700, color: "#F2F2F5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                   {r.event_title || r.batch_name || "Class"}
                                 </div>
                                 <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 600 }}>
@@ -1103,7 +1144,7 @@ export default function StudentsPage() {
                       <AttMini n={stats.late}    label="Late"    color="#F59E0B" />
                       <AttMini n={stats.absent}  label="Absent"  color="#EF5350" />
                     </div>
-                    <div style={{ height: 8, background: "rgba(255,255,255,0.05)", borderRadius: 4, overflow: "hidden", display: "flex" }}>
+                    <div style={{ height: 8, background: "var(--surface)", borderRadius: 4, overflow: "hidden", display: "flex" }}>
                       {stats.present > 0 && <div style={{ flex: stats.present, background: "#34c759" }} />}
                       {stats.late    > 0 && <div style={{ flex: stats.late,    background: "#F59E0B" }} />}
                       {stats.absent  > 0 && <div style={{ flex: stats.absent,  background: "#EF5350" }} />}
@@ -1111,20 +1152,29 @@ export default function StudentsPage() {
                   </SectionB>
                 )}
 
-                {/* Enrolled batches (view mode) — list with cover photo if any */}
+                {/* Enrolled batches (view mode) */}
                 {!isEditing && batchCount > 0 && (
                   <SectionB title="Enrolled in" icon="calendar">
                     <div style={{ display: "grid", gap: 8 }}>
                       {batchNames.map((bn, i) => (
-                        <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", padding: 10, background: "rgba(255,255,255,0.04)", borderRadius: 12 }}>
+                        <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", padding: 10, background: "var(--surface)", borderRadius: 12 }}>
                           <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: BATCH_COVERS[i % BATCH_COVERS.length] }} />
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: "#F2F2F5" }}>{bn}</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{bn}</div>
                           </div>
                           <span style={{ color: "var(--muted)", fontSize: 14 }}>›</span>
                         </div>
                       ))}
                     </div>
+                  </SectionB>
+                )}
+
+                {/* Joined card (view mode) — single dedicated section */}
+                {!isEditing && selected.join_date && (
+                  <SectionB title="Joined" icon="calendar">
+                    <p style={{ fontSize: 13, color: "var(--text)", fontWeight: 600, margin: 0 }}>
+                      {fmtLong(selected.join_date)}
+                    </p>
                   </SectionB>
                 )}
 
@@ -1140,7 +1190,7 @@ export default function StudentsPage() {
                       </div>
                     </SectionB>
 
-                    <SectionB title="Enrollment" icon="calendar">
+                    <SectionB title="Joined" icon="calendar">
                       <DateField value={(editForm.join_date || "").split("T")[0]} onChange={v => setEditForm({ ...editForm, join_date: v })} />
                     </SectionB>
 
@@ -1155,7 +1205,7 @@ export default function StudentsPage() {
                             return (
                               <button key={b.id} type="button"
                                 onClick={() => setEditForm(f => ({ ...f, batch_ids: on ? (f.batch_ids || []).filter(x => x !== b.id) : [...(f.batch_ids || []), b.id] }))}
-                                style={{ padding: "6px 14px", borderRadius: 18, cursor: "pointer", fontSize: 12, fontWeight: 700, border: `1.5px solid ${on ? "#DC4EFF" : "rgba(255,255,255,0.12)"}`, background: on ? "#7C3AED" : "transparent", color: on ? "#fff" : "var(--muted)" }}>
+                                style={{ padding: "6px 14px", borderRadius: 18, cursor: "pointer", fontSize: 12, fontWeight: 700, border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent)" : "transparent", color: on ? "#fff" : "var(--muted)" }}>
                                 {on && "✓ "}{b.name}
                               </button>
                             );
@@ -1172,20 +1222,13 @@ export default function StudentsPage() {
                     <textarea value={editForm.notes || ""} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Any notes…" rows={3}
                       style={{ ...editInputStyle, resize: "vertical", minHeight: 70, lineHeight: 1.5 }} />
                   ) : selected.notes ? (
-                    <div style={{ background: "rgba(255,255,255,0.04)", borderLeft: "3px solid #DC4EFF", borderRadius: 10, padding: "12px 14px" }}>
-                      <p style={{ fontSize: 12, color: "#F2F2F5", lineHeight: 1.5, margin: 0 }}>{selected.notes}</p>
+                    <div style={{ background: "var(--surface)", borderLeft: "3px solid var(--accent)", borderRadius: 10, padding: "12px 14px" }}>
+                      <p style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.5, margin: 0 }}>{selected.notes}</p>
                     </div>
                   ) : (
                     <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>No notes</p>
                   )}
                 </SectionB>
-
-                {/* Joined date footer (view mode) */}
-                {!isEditing && selected.join_date && (
-                  <p style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", marginTop: 20, marginBottom: 0, fontWeight: 600 }}>
-                    Joined {fmtLong(selected.join_date)}
-                  </p>
-                )}
               </div>
             </div>
             );
