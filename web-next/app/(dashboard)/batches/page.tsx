@@ -628,14 +628,18 @@ export default function BatchesPage() {
           display:"flex", flexDirection:"column",
           boxShadow: isMobile ? "0 -4px 32px rgba(0,0,0,.14)" : "-6px 0 32px rgba(0,0,0,.09)",
         }}>
-          {/* Panel header */}
-          <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
-            <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em" }}>
-              {panelMode === "add" ? "New Batch" : panelMode === "edit" ? "Edit Batch" : "Batch Details"}
-            </span>
-            <button onClick={closePanel}
-              style={{ background:"none", border:"none", cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6, display:"flex", alignItems:"center" }}><SvgIcon name="x" size={18} /></button>
-          </div>
+          {/* Panel header — only for add/edit modes. View mode replaces
+              it with a back-arrow pill + toolbar overlaid on the cover
+              hero, matching the recital detail page. */}
+          {panelMode !== "view" && (
+            <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+              <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em" }}>
+                {panelMode === "add" ? "New Batch" : "Edit Batch"}
+              </span>
+              <button onClick={closePanel}
+                style={{ background:"none", border:"none", cursor:"pointer", color:"var(--muted)", lineHeight:1, padding:4, borderRadius:6, display:"flex", alignItems:"center" }}><SvgIcon name="x" size={18} /></button>
+            </div>
+          )}
 
           {/* ── VIEW mode: hero + scrollable body in one container ──
               Previously the hero block was flexShrink:0 (pinned at top) and
@@ -645,76 +649,79 @@ export default function BatchesPage() {
               (matches /recitals detail page behavior). */}
           {panelMode === "view" && activeBatch && (
             <div style={{ flex:1, overflowY:"auto", minHeight:0 }}>
-            <div style={{ borderBottom:"1px solid var(--border)" }}>
+            {/* ── Unified hero: cover photo OR gradient fallback, with
+                back-arrow pill (left) + camera/edit/delete circular toolbar
+                (right) overlaid at the top. Matches /recitals detail. */}
+            <div style={{
+              position:"relative", overflow:"hidden",
+              background: activeBatch.cover_url ? "#000" : `linear-gradient(160deg, #1a1035 0%, ${activeColor}66 50%, #2a1a55 100%)`,
+              borderBottom:"1px solid var(--border)",
+            }}>
               {activeBatch.cover_url ? (
-                /* ── Has cover photo ── */
-                <>
-                  <div style={{ position:"relative", paddingTop:"56.25%", overflow:"hidden", background:"var(--surface)" }}>
-                    <img src={activeBatch.cover_url} alt={activeBatch.name}
-                      style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
-                    {/* Gradient so text is readable over the photo */}
-                    <div style={{ position:"absolute", inset:0, background:"linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.08) 55%, transparent 100%)" }} />
-                    {/* Batch name / badges overlay */}
-                    <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"12px 16px" }}>
-                      <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"#fff", marginBottom:4, textShadow:"0 1px 4px rgba(0,0,0,0.5)" }}>{activeBatch.name}</div>
-                      <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
-                        <span style={{ fontSize:11, background:activeColor+"33", color:"#fff", borderRadius:20, padding:"2px 8px", fontWeight:700, backdropFilter:"blur(4px)" }}>{activeBatch.level}</span>
-                        {activeBatch.dance_style && <span style={{ fontSize:12, color:"rgba(255,255,255,0.8)" }}>{activeBatch.dance_style}</span>}
-                      </div>
-                    </div>
-                    {/* Edit cover button */}
-                    <button onClick={() => coverInputRef.current?.click()}
-                      style={{ position:"absolute", top:10, right:10, background:"rgba(0,0,0,0.52)", border:"1px solid rgba(255,255,255,0.18)", borderRadius:8, padding:"5px 10px", color:"rgba(255,255,255,0.88)", fontSize:11, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", gap:5, backdropFilter:"blur(4px)" }}>
-                      <SvgIcon name="camera" size={12} color="rgba(255,255,255,0.88)" /> Edit
-                    </button>
-                  </div>
-                  {/* Instructor + enrollment below cover */}
-                  <div style={{ padding:"10px 18px 12px", background:"var(--surface)" }}>
-                    {activeBatch.teacher_name && (
-                      <div style={{ fontSize:12, color:"var(--muted)", marginBottom:6, display:"flex", alignItems:"center" }}>
-                        <SvgIcon name="user" size={12} color="var(--muted)" style={{marginRight:6}} />{activeBatch.teacher_name}
-                      </div>
-                    )}
-                    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                      <span style={{ fontSize:13, fontWeight:700, color:activeColor }}>{activeBatch.student_count||0}{activeBatch.max_size ? `/${activeBatch.max_size}` : ""}</span>
-                      <span style={{ fontSize:12, color:"var(--muted)" }}>students enrolled</span>
-                      {pct !== null && (
-                        <div style={{ flex:1, height:5, borderRadius:3, background:"var(--border)", overflow:"hidden" }}>
-                          <div style={{ height:"100%", width:pct+"%", background:pct>=90 ? "var(--danger)" : activeColor, borderRadius:3, transition:"width .3s" }} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
+                <div style={{ width:"100%", paddingTop:"56.25%", position:"relative" }}>
+                  <img src={activeBatch.cover_url} alt={activeBatch.name}
+                    style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                </div>
               ) : (
-                /* ── No cover photo — info bar + Add cover button ── */
-                <div style={{ padding:"18px 22px 14px", background:"var(--surface)" }}>
-                  <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:6 }}>
-                    <div style={{ width:6, height:42, borderRadius:3, background:activeColor, flexShrink:0, marginTop:2 }} />
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, marginBottom:6 }}>{activeBatch.name}</div>
-                      <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
-                        <span style={{ fontSize:11, background:activeColor+"22", color:activeColor, borderRadius:20, padding:"2px 8px", fontWeight:700 }}>{activeBatch.level}</span>
-                        {activeBatch.dance_style && <span style={{ fontSize:12, color:"var(--muted)" }}>{activeBatch.dance_style}</span>}
-                      </div>
-                    </div>
-                    <button onClick={() => coverInputRef.current?.click()}
-                      style={{ flexShrink:0, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:8, padding:"5px 10px", color:"var(--muted)", fontSize:11, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}>
-                      <SvgIcon name="camera" size={12} color="var(--muted)" /> Add cover
-                    </button>
-                  </div>
-                  {activeBatch.teacher_name && <div style={{ fontSize:12, color:"var(--muted)", marginBottom:8, marginLeft:16, display:"flex", alignItems:"center" }}><SvgIcon name="user" size={12} color="var(--muted)" style={{marginRight:6}} />{activeBatch.teacher_name}</div>}
-                  <div style={{ marginLeft:16, display:"flex", alignItems:"center", gap:8 }}>
-                    <span style={{ fontSize:13, fontWeight:700, color:activeColor }}>{activeBatch.student_count||0}{activeBatch.max_size ? `/${activeBatch.max_size}` : ""}</span>
-                    <span style={{ fontSize:12, color:"var(--muted)" }}>students enrolled</span>
-                    {pct !== null && (
-                      <div style={{ flex:1, height:5, borderRadius:3, background:"var(--border)", overflow:"hidden" }}>
-                        <div style={{ height:"100%", width:pct+"%", background:pct>=90 ? "var(--danger)" : activeColor, borderRadius:3, transition:"width .3s" }} />
-                      </div>
-                    )}
-                  </div>
+                <div style={{ minHeight: isMobile ? 200 : 180 }} />
+              )}
+              <div style={{ position:"absolute", inset:0, background:"linear-gradient(to top, rgba(0,0,0,.82) 0%, rgba(0,0,0,.18) 55%, transparent 100%)" }} />
+
+              {/* Top row: Close (left) + camera/Edit/Delete (right) */}
+              <div style={{ position:"absolute", top:0, left:0, right:0, padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:10 }}>
+                <button onClick={closePanel} style={{
+                  display:"flex", alignItems:"center", gap:6, padding:"7px 14px", borderRadius:20,
+                  background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)",
+                  border:"1px solid rgba(255,255,255,.22)",
+                  color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer",
+                }}>← Close</button>
+                <div style={{ display:"flex", gap:8 }}>
+                  <button onClick={() => coverInputRef.current?.click()}
+                    title={activeBatch.cover_url ? "Change cover" : "Add cover"}
+                    style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
+                  >
+                    <SvgIcon name="camera" size={15} color="rgba(255,255,255,.85)" />
+                  </button>
+                  <button onClick={() => openEdit()} title="Edit batch"
+                    style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
+                  >
+                    <SvgIcon name="pencil" size={15} color="rgba(255,255,255,.85)" />
+                  </button>
+                  <button onClick={() => { if(window.confirm(`Delete "${activeBatch.name}"?`)) deleteMutation.mutate(activeBatch.id); }} title="Delete batch"
+                    style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
+                  >
+                    <SvgIcon name="trash" size={15} color="rgba(255,255,255,.85)" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Title block — name + level/style badges */}
+              <div style={{ position:"absolute", bottom:0, left:0, right:0, padding: isMobile ? "16px 18px 18px" : "20px 24px 20px", zIndex:5 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,.6)", textTransform:"uppercase", letterSpacing:".14em", marginBottom:6 }}>Batch</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize: isMobile ? 26 : 30, fontWeight:800, color:"#fff", lineHeight:1.1, letterSpacing:"-0.4px", marginBottom:8 }}>{activeBatch.name}</div>
+                <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
+                  <span style={{ fontSize:11, background:activeColor+"55", color:"#fff", borderRadius:20, padding:"3px 10px", fontWeight:700, backdropFilter:"blur(4px)" }}>{activeBatch.level}</span>
+                  {activeBatch.dance_style && <span style={{ fontSize:12, color:"rgba(255,255,255,0.85)", fontWeight:600 }}>{activeBatch.dance_style}</span>}
+                </div>
+              </div>
+            </div>
+
+            {/* Instructor + enrollment row, below the hero */}
+            <div style={{ padding:"12px 18px", borderBottom:"1px solid var(--border)", background:"var(--surface)" }}>
+              {activeBatch.teacher_name && (
+                <div style={{ fontSize:12, color:"var(--muted)", marginBottom:8, display:"flex", alignItems:"center" }}>
+                  <SvgIcon name="user" size={12} color="var(--muted)" style={{marginRight:6}} />{activeBatch.teacher_name}
                 </div>
               )}
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ fontSize:13, fontWeight:700, color:activeColor }}>{activeBatch.student_count||0}{activeBatch.max_size ? `/${activeBatch.max_size}` : ""}</span>
+                <span style={{ fontSize:12, color:"var(--muted)" }}>students enrolled</span>
+                {pct !== null && (
+                  <div style={{ flex:1, height:5, borderRadius:3, background:"var(--border)", overflow:"hidden" }}>
+                    <div style={{ height:"100%", width:pct+"%", background:pct>=90 ? "var(--danger)" : activeColor, borderRadius:3, transition:"width .3s" }} />
+                  </div>
+                )}
+              </div>
             </div>
             {/* Scrollable body — lives in the same overflow container as the hero */}
             <div style={{ padding:"14px 18px" }}>
@@ -829,21 +836,8 @@ export default function BatchesPage() {
                 </PSection>
               )}
 
-              {/* Actions */}
-              <div style={{ display:"flex", gap:9, marginTop:24 }}>
-                <button onClick={() => openEdit()}
-                  style={{ flex:1, padding:"9px 16px", borderRadius:9, border:"1.5px solid var(--accent)", background:"var(--accent)", color:"#fff", cursor:"pointer", fontSize:13, fontFamily:"var(--font-b)", fontWeight:600, display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
-                  <SvgIcon name="pencil" size={14} color="#fff" style={{marginRight:6}} /> Edit Batch
-                </button>
-                {activeBatch.cover_url && (
-                  <button onClick={() => { if(window.confirm("Remove cover photo?")) handleCoverRemove(); }}
-                    style={{ padding:"9px 12px", borderRadius:9, border:"1.5px solid var(--border)", background:"transparent", color:"var(--muted)", cursor:"pointer", fontSize:11, fontFamily:"var(--font-b)", flexShrink:0, display:"inline-flex", alignItems:"center", gap:4 }}>
-                    <SvgIcon name="camera" size={13} color="var(--muted)" /> Remove cover
-                  </button>
-                )}
-                <button onClick={() => { if(window.confirm(`Delete "${activeBatch.name}"?`)) deleteMutation.mutate(activeBatch.id); }}
-                  style={{ padding:"9px 14px", borderRadius:9, border:"1.5px solid #e05c6a", background:"transparent", color:"#e05c6a", cursor:"pointer", fontSize:13, fontFamily:"var(--font-b)", flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center" }}><SvgIcon name="trash" size={14} color="#e05c6a" /></button>
-              </div>
+              {/* Bottom action row removed — Edit / Delete / cover camera
+                  now live in the hero toolbar at the top of the panel. */}
             </div>
             </div>
           )}

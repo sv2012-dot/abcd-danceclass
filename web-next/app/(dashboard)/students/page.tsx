@@ -429,6 +429,82 @@ function BioCard({ bio, editing, draft, saving, onStart, onChange, onSave, onCan
   );
 }
 
+// EnrollmentsCard — inline-editable batch enrollment, mirrors BioCard.
+// View mode: shows enrolled batches as cards with the cover-gradient
+// swatch. Edit mode: multi-select pills (same picker as the event form).
+function EnrollmentsCard({ selected, batchList, editing, draft, saving, onStart, onToggle, onSave, onCancel }) {
+  const batchNames = String(selected?.batches || "").split(",").map((x) => x.trim()).filter(Boolean);
+  const enrolled = batchNames.length > 0 || editing;
+  return (
+    <div style={{
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
+      borderRadius: 16,
+      padding: "14px 14px 12px",
+      marginBottom: 12,
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <h3 style={{ fontSize: 12, fontWeight: 800, margin: 0, color: "var(--text)", display: "inline-flex", alignItems: "center", gap: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <span style={{ color: "var(--accent)", display: "inline-flex" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </span>
+          Enrolled in
+        </h3>
+        {!editing && (
+          <button onClick={onStart} title="Edit enrolments"
+            style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <SvgIcon name="pencil" size={11} color="currentColor" />
+            {enrolled ? "Edit" : "Add"}
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <>
+          {batchList.length === 0 ? (
+            <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>No batches yet — create one in Batches.</p>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+              {batchList.map((b) => {
+                const on = (draft || []).includes(b.id);
+                return (
+                  <button key={b.id} type="button" onClick={() => onToggle(b.id)}
+                    style={{ padding: "6px 14px", borderRadius: 18, cursor: "pointer", fontSize: 12, fontWeight: 700, border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent)" : "transparent", color: on ? "#fff" : "var(--muted)", transition: "all .12s" }}>
+                    {on && "✓ "}{b.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
+            <button onClick={onCancel} disabled={saving}
+              style={{ padding: "6px 14px", borderRadius: 16, border: "1.5px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+              Cancel
+            </button>
+            <button onClick={onSave} disabled={saving}
+              style={{ padding: "6px 16px", borderRadius: 16, border: "none", background: "var(--accent)", color: "#fff", fontSize: 11, fontWeight: 700, cursor: saving ? "wait" : "pointer" }}>
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </>
+      ) : batchNames.length > 0 ? (
+        <div style={{ display: "grid", gap: 8 }}>
+          {batchNames.map((bn, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", padding: 10, background: "var(--card)", borderRadius: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: BATCH_COVERS[i % BATCH_COVERS.length] }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{bn}</div>
+              </div>
+              <span style={{ color: "var(--muted)", fontSize: 14 }}>›</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p style={{ fontSize: 12, color: "var(--muted)", margin: 0, fontStyle: "italic" }}>Not enrolled in any batch yet — tap Add to enroll.</p>
+      )}
+    </div>
+  );
+}
+
 // Mini stat (used inside the Attendance section)
 function AttMini({ n, label, color }) {
   return (
@@ -500,6 +576,12 @@ export default function StudentsPage() {
   const [bioEditing, setBioEditing] = useState(false);
   const [bioDraft, setBioDraft] = useState("");
   const [bioSaving, setBioSaving] = useState(false);
+
+  // Enrollments inline editor — same pattern as bio. Lets the teacher
+  // toggle batches on/off without entering the page-wide edit mode.
+  const [enrollEditing, setEnrollEditing] = useState(false);
+  const [enrollDraft, setEnrollDraft] = useState([]);
+  const [enrollSaving, setEnrollSaving] = useState(false);
 
   // ── Variant-B hero data: 90-day attendance summary for the profile tiles
   //    and the Recent Classes / Attendance breakdown sections. Refetches
@@ -592,6 +674,30 @@ export default function StudentsPage() {
       toast.error(e?.error || "Failed to save bio");
     } finally {
       setBioSaving(false);
+    }
+  };
+
+  // Enrollments save — also independent of global edit. Writes to the
+  // batch_students join table via the same setBatches endpoint the main
+  // edit flow uses, then updates the cached student row in place.
+  const saveEnrollments = async () => {
+    if (!selected) return;
+    setEnrollSaving(true);
+    try {
+      await api.setBatches(sid, selected.id, enrollDraft);
+      const newBatches = (enrollDraft || [])
+        .map((id) => batchList.find((b) => b.id === Number(id))?.name)
+        .filter(Boolean)
+        .join(", ");
+      setSelected((s) => ({ ...s, batches: newBatches, batch_ids: (enrollDraft || []).join(",") }));
+      qc.invalidateQueries(["students", sid]);
+      qc.invalidateQueries(["batches", sid]);
+      setEnrollEditing(false);
+      toast.success("Enrolment updated");
+    } catch (e) {
+      toast.error(e?.error || "Failed to save enrolments");
+    } finally {
+      setEnrollSaving(false);
     }
   };
 
@@ -1247,21 +1353,22 @@ export default function StudentsPage() {
                   </SectionB>
                 )}
 
-                {/* Enrolled batches (view mode) */}
-                {!isEditing && batchCount > 0 && (
-                  <SectionB title="Enrolled in" icon="calendar">
-                    <div style={{ display: "grid", gap: 8 }}>
-                      {batchNames.map((bn, i) => (
-                        <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", padding: 10, background: "var(--surface)", borderRadius: 12 }}>
-                          <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: BATCH_COVERS[i % BATCH_COVERS.length] }} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{bn}</div>
-                          </div>
-                          <span style={{ color: "var(--muted)", fontSize: 14 }}>›</span>
-                        </div>
-                      ))}
-                    </div>
-                  </SectionB>
+                {/* Enrolled in — inline-editable, independent of the
+                    page-wide Edit toggle. View shows enrolled batches
+                    as cards; Edit shows multi-select pills (same picker
+                    style as the event-form batch picker). */}
+                {!isEditing && (
+                  <EnrollmentsCard
+                    selected={selected}
+                    batchList={batchList}
+                    editing={enrollEditing}
+                    draft={enrollDraft}
+                    saving={enrollSaving}
+                    onStart={() => { setEnrollDraft(parseBatchIds(selected.batch_ids)); setEnrollEditing(true); }}
+                    onToggle={(id) => setEnrollDraft((cur) => cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id])}
+                    onSave={saveEnrollments}
+                    onCancel={() => { setEnrollEditing(false); setEnrollDraft([]); }}
+                  />
                 )}
 
                 {/* Joined card (view mode) — single dedicated section */}

@@ -18,7 +18,7 @@ exports.get = async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM batches WHERE id = ? AND school_id = ?', [req.params.id, req.params.schoolId]);
     if (!rows[0]) return res.status(404).json({ error: 'Batch not found' });
     const [students] = await pool.query(`
-      SELECT s.id, s.name, s.age, s.phone FROM students s
+      SELECT s.id, s.name, s.age, s.phone, s.avatar FROM students s
       JOIN batch_students bs ON bs.student_id = s.id
       WHERE bs.batch_id = ? AND s.is_active = 1 ORDER BY s.name
     `, [req.params.id]);
