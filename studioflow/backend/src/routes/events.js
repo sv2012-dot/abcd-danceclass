@@ -7,5 +7,6 @@ router.post('/',             auth('superadmin','school_admin','teacher'), c.crea
 router.put('/:id',           auth('superadmin','school_admin','teacher'), c.update);
 router.delete('/:id',        auth('superadmin','school_admin'), c.remove);
 router.get('/studio-needed', auth('superadmin','school_admin'), c.studioRequired);
+router.put('/:id/cover',     auth('superadmin','school_admin','teacher'), c.uploadCover);
 
 module.exports = router;

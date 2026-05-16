@@ -158,15 +158,14 @@ export default function BatchAttendanceGrid({ schoolId, batchId, rangeDays = 30 
                               <span
                                 style={{
                                   display: 'inline-block',
-                                  width: 18,
-                                  height: 18,
-                                  borderRadius: 4,
-                                  background: color + '22',
-                                  border: `1.5px solid ${color}`,
+                                  width: 14,
+                                  height: 14,
+                                  borderRadius: '50%',
+                                  background: color,
                                 }}
                               />
                             ) : (
-                              <span style={{ display: 'inline-block', width: 18, height: 18, borderRadius: 4, background: 'var(--border)' }} />
+                              <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: '50%', background: 'var(--border)' }} />
                             )}
                           </td>
                         );
@@ -181,16 +180,16 @@ export default function BatchAttendanceGrid({ schoolId, batchId, rangeDays = 30 
             </table>
           </div>
 
-          {/* Legend */}
+          {/* Legend — filled circles, matches the cell dots above */}
           <div style={{ display: 'flex', gap: 12, marginTop: 10, fontSize: 11, flexWrap: 'wrap' }}>
             {(['present', 'late', 'excused', 'absent'] as AttendanceStatus[]).map((s) => (
               <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--muted)' }}>
-                <span style={{ width: 12, height: 12, borderRadius: 3, background: STATUS_COLOR[s] + '22', border: `1.5px solid ${STATUS_COLOR[s]}`, display: 'inline-block' }} />
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLOR[s], display: 'inline-block' }} />
                 {s}
               </span>
             ))}
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--muted)' }}>
-              <span style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--border)', display: 'inline-block' }} />
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--border)', display: 'inline-block' }} />
               not marked
             </span>
           </div>

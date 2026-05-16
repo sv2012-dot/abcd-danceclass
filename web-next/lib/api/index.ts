@@ -132,6 +132,8 @@ export const events = {
   update: (schoolId: string, id: string, data: any) => api.put(`/schools/${schoolId}/events/${id}`, data),
   remove: (schoolId: string, id: string) => api.delete(`/schools/${schoolId}/events/${id}`),
   studioNeeded: (schoolId: string) => api.get(`/schools/${schoolId}/events/studio-needed`),
+  uploadCover: (schoolId: string, id: string | number, cover_url: string) =>
+    api.put(`/schools/${schoolId}/events/${id}/cover`, { cover_url }),
 };
 
 export const todos = {

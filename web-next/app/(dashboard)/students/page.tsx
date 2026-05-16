@@ -17,6 +17,7 @@ import { DateField } from "@/components/shared/date/Picker";
 import { todayISO } from "@/lib/date";
 import { upload as uploadApi } from "@/lib/api";
 import StudentAttendancePanel from "@/components/attendance/StudentAttendancePanel";
+import StudentAvatar from "@/components/shared/StudentAvatar";
 import PageTabs from "@/components/shared/PageTabs";
 
 const ROSTER_TABS = [
@@ -108,35 +109,8 @@ function PhotoAvatar({ url, size }) {
   );
 }
 
-// ─── StudentAvatar ─────────────────────────────────────────────────────────
-function StudentAvatar({ student, size = 44, border, active, onClick }) {
-  const av = parseAvatar(student.avatar);
-  const isCustom = av.type === 'photo' || av.type === 'sprite';
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        width: size, height: size, borderRadius: "50%", flexShrink: 0,
-        overflow: "hidden",
-        background: isCustom ? 'transparent' : getBgColor(student),
-        border: border || `2px solid ${active ? "var(--accent)" : "var(--border)"}`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        color: '#fff',
-        lineHeight: 1,
-        transition: "border-color .15s, box-shadow .15s",
-        userSelect: "none",
-        cursor: onClick ? "pointer" : "default",
-        boxShadow: onClick ? "0 0 0 0 transparent" : undefined,
-      }}
-      onMouseEnter={onClick ? e => { e.currentTarget.style.boxShadow = "0 0 0 3px rgba(196,82,122,.25)"; } : undefined}
-      onMouseLeave={onClick ? e => { e.currentTarget.style.boxShadow = "0 0 0 0 transparent"; } : undefined}
-    >
-      {av.type === 'photo'  && <PhotoAvatar  url={av.url}    size={size} />}
-      {av.type === 'sprite' && <SpriteAvatar index={av.index} size={size} />}
-      {av.type === 'none'   && <DancerSilhouette size={size} />}
-    </div>
-  );
-}
+// StudentAvatar is now a shared component (imported at the top). Every
+// place a student is shown uses the same parsing rules + default sticker.
 
 // ─── AvatarPicker — sprite sheet grid ─────────────────────────────────────
 function AvatarPicker({ current, onPick, onClose }) {

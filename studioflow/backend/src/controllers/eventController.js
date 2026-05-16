@@ -168,3 +168,18 @@ exports.studioRequired = async (req, res) => {
     res.json(await attachBatches(formatEventDates(rows)));
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
+
+// Set / clear a per-event cover photo override. Pass `cover_url: ''` (or
+// any falsy value) to revert to the linked batch's cover.
+exports.uploadCover = async (req, res) => {
+  try {
+    const url = req.body?.cover_url ?? null;
+    await pool.query(
+      'UPDATE events SET cover_url = ? WHERE id = ? AND school_id = ?',
+      [url || null, req.params.id, req.params.schoolId]
+    );
+    const [rows] = await pool.query('SELECT e.* FROM events e WHERE e.id = ?', [req.params.id]);
+    const withBatches = await attachBatches(formatEventDates(rows));
+    res.json(withBatches[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};

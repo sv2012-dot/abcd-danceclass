@@ -15,6 +15,7 @@ import { Field, Input, Select, Textarea } from "@/components/shared/Field";
 import { TimeField, DurationField, DayOfWeekField } from "@/components/shared/date/Picker";
 import { dowCodeToIndex, dowIndexToCode, addMinutesToTime, diffMinutes, formatTime as sharedFormatTime } from "@/lib/date";
 import SvgIcon from "@/components/shared/SvgIcon";
+import StudentAvatar from "@/components/shared/StudentAvatar";
 import BatchAttendanceGrid from "@/components/attendance/BatchAttendanceGrid";
 import PageTabs from "@/components/shared/PageTabs";
 
@@ -755,8 +756,8 @@ export default function BatchesPage() {
                     <>
                       <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:5, marginBottom:10 }}>
                         {detailStudents.map(s => (
-                          <div key={s.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 9px", borderRadius:8, background:"var(--surface)" }}>
-                            <div style={{ width:28, height:28, borderRadius:"50%", background:`hsl(${s.name.charCodeAt(0)*7%360},55%,68%)`, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, color:"#fff", fontSize:12, flexShrink:0 }}>{s.name[0]}</div>
+                          <div key={s.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"7px 9px", borderRadius:8, background:"var(--surface)" }}>
+                            <StudentAvatar student={s} size={28} />
                             <div style={{ flex:1, minWidth:0 }}>
                               <div style={{ fontWeight:600, fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name}</div>
                               {s.age && <div style={{ fontSize:10, color:"var(--muted)" }}>Age {s.age}</div>}
@@ -957,7 +958,7 @@ export default function BatchesPage() {
                       background:checked ? "var(--accent)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                       {checked && <span style={{ color:"#fff", fontSize:12, fontWeight:800 }}>✓</span>}
                     </div>
-                    <div style={{ width:32, height:32, borderRadius:"50%", background:`hsl(${s.name.charCodeAt(0)*7%360},55%,68%)`, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, color:"#fff", fontSize:13, flexShrink:0 }}>{s.name[0]}</div>
+                    <StudentAvatar student={s} size={32} />
                     <div style={{ flex:1 }}>
                       <div style={{ fontWeight:600, fontSize:13 }}>{s.name}</div>
                       {s.age && <div style={{ fontSize:11, color:"var(--muted)" }}>Age {s.age}</div>}

@@ -7,7 +7,8 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useTheme } from "@/lib/context/ThemeContext";
-import { events as api, batches as batchesApi, recitals as recitalApi, studios as studiosApi, schedules as schedulesApi, scheduleExceptions as exceptionsApi, attendance as attendanceApi } from "@/lib/api";
+import { events as api, batches as batchesApi, recitals as recitalApi, studios as studiosApi, schedules as schedulesApi, scheduleExceptions as exceptionsApi, attendance as attendanceApi, upload as uploadApi } from "@/lib/api";
+import CoverCropModal from "@/components/shared/CoverCropModal";
 import toast from "react-hot-toast";
 import Card from "@/components/shared/Card";
 import Button from "@/components/shared/Button";
@@ -189,6 +190,13 @@ export default function SchedulePage() {
   const [panelMode, setPanelMode] = useState('view'); // 'view' | 'edit' | 'add' | 'add-recital'
   const [form, setForm]           = useState(EMPTY_FORM);
   const [detailEvent, setDetailEvent] = useState(null);
+
+  // Event cover override — admin can replace the inherited batch cover
+  // with an event-specific image. coverCropFile holds the pending File
+  // that's being framed in CoverCropModal.
+  const [coverCropFile, setCoverCropFile] = useState(null);
+  const coverFileInputRef = useRef(null);
+  const [uploadingEventCover, setUploadingEventCover] = useState(false);
 
   // Recital quick-create form (used in 'add-recital' panel mode)
   const EMPTY_RECITAL_FORM = { title:'', event_date:'', event_time:'18:00', venue:'', description:'' };
@@ -514,6 +522,43 @@ export default function SchedulePage() {
     },
     onError: err => toast.error(err?.error || "Failed to skip class"),
   });
+
+  // Event cover handlers — opens file picker, then CoverCropModal, then
+  // uploads to Cloudinary, then PUTs the resulting URL onto the event.
+  const openCoverPicker = () => coverFileInputRef.current?.click();
+  const handleCoverFilePick = (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (f) setCoverCropFile(f);
+  };
+  const handleCoverConfirm = async (dataUrl) => {
+    if (!detailEvent || detailEvent._isSchedule) { setCoverCropFile(null); return; }
+    setUploadingEventCover(true);
+    try {
+      const up = await uploadApi.image(dataUrl);
+      const url = up?.url || dataUrl;
+      const updated = await api.uploadCover(sid, detailEvent.id, url);
+      // Update both the cached event list and the open detail panel
+      qc.invalidateQueries({ queryKey: ["events"], exact: false });
+      setDetailEvent(prev => prev ? { ...prev, cover_url: url, ...updated } : prev);
+      toast.success("Cover updated");
+    } catch (err) {
+      toast.error(err?.error || "Failed to upload cover");
+    } finally {
+      setUploadingEventCover(false);
+      setCoverCropFile(null);
+    }
+  };
+  const handleCoverRemove = async () => {
+    if (!detailEvent || detailEvent._isSchedule) return;
+    if (!window.confirm("Remove the custom cover and use the batch cover instead?")) return;
+    try {
+      await api.uploadCover(sid, detailEvent.id, "");
+      qc.invalidateQueries({ queryKey: ["events"], exact: false });
+      setDetailEvent(prev => prev ? { ...prev, cover_url: null } : prev);
+      toast.success("Cover reset to batch default");
+    } catch (err) { toast.error(err?.error || "Failed"); }
+  };
 
   const openOverride = (e) => {
     const base = new Date(e.start_datetime);
@@ -1180,7 +1225,11 @@ export default function SchedulePage() {
             const primaryBatch = evBatches[0]
               ? batches.find(x => x.id === evBatches[0].id || String(x.id) === String(evBatches[0].id))
               : null;
-            const heroImg = primaryBatch?.cover_url || null;
+            // Cover photo: per-event override wins; otherwise fall back to
+            // the linked batch's cover. Both can be empty (then we use the
+            // gradient placeholder).
+            const heroImg = e.cover_url || primaryBatch?.cover_url || null;
+            const usingBatchCover = !e.cover_url && !!primaryBatch?.cover_url;
 
             // Close — if the user got here from the dashboard, route them
             // back to /home; otherwise just clear the panel in place.
@@ -1237,6 +1286,19 @@ export default function SchedulePage() {
                     }}>← Close</button>
                     {isAdmin && (
                       <div style={{ display:"flex", gap:8 }}>
+                        {/* Cover camera — one-off events only. Recurring
+                            class instances inherit the batch cover and
+                            can't be overridden per-occurrence. */}
+                        {!e._isSchedule && (
+                          <button
+                            onClick={openCoverPicker}
+                            disabled={uploadingEventCover}
+                            title={e.cover_url ? "Change cover" : usingBatchCover ? "Override batch cover" : "Add cover"}
+                            style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor: uploadingEventCover ? "wait" : "pointer" }}
+                          >
+                            <SvgIcon name="camera" size={15} color="rgba(255,255,255,.85)" />
+                          </button>
+                        )}
                         <button
                           onClick={() => e._isSchedule ? openOverride(e) : openEdit(e)}
                           title="Edit"
@@ -1562,6 +1624,23 @@ export default function SchedulePage() {
           };
         })() : null}
       />
+
+      {/* Hidden file input + crop modal for the per-event cover override.
+          Triggered from the camera button in the event detail hero. */}
+      <input
+        ref={coverFileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleCoverFilePick}
+        style={{ display: "none" }}
+      />
+      {coverCropFile && (
+        <CoverCropModal
+          file={coverCropFile}
+          onConfirm={handleCoverConfirm}
+          onCancel={() => setCoverCropFile(null)}
+        />
+      )}
     </div>
   );
 }

@@ -129,6 +129,10 @@ async function patchTables() {
     // Bio — short, parent-facing self-description that lives on the
     // student profile (distinct from `notes`, which is teacher-only).
     await addColumnIfMissing('students',  'bio',               'TEXT NULL');
+    // Per-event cover override — defaults to the linked batch's cover.
+    // Cloudinary URLs are ~80–100 chars; MEDIUMTEXT covers data-URLs and
+    // headroom for future longer URLs.
+    await addColumnIfMissing('events',    'cover_url',         'MEDIUMTEXT NULL');
     await addColumnIfMissing('todos',     'assigned_to',       'VARCHAR(100) NULL');
     await addColumnIfMissing('recitals',  'is_featured',       'TINYINT(1) NOT NULL DEFAULT 0');
     await addColumnIfMissing('recitals',  'poster_url',        'MEDIUMTEXT NULL');

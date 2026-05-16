@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { parent as api } from '@/lib/api';
 import Card from '@/components/shared/Card';
 import Badge from '@/components/shared/Badge';
+import StudentAvatar from '@/components/shared/StudentAvatar';
 
 export default function ParentPortalPage() {
   const { data: childrenData } = useQuery<any>({ queryKey: ['parent-students'], queryFn: api.students });
@@ -20,7 +21,7 @@ export default function ParentPortalPage() {
       <div style={{ display: 'grid', gap: 12, marginBottom: 28 }}>
         {children.map((s: any) => (
           <Card key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16 }}>
-            <div style={{ width: 44, height: 44, borderRadius: '50%', background: `hsl(${s.name.charCodeAt(0) * 7 % 360},55%,68%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#fff', fontSize: 18, flexShrink: 0 }}>{s.name[0]}</div>
+            <StudentAvatar student={s} size={44} />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{s.name}</div>
               {s.batches && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>📚 {s.batches}</div>}
