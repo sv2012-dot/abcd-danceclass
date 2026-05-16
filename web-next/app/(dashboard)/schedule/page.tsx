@@ -1356,7 +1356,12 @@ export default function SchedulePage() {
                   <div style={{ display:"grid", gap:14, marginBottom:20 }}>
                     <PDetailRow icon="calendar" label="Date">{fmtDate(e.start_datetime)}</PDetailRow>
                     <PDetailRow icon="clock" label="Time">{fmtTime(e.start_datetime)} – {fmtTime(e.end_datetime)}</PDetailRow>
-                    {e.location && <PDetailRow icon="map-pin" label="Location">{e.location}</PDetailRow>}
+                    {/* Location always renders so the body stays a 3-row block.
+                        Empty state shows muted "Not set" so admins know they
+                        can add one via Edit. */}
+                    <PDetailRow icon="map-pin" label="Location">
+                      {e.location || <span style={{ color: "var(--muted)", fontStyle: "italic" }}>Not set</span>}
+                    </PDetailRow>
                     {e.notes && <PDetailRow icon="file-text" label="Notes">{e.notes}</PDetailRow>}
                   </div>
 

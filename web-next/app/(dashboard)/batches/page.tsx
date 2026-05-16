@@ -255,7 +255,7 @@ export default function BatchesPage() {
       router.replace('/batches');
     }
   }, []); // eslint-disable-line
-  const [view,           setView]           = useState("grid");
+  // view-toggle removed — cards are the only batches view.
   const [panelMode,      setPanelMode]      = useState("view"); // "view" | "edit" | "add"
   const [form,           setForm]           = useState(EMPTY);
   const [enrollModal,    setEnrollModal]    = useState(null);
@@ -466,15 +466,13 @@ export default function BatchesPage() {
           <p style={{ color:"var(--muted)", fontSize:12 }}>{list.length} active groups</p>
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", marginLeft:"auto" }}>
-          <div style={{ display:"flex", border:"1.5px solid var(--border)", borderRadius:9, overflow:"hidden" }}>
-            <button onClick={() => setView("grid")}
-              style={{ padding:"7px 13px", border:"none", cursor:"pointer", transition:"all .15s", display:"flex", alignItems:"center", justifyContent:"center",
-                background:view==="grid" ? "var(--accent)" : "transparent", color:view==="grid" ? "#fff" : "var(--muted)" }}><SvgIcon name="grid" size={16} /></button>
-            <button onClick={() => setView("table")}
-              style={{ padding:"7px 13px", border:"none", borderLeft:"1.5px solid var(--border)", cursor:"pointer", transition:"all .15s", display:"flex", alignItems:"center", justifyContent:"center",
-                background:view==="table" ? "var(--accent)" : "transparent", color:view==="table" ? "#fff" : "var(--muted)" }}><SvgIcon name="list" size={16} /></button>
-          </div>
-          <Button onClick={openAdd}>New Batch</Button>
+          {/* Grid/table toggle removed — cards are the default and only view. */}
+          <Button onClick={openAdd}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <SvgIcon name="plus" size={14} color="currentColor" />
+              New Batch
+            </span>
+          </Button>
         </div>
       </div>
 
@@ -490,7 +488,7 @@ export default function BatchesPage() {
           <Button onClick={openAdd}>New Batch</Button>
         </Card>
 
-      ) : view === "grid" ? (
+      ) : (
         /* ── Grid cards ── */
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:16 }}>
           {list.map((b,i) => {
@@ -561,55 +559,6 @@ export default function BatchesPage() {
           })}
         </div>
 
-      ) : (
-        /* ── Table view ── */
-        <Card variant="flat" padding={0} style={{ overflow:"hidden" }}>
-          <table style={{ width:"100%", borderCollapse:"collapse" }}>
-            <thead>
-              <tr style={{ background:"var(--surface)" }}>
-                {["Batch","Style","Level","Instructor","Students","Schedule",""].map(h => (
-                  <th key={h} style={{ padding:"11px 14px", textAlign:"left", fontSize:11, fontWeight:700, letterSpacing:".06em", textTransform:"uppercase", color:"var(--muted)" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((b,i) => {
-                const color  = BATCH_COLORS[i % BATCH_COLORS.length];
-                const active = b.id === activeId;
-                const days   = getBatchDays(b.id);
-                return (
-                  <tr key={b.id} onClick={() => { setActiveId(b.id); setPanelMode("view"); }} style={{
-                    borderTop:"1px solid var(--border)", cursor:"pointer",
-                    background: active ? color+"08" : "transparent", transition:"background .1s"
-                  }}>
-                    <td style={{ padding:"10px 14px" }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                        <div style={{ width:6, height:32, borderRadius:3, background:color, flexShrink:0 }} />
-                        <span style={{ fontWeight:700, fontSize:13 }}>{b.name}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding:"10px 14px", fontSize:12, color:"var(--muted)" }}>{b.dance_style||"—"}</td>
-                    <td style={{ padding:"10px 14px" }}>
-                      <span style={{ fontSize:11, background:color+"22", color, borderRadius:20, padding:"2px 8px", fontWeight:700 }}>{b.level}</span>
-                    </td>
-                    <td style={{ padding:"10px 14px", fontSize:12, color:"var(--muted)" }}>{b.teacher_name||"—"}</td>
-                    <td style={{ padding:"10px 14px", fontSize:13, fontWeight:700, color }}>{b.student_count||0}{b.max_size ? `/${b.max_size}` : ""}</td>
-                    <td style={{ padding:"10px 14px" }}>
-                      <div style={{ display:"flex", gap:3 }}>
-                        {days.map(d => <span key={d} style={{ fontSize:9, fontWeight:700, background:color+"20", color, borderRadius:4, padding:"2px 5px" }}>{d}</span>)}
-                        {days.length === 0 && <span style={{ color:"var(--muted)", fontSize:12 }}>—</span>}
-                      </div>
-                    </td>
-                    <td style={{ padding:"10px 14px" }}>
-                      <button onClick={e => { e.stopPropagation(); if(window.confirm(`Delete "${b.name}"?`)) deleteMutation.mutate(b.id); }}
-                        style={{ background:"none", border:"none", cursor:"pointer", color:"var(--muted)", padding:"3px 7px", borderRadius:6, opacity:.6, display:"flex", alignItems:"center" }}><SvgIcon name="trash" size={14} /></button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </Card>
       )}
 
       {/* ── Right Side Panel (view / edit / add) ── */}

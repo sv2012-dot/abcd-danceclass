@@ -993,24 +993,11 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                 <ArrowLeft /> Back
               </button>
 
-              {/* Right: message · photo · star · public · duplicate · delete */}
+              {/* Right: public · photo · star · edit · delete.
+                  Smart Announce moved to be the primary CTA below the hero;
+                  Duplicate removed as a top action (rarely used and clutters
+                  the bar). Edit replaces "Edit Event Details" CTA below. */}
               <div style={{ display:"flex", gap:8 }}>
-                {/* Message — Smart Announce */}
-                <button
-                  onClick={() => setShowSmartAnnounce(true)}
-                  title="Message parents about this recital"
-                  style={{
-                    width:34, height:34, borderRadius:"50%", cursor:"pointer",
-                    background:"linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)",
-                    border:"1px solid rgba(255,255,255,.22)",
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    color:"#fff",
-                  }}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
-                  </svg>
-                </button>
                 {/* Public page */}
                 {recital.slug && (
                   <button
@@ -1070,19 +1057,20 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                   </svg>
                 </button>
-                {/* Duplicate */}
-                <button onClick={() => duplicateRecitalMutation.mutate()} title="Duplicate recital" style={{
+                {/* Edit — was a full-width CTA below, now lives next to Delete */}
+                <button onClick={openInlineEdit} title="Edit recital" style={{
                   width:34, height:34, borderRadius:"50%", cursor:"pointer",
                   background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)",
                   border:"1px solid rgba(255,255,255,.22)",
                   display:"flex", alignItems:"center", justifyContent:"center",
                 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.85)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                   </svg>
                 </button>
                 {/* Delete */}
-                <button onClick={() => setConfirmDelete(true)} style={{
+                <button onClick={() => setConfirmDelete(true)} title="Delete recital" style={{
                   width:34, height:34, borderRadius:"50%", cursor:"pointer",
                   background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)",
                   border:"1px solid rgba(255,255,255,.22)",
@@ -1122,8 +1110,8 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
             </div>
           </div>
 
-          {/* ── Edit Event CTA ── */}
-          <button onClick={openInlineEdit} style={{
+          {/* ── Primary CTA — Smart Announce ── */}
+          <button onClick={() => setShowSmartAnnounce(true)} style={{
             display:"flex", alignItems:"center", justifyContent:"center", gap:8,
             width:"100%", padding:"13px", borderRadius:12, border:"none",
             background:"linear-gradient(135deg,#7C3AED,#D946EF)",
@@ -1132,10 +1120,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
             margin:"16px 0 20px",
           }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              <path d="M3 11l18-5v12L3 14v-3z"/>
+              <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>
             </svg>
-            Edit Event Details
+            Smart Announce
           </button>
 
           {/* ── Metadata strip ── */}
