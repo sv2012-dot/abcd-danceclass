@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/context/AuthContext";
 import { students as api, batches as batchApi, schools as schoolApi } from "@/lib/api";
@@ -9,6 +9,8 @@ import toast from "react-hot-toast";
 import Card from "@/components/shared/Card";
 import Button from "@/components/shared/Button";
 import { Field, Input, Textarea } from "@/components/shared/Field";
+import ProfileCropModal from "@/components/shared/ProfileCropModal";
+import { upload as uploadApi } from "@/lib/api";
 import StudentAttendancePanel from "@/components/attendance/StudentAttendancePanel";
 import PageTabs from "@/components/shared/PageTabs";
 
@@ -30,16 +32,46 @@ const STICKER_SRCS = Array.from({ length: TOTAL_STICKERS }, (_, i) => {
 const AVATAR_COLORS = ["#FFB347","#FF6B9D","#7E57C2","#42A5F5","#26C99E","#FFCA28","#EF5350","#29B6F6","#AB47BC","#66BB6A"];
 function getBgColor(s) { return AVATAR_COLORS[((s.id||0)*13+(s.name?.charCodeAt(1)||0))%AVATAR_COLORS.length]; }
 
-// Parse avatar value → returns { type:'sprite'|'legacy'|'none', index }
+// Parse avatar value:
+//   photo:<URL>  → uploaded profile picture (Cloudinary URL)
+//   sprite:<N>   → legacy dance-sticker PNG (kept for backward compat)
+//   <anything else, including '🎵' / dicebear strings / empty> → 'none'
 function parseAvatar(val) {
   if (!val) return { type:'none' };
+  if (val.startsWith('photo:')) return { type:'photo', url: val.slice(6) };
   if (val.startsWith('sprite:')) return { type:'sprite', index: parseInt(val.slice(7), 10) };
-  return { type:'legacy' }; // old dicebear format, show color fallback
+  return { type:'none' };
 }
 
-// Random sprite 0–(TOTAL_STICKERS-1)
+// Random sprite 0–(TOTAL_STICKERS-1) — kept for any callers that still use it.
 function randomSpriteVal() {
   return `sprite:${Math.floor(Math.random() * TOTAL_STICKERS)}`;
+}
+
+// ─── DancerSilhouette — gender-neutral line-art placeholder ───────────────
+// Replaces the old 🎵 emoji. Inline SVG so it scales crisply at any size
+// and stays consistent across OSes (the emoji rendered differently on
+// macOS / Windows / Android).
+function DancerSilhouette({ size }) {
+  return (
+    <svg
+      width={size * 0.55}
+      height={size * 0.55}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      style={{ flexShrink:0 }}
+    >
+      {/* Head */}
+      <circle cx="12" cy="7" r="3.2" />
+      {/* Shoulders + torso */}
+      <path d="M5 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2" />
+    </svg>
+  );
 }
 
 // ─── SpriteAvatar: renders one individual sticker PNG ─────────────────────
@@ -56,19 +88,36 @@ function SpriteAvatar({ index, size }) {
   );
 }
 
+// ─── PhotoAvatar: renders an uploaded profile picture URL ─────────────────
+function PhotoAvatar({ url, size }) {
+  return (
+    <div style={{ width:size, height:size, borderRadius:'50%', overflow:'hidden', flexShrink:0 }}>
+      <img
+        src={url}
+        alt=""
+        draggable={false}
+        loading="lazy"
+        style={{ width:'100%', height:'100%', objectFit:'cover', pointerEvents:'none', userSelect:'none', display:'block' }}
+      />
+    </div>
+  );
+}
+
 // ─── StudentAvatar ─────────────────────────────────────────────────────────
 function StudentAvatar({ student, size = 44, border, active, onClick }) {
   const av = parseAvatar(student.avatar);
+  const isCustom = av.type === 'photo' || av.type === 'sprite';
   return (
     <div
       onClick={onClick}
       style={{
         width: size, height: size, borderRadius: "50%", flexShrink: 0,
         overflow: "hidden",
-        background: av.type === 'sprite' ? 'transparent' : getBgColor(student),
+        background: isCustom ? 'transparent' : getBgColor(student),
         border: border || `2px solid ${active ? "var(--accent)" : "var(--border)"}`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: size * 0.46, lineHeight: 1,
+        color: '#fff',
+        lineHeight: 1,
         transition: "border-color .15s, box-shadow .15s",
         userSelect: "none",
         cursor: onClick ? "pointer" : "default",
@@ -77,10 +126,9 @@ function StudentAvatar({ student, size = 44, border, active, onClick }) {
       onMouseEnter={onClick ? e => { e.currentTarget.style.boxShadow = "0 0 0 3px rgba(196,82,122,.25)"; } : undefined}
       onMouseLeave={onClick ? e => { e.currentTarget.style.boxShadow = "0 0 0 0 transparent"; } : undefined}
     >
-      {av.type === 'sprite'
-        ? <SpriteAvatar index={av.index} size={size} />
-        : <span style={{ fontSize: size * 0.46 }}>🎵</span>
-      }
+      {av.type === 'photo'  && <PhotoAvatar  url={av.url}    size={size} />}
+      {av.type === 'sprite' && <SpriteAvatar index={av.index} size={size} />}
+      {av.type === 'none'   && <DancerSilhouette size={size} />}
     </div>
   );
 }
@@ -211,6 +259,24 @@ function PanelSection({ title, children }) {
 
 const EMPTY = { name: "", age: "", phone: "", email: "", guardian_name: "", guardian_phone: "", guardian_email: "", join_date: "", notes: "", avatar: "" };
 
+// Modern placeholder-as-label input style (matches /register and /login).
+// No external <label> — the placeholder text *is* the field name, vanishing
+// only as the user starts typing.
+const MODERN_INPUT = {
+  width: "100%",
+  background: "var(--surface)",
+  border: "1.5px solid var(--border)",
+  borderRadius: 10,
+  padding: "13px 15px",
+  fontSize: 14,
+  fontWeight: 500,
+  color: "var(--text)",
+  boxSizing: "border-box",
+  outline: "none",
+  fontFamily: "var(--font-sans)",
+  transition: "border-color .15s",
+};
+
 export default function StudentsPage() {
   const { user } = useAuth();
   const sid = user?.school_id;
@@ -240,6 +306,11 @@ export default function StudentsPage() {
   const [addForm, setAddForm]     = useState(EMPTY);
   const [showPicker, setShowPicker] = useState(false);  // avatar picker overlay
   const [pickerTarget, setPickerTarget] = useState("add"); // "add" | "edit"
+  // Profile photo upload — file pending crop, target form, upload progress
+  const [cropFile, setCropFile] = useState(null);
+  const [cropTarget, setCropTarget] = useState("add"); // "add" | "edit"
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef(null);
 
   const PANEL_W = 400;
 
@@ -351,6 +422,43 @@ export default function StudentsPage() {
   const startEdit  = ()  => { setEditForm({ ...selected, batch_ids: parseBatchIds(selected.batch_ids) }); setIsEditing(true); };
 
   const openPickerFor = (target) => { setPickerTarget(target); setShowPicker(true); };
+
+  // ── Profile photo upload (new) ──────────────────────────────────────────
+  // Click the upload button → file picker → ProfileCropModal → upload to
+  // Cloudinary → save as `photo:<URL>` on the student.avatar field.
+  const openPhotoUploadFor = (target) => {
+    setCropTarget(target);
+    photoInputRef.current?.click();
+  };
+  const handlePhotoFilePick = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image too large (max 10 MB)");
+      return;
+    }
+    setCropFile(file);
+  };
+  const handlePhotoCropConfirm = async (dataUrl) => {
+    setCropFile(null);
+    setUploadingPhoto(true);
+    try {
+      const { url } = await uploadApi.image(dataUrl);
+      const val = `photo:${url}`;
+      if (cropTarget === "add")  setAddForm(f  => ({ ...f,  avatar: val }));
+      if (cropTarget === "edit") setEditForm(f => ({ ...f, avatar: val }));
+      toast.success("Profile picture set");
+    } catch (err) {
+      toast.error(err?.error || "Failed to upload photo");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+  const clearPhoto = (target) => {
+    if (target === "add")  setAddForm(f  => ({ ...f,  avatar: "" }));
+    if (target === "edit") setEditForm(f => ({ ...f, avatar: "" }));
+  };
   const handleAvatarPick = (val) => {
     if (pickerTarget === "add")  setAddForm(f  => ({ ...f,  avatar: val }));
     if (pickerTarget === "edit") setEditForm(f => ({ ...f, avatar: val }));
@@ -606,27 +714,44 @@ export default function StudentsPage() {
           {showAdd && (() => {
             return (
               <div style={{ flex: 1, overflowY: "auto", padding: "22px 24px" }}>
-                {/* Avatar picker row */}
-                <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, padding: "14px 16px", background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)" }}>
-                  <StudentAvatar student={{ ...addForm, id: 0 }} size={56} onClick={() => openPickerFor("add")} />
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 3 }}>Profile Picture</div>
-                    <button onClick={() => openPickerFor("add")} style={{ padding: "5px 14px", borderRadius: 20, border: "1.5px solid var(--accent)", background: "transparent", color: "var(--accent)", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
-                      {addForm.avatar ? "Change Avatar" : "Choose Avatar"}
-                    </button>
+                {/* Avatar row: avatar preview + Upload Photo (primary) +
+                    Pick Sticker (secondary). Same pattern repeated below
+                    for edit mode. */}
+                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18, padding: "14px 16px", background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)" }}>
+                  <StudentAvatar student={{ ...addForm, id: 0 }} size={56} onClick={() => openPhotoUploadFor("add")} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Profile picture</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <button type="button" onClick={() => openPhotoUploadFor("add")} disabled={uploadingPhoto}
+                        style={{ padding: "5px 12px", borderRadius: 16, border: "1.5px solid var(--accent)", background: "var(--accent)", color: "#fff", cursor: uploadingPhoto ? "wait" : "pointer", fontSize: 12, fontWeight: 700 }}>
+                        {uploadingPhoto ? "Uploading…" : "Upload photo"}
+                      </button>
+                      <button type="button" onClick={() => openPickerFor("add")}
+                        style={{ padding: "5px 12px", borderRadius: 16, border: "1.5px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                        Pick sticker
+                      </button>
+                      {addForm.avatar && (
+                        <button type="button" onClick={() => clearPhoto("add")}
+                          style={{ padding: "5px 10px", borderRadius: 16, border: "1.5px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                          Remove
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: "0 16px" }}>
-                  <Field label="Full Name *"><Input value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} placeholder="Student name" /></Field>
-                  <Field label="Phone / WhatsApp"><Input value={addForm.phone} onChange={e => setAddForm({ ...addForm, phone: e.target.value })} placeholder="+1 555 000 0000" /></Field>
-                  <Field label="Email"><Input value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} placeholder="email@example.com" /></Field>
-                  <Field label="Guardian Name"><Input value={addForm.guardian_name} onChange={e => setAddForm({ ...addForm, guardian_name: e.target.value })} placeholder="Parent or guardian" /></Field>
-                  <Field label="Guardian Phone"><Input value={addForm.guardian_phone} onChange={e => setAddForm({ ...addForm, guardian_phone: e.target.value })} placeholder="+1 555 000 0000" /></Field>
-                  <Field label="Guardian Email"><Input value={addForm.guardian_email} onChange={e => setAddForm({ ...addForm, guardian_email: e.target.value })} placeholder="parent@email.com" /></Field>
-                  <Field label="Join Date"><Input type="date" value={addForm.join_date} onChange={e => setAddForm({ ...addForm, join_date: e.target.value })} /></Field>
+                {/* Modern inputs — placeholder-as-label, no separate label.
+                    Mirrors the /register form pattern for consistency. */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+                  <input value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} placeholder="Full name *" aria-label="Full name" style={MODERN_INPUT} />
+                  <input value={addForm.phone} onChange={e => setAddForm({ ...addForm, phone: e.target.value })} placeholder="Phone / WhatsApp" aria-label="Phone" style={MODERN_INPUT} />
+                  <input type="email" value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} placeholder="Email" aria-label="Email" style={MODERN_INPUT} />
+                  <input value={addForm.guardian_name} onChange={e => setAddForm({ ...addForm, guardian_name: e.target.value })} placeholder="Guardian name" aria-label="Guardian name" style={MODERN_INPUT} />
+                  <input value={addForm.guardian_phone} onChange={e => setAddForm({ ...addForm, guardian_phone: e.target.value })} placeholder="Guardian phone" aria-label="Guardian phone" style={MODERN_INPUT} />
+                  <input type="email" value={addForm.guardian_email} onChange={e => setAddForm({ ...addForm, guardian_email: e.target.value })} placeholder="Guardian email" aria-label="Guardian email" style={MODERN_INPUT} />
+                  <input type="date" value={addForm.join_date} onChange={e => setAddForm({ ...addForm, join_date: e.target.value })} aria-label="Join date" style={MODERN_INPUT} />
+                  <textarea value={addForm.notes} onChange={e => setAddForm({ ...addForm, notes: e.target.value })} placeholder="Notes" aria-label="Notes" rows={3} style={{ ...MODERN_INPUT, resize: "vertical", minHeight: 70, lineHeight: 1.5 }} />
                 </div>
-                <Field label="Notes"><Textarea value={addForm.notes} onChange={e => setAddForm({ ...addForm, notes: e.target.value })} placeholder="Any notes…" /></Field>
                 <div style={{ display: "flex", gap: 9, marginTop: 16 }}>
                   <Button onClick={() => addMutation.mutate(addForm)} disabled={!addForm.name || addMutation.isPending}>
                     {addMutation.isPending ? "Adding…" : "Add Student"}
@@ -723,16 +848,41 @@ export default function StudentsPage() {
                 </>
               ) : (
                 <>
-                  <>
-                    <Field label="Full Name"><Input value={editForm.name || ""} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /></Field>
-                    <Field label="Phone / WhatsApp"><Input value={editForm.phone || ""} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} /></Field>
-                    <Field label="Email"><Input value={editForm.email || ""} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /></Field>
-                    <Field label="Guardian Name"><Input value={editForm.guardian_name || ""} onChange={e => setEditForm({ ...editForm, guardian_name: e.target.value })} /></Field>
-                    <Field label="Guardian Phone"><Input value={editForm.guardian_phone || ""} onChange={e => setEditForm({ ...editForm, guardian_phone: e.target.value })} /></Field>
-                    <Field label="Guardian Email"><Input value={editForm.guardian_email || ""} onChange={e => setEditForm({ ...editForm, guardian_email: e.target.value })} /></Field>
-                    <Field label="Join Date"><Input type="date" value={(editForm.join_date || "").split("T")[0]} onChange={e => setEditForm({ ...editForm, join_date: e.target.value })} /></Field>
-                    <Field label="Notes"><Textarea value={editForm.notes || ""} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Any notes…" /></Field>
-                  </>
+                  {/* Avatar row — Upload Photo / Pick Sticker / Remove */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, padding: "12px 14px", background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)" }}>
+                    <StudentAvatar student={editForm} size={48} onClick={() => openPhotoUploadFor("edit")} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 5 }}>Profile picture</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <button type="button" onClick={() => openPhotoUploadFor("edit")} disabled={uploadingPhoto}
+                          style={{ padding: "4px 10px", borderRadius: 14, border: "1.5px solid var(--accent)", background: "var(--accent)", color: "#fff", cursor: uploadingPhoto ? "wait" : "pointer", fontSize: 11, fontWeight: 700 }}>
+                          {uploadingPhoto ? "Uploading…" : "Upload photo"}
+                        </button>
+                        <button type="button" onClick={() => openPickerFor("edit")}
+                          style={{ padding: "4px 10px", borderRadius: 14, border: "1.5px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                          Pick sticker
+                        </button>
+                        {editForm.avatar && (
+                          <button type="button" onClick={() => clearPhoto("edit")}
+                            style={{ padding: "4px 10px", borderRadius: 14, border: "1.5px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Modern inputs */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+                    <input value={editForm.name || ""} onChange={e => setEditForm({ ...editForm, name: e.target.value })} placeholder="Full name *" aria-label="Full name" style={MODERN_INPUT} />
+                    <input value={editForm.phone || ""} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Phone / WhatsApp" aria-label="Phone" style={MODERN_INPUT} />
+                    <input type="email" value={editForm.email || ""} onChange={e => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" aria-label="Email" style={MODERN_INPUT} />
+                    <input value={editForm.guardian_name || ""} onChange={e => setEditForm({ ...editForm, guardian_name: e.target.value })} placeholder="Guardian name" aria-label="Guardian name" style={MODERN_INPUT} />
+                    <input value={editForm.guardian_phone || ""} onChange={e => setEditForm({ ...editForm, guardian_phone: e.target.value })} placeholder="Guardian phone" aria-label="Guardian phone" style={MODERN_INPUT} />
+                    <input type="email" value={editForm.guardian_email || ""} onChange={e => setEditForm({ ...editForm, guardian_email: e.target.value })} placeholder="Guardian email" aria-label="Guardian email" style={MODERN_INPUT} />
+                    <input type="date" value={(editForm.join_date || "").split("T")[0]} onChange={e => setEditForm({ ...editForm, join_date: e.target.value })} aria-label="Join date" style={MODERN_INPUT} />
+                    <textarea value={editForm.notes || ""} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notes" aria-label="Notes" rows={3} style={{ ...MODERN_INPUT, resize: "vertical", minHeight: 70, lineHeight: 1.5 }} />
+                  </div>
 
                   {/* ── Batch Enrollment Picker ── */}
                   <div style={{ marginTop: 14 }}>
@@ -816,12 +966,30 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* ── Avatar Picker Overlay ── */}
+      {/* ── Avatar Picker Overlay (legacy sticker grid) ── */}
       {showPicker && (
         <AvatarPicker
           current={pickerTarget === "add" ? addForm.avatar : editForm.avatar}
           onPick={handleAvatarPick}
           onClose={() => setShowPicker(false)}
+        />
+      )}
+
+      {/* Hidden file input — triggered by the Upload Photo button.
+          When a file is picked, ProfileCropModal opens to let the user
+          frame the circular crop before upload. */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handlePhotoFilePick}
+        style={{ display: "none" }}
+      />
+      {cropFile && (
+        <ProfileCropModal
+          file={cropFile}
+          onConfirm={handlePhotoCropConfirm}
+          onCancel={() => setCropFile(null)}
         />
       )}
     </div>
