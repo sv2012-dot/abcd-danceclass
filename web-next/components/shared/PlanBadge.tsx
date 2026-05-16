@@ -5,7 +5,8 @@
 //
 // Visual modes:
 //   - Pro (paid subscription) → tiny purple gradient badge "⭐ Pro"
-//   - Trial                   → small inline link "Upgrade ↗  •  30d left"
+//   - Trial                   → SAME purple gradient badge with countdown:
+//                               "⭐ Pro · Trial — 26d left" (urgent: amber)
 //   - Free / default          → small inline link "Upgrade →"
 //
 // All variants navigate to /billing on click.
@@ -61,12 +62,18 @@ export default function PlanBadge({ variant = 'inline' }: { variant?: 'inline' |
   const isTrial = info.source === 'trial';
   const days = daysUntil(info.trial_ends_at);
 
-  // ── Pro: small gradient badge ──
-  if (isSub) {
+  const urgent = isTrial && days !== null && days <= 5;
+
+  // ── Pro (paid OR trial): purple gradient badge.
+  //    Trial uses the SAME badge so the user sees what they have today;
+  //    the countdown is appended so they know it's time-bound. Urgent
+  //    (<=5 days) flips to amber to nudge subscription.
+  if (isSub || isTrial) {
+    const isUrgentTrial = isTrial && urgent;
     return (
       <button
         onClick={(e) => { e.stopPropagation(); router.push('/billing'); }}
-        title="Manage billing"
+        title={isSub ? 'Manage billing' : 'Subscribe before trial ends'}
         style={{
           marginTop: 6,
           display: 'inline-flex',
@@ -75,7 +82,9 @@ export default function PlanBadge({ variant = 'inline' }: { variant?: 'inline' |
           padding: '2px 8px',
           borderRadius: 12,
           border: 'none',
-          background: 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)',
+          background: isUrgentTrial
+            ? 'linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)'
+            : 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)',
           color: '#fff',
           fontSize: 10,
           fontWeight: 800,
@@ -84,33 +93,30 @@ export default function PlanBadge({ variant = 'inline' }: { variant?: 'inline' |
           textTransform: 'uppercase',
         }}
       >
-        <span aria-hidden style={{ fontSize: 10 }}>★</span>
-        Pro
+        <span aria-hidden style={{ fontSize: 10 }}>{isUrgentTrial ? '⏰' : '★'}</span>
+        {isTrial ? `Pro · Trial — ${days}d left` : 'Pro'}
       </button>
     );
   }
 
-  // ── Trial / Free ──
-  const urgent = isTrial && days !== null && days <= 5;
-  const label = isTrial
-    ? `Upgrade ↗ · ${days}d ${urgent ? '⏰' : 'trial'}`
-    : 'Upgrade →';
+  // ── Free / default ── (trial + paid already handled above)
+  const label = 'Upgrade →';
 
   // Capsule variant — small pill button (used in the mobile drawer footer)
   if (variant === 'capsule') {
     return (
       <button
         onClick={(e) => { e.stopPropagation(); router.push('/billing'); }}
-        title={isTrial ? 'Subscribe before trial ends' : 'Upgrade to Pro'}
+        title="Upgrade to Pro"
         style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: 4,
           padding: '4px 10px',
           borderRadius: 999,
-          border: `1px solid ${urgent ? 'rgba(245,158,11,0.45)' : 'rgba(167,139,250,0.45)'}`,
-          background: urgent ? 'rgba(245,158,11,0.08)' : 'rgba(167,139,250,0.08)',
-          color: urgent ? '#F59E0B' : '#A78BFA',
+          border: '1px solid rgba(167,139,250,0.45)',
+          background: 'rgba(167,139,250,0.08)',
+          color: '#A78BFA',
           fontSize: 11,
           fontWeight: 700,
           letterSpacing: '-0.005em',
@@ -126,7 +132,7 @@ export default function PlanBadge({ variant = 'inline' }: { variant?: 'inline' |
   return (
     <button
       onClick={(e) => { e.stopPropagation(); router.push('/billing'); }}
-      title={isTrial ? 'Subscribe before trial ends' : 'Upgrade to Pro'}
+      title="Upgrade to Pro"
       style={{
         marginTop: 6,
         display: 'inline-flex',
@@ -135,7 +141,7 @@ export default function PlanBadge({ variant = 'inline' }: { variant?: 'inline' |
         padding: 0,
         background: 'none',
         border: 'none',
-        color: urgent ? '#F59E0B' : '#A78BFA',
+        color: '#A78BFA',
         fontSize: 11,
         fontWeight: 700,
         letterSpacing: '-0.005em',

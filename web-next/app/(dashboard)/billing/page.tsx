@@ -190,12 +190,17 @@ function BillingContent() {
               Current plan
             </div>
             <h2 style={{ fontSize: 24, fontWeight: 900, margin: 0, color: 'var(--text)' }}>
-              {isPaid ? '⭐ Spotlight' : '🎓 Debut'}
+              {isPaid ? '⭐ Pro' : '🎓 Free'}
+              {isTrial && daysLeft !== null && (
+                <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 700, padding: '3px 10px', borderRadius: 12, background: daysLeft <= 5 ? 'rgba(245,158,11,0.18)' : 'rgba(124,58,237,0.18)', color: daysLeft <= 5 ? '#F59E0B' : MAGENTA, verticalAlign: 'middle' }}>
+                  Trial — {daysLeft}d left
+                </span>
+              )}
             </h2>
             <p style={{ fontSize: 13, color: 'var(--muted)', margin: '6px 0 0' }}>
               {isSub  && '$5.99/month · billed via Stripe'}
-              {isTrial && `Free trial · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
-              {info.source === 'default' && 'Free forever — limited features'}
+              {isTrial && 'Enjoy every Pro feature during your trial'}
+              {info.source === 'default' && 'Limited features — upgrade for unlimited'}
             </p>
           </div>
           <div>
@@ -239,9 +244,7 @@ function BillingContent() {
           </div>
         </div>
 
-        {/* Trial copy — flat paragraph inside the main plan card. The
-            inner "Subscribe" button + bordered sub-box were redundant
-            with the primary Subscribe CTA in the top-right of this card. */}
+        {/* Trial copy — flat paragraph inside the main plan card. */}
         {isTrial && daysLeft !== null && (
           <p style={{
             marginTop: 16, marginBottom: 0,
@@ -249,9 +252,9 @@ function BillingContent() {
             color: daysLeft <= 5 ? '#B45309' : 'var(--muted)',
           }}>
             {daysLeft <= 5 ? (
-              <>⏰ Your trial ends in <strong style={{ color: '#B45309' }}>{daysLeft} day{daysLeft === 1 ? '' : 's'}</strong>. Add a payment method to keep unlimited everything.</>
+              <>⏰ Your trial ends in <strong style={{ color: '#B45309' }}>{daysLeft} day{daysLeft === 1 ? '' : 's'}</strong>. Subscribe now to keep your Pro features — see what changes if you don't, below.</>
             ) : (
-              <>You're on a free trial. After {daysLeft} days you'll drop to the Debut plan unless you subscribe — then you'll never lose access to your data.</>
+              <>You're enjoying every Pro feature during your trial. Subscribe now to keep unlimited students, batches, recitals and the full AI quota — or see what you'd lose on Free, below.</>
             )}
           </p>
         )}
@@ -293,10 +296,101 @@ function BillingContent() {
         </div>
       )}
 
+      {/* Pro vs Free comparison — surfaced for trial + free so the user
+          sees concretely what changes if they don't subscribe. Hidden
+          once they're an active subscriber (they already have Pro). */}
+      {!isSub && (
+        <PlanCompareTable
+          freeLimits={info.free_limits}
+          isTrial={isTrial}
+          daysLeft={daysLeft}
+          onUpgrade={handleUpgrade}
+          busy={busy}
+        />
+      )}
+
       {/* Danger zone — owner-only delete */}
       {info.is_owner && (
         <DeleteSchoolBlock schoolName={schoolName} />
       )}
+    </div>
+  );
+}
+
+function PlanCompareTable({
+  freeLimits, isTrial, daysLeft, onUpgrade, busy,
+}: {
+  freeLimits: any;
+  isTrial: boolean;
+  daysLeft: number | null;
+  onUpgrade: () => void;
+  busy: string | null;
+}) {
+  const rows = [
+    { label: 'Students',              free: String(freeLimits.students ?? 30),                   pro: 'Unlimited' },
+    { label: 'Batches / classes',     free: String(freeLimits.batches ?? 2),                     pro: 'Unlimited' },
+    { label: 'Recitals',              free: String(freeLimits.recitals ?? 4),                    pro: 'Unlimited' },
+    { label: 'Team members',          free: `${freeLimits.team_members ?? 1} (owner only)`,      pro: 'Unlimited' },
+    { label: 'Smart ManchQ AI / day', free: `${freeLimits.smart_calls_per_day ?? 20} actions`,   pro: '60 actions' },
+    { label: 'Smart Announce',        free: '—',                                                 pro: 'Included' },
+    { label: 'Smart Add (bulk)',      free: '—',                                                 pro: 'Included' },
+    { label: 'Per-event cover art',   free: '—',                                                 pro: 'Included' },
+  ];
+  return (
+    <div style={{
+      background: 'var(--card)',
+      border: '1.5px solid var(--border)',
+      borderRadius: 16,
+      padding: '20px 22px',
+      marginBottom: 22,
+    }}>
+      <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 4px', color: 'var(--text)' }}>
+        {isTrial ? 'What you keep with Pro · what you lose on Free' : 'Pro vs Free'}
+      </h3>
+      <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 16px' }}>
+        {isTrial && daysLeft !== null
+          ? `In ${daysLeft} day${daysLeft === 1 ? '' : 's'} your trial ends. Subscribe to lock in Pro for $5.99/month.`
+          : 'Upgrade for $5.99/month to unlock everything below.'}
+      </p>
+      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: 'var(--surface)' }}>
+              <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Feature</th>
+              <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Free</th>
+              <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, color: MAGENTA, textTransform: 'uppercase', letterSpacing: '0.06em' }}>⭐ Pro</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.label} style={{ borderTop: '1px solid var(--border)' }}>
+                <td style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text)' }}>{r.label}</td>
+                <td style={{ padding: '10px 14px', color: 'var(--muted)' }}>{r.free}</td>
+                <td style={{ padding: '10px 14px', color: 'var(--text)', fontWeight: 700 }}>{r.pro}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ marginTop: 16, textAlign: 'center' }}>
+        <button
+          onClick={onUpgrade}
+          disabled={busy !== null}
+          style={{
+            padding: '10px 22px',
+            borderRadius: 24,
+            border: 'none',
+            background: GRAD,
+            color: '#fff',
+            fontSize: 13,
+            fontWeight: 800,
+            cursor: busy === null ? 'pointer' : 'wait',
+            boxShadow: '0 4px 18px rgba(124,58,237,0.32)',
+          }}
+        >
+          {busy === 'checkout' ? 'Loading…' : '☕ Subscribe — $5.99/mo'}
+        </button>
+      </div>
     </div>
   );
 }
