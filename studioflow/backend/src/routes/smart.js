@@ -16,6 +16,7 @@ const smartRateLimit = require('../middleware/smartRateLimit');
 const { smartUsageMiddleware, getUsageHandler } = require('../middleware/smartUsage');
 const pool = require('../../config/db');
 const { runJson, runText } = require('../lib/anthropic');
+const { buildRecitalPlan } = require('../lib/recitalPlanTemplate');
 
 // Apply auth to ALL smart routes
 router.use(auth());
@@ -23,16 +24,80 @@ router.use(auth());
 // Today's usage — read-only, doesn't count against the limit
 router.get('/usage/today', getUsageHandler);
 
-// Generate routes: rate-limited + persistently counted, shared across the school
-router.use(smartRateLimit);
-router.use(smartUsageMiddleware);
-
 function logSmart(req, action, ok, extra = {}) {
   const sid = req.user?.school_id;
   const uid = req.user?.id;
   const meta = JSON.stringify({ school: sid, user: uid, ...extra });
   console.log(`[smart] ${action} ${ok ? 'ok' : 'fail'} ${meta}`);
 }
+
+// ── Smart Plan — template-based, NO AI call ─────────────────────────────
+// Mounted BEFORE smartRateLimit + smartUsageMiddleware so it neither
+// gets rejected when a school hits its daily cap, nor burns quota on
+// success. Recital prep is industry-standard enough that a deterministic
+// template covers 90%+ of cases at $0 cost / <10ms latency.
+router.post('/generate-recital-plan', async (req, res) => {
+  try {
+    const { recital_id } = req.body || {};
+    if (!recital_id) return res.status(400).json({ error: 'recital_id required' });
+
+    const sid = req.user.school_id;
+    if (!sid) return res.status(403).json({ error: 'school context required' });
+
+    const [recitals] = await pool.query(
+      `SELECT r.id, r.title, r.event_date, r.event_time, r.venue, r.description,
+              s.name AS school_name, s.dance_style AS school_dance_style
+         FROM recitals r
+         JOIN schools s ON s.id = r.school_id
+        WHERE r.id = ? AND r.school_id = ? LIMIT 1`,
+      [recital_id, sid]
+    );
+    if (!recitals[0]) return res.status(404).json({ error: 'Recital not found' });
+    const r = recitals[0];
+
+    const [[participantStats]] = await pool.query(
+      'SELECT COUNT(*) AS n FROM recital_participants WHERE recital_id = ?',
+      [recital_id]
+    );
+
+    // event_date can come back from mysql2 as a Date object OR a string,
+    // depending on driver config. Normalise to YYYY-MM-DD before re-parsing.
+    const eventIso = r.event_date instanceof Date
+      ? r.event_date.toISOString().slice(0, 10)
+      : String(r.event_date).slice(0, 10);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const eventDate = new Date(eventIso + 'T00:00:00Z');
+    const daysUntil = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (isNaN(daysUntil)) return res.status(400).json({ error: 'Could not parse recital date' });
+    if (daysUntil < 0) return res.status(400).json({ error: 'Recital is in the past', event_date: eventIso });
+
+    const data = buildRecitalPlan({
+      eventDate: eventIso,
+      daysUntil,
+      danceStyle: r.school_dance_style,
+      title: r.title,
+      venue: r.venue,
+    });
+
+    logSmart(req, 'generate-recital-plan', true, {
+      recital: recital_id,
+      todos: data.todos?.length,
+      mode: 'template',
+      participants: participantStats.n,
+    });
+    res.json(data);
+  } catch (err) {
+    logSmart(req, 'generate-recital-plan', false, { msg: err.message });
+    res.status(500).json({ error: 'Smart Plan failed', detail: err.message });
+  }
+});
+
+// AI-powered routes below this line: rate-limited + persistently counted,
+// shared across the school. Only parse-events and draft-message hit
+// Anthropic, so only they burn quota.
+router.use(smartRateLimit);
+router.use(smartUsageMiddleware);
 
 // ── 1. Smart Add — parse natural-language event input ─────────────────────
 router.post('/parse-events', async (req, res) => {
@@ -108,91 +173,7 @@ Return JSON only.`;
   }
 });
 
-// ── 2. Smart Plan — generate recital countdown todos ─────────────────────
-router.post('/generate-recital-plan', async (req, res) => {
-  try {
-    const { recital_id } = req.body || {};
-    if (!recital_id) return res.status(400).json({ error: 'recital_id required' });
-
-    const sid = req.user.school_id;
-    if (!sid) return res.status(403).json({ error: 'school context required' });
-
-    const [recitals] = await pool.query(
-      `SELECT r.id, r.title, r.event_date, r.event_time, r.venue, r.description,
-              s.name AS school_name, s.dance_style AS school_dance_style
-         FROM recitals r
-         JOIN schools s ON s.id = r.school_id
-        WHERE r.id = ? AND r.school_id = ? LIMIT 1`,
-      [recital_id, sid]
-    );
-    if (!recitals[0]) return res.status(404).json({ error: 'Recital not found' });
-    const r = recitals[0];
-
-    const [[participantStats]] = await pool.query(
-      'SELECT COUNT(*) AS n FROM recital_participants WHERE recital_id = ?',
-      [recital_id]
-    );
-
-    // event_date can come back from mysql2 as a Date object OR a string,
-    // depending on driver config. Normalise to YYYY-MM-DD before re-parsing.
-    const eventIso = r.event_date instanceof Date
-      ? r.event_date.toISOString().slice(0, 10)
-      : String(r.event_date).slice(0, 10);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const eventDate = new Date(eventIso + 'T00:00:00Z');
-    const daysUntil = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    if (isNaN(daysUntil)) return res.status(400).json({ error: 'Could not parse recital date' });
-    if (daysUntil < 0) return res.status(400).json({ error: 'Recital is in the past', event_date: eventIso });
-
-    const system = `You generate practical recital production checklists for dance schools.
-Return ONLY valid JSON. No prose, no markdown.
-
-OUTPUT SCHEMA:
-{
-  "todos": [
-    {
-      "task_text": "Short imperative — what to do",
-      "days_before_event": number,
-      "suggested_due_date": "YYYY-MM-DD",
-      "category": "Venue" | "Costumes" | "Music" | "Communications" | "Rehearsal" | "Tech" | "Day-of" | "Other"
-    }
-  ],
-  "summary": "One short sentence summary"
-}
-
-RULES:
-- Order todos earliest-first (largest days_before_event first).
-- Cover the realistic span: venue/save-the-date/costumes/rehearsals/tech/RSVP/communications/day-of.
-- 8-15 todos total. Each task_text under 80 chars, action verb first.
-- days_before_event must be ≥ 0 and ≤ daysUntil. Don't generate todos for dates before today.
-- suggested_due_date = eventDate - days_before_event (calculate it).
-- Tailor a few items to the school's dance style if mentioned.`;
-
-    const user = `RECITAL:
-  Title: ${r.title}
-  School: ${r.school_name}
-  Dance style: ${r.school_dance_style || 'not specified'}
-  Event date: ${eventIso} (${daysUntil} days from today)
-  Venue: ${r.venue || 'not yet booked'}
-  Time: ${r.event_time || 'TBD'}
-  Description: ${r.description || '(none)'}
-  Participants so far: ${participantStats.n}
-
-TODAY: ${today.toISOString().slice(0, 10)}
-DAYS UNTIL EVENT: ${daysUntil}
-
-Generate a tailored countdown plan. JSON only.`;
-
-    const { data, usage, latencyMs } = await runJson({ system, user });
-    logSmart(req, 'generate-recital-plan', true, { recital: recital_id, todos: data.todos?.length, ms: latencyMs, in: usage.input_tokens, out: usage.output_tokens });
-    res.json(data);
-  } catch (err) {
-    logSmart(req, 'generate-recital-plan', false, { msg: err.message });
-    if (err.raw) console.error('[smart] raw output:', err.raw);
-    res.status(500).json({ error: 'Smart Plan failed', detail: err.message });
-  }
-});
+// ── 2. Smart Plan — registered above, before the AI middleware stack ────
 
 // ── 3. Smart Reply — draft a message about an event/recital/batch/student ─
 router.post('/draft-message', async (req, res) => {
