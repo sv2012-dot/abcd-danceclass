@@ -185,8 +185,8 @@ export default function BatchesPage() {
       await Promise.all(toDelete.map(s => schedulesApi.remove(sid, s.id)));
       await Promise.all(opsForExisting);
       await Promise.all(opsForNew);
-      qc.invalidateQueries(["batches",sid]);
-      qc.invalidateQueries(["schedules",sid]);
+      qc.invalidateQueries({ queryKey: ["batches",sid] });
+      qc.invalidateQueries({ queryKey: ["schedules",sid] });
       toast.success(panelMode === "edit" ? "Batch updated" : "Batch created");
       setActiveId(batchId);
       setPanelMode("view");
@@ -196,13 +196,13 @@ export default function BatchesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: id => api.remove(sid, id),
-    onSuccess: (_,id) => { qc.invalidateQueries(["batches",sid]); toast.success("Batch deleted"); if (activeId===id) { setActiveId(null); setPanelMode("view"); } },
+    onSuccess: (_,id) => { qc.invalidateQueries({ queryKey: ["batches",sid] }); toast.success("Batch deleted"); if (activeId===id) { setActiveId(null); setPanelMode("view"); } },
     onError: err => toast.error(err.error || "Failed"),
   });
 
   const uploadCoverMutation = useMutation({
     mutationFn: ({ id, cover_url }) => api.uploadCover(sid, id, cover_url),
-    onSuccess: () => { qc.invalidateQueries(["batches",sid]); toast.success("Cover photo updated"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["batches",sid] }); toast.success("Cover photo updated"); },
     onError:   err => toast.error(err.error || "Failed to update cover"),
   });
   const handleCoverConfirm = dataUrl => {
@@ -216,7 +216,7 @@ export default function BatchesPage() {
 
   const enrollMutation = useMutation({
     mutationFn: () => api.enroll(sid, enrollModal.id, enrollSel),
-    onSuccess: () => { qc.invalidateQueries(["batches",sid]); qc.invalidateQueries(["students",sid]); toast.success("Enrolment saved"); setEnrollModal(null); refreshDetail(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["batches",sid] }); qc.invalidateQueries({ queryKey: ["students",sid] }); toast.success("Enrolment saved"); setEnrollModal(null); refreshDetail(); },
     onError: err => toast.error(err.error || "Failed"),
   });
 

@@ -776,7 +776,7 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
 
   const createTodoMut = useMutation({
     mutationFn: ({ title, assigned_to }) => todosApi.create(sid, { title, recital_id: Number(id), assigned_to: assigned_to||null }),
-    onSuccess: () => { qc.invalidateQueries(["todos", sid]); setNewTask(""); setNewTaskAssignedTo(""); toast.success("To-do added"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["todos", sid] }); setNewTask(""); setNewTaskAssignedTo(""); toast.success("To-do added"); },
     onError: () => toast.error("Failed to add to-do"),
   });
 
@@ -791,12 +791,12 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
       return { prev };
     },
     onError: (_e, _id, ctx) => qc.setQueryData(["todos", sid], ctx.prev),
-    onSettled: () => qc.invalidateQueries(["todos", sid]),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["todos", sid] }),
   });
 
   const deleteTodoMut = useMutation({
     mutationFn: (taskId) => todosApi.remove(sid, taskId),
-    onSuccess: () => { qc.invalidateQueries(["todos", sid]); toast.success("To-do removed"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["todos", sid] }); toast.success("To-do removed"); },
     onError: () => toast.error("Failed to delete"),
   });
 
@@ -3017,7 +3017,7 @@ export default function RecitalsPage() {
   const saveMutation = useMutation({
     mutationFn: data => modal?.id ? api.update(sid, modal.id, data) : api.create(sid, data),
     onSuccess: () => {
-      qc.invalidateQueries(["recitals", sid]);
+      qc.invalidateQueries({ queryKey: ["recitals", sid] });
       toast.success(modal?.id ? "Event updated" : "Event created");
       setModal(null);
     },

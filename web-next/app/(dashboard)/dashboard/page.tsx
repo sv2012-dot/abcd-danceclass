@@ -349,7 +349,7 @@ export default function DashboardPage() {
   // ── Mutations ─────────────────────────────────────────────────────────────────
   const addTodo = useMutation({
     mutationFn: title => todoApi.create(sid, { title }),
-    onSuccess: () => { qc.invalidateQueries(['todos', sid]); setNewTodo(''); setAddingTodo(false); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['todos', sid] }); setNewTodo(''); setAddingTodo(false); },
   });
   const toggleTodo = useMutation({
     mutationFn: id => todoApi.toggle(sid, id),
@@ -364,11 +364,11 @@ export default function DashboardPage() {
       return { prev };
     },
     onError: (_e, _id, ctx) => { qc.setQueryData(['todos', sid], ctx.prev); },
-    onSettled: () => qc.invalidateQueries(['todos', sid]),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['todos', sid] }),
   });
   const deleteTodo = useMutation({
     mutationFn: id => todoApi.remove(sid, id),
-    onSuccess: () => qc.invalidateQueries(['todos', sid]),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['todos', sid] }),
   });
 
   // ── Derived data ──────────────────────────────────────────────────────────────
@@ -792,7 +792,7 @@ function SuperAdminDash() {
     mutationFn: (id) => schoolsApi.resetStripe(id),
     onSuccess: (_, id) => {
       setStripeDoneId(id);
-      qc.invalidateQueries(['schools']);
+      qc.invalidateQueries({ queryKey: ['schools'] });
       setTimeout(() => setStripeDoneId(null), 4000);
     },
   });
@@ -800,7 +800,7 @@ function SuperAdminDash() {
   const createMut = useMutation({
     mutationFn: (data) => schoolsApi.create(data),
     onSuccess: () => {
-      qc.invalidateQueries(['schools']);
+      qc.invalidateQueries({ queryKey: ['schools'] });
       setCreated({ name: form.name, admin_email: form.admin_email, admin_password: form.admin_password });
       setShowCreate(false);
       setForm(EMPTY_SCHOOL);

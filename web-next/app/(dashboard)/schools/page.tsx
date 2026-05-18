@@ -202,7 +202,7 @@ export default function SchoolsPage() {
 
   const createMutation = useMutation({
     mutationFn: data => schoolsApi.create(data),
-    onSuccess: () => { qc.invalidateQueries(['schools']); setModal(false); setForm(EMPTY_FORM); toast.success('School created'); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['schools'] }); setModal(false); setForm(EMPTY_FORM); toast.success('School created'); },
     onError: err => toast.error(err?.error || 'Error creating school'),
   });
 
@@ -214,19 +214,19 @@ export default function SchoolsPage() {
 
   const restoreMutation = useMutation({
     mutationFn: id => schoolsApi.restore(id),
-    onSuccess: () => { qc.invalidateQueries(['schools']); toast.success('School restored'); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['schools'] }); toast.success('School restored'); },
     onError: err => toast.error(err?.error || 'Restore failed'),
   });
 
   const seedMutation = useMutation({
     mutationFn: id => schoolsApi.seedSample(id),
-    onSuccess: () => { qc.invalidateQueries(['schools']); toast.success('Sample data seeded! 2 batches, 4 students, 4 recitals & 5 todos added.'); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['schools'] }); toast.success('Sample data seeded! 2 batches, 4 students, 4 recitals & 5 todos added.'); },
     onError: err => toast.error(err?.error || 'Seed failed'),
   });
 
   const toggleActiveMutation = useMutation({
     mutationFn: s => schoolsApi.update(s.id, { ...s, is_active: s.is_active ? 0 : 1 }),
-    onSuccess: (_, s) => { qc.invalidateQueries(['schools']); toast.success(s.is_active ? 'School deactivated' : 'School activated'); },
+    onSuccess: (_, s) => { qc.invalidateQueries({ queryKey: ['schools'] }); toast.success(s.is_active ? 'School deactivated' : 'School activated'); },
     onError: err => toast.error(err?.error || 'Update failed'),
   });
 
@@ -326,7 +326,7 @@ export default function SchoolsPage() {
         {deleteTarget && (
           <DeleteModal school={deleteTarget.school} stats={deleteTarget.stats}
             onClose={() => setDeleteTarget(null)}
-            onDeleted={() => { setDetail(null); qc.invalidateQueries(['schools']); }} />
+            onDeleted={() => { setDetail(null); qc.invalidateQueries({ queryKey: ['schools'] }); }} />
         )}
       </div>
     );
@@ -536,7 +536,7 @@ export default function SchoolsPage() {
       {deleteTarget && (
         <DeleteModal school={deleteTarget.school} stats={deleteTarget.stats}
           onClose={() => setDeleteTarget(null)}
-          onDeleted={() => { qc.invalidateQueries(['schools']); }} />
+          onDeleted={() => { qc.invalidateQueries({ queryKey: ['schools'] }); }} />
       )}
     </div>
   );

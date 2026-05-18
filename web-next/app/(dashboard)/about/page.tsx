@@ -383,7 +383,7 @@ export default function SchoolAboutPage() {
     mutationFn: data => schoolsApi.update(schoolId, data),
     onSuccess: updated => {
       const s = updated?.school || updated;
-      queryClient.invalidateQueries(['school', schoolId]);
+      queryClient.invalidateQueries({ queryKey: ['school', schoolId] });
       if (setSchool) setSchool(s);
       toast.success('Profile saved');
       setEditMode(false);

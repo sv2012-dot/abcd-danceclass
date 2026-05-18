@@ -207,7 +207,7 @@ export default function VendorsPage() {
   // Categories that actually have vendors
   const activeCats = ["All", ...CATEGORIES.map(c => c.key).filter(k => allVendors.some(v => v.category === k))];
 
-  const invalidate = () => qc.invalidateQueries(["vendors", sid]);
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["vendors", sid] });
 
   const removeMutation = useMutation({
     mutationFn: id => api.remove(sid, id),

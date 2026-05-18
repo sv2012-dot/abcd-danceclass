@@ -471,7 +471,7 @@ export default function StudiosPage() {
   const removeMutation = useMutation({
     mutationFn: id => api.remove(sid, id),
     onSuccess:  (_, id) => {
-      qc.invalidateQueries(["studios", sid]);
+      qc.invalidateQueries({ queryKey: ["studios", sid] });
       toast.success("Studio removed");
       if (selected?.id === id) setSelected(null);
     },
@@ -495,7 +495,7 @@ export default function StudiosPage() {
         setPanelMode(null);
         setSelected(null);
       }
-      qc.invalidateQueries(["studios", sid]);
+      qc.invalidateQueries({ queryKey: ["studios", sid] });
     } catch (err) { toast.error(err?.error || "Failed to save"); }
     finally       { setSaving(false); }
   };
@@ -506,7 +506,7 @@ export default function StudiosPage() {
         capacity: studio.capacity ? Number(studio.capacity) : null,
         hourly_rate: studio.hourly_rate ? Number(studio.hourly_rate) : null };
       await api.update(sid, studio.id, payload);
-      await qc.invalidateQueries(["studios", sid]);
+      await qc.invalidateQueries({ queryKey: ["studios", sid] });
       // keep selected in sync
       if (selected?.id === studio.id) setSelected(s => ({ ...s, is_favorite: payload.is_favorite }));
     }

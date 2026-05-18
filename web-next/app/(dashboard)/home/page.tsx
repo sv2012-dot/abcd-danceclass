@@ -606,11 +606,11 @@ function SchoolHomePage() {
       return { prev };
     },
     onError: (_e, _id, ctx) => { qc.setQueryData(['todos', sid], ctx.prev); },
-    onSettled: () => qc.invalidateQueries(['todos', sid]),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['todos', sid] }),
   });
   const deleteTodoMutation = useMutation({
     mutationFn: id => todosApi.remove(sid, id),
-    onSuccess: () => qc.invalidateQueries(['todos', sid]),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['todos', sid] }),
   });
 
   // Update poster_url in the recitals query cache immediately after upload,
@@ -1161,7 +1161,7 @@ function SuperAdminDash() {
     mutationFn: (id) => schools.resetStripe(id),
     onSuccess: (_, id) => {
       setStripeDoneId(id);
-      qc.invalidateQueries(['schools']);
+      qc.invalidateQueries({ queryKey: ['schools'] });
       setTimeout(() => setStripeDoneId(null), 4000);
     },
   });
@@ -1169,7 +1169,7 @@ function SuperAdminDash() {
   const createMut = useMutation({
     mutationFn: (data) => schools.create(data),
     onSuccess: () => {
-      qc.invalidateQueries(['schools']);
+      qc.invalidateQueries({ queryKey: ['schools'] });
       setCreated({ name: form.name, admin_email: form.admin_email, admin_password: form.admin_password });
       setShowCreate(false);
       setForm(EMPTY_SCHOOL);

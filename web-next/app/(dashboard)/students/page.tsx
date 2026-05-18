@@ -630,7 +630,7 @@ export default function StudentsPage() {
   // Parse comma-separated batch ID string from list query into number array
   const parseBatchIds = (str) => str ? String(str).split(",").map(Number).filter(Boolean) : [];
 
-  const invalidate = () => { qc.invalidateQueries(["students", sid]); qc.invalidateQueries(["stats", sid]); };
+  const invalidate = () => { qc.invalidateQueries({ queryKey: ["students", sid] }); qc.invalidateQueries({ queryKey: ["stats", sid] }); };
 
   const addMutation = useMutation({
     mutationFn: data => {
@@ -668,7 +668,7 @@ export default function StudentsPage() {
     try {
       await api.update(sid, selected.id, { bio: bioDraft });
       setSelected(s => ({ ...s, bio: bioDraft }));
-      qc.invalidateQueries(["students", sid]);
+      qc.invalidateQueries({ queryKey: ["students", sid] });
       setBioEditing(false);
     } catch (e) {
       toast.error(e?.error || "Failed to save bio");
@@ -690,8 +690,8 @@ export default function StudentsPage() {
         .filter(Boolean)
         .join(", ");
       setSelected((s) => ({ ...s, batches: newBatches, batch_ids: (enrollDraft || []).join(",") }));
-      qc.invalidateQueries(["students", sid]);
-      qc.invalidateQueries(["batches", sid]);
+      qc.invalidateQueries({ queryKey: ["students", sid] });
+      qc.invalidateQueries({ queryKey: ["batches", sid] });
       setEnrollEditing(false);
       toast.success("Enrolment updated");
     } catch (e) {
