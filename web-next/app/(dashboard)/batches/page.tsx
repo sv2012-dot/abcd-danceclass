@@ -16,6 +16,7 @@ import { TimeField, DurationField, DayOfWeekField } from "@/components/shared/da
 import { dowCodeToIndex, dowIndexToCode, addMinutesToTime, diffMinutes, formatTime as sharedFormatTime } from "@/lib/date";
 import SvgIcon from "@/components/shared/SvgIcon";
 import StudentAvatar from "@/components/shared/StudentAvatar";
+import CoverCropModal from "@/components/shared/CoverCropModal";
 import BatchAttendanceGrid from "@/components/attendance/BatchAttendanceGrid";
 import PageTabs from "@/components/shared/PageTabs";
 
@@ -34,199 +35,8 @@ const EMPTY     = { name:"", dance_style:"", level:"Beginner", teacher_name:"", 
 // to three rows on the backend on save (one schedule_row per day).
 const EMPTY_BLOCK = { daysOfWeek: [1], start_time: "17:00", duration: 60, room: "" };
 
-// ── Batch cover crop modal — 4:3 landscape, saves at 800×600 ────────────────
-function BatchCoverCropModal({ file, onConfirm, onCancel }) {
-  const canvasRef = useRef(null);
-  const imgRef    = useRef(null);
-  const stRef     = useRef({ scale:1, ox:0, oy:0, dragging:false, lastX:0, lastY:0, lastDist:0 });
-  const [ready,  setReady]  = useState(false);
-  const [saving, setSaving] = useState(false);
-  const isMob = typeof window !== 'undefined' && window.innerWidth < 768;
-
-  // Canvas / crop window dimensions — landscape 16:9
-  const CW    = isMob ? Math.min(window.innerWidth, 420) : 480;
-  const PAD   = isMob ? 14 : 20;
-  const CROPW = CW - PAD * 2;
-  const CROPH = Math.round(CROPW * 9 / 16);  // 16:9 landscape ratio
-  const CH    = CROPH + PAD * 2;
-  const CROPX = PAD;
-  const CROPY = PAD;
-
-  const draw = () => {
-    const canvas = canvasRef.current;
-    const img    = imgRef.current;
-    if (!canvas || !img) return;
-    const ctx = canvas.getContext('2d');
-    const { scale, ox, oy } = stRef.current;
-    ctx.clearRect(0, 0, CW, CH);
-    ctx.drawImage(img, ox, oy, img.naturalWidth * scale, img.naturalHeight * scale);
-    ctx.fillStyle = 'rgba(0,0,0,0.58)';
-    ctx.fillRect(0, 0, CW, CROPY);
-    ctx.fillRect(0, CROPY + CROPH, CW, CH - CROPY - CROPH);
-    ctx.fillRect(0, CROPY, CROPX, CROPH);
-    ctx.fillRect(CROPX + CROPW, CROPY, CW - CROPX - CROPW, CROPH);
-    ctx.strokeStyle = 'rgba(255,255,255,0.88)';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(CROPX + 0.75, CROPY + 0.75, CROPW - 1.5, CROPH - 1.5);
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    [1, 2].forEach(n => {
-      ctx.moveTo(CROPX + CROPW * n / 3, CROPY);
-      ctx.lineTo(CROPX + CROPW * n / 3, CROPY + CROPH);
-      ctx.moveTo(CROPX, CROPY + CROPH * n / 3);
-      ctx.lineTo(CROPX + CROPW, CROPY + CROPH * n / 3);
-    });
-    ctx.stroke();
-    const ARM = 20;
-    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'square';
-    ctx.beginPath();
-    [
-      [CROPX,         CROPY,          1,  1],
-      [CROPX + CROPW, CROPY,         -1,  1],
-      [CROPX,         CROPY + CROPH,  1, -1],
-      [CROPX + CROPW, CROPY + CROPH, -1, -1],
-    ].forEach(([x, y, dx, dy]) => {
-      ctx.moveTo(x + dx * ARM, y);
-      ctx.lineTo(x, y);
-      ctx.lineTo(x, y + dy * ARM);
-    });
-    ctx.stroke();
-  };
-
-  const clampOffset = (ox, oy, scale) => {
-    const img = imgRef.current;
-    if (!img) return { ox, oy };
-    return {
-      ox: Math.min(CROPX, Math.max(CROPX + CROPW - img.naturalWidth  * scale, ox)),
-      oy: Math.min(CROPY, Math.max(CROPY + CROPH - img.naturalHeight * scale, oy)),
-    };
-  };
-
-  const applyTransform = (newScale, newOx, newOy) => {
-    const img = imgRef.current;
-    if (!img) return;
-    const minS = Math.max(CROPW / img.naturalWidth, CROPH / img.naturalHeight);
-    const s    = Math.min(Math.max(newScale, minS), minS * 5);
-    const { ox, oy } = clampOffset(newOx, newOy, s);
-    Object.assign(stRef.current, { scale: s, ox, oy });
-    draw();
-  };
-
-  useEffect(() => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      imgRef.current = img;
-      URL.revokeObjectURL(url);
-      const minS = Math.max(CROPW / img.naturalWidth, CROPH / img.naturalHeight);
-      const ox   = CROPX + (CROPW - img.naturalWidth  * minS) / 2;
-      const oy   = CROPY + (CROPH - img.naturalHeight * minS) / 2;
-      Object.assign(stRef.current, { scale: minS, ox, oy });
-      setReady(true);
-      requestAnimationFrame(draw);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); onCancel(); };
-    img.src = url;
-  }, []); // eslint-disable-line
-
-  const onMD = e => { stRef.current.dragging = true; stRef.current.lastX = e.clientX; stRef.current.lastY = e.clientY; };
-  const onMM = e => {
-    if (!stRef.current.dragging) return;
-    const { lastX, lastY, scale, ox, oy } = stRef.current;
-    stRef.current.lastX = e.clientX; stRef.current.lastY = e.clientY;
-    applyTransform(scale, ox + e.clientX - lastX, oy + e.clientY - lastY);
-  };
-  const onMU = () => { stRef.current.dragging = false; };
-  const onWheel = e => {
-    e.preventDefault();
-    const f  = e.deltaY > 0 ? 0.92 : 1.09;
-    const ns = stRef.current.scale * f;
-    const rect = canvasRef.current.getBoundingClientRect();
-    applyTransform(ns,
-      (e.clientX - rect.left) - (e.clientX - rect.left - stRef.current.ox) * (ns / stRef.current.scale),
-      (e.clientY - rect.top)  - (e.clientY - rect.top  - stRef.current.oy) * (ns / stRef.current.scale),
-    );
-  };
-  const onTS = e => {
-    if (e.touches.length === 1) { stRef.current.dragging = true; stRef.current.lastX = e.touches[0].clientX; stRef.current.lastY = e.touches[0].clientY; }
-    else if (e.touches.length === 2) { stRef.current.dragging = false; const dx=e.touches[0].clientX-e.touches[1].clientX; const dy=e.touches[0].clientY-e.touches[1].clientY; stRef.current.lastDist=Math.sqrt(dx*dx+dy*dy); }
-  };
-  const onTM = e => {
-    e.preventDefault();
-    const { scale, ox, oy, lastX, lastY } = stRef.current;
-    if (e.touches.length === 1 && stRef.current.dragging) {
-      stRef.current.lastX = e.touches[0].clientX; stRef.current.lastY = e.touches[0].clientY;
-      applyTransform(scale, ox + e.touches[0].clientX - lastX, oy + e.touches[0].clientY - lastY);
-    } else if (e.touches.length === 2) {
-      const dx=e.touches[0].clientX-e.touches[1].clientX; const dy=e.touches[0].clientY-e.touches[1].clientY;
-      const dist=Math.sqrt(dx*dx+dy*dy); const f=dist/stRef.current.lastDist; stRef.current.lastDist=dist;
-      const rect=canvasRef.current.getBoundingClientRect();
-      const mx=(e.touches[0].clientX+e.touches[1].clientX)/2-rect.left;
-      const my=(e.touches[0].clientY+e.touches[1].clientY)/2-rect.top;
-      const ns=scale*f;
-      applyTransform(ns, mx-(mx-ox)*(ns/scale), my-(my-oy)*(ns/scale));
-    }
-  };
-  const onTE = () => { stRef.current.dragging = false; };
-
-  const handleConfirm = () => {
-    if (!imgRef.current) return;
-    setSaving(true);
-    const { scale, ox, oy } = stRef.current;
-    const out = document.createElement('canvas');
-    out.width  = 800;
-    out.height = 450;  // 16:9 landscape at target resolution
-    out.getContext('2d').drawImage(imgRef.current,
-      (CROPX - ox) / scale, (CROPY - oy) / scale, CROPW / scale, CROPH / scale,
-      0, 0, 800, 450
-    );
-    onConfirm(out.toDataURL('image/jpeg', 0.78));
-  };
-
-  return (
-    <div style={{ position:'fixed', inset:0, zIndex:3000, background:'#0c0c0c', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ width: isMob ? '100%' : CW, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 20px', boxSizing:'border-box', flexShrink:0 }}>
-        <div>
-          <div style={{ color:'#fff', fontWeight:700, fontSize:15 }}>Set Batch Cover</div>
-          <div style={{ color:'rgba(255,255,255,0.45)', fontSize:11, marginTop:2 }}>
-            {isMob ? 'Drag to reposition · Pinch to zoom' : 'Drag to reposition · Scroll to zoom'}
-          </div>
-        </div>
-        <button onClick={onCancel} style={{ background:'rgba(255,255,255,0.1)', border:'none', borderRadius:'50%', width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.7)', cursor:'pointer', fontSize:18, lineHeight:1, flexShrink:0 }}>✕</button>
-      </div>
-
-      {!ready && <div style={{ color:'rgba(255,255,255,0.35)', fontSize:13, padding:60 }}>Loading image…</div>}
-      <canvas
-        ref={canvasRef}
-        width={CW} height={CH}
-        style={{ display: ready ? 'block' : 'none', cursor:'grab', touchAction:'none', borderRadius: isMob ? 0 : 12, flexShrink:0 }}
-        onMouseDown={onMD} onMouseMove={onMM} onMouseUp={onMU} onMouseLeave={onMU}
-        onWheel={onWheel}
-        onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE}
-      />
-
-      {ready && (
-        <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:10 }}>
-          <span style={{ background:'rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.55)', fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, letterSpacing:'.06em' }}>16 : 9</span>
-          <span style={{ color:'rgba(255,255,255,0.35)', fontSize:10 }}>800 × 450 px</span>
-        </div>
-      )}
-
-      <div style={{ display:'flex', gap:10, marginTop:16, paddingBottom:'max(20px, env(safe-area-inset-bottom))', flexShrink:0 }}>
-        <button onClick={onCancel} style={{ padding:'10px 22px', background:'rgba(255,255,255,0.1)', border:'none', borderRadius:9, color:'#fff', fontSize:14, fontWeight:600, cursor:'pointer' }}>
-          Cancel
-        </button>
-        <button onClick={handleConfirm} disabled={!ready || saving}
-          style={{ padding:'10px 28px', background:'#7C3AED', border:'none', borderRadius:9, color:'#fff', fontSize:14, fontWeight:700, cursor: ready && !saving ? 'pointer' : 'not-allowed', opacity: ready && !saving ? 1 : 0.6 }}>
-          {saving ? 'Saving…' : 'Use this photo →'}
-        </button>
-      </div>
-    </div>
-  );
-}
+// BatchCoverCropModal removed — the shared <CoverCropModal variant="hero" />
+// covers this exact use case (16:9 landscape, 1280×720). See its docs.
 
 function PSection({ title, children }) {
   return (
@@ -875,10 +685,11 @@ export default function BatchesPage() {
         }}
       />
 
-      {/* ── Batch cover crop modal ── */}
+      {/* ── Batch cover crop modal — shared component, 16:9 landscape ── */}
       {coverCropFile && (
-        <BatchCoverCropModal
+        <CoverCropModal
           file={coverCropFile}
+          variant="hero"
           onConfirm={handleCoverConfirm}
           onCancel={() => setCoverCropFile(null)}
         />

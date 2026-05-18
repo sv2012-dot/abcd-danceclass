@@ -524,7 +524,9 @@ export default function SchedulePage() {
   });
 
   // Event cover handlers — opens file picker, then CoverCropModal, then
-  // uploads to Cloudinary, then PUTs the resulting URL onto the event.
+  // uploads to Cloudinary, then PUTs the resulting URL onto the event
+  // OR the linked batch (for recurring class instances, which have no
+  // event row of their own).
   const openCoverPicker = () => coverFileInputRef.current?.click();
   const handleCoverFilePick = (e) => {
     const f = e.target.files?.[0];
@@ -532,16 +534,27 @@ export default function SchedulePage() {
     if (f) setCoverCropFile(f);
   };
   const handleCoverConfirm = async (dataUrl) => {
-    if (!detailEvent || detailEvent._isSchedule) { setCoverCropFile(null); return; }
+    if (!detailEvent) { setCoverCropFile(null); return; }
     setUploadingEventCover(true);
     try {
       const up = await uploadApi.image(dataUrl);
       const url = up?.url || dataUrl;
-      const updated = await api.uploadCover(sid, detailEvent.id, url);
-      // Update both the cached event list and the open detail panel
-      qc.invalidateQueries({ queryKey: ["events"], exact: false });
-      setDetailEvent(prev => prev ? { ...prev, cover_url: url, ...updated } : prev);
-      toast.success("Cover updated");
+      // Recurring class instances (_isSchedule:true) don't have an
+      // events.id of their own — they're synthesised from a schedule
+      // row. Save to the linked batch's cover so every future instance
+      // inherits it. Falls through to event-cover if no batch link.
+      const batchId = detailEvent._batchId || detailEvent._isSchedule && detailEvent.batches?.[0]?.id;
+      if (detailEvent._isSchedule && batchId) {
+        await batchesApi.uploadCover(sid, batchId, url);
+        qc.invalidateQueries({ queryKey: ["batches"], exact: false });
+        qc.invalidateQueries({ queryKey: ["events"], exact: false });
+        toast.success("Batch cover updated — every class in this series now shows it");
+      } else {
+        const updated = await api.uploadCover(sid, detailEvent.id, url);
+        qc.invalidateQueries({ queryKey: ["events"], exact: false });
+        setDetailEvent(prev => prev ? { ...prev, cover_url: url, ...updated } : prev);
+        toast.success("Cover updated");
+      }
     } catch (err) {
       toast.error(err?.error || "Failed to upload cover");
     } finally {
@@ -1291,19 +1304,24 @@ export default function SchedulePage() {
                     }}>← Close</button>
                     {isAdmin && (
                       <div style={{ display:"flex", gap:8 }}>
-                        {/* Cover camera — one-off events only. Recurring
-                            class instances inherit the batch cover and
-                            can't be overridden per-occurrence. */}
-                        {!e._isSchedule && (
-                          <button
-                            onClick={openCoverPicker}
-                            disabled={uploadingEventCover}
-                            title={e.cover_url ? "Change cover" : usingBatchCover ? "Override batch cover" : "Add cover"}
-                            style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor: uploadingEventCover ? "wait" : "pointer" }}
-                          >
-                            <SvgIcon name="camera" size={15} color="rgba(255,255,255,.85)" />
-                          </button>
-                        )}
+                        {/* Cover camera — always available. For one-off
+                            events the upload becomes a per-event cover
+                            override. For recurring class instances it
+                            saves to the linked BATCH cover (every class
+                            in the series inherits) since synthetic
+                            instances have no events.id of their own. */}
+                        <button
+                          onClick={openCoverPicker}
+                          disabled={uploadingEventCover}
+                          title={
+                            e._isSchedule
+                              ? "Set / change the batch cover for this class series"
+                              : e.cover_url ? "Change cover" : usingBatchCover ? "Override batch cover" : "Add cover"
+                          }
+                          style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor: uploadingEventCover ? "wait" : "pointer" }}
+                        >
+                          <SvgIcon name="camera" size={15} color="rgba(255,255,255,.85)" />
+                        </button>
                         <button
                           onClick={() => e._isSchedule ? openOverride(e) : openEdit(e)}
                           title="Edit"
@@ -1647,6 +1665,7 @@ export default function SchedulePage() {
       {coverCropFile && (
         <CoverCropModal
           file={coverCropFile}
+          variant="hero"
           onConfirm={handleCoverConfirm}
           onCancel={() => setCoverCropFile(null)}
         />
