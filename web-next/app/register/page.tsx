@@ -61,7 +61,7 @@ type ExistingPrompt = {
 };
 
 function RegisterForm() {
-  const { user, loading: authLoading, setSession } = useAuth() as any;
+  const { user, loading: authLoading, setSession, logout } = useAuth() as any;
   const router = useRouter();
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
@@ -94,10 +94,10 @@ function RegisterForm() {
     school: any;
   } | null>(null);
 
-  // If already logged in, kick to dashboard — must sign out first to register another
-  useEffect(() => {
-    if (user && !authLoading) router.push('/');
-  }, [user, authLoading, router]);
+  // Signed-in users hit an interstitial below instead of being silently
+  // redirected. The old behavior (router.push('/') → home) made it look
+  // like the "Register School" link didn't work. Now they see a clear
+  // "you're already signed in, sign out first" card.
 
   // Pre-fill from Google redirect (legacy path from /login → /register)
   useEffect(() => {
@@ -501,6 +501,66 @@ function RegisterForm() {
       </div>
     </div>
   );
+
+  // ── Already signed in? Show a clear interstitial instead of silently
+  // redirecting to /. Users clicking "Register School" from the landing
+  // page were ending up on /home with no explanation; this card makes
+  // the rule visible and gives them a path forward.
+  if (user && !authLoading) {
+    const handleSignOut = () => {
+      if (typeof logout === 'function') logout();
+      // Stay on /register so they immediately see the form after sign-out.
+      // useAuth re-renders → user becomes null → form mounts below.
+    };
+    return (
+      <AuthBackground>
+        <div
+          style={{
+            position: 'relative', zIndex: 4,
+            width: '100%', maxWidth: 460,
+            background: 'var(--card)', color: 'var(--text)',
+            borderRadius: 20, padding: isMobile ? '28px 22px' : '36px 40px',
+            boxShadow: '0 30px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.06)',
+            textAlign: 'center',
+          }}
+        >
+          <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ width: 56, height: 56, borderRadius: '50%', display: 'inline-block', marginBottom: 14 }} />
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', margin: '0 0 8px' }}>
+            You're already signed in
+          </h2>
+          <p style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.55, margin: '0 0 22px' }}>
+            Signed in as <strong style={{ color: 'var(--text)' }}>{user.email}</strong>.
+            <br />
+            To register a brand-new studio, sign out first. Or continue back to your current studio.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              onClick={handleSignOut}
+              style={{
+                width: '100%', padding: '12px',
+                background: GRAD, color: '#fff', border: 'none',
+                borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                boxShadow: '0 6px 18px rgba(124,58,237,0.35)',
+              }}
+            >
+              Sign out & register a new studio
+            </button>
+            <button
+              onClick={() => redirectToDashboard(router)}
+              style={{
+                width: '100%', padding: '12px',
+                background: 'transparent', color: 'var(--text)',
+                border: '1.5px solid var(--border)', borderRadius: 10,
+                fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              ← Back to my studio
+            </button>
+          </div>
+        </div>
+      </AuthBackground>
+    );
+  }
 
   // ── Layout — island on dynamic video background ──────────────────────
   return (
