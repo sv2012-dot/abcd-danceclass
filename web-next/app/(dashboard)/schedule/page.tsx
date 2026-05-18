@@ -365,11 +365,16 @@ export default function SchedulePage() {
             end_datetime:   `${ds}T${sch.end_time   || "01:00"}`,
             location:       sch.room || "",
             batches:        batch
-              ? [{ id: batch.id, name: batch.name, student_count: batch.student_count }]
+              ? [{ id: batch.id, name: batch.name, student_count: batch.student_count, cover_url: batch.cover_url }]
               : (sch.batch_id ? [{ id: sch.batch_id, name: batchName }] : []),
             _isSchedule:    true,
             _scheduleId:    sch.id,
             _batchId:       batch?.id ?? sch.batch_id ?? null,
+            // Carry the batch cover onto the synthetic event itself too,
+            // so the detail-panel hero doesn't depend on a re-lookup that
+            // could fail if the batches cache lags or the batch was
+            // filtered out for any reason.
+            _batchCoverUrl: batch?.cover_url || null,
           });
         }
         cur.setDate(cur.getDate() + 7);
@@ -537,22 +542,26 @@ export default function SchedulePage() {
     if (!detailEvent) { setCoverCropFile(null); return; }
     setUploadingEventCover(true);
     try {
-      const up = await uploadApi.image(dataUrl);
-      const url = up?.url || dataUrl;
-      // Recurring class instances (_isSchedule:true) don't have an
-      // events.id of their own — they're synthesised from a schedule
-      // row. Save to the linked batch's cover so every future instance
-      // inherits it. Falls through to event-cover if no batch link.
-      const batchId = detailEvent._batchId || detailEvent._isSchedule && detailEvent.batches?.[0]?.id;
+      // Send the data URL DIRECTLY — both the batches/:id/cover and
+      // events/:id/cover backend endpoints store the URL as-is in
+      // MySQL. The batches endpoint also VALIDATES that input starts
+      // with `data:image/` and rejects anything else with
+      // "cover_url must be a data: image URL or empty". So skipping
+      // the Cloudinary round-trip here keeps both paths consistent
+      // and matches the existing batches/page.tsx upload flow.
+      //
+      // Trade-off: ~200-400KB base64 string stored in MySQL per cover.
+      // Acceptable for admin-set covers; would matter at scale.
+      const batchId = detailEvent._batchId || (detailEvent._isSchedule && detailEvent.batches?.[0]?.id);
       if (detailEvent._isSchedule && batchId) {
-        await batchesApi.uploadCover(sid, batchId, url);
+        await batchesApi.uploadCover(sid, batchId, dataUrl);
         qc.invalidateQueries({ queryKey: ["batches"], exact: false });
         qc.invalidateQueries({ queryKey: ["events"], exact: false });
         toast.success("Batch cover updated — every class in this series now shows it");
       } else {
-        const updated = await api.uploadCover(sid, detailEvent.id, url);
+        const updated = await api.uploadCover(sid, detailEvent.id, dataUrl);
         qc.invalidateQueries({ queryKey: ["events"], exact: false });
-        setDetailEvent(prev => prev ? { ...prev, cover_url: url, ...updated } : prev);
+        setDetailEvent(prev => prev ? { ...prev, cover_url: dataUrl, ...updated } : prev);
         toast.success("Cover updated");
       }
     } catch (err) {
@@ -1243,11 +1252,22 @@ export default function SchedulePage() {
             const primaryBatch = evBatches[0]
               ? batches.find(x => x.id === evBatches[0].id || String(x.id) === String(evBatches[0].id))
               : null;
-            // Cover photo: per-event override wins; otherwise fall back to
-            // the linked batch's cover. Both can be empty (then we use the
-            // gradient placeholder).
-            const heroImg = e.cover_url || primaryBatch?.cover_url || null;
-            const usingBatchCover = !e.cover_url && !!primaryBatch?.cover_url;
+            // Cover photo fallback chain:
+            //   1. per-event override (e.cover_url, set via this panel)
+            //   2. primaryBatch.cover_url (from the global batches query)
+            //   3. _batchCoverUrl baked into the synthetic event at
+            //      schedule-expansion time — handles stale/missing
+            //      batches cache so recurring class instances still
+            //      render their batch's cover even if the global query
+            //      hasn't refetched.
+            //   4. evBatches[0].cover_url — same data via different path
+            const heroImg =
+              e.cover_url
+              || primaryBatch?.cover_url
+              || e._batchCoverUrl
+              || evBatches[0]?.cover_url
+              || null;
+            const usingBatchCover = !e.cover_url && !!(primaryBatch?.cover_url || e._batchCoverUrl);
 
             // Close — if the user got here from the dashboard, route them
             // back to /home; otherwise just clear the panel in place.
