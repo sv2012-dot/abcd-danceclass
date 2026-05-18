@@ -347,8 +347,15 @@ export default function SchedulePage() {
       // OR when batches haven't loaded yet. Previously we did `continue`
       // here, which silently dropped synthetic events and broke dashboard
       // navigation for users whose batch list lagged behind.
+      //
+      // For cover_url specifically: the /batches list endpoint hides
+      // inactive batches, but schedule rows can point at inactive
+      // batches. So we ALSO take batch_cover_url straight from the
+      // schedule row (backend joins it in) — this works whether or not
+      // the batch is in the active list.
       const batch = batches.find(b => String(b.id) === String(sch.batch_id));
       const batchName = batch?.name || sch.batch_name || 'Class';
+      const batchCoverUrl = batch?.cover_url || sch.batch_cover_url || null;
       const dow = SCHED_DOW[sch.day_of_week];
       if (dow === undefined) continue;
       const cur = new Date(rangeFrom);
@@ -365,16 +372,15 @@ export default function SchedulePage() {
             end_datetime:   `${ds}T${sch.end_time   || "01:00"}`,
             location:       sch.room || "",
             batches:        batch
-              ? [{ id: batch.id, name: batch.name, student_count: batch.student_count, cover_url: batch.cover_url }]
-              : (sch.batch_id ? [{ id: sch.batch_id, name: batchName }] : []),
+              ? [{ id: batch.id, name: batch.name, student_count: batch.student_count, cover_url: batchCoverUrl }]
+              : (sch.batch_id ? [{ id: sch.batch_id, name: batchName, cover_url: batchCoverUrl }] : []),
             _isSchedule:    true,
             _scheduleId:    sch.id,
             _batchId:       batch?.id ?? sch.batch_id ?? null,
-            // Carry the batch cover onto the synthetic event itself too,
-            // so the detail-panel hero doesn't depend on a re-lookup that
-            // could fail if the batches cache lags or the batch was
-            // filtered out for any reason.
-            _batchCoverUrl: batch?.cover_url || null,
+            // Cover URL comes from either the active batches list OR
+            // (when the batch has been deactivated) the schedule row's
+            // joined batch_cover_url. Either way the hero renders.
+            _batchCoverUrl: batchCoverUrl,
           });
         }
         cur.setDate(cur.getDate() + 7);
@@ -1268,25 +1274,6 @@ export default function SchedulePage() {
               || evBatches[0]?.cover_url
               || null;
             const usingBatchCover = !e.cover_url && !!(primaryBatch?.cover_url || e._batchCoverUrl);
-            // ── Temporary debug log — remove after we confirm the fix ──
-            if (typeof window !== 'undefined' && e._isSchedule) {
-              const head = (v) => typeof v === 'string' ? v.slice(0, 40) : v;
-              // eslint-disable-next-line no-console
-              console.log('[hero debug]', {
-                eId: e.id,
-                eIsSchedule: e._isSchedule,
-                eBatchId: e._batchId,
-                eCoverUrl: head(e.cover_url),
-                primaryBatchFound: !!primaryBatch,
-                primaryBatchId: primaryBatch?.id,
-                primaryBatchCover: head(primaryBatch?.cover_url),
-                eBatchCoverUrlField: head(e._batchCoverUrl),
-                evBatches0Cover: head(evBatches[0]?.cover_url),
-                batchesLen: batches.length,
-                batchesIds: batches.map(b => b.id),
-                heroImgResolved: head(heroImg),
-              });
-            }
 
             // Close — if the user got here from the dashboard, route them
             // back to /home; otherwise just clear the panel in place.

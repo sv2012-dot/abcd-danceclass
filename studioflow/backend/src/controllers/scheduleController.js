@@ -2,8 +2,15 @@ const pool = require('../../config/db');
 
 exports.list = async (req, res) => {
   try {
+    // Include b.cover_url + b.is_active so the schedule frontend doesn't
+    // need a separate batches-list lookup to render the hero image. The
+    // batches/list endpoint filters out inactive batches, but schedule
+    // rows can still reference them — that caused the recurring class
+    // hero on /schedule to fall to the gradient placeholder whenever a
+    // batch had been soft-deleted while its schedules remained.
     const [rows] = await pool.query(`
-      SELECT sc.*, b.name as batch_name, b.dance_style, b.level
+      SELECT sc.*, b.name as batch_name, b.dance_style, b.level,
+             b.cover_url as batch_cover_url, b.is_active as batch_is_active
       FROM schedules sc JOIN batches b ON b.id = sc.batch_id
       WHERE sc.school_id = ?
       ORDER BY FIELD(sc.day_of_week,'Mon','Tue','Wed','Thu','Fri','Sat','Sun'), sc.start_time
