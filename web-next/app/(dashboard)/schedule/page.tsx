@@ -938,11 +938,16 @@ export default function SchedulePage() {
 
   // ── Mobile Events List ───────────────────────────────────────────────────
   const MobileEventsList = () => {
-    const dateStr = selectedDay ? selectedDay.toISOString().slice(0,10) : today.toISOString().slice(0,10);
+    // Build dateStr from LOCAL components, not toISOString (which is UTC).
+    // In PST today=2pm May 17 → toISOString → "2026-05-18..." → header
+    // said "May 17" but events filter ran against "2026-05-18" → empty.
+    const d = selectedDay || today;
+    const pad = (n) => String(n).padStart(2, '0');
+    const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     const dayEvents = events
       .filter(e => e.start_datetime?.slice(0,10) === dateStr)
       .sort((a,b) => a.start_datetime.localeCompare(b.start_datetime));
-    const dateLabel = (selectedDay||today).toLocaleDateString([], {weekday:"long",month:"long",day:"numeric"});
+    const dateLabel = d.toLocaleDateString([], {weekday:"long",month:"long",day:"numeric"});
     return (
       <div>
         <div style={{fontSize:12,fontWeight:700,color:"var(--muted)",marginBottom:0,textTransform:"uppercase",letterSpacing:"0.06em",padding:"0 4px 12px"}}>{dateLabel}</div>

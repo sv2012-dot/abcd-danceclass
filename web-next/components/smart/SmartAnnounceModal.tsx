@@ -63,6 +63,22 @@ const STUDENT_PRESETS: { id: string; label: string; headline: string; purpose: s
   { id: 'custom',        label: 'Custom (write yourself)',      headline: 'Message',               purpose: '',                                                                                                                                                  tone: 'friendly' },
 ];
 
+// Recital-specific presets — surfaced when contextType === 'recital'.
+// Recitals have distinct comms milestones: save-the-date, RSVP push,
+// arrival reminders the day before, costume / tickets info, and the
+// post-show thank-you. The generic "confirm class" / "cancel" set
+// doesn't fit recitals.
+const RECITAL_PRESETS: { id: string; label: string; headline: string; purpose: string; tone: SmartReplyTone }[] = [
+  { id: 'save_the_date', label: 'Save the date',                headline: 'Save the date',         purpose: 'Announce the recital date, venue (if booked), and ask families to save the date. Build excitement.',                                       tone: 'friendly' },
+  { id: 'rsvp',          label: 'Ask for RSVP',                 headline: 'Please RSVP',           purpose: 'Politely ask parents to RSVP via the public recital page so we can plan seating, costumes, and program order.',                                tone: 'friendly' },
+  { id: 'tickets',       label: 'Ticket / seating info',        headline: 'Tickets & seating',     purpose: 'Share ticket pickup details and reserved-seating info. Mention guest count limits if any.',                                                  tone: 'friendly' },
+  { id: 'costume',       label: 'Costume / arrival prep',       headline: 'Costume & arrival',     purpose: "Day-before prep — what costume to wear, hair/makeup, arrival time, what to bring. Make it easy for parents to follow.",                       tone: 'friendly' },
+  { id: 'day_before',    label: 'Day-before reminder',          headline: 'Tomorrow!',             purpose: 'Warm reminder that the recital is tomorrow. Restate the venue, arrival time, and any final notes.',                                          tone: 'friendly' },
+  { id: 'thanks_after',  label: 'Thank you after the show',     headline: 'What a show!',          purpose: 'Post-recital thank-you to all participating families. Celebrate the performance and tease the next term / class.',                          tone: 'friendly' },
+  { id: 'reschedule',    label: 'Reschedule or change of plan', headline: 'Recital update',        purpose: 'Communicate a date / venue / time change clearly and apologize for any inconvenience. Give the new details up front.',                       tone: 'apologetic' },
+  { id: 'custom',        label: 'Custom (write yourself)',      headline: 'Recital announcement',  purpose: '',                                                                                                                                            tone: 'friendly' },
+];
+
 const TONE_OPTIONS: { id: SmartReplyTone; label: string }[] = [
   { id: 'friendly',   label: 'Friendly' },
   { id: 'formal',     label: 'Formal' },
@@ -118,12 +134,13 @@ function EventCard({ ctx, color }: { ctx: AnnounceContextData; color: string }) 
 }
 
 export default function SmartAnnounceModal({ open, onClose, ctx, inline = false }: Props) {
-  // Student profile uses a different preset set (fees / praise / thanks /
-  // recital appreciation / custom). Everything else (event / batch /
-  // recital announcements) keeps the default preset list.
+  // Context-specific preset sets. Student → fees/praise/etc. Recital
+  // → save-the-date/RSVP/ticket info/etc. Everything else (event, batch)
+  // keeps the generic class-oriented set.
   const isStudent = ctx?.contextType === 'student';
-  const presets = isStudent ? STUDENT_PRESETS : PURPOSE_PRESETS;
-  const defaultPresetId = isStudent ? 'fees' : 'reminder';
+  const isRecital = ctx?.contextType === 'recital';
+  const presets = isStudent ? STUDENT_PRESETS : isRecital ? RECITAL_PRESETS : PURPOSE_PRESETS;
+  const defaultPresetId = isStudent ? 'fees' : isRecital ? 'rsvp' : 'reminder';
 
   const [presetId, setPresetId] = useState(defaultPresetId);
   const [tone, setTone] = useState<SmartReplyTone>('friendly');

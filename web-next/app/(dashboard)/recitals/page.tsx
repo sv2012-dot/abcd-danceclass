@@ -436,7 +436,16 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     if (savedInsta) { setInstaUrl(savedInsta); setInstaInput(savedInsta); }
 
     const savedVenue = localStorage.getItem(VENUE_KEY);
-    if (savedVenue) { try { const v = JSON.parse(savedVenue); setVenueDetails(v); setVenueForm(v); } catch {} }
+    if (savedVenue) {
+      try { const v = JSON.parse(savedVenue); setVenueDetails(v); setVenueForm(v); } catch {}
+    } else if (recital?.venue && recital.venue !== 'TBD') {
+      // No localStorage yet — seed the Venue Details "Name" field from
+      // the simple recital.venue value so the two surfaces don't show
+      // contradictory data. Empty/TBD recital.venue stays blank.
+      const seeded = { ...EMPTY_VENUE, name: recital.venue };
+      setVenueDetails(seeded);
+      setVenueForm(seeded);
+    }
 
     const savedVenueConvo = localStorage.getItem(VENUE_CONVO_KEY);
     if (savedVenueConvo) setVenueConvo(savedVenueConvo);
@@ -1429,12 +1438,17 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
 
             {/* Left: description + important info */}
             <div style={{ flex:1, minWidth:0, padding: isMobile ? 0 : "28px 32px" }}>
-              <SectionHead title="Event Overview" sub="General information and description" />
+              {/* Mobile drops the SectionHead entirely — the page already
+                  shows the recital title in the hero, so duplicating
+                  "Event Overview · General information and description"
+                  on a phone is just chrome. Desktop keeps it. */}
+              {!isMobile && <SectionHead title="Event Overview" sub="General information and description" />}
 
-              {/* Description - Editable */}
+              {/* Description — labeled "Event Overview" so the renamed
+                  section reads naturally without a top-level heading. */}
               <div style={{ marginBottom: 28 }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-                  <h3 style={{ fontSize:15, fontWeight:700, margin:0 }}>Description</h3>
+                  <h3 style={{ fontSize:15, fontWeight:700, margin:0 }}>Event Overview</h3>
                   {overviewEditing !== 'description' && (
                     <button onClick={() => { setOverviewForm({description: recital.description || ''}); setOverviewEditing('description'); }} style={{ fontSize:11, background:"none", border:"none", color:"var(--accent)", cursor:"pointer", fontWeight:600 }}>Edit</button>
                   )}
@@ -2725,60 +2739,45 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
         {/* ── VENUE ── */}
         {tab === "venue" && (
           <div>
-            {/* ── Uber-style confirmation status banner ── */}
+            {/* ── Compact confirmation toggle ─────────────────────────
+                Replaces the previous icon + headline + body + button
+                block (was too heavy for what's effectively a boolean).
+                Now a single inline switch + label. */}
             <div style={{
-              display:"flex", flexDirection: isMobile ? "column" : "row",
-              alignItems: isMobile ? "stretch" : "center", justifyContent:"space-between",
-              padding: isMobile ? "16px 18px" : "18px 24px",
-              borderRadius:14, marginBottom:24,
-              background: venueConfirmed ? "linear-gradient(135deg,#52c4a015,#52c4a008)" : "linear-gradient(135deg,#f4a04115,#f4a04108)",
-              border: `1.5px solid ${venueConfirmed ? "#52c4a040" : "#f4a04140"}`,
-              transition:"all .3s",
+              display:"flex", alignItems:"center", justifyContent:"space-between",
+              padding:"10px 14px", borderRadius:10, marginBottom:20,
+              background:"var(--surface)", border:"1px solid var(--border)",
             }}>
-              <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-                <div style={{
-                  width: isMobile ? 44 : 52, height: isMobile ? 44 : 52, borderRadius:"50%",
-                  background: venueConfirmed ? "#52c4a0" : "#f4a041",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  transition:"background .3s", flexShrink:0,
-                  boxShadow: `0 4px 16px ${venueConfirmed ? "#52c4a040" : "#f4a04140"}`,
-                }}>
-                  <SvgIcon name={venueConfirmed ? "check-circle" : "clock"} size={isMobile ? 22 : 26} color="#fff" />
-                </div>
-                <div>
-                  <div style={{ fontSize: isMobile ? 15 : 17, fontWeight:800, color:"var(--text)", marginBottom:3 }}>
-                    {venueConfirmed ? "Venue Confirmed" : "Venue Not Confirmed"}
-                  </div>
-                  <div style={{ fontSize:12, color:"var(--muted)", fontWeight:500 }}>
-                    {venueConfirmed
-                      ? "The venue has been confirmed and booked for this event."
-                      : "Tap to mark the venue as confirmed once booking is finalized."}
-                  </div>
-                </div>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <span style={{ fontSize:13, fontWeight:700, color:"var(--text)" }}>
+                  Mark as Confirmed
+                </span>
+                <span style={{ fontSize:11, color: venueConfirmed ? "#52c4a0" : "var(--muted)", fontWeight:600 }}>
+                  {venueConfirmed ? "Confirmed" : "Not confirmed yet"}
+                </span>
               </div>
-              {/* Toggle button */}
               <button
+                role="switch"
+                aria-checked={venueConfirmed}
                 onClick={() => {
                   const next = !venueConfirmed;
                   setVenueConfirmed(next);
                   localStorage.setItem(VENUE_CONFIRMED_KEY, String(next));
-                  toast.success(next ? "Venue marked as confirmed!" : "Venue marked as unconfirmed");
+                  toast.success(next ? "Venue confirmed" : "Marked unconfirmed");
                 }}
                 style={{
-                  padding: isMobile ? "10px 14px" : "10px 20px",
-                  borderRadius:10, border:"none", cursor:"pointer",
-                  background: venueConfirmed ? "#52c4a0" : "#f4a041",
-                  color:"#fff", fontWeight:700,
-                  fontSize: isMobile ? 13 : 13,
-                  transition:"all .2s", flexShrink:0,
-                  marginLeft: isMobile ? 0 : 12, marginTop: isMobile ? 14 : 0,
-                  width: isMobile ? "100%" : "auto",
-                  boxShadow: `0 2px 10px ${venueConfirmed ? "#52c4a050" : "#f4a04150"}`,
+                  width:44, height:24, borderRadius:999, border:"none", cursor:"pointer",
+                  background: venueConfirmed ? "#52c4a0" : "var(--border)",
+                  position:"relative", transition:"background .2s",
+                  flexShrink:0,
                 }}
-                onMouseEnter={e => e.currentTarget.style.opacity = ".88"}
-                onMouseLeave={e => e.currentTarget.style.opacity = "1"}
               >
-                {venueConfirmed ? "Mark Unconfirmed" : "Mark Confirmed"}
+                <span style={{
+                  display:"block", width:18, height:18, borderRadius:"50%", background:"#fff",
+                  position:"absolute", top:3, left: venueConfirmed ? "calc(100% - 21px)" : "3px",
+                  transition:"left .2s cubic-bezier(0.4,0,0.2,1)",
+                  boxShadow:"0 1px 4px rgba(0,0,0,0.25)",
+                }} />
               </button>
             </div>
 
@@ -2810,6 +2809,26 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                       onClick={() => {
                         setVenueDetails({ ...venueForm });
                         localStorage.setItem(VENUE_KEY, JSON.stringify(venueForm));
+                        // Push the Venue Details "name" back to the
+                        // simple recital.venue field so the meta row
+                        // ("Location") and the detail card stay in
+                        // sync — they refer to the same place.
+                        const newVenueName = (venueForm.name || '').trim();
+                        if (newVenueName && newVenueName !== (recital.venue || '')) {
+                          api.update(sid, id, {
+                            title: recital.title,
+                            event_date: (recital.event_date||'').slice(0,10),
+                            event_time: recital.event_time||'',
+                            venue: newVenueName,
+                            status: recital.status||'Planning',
+                            description: recital.description||'',
+                            is_featured: recital.is_featured??0,
+                            participant_count: recital.participant_count??null,
+                          }).then(() => {
+                            qc.setQueryData(["recital-detail", sid, id], old => old ? {...old, venue: newVenueName} : old);
+                            qc.invalidateQueries({ queryKey: ["recitals", sid] });
+                          }).catch(() => {});
+                        }
                         setVenueEditing(false);
                         toast.success("Venue details saved");
                       }}

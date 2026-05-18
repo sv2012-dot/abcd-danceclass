@@ -483,7 +483,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 10, color: 'var(--sidebar-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600, marginBottom: 2 }}>Signed in as</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--sidebar-foreground)' }}>{user?.name}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--sidebar-foreground)', marginBottom: 4 }}>{user?.name}</div>
+                {/* Plan badge in the page footer — visible on every page
+                    so mobile users don't have to open the drawer to see
+                    their plan status. PlanBadge already self-hides for
+                    superadmin / no-school states. */}
+                {!isSuperAdmin && (
+                  <div style={{ display: 'inline-flex', justifyContent: 'flex-end' }}>
+                    <PlanBadge />
+                  </div>
+                )}
               </div>
             </footer>
           </div>

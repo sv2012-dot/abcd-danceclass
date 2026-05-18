@@ -2,6 +2,11 @@ import { Metadata } from 'next';
 import { recitals } from '@/lib/api';
 import { RecitalClient } from '../_client';
 
+// Match parent /[recitalSlug]/page.tsx — fresh SSR every request so
+// poster/details stay current after edits.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 type Props = {
   params: Promise<{ schoolSlug: string; recitalSlug: string }>;
 };

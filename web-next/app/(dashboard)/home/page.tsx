@@ -579,12 +579,18 @@ function SchoolHomePage() {
   });
   const recitalSaveMutation = useMutation({
     mutationFn: data => recitalApi.create(sid, data),
-    onSuccess: () => {
+    onSuccess: (created) => {
       qc.invalidateQueries({ queryKey:["recitals",sid] });
       qc.invalidateQueries({ queryKey:["stats",sid] });
-      toast.success("Recital created!");
+      toast.success("Recital created! Opening details…");
       setShowAddRecital(false);
       setRecitalForm({ title:'', event_date:'', event_time:'18:00', venue:'', description:'' });
+      // Take the user straight to the new recital's detail page so they
+      // can fill in venue/program/invitees next. /schedule reads the
+      // ?recitalId param and renders RecitalDetail directly. Previously
+      // we stayed on /home and the user had to find the new recital
+      // manually — felt like the "Create" button did nothing on mobile.
+      if (created?.id) router.push(`/schedule?recitalId=${created.id}`);
     },
     onError: err => toast.error(err.error||"Failed to create recital"),
   });

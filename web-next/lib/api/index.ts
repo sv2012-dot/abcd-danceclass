@@ -66,7 +66,13 @@ const PUBLIC_API_BASE =
 
 export const recitals = {
   getPublic: (schoolSlug: string, recitalSlug: string) =>
-    fetch(`${PUBLIC_API_BASE}/public/${schoolSlug}/${recitalSlug}`)
+    // cache: 'no-store' so SSR-rendered public recital pages always
+    // reflect the latest poster + venue + RSVP state. Without this,
+    // Next.js + Vercel cached the fetch indefinitely → a teacher
+    // updating the poster saw the new image in /recitals but the
+    // public link still served the old one. Pair with
+    // `export const dynamic = 'force-dynamic'` on the page.
+    fetch(`${PUBLIC_API_BASE}/public/${schoolSlug}/${recitalSlug}`, { cache: 'no-store' })
       .then(r => r.json()),
   submitPublicRsvp: (
     schoolSlug: string,

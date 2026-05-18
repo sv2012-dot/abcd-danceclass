@@ -2,6 +2,12 @@ import { Metadata } from 'next';
 import { recitals } from '@/lib/api';
 import { RecitalClient } from './_client';
 
+// Force fresh SSR on every public-page request so poster + venue +
+// description updates are reflected immediately. Without this, Vercel
+// edge-cached the rendered HTML and updates didn't propagate.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 type Props = {
   params: Promise<{ schoolSlug: string; recitalSlug: string }>;
 };

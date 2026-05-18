@@ -60,17 +60,35 @@ exports.get = async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
+// Default "Important information" bullets seeded on every new recital.
+// Restored from the original CRA build — teachers were re-typing these
+// for every show, and the previous app shipped them by default.
+const DEFAULT_IMPORTANT_INFO = [
+  'Doors open 30 minutes before showtime',
+  'Students must arrive 1 hour early for costume and makeup',
+  'Photography and videography by approved vendors only during performance',
+  'Reserved seating for family members (2 tickets per student)',
+  'Reception to follow in the lobby',
+];
+
 exports.create = async (req, res) => {
   // event_time: e.g. "18:00" (stored as VARCHAR, formatted on client)
-  const { title, event_date, event_time, venue, status, description, participant_count, tasks } = req.body;
+  const { title, event_date, event_time, venue, status, description, participant_count, tasks, important_info } = req.body;
   if (!title || !event_date) return res.status(400).json({ error: 'Title and event_date required' });
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     const slug = await uniqueRecitalSlug(pool, req.params.schoolId, title);
+    // Seed default Important Information if the caller didn't provide
+    // their own list. Store as JSON for parity with /update.
+    const infoToStore = JSON.stringify(
+      Array.isArray(important_info) && important_info.length > 0
+        ? important_info
+        : DEFAULT_IMPORTANT_INFO
+    );
     const [r] = await conn.query(
-      'INSERT INTO recitals (school_id,title,slug,event_date,event_time,venue,status,description,participant_count) VALUES (?,?,?,?,?,?,?,?,?)',
-      [req.params.schoolId, title, slug, event_date, event_time||null, venue||null, status||'Planning', description||null, participant_count != null ? Number(participant_count) : null]
+      'INSERT INTO recitals (school_id,title,slug,event_date,event_time,venue,status,description,participant_count,important_info) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      [req.params.schoolId, title, slug, event_date, event_time||null, venue||null, status||'Planning', description||null, participant_count != null ? Number(participant_count) : null, infoToStore]
     );
     if (tasks && tasks.length) {
       const vals = tasks.map((t, i) => [r.insertId, t.text || t, 0, i]);
