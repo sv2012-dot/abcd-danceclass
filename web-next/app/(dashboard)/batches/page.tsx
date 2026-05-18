@@ -87,7 +87,15 @@ export default function BatchesPage() {
   }, []);
   const isMobile = windowWidth < 768;
 
-  const { data: list=[], isLoading } = useQuery({ queryKey:["batches",sid], queryFn:()=>api.list(sid), enabled:!!sid });
+  // "Show recently deleted" toggle. When ON, the batches query also
+  // returns soft-deleted rows with a days_until_purge field so the UI
+  // can render a countdown badge + Restore button.
+  const [showDeleted, setShowDeleted] = useState(false);
+  const { data: list=[], isLoading } = useQuery({
+    queryKey: ["batches", sid, showDeleted ? "with-deleted" : "active-only"],
+    queryFn:  () => api.list(sid, showDeleted),
+    enabled:  !!sid,
+  });
   const { data: allStudents=[]     } = useQuery({ queryKey:["students",sid], queryFn:()=>studentsApi.list(sid), enabled:!!sid });
   const { data: allSchedules=[]   } = useQuery({ queryKey:["schedules",sid], queryFn:()=>schedulesApi.list(sid), enabled:!!sid });
 
@@ -196,9 +204,43 @@ export default function BatchesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: id => api.remove(sid, id),
-    onSuccess: (_,id) => { qc.invalidateQueries({ queryKey: ["batches",sid] }); toast.success("Batch deleted"); if (activeId===id) { setActiveId(null); setPanelMode("view"); } },
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: ["batches", sid] });
+      qc.invalidateQueries({ queryKey: ["schedules", sid] });
+      qc.invalidateQueries({ queryKey: ["events"], exact: false });
+      toast.success("Moved to trash · 30 days to restore");
+      setDeleteConfirm(null);
+      if (activeId === id) { setActiveId(null); setPanelMode("view"); }
+    },
     onError: err => toast.error(err.error || "Failed"),
   });
+
+  // ── Restore a soft-deleted batch (within the 30-day window) ──
+  const restoreMutation = useMutation({
+    mutationFn: id => api.restore(sid, id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["batches", sid] });
+      qc.invalidateQueries({ queryKey: ["schedules", sid] });
+      qc.invalidateQueries({ queryKey: ["events"], exact: false });
+      toast.success("Batch restored. Events and attendance are back.");
+    },
+    onError: err => toast.error(err?.error || "Failed to restore"),
+  });
+
+  // Delete confirmation dialog state.
+  //   deleteConfirm = { id, name, preview, typed } when open
+  //   preview = { schedule_count, event_count, student_count, attendance_count }
+  //   typed   = current value of the name-confirm input
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const openDeleteConfirm = async (batch) => {
+    if (!batch) return;
+    try {
+      const preview = await api.deletePreview(sid, batch.id);
+      setDeleteConfirm({ id: batch.id, name: batch.name, preview, typed: "" });
+    } catch (err) {
+      toast.error(err?.error || "Couldn't load delete preview");
+    }
+  };
 
   const uploadCoverMutation = useMutation({
     mutationFn: ({ id, cover_url }) => api.uploadCover(sid, id, cover_url),
@@ -273,10 +315,26 @@ export default function BatchesPage() {
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:10 }}>
         <div>
           <h1 style={{ fontFamily:"var(--font-d)", fontSize:24, marginBottom:2 }}>Batches</h1>
-          <p style={{ color:"var(--muted)", fontSize:12 }}>{list.length} active groups</p>
+          <p style={{ color:"var(--muted)", fontSize:12 }}>
+            {list.filter(b => !b.deleted_at).length} active groups
+            {showDeleted && (
+              <> · <span style={{ color: "var(--warn, #F59E0B)" }}>{list.filter(b => b.deleted_at).length} in trash</span></>
+            )}
+          </p>
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", marginLeft:"auto" }}>
-          {/* Grid/table toggle removed — cards are the default and only view. */}
+          {/* Show-recently-deleted toggle — surfaces soft-deleted batches
+              within their 30-day restore window. Mirrors the school
+              superadmin "Show deleted" pattern. */}
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted)", cursor: "pointer", userSelect: "none" }}>
+            <input
+              type="checkbox"
+              checked={showDeleted}
+              onChange={(e) => setShowDeleted(e.target.checked)}
+              style={{ accentColor: "var(--accent)" }}
+            />
+            Show recently deleted
+          </label>
           <Button onClick={openAdd}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <SvgIcon name="plus" size={14} color="currentColor" />
@@ -308,15 +366,21 @@ export default function BatchesPage() {
             const capPct = b.max_size ? Math.min(100, Math.round(((b.student_count||0)/b.max_size)*100)) : null;
             const schedules = allSchedules.filter(s => s.batch_id === b.id);
             const firstSch  = schedules[0];
+            // Soft-deleted batches render with 60% opacity, a countdown
+            // badge, and a Restore button instead of normal click → panel.
+            const isDeleted = !!b.deleted_at;
+            const daysLeft  = b.days_until_purge ?? null;
+            const urgent    = isDeleted && daysLeft !== null && daysLeft <= 5;
             return (
               <Card
                 key={b.id}
-                clickable
-                onClick={() => { setActiveId(active ? null : b.id); if (!active) setPanelMode("view"); }}
+                clickable={!isDeleted}
+                onClick={isDeleted ? undefined : () => { setActiveId(active ? null : b.id); if (!active) setPanelMode("view"); }}
                 style={{
                   overflow: "hidden", display: "flex", flexDirection: "column", padding: 0,
-                  // Per-batch colour accent when active (overrides Card default purple)
+                  opacity: isDeleted ? 0.65 : 1,
                   ...(active ? { border: `${CT.borderWidth} solid ${color}`, boxShadow: `0 0 0 3px ${color}22` } : {}),
+                  ...(isDeleted ? { border: `1px dashed ${urgent ? "#EF5350" : "var(--border)"}` } : {}),
                 }}
               >
                 {/* ── Cover thumbnail — 16:9 ── */}
@@ -363,12 +427,107 @@ export default function BatchesPage() {
                       <div style={{ height:"100%", width:capPct+"%", background: capPct>=90 ? "#EF4444" : "var(--text)", borderRadius:3, transition:"width .3s" }} />
                     </div>
                   )}
+                  {/* Soft-delete footer — countdown badge + Restore CTA.
+                      Replaces the normal click-to-open panel behavior. */}
+                  {isDeleted && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--border)" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                        <span style={{
+                          display: "inline-flex", alignItems: "center", gap: 5,
+                          fontSize: 11, fontWeight: 700, letterSpacing: ".04em",
+                          color: urgent ? "#EF5350" : "var(--warn, #F59E0B)",
+                        }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          {daysLeft === null
+                            ? 'Recently deleted'
+                            : daysLeft <= 0
+                              ? 'Deleting today'
+                              : `${daysLeft} day${daysLeft === 1 ? '' : 's'} left to restore`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); restoreMutation.mutate(b.id); }}
+                          disabled={restoreMutation.isPending}
+                          style={{
+                            background: "var(--accent)", color: "#fff", border: "none",
+                            padding: "6px 14px", borderRadius: 8, cursor: "pointer",
+                            fontSize: 12, fontWeight: 700,
+                          }}
+                        >
+                          {restoreMutation.isPending && restoreMutation.variables === b.id ? "…" : "Restore"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </Card>
             );
           })}
         </div>
 
+      )}
+
+      {/* ── Delete confirmation dialog ─────────────────────────────
+          Two-step protection: shows counts of what will be hidden +
+          requires the user to type the batch name to enable Delete.
+          Mirrors the school superadmin delete pattern. */}
+      {deleteConfirm && (
+        <div
+          onClick={() => setDeleteConfirm(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "var(--card)", borderRadius: 16, padding: 24, maxWidth: 480, width: "100%", boxShadow: "0 24px 64px rgba(0,0,0,.4)" }}
+          >
+            <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 800, color: "var(--text)" }}>
+              Delete "{deleteConfirm.name}"?
+            </h2>
+            <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--muted)", lineHeight: 1.55 }}>
+              This batch will move to trash. The following will be hidden:
+            </p>
+            <ul style={{ margin: "0 0 16px", padding: "0 0 0 20px", color: "var(--text)", fontSize: 13, lineHeight: 1.8 }}>
+              <li><strong>{deleteConfirm.preview.schedule_count}</strong> recurring schedule{deleteConfirm.preview.schedule_count === 1 ? '' : 's'}</li>
+              <li><strong>{deleteConfirm.preview.event_count}</strong> one-off event{deleteConfirm.preview.event_count === 1 ? '' : 's'}</li>
+              <li><strong>{deleteConfirm.preview.attendance_count}</strong> attendance record{deleteConfirm.preview.attendance_count === 1 ? '' : 's'}</li>
+              <li><strong>{deleteConfirm.preview.student_count}</strong> student enrollment{deleteConfirm.preview.student_count === 1 ? '' : 's'} (students stay in your studio)</li>
+            </ul>
+            <p style={{ margin: "0 0 14px", fontSize: 12, color: "var(--muted)", lineHeight: 1.55, padding: "10px 12px", background: "var(--surface)", borderLeft: "3px solid var(--warn, #F59E0B)", borderRadius: 6 }}>
+              You have <strong style={{ color: "var(--text)" }}>30 days</strong> to restore. After that, everything above is <strong style={{ color: "var(--text)" }}>permanently deleted</strong> and cannot be recovered.
+            </p>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6, display: "block" }}>
+                Type the batch name to confirm
+              </label>
+              <input
+                autoFocus
+                value={deleteConfirm.typed}
+                onChange={(e) => setDeleteConfirm(p => ({ ...p, typed: e.target.value }))}
+                placeholder={deleteConfirm.name}
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 9, border: "1.5px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+              />
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                style={{ padding: "9px 18px", borderRadius: 9, border: "1.5px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+              >Cancel</button>
+              <button
+                onClick={() => deleteMutation.mutate(deleteConfirm.id)}
+                disabled={deleteConfirm.typed.trim().toLowerCase() !== deleteConfirm.name.toLowerCase() || deleteMutation.isPending}
+                style={{
+                  padding: "9px 18px", borderRadius: 9, border: "none",
+                  background: deleteConfirm.typed.trim().toLowerCase() === deleteConfirm.name.toLowerCase() ? "#EF5350" : "var(--border)",
+                  color: "#fff", cursor: deleteConfirm.typed.trim().toLowerCase() === deleteConfirm.name.toLowerCase() ? "pointer" : "not-allowed",
+                  fontSize: 13, fontWeight: 700,
+                  opacity: deleteConfirm.typed.trim().toLowerCase() === deleteConfirm.name.toLowerCase() ? 1 : 0.6,
+                }}
+              >
+                {deleteMutation.isPending ? "Deleting…" : "Delete batch"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Right Side Panel (view / edit / add) ── */}
@@ -446,7 +605,7 @@ export default function BatchesPage() {
                   >
                     <SvgIcon name="pencil" size={15} color="rgba(255,255,255,.85)" />
                   </button>
-                  <button onClick={() => { if(window.confirm(`Delete "${activeBatch.name}"?`)) deleteMutation.mutate(activeBatch.id); }} title="Delete batch"
+                  <button onClick={() => openDeleteConfirm(activeBatch)} title="Delete batch"
                     style={{ width:34, height:34, borderRadius:"50%", background:"rgba(0,0,0,.45)", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,.22)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
                   >
                     <SvgIcon name="trash" size={15} color="rgba(255,255,255,.85)" />

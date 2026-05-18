@@ -47,12 +47,22 @@ async function syncBatches(conn, eventId, batchIds) {
   }
 }
 
-// List events for a date range
+// List events for a date range.
+//
+// CASCADE HIDE: events linked to a soft-deleted batch (batches.deleted_at
+// IS NOT NULL) are excluded. Events without a batch_id (one-off recitals,
+// workshops, etc.) are unaffected by the LEFT JOIN filter. On restore
+// the events reappear automatically.
 exports.list = async (req, res) => {
   const schoolId = req.params.schoolId;
   const { from, to } = req.query;
   try {
-    let q = `SELECT e.* FROM events e WHERE e.school_id = ?`;
+    let q = `
+      SELECT e.* FROM events e
+      LEFT JOIN batches b ON b.id = e.batch_id
+      WHERE e.school_id = ?
+        AND (e.batch_id IS NULL OR b.deleted_at IS NULL)
+    `;
     const params = [schoolId];
     if (from) { q += ' AND e.start_datetime >= ?'; params.push(from); }
     if (to)   { q += ' AND e.start_datetime <= ?'; params.push(to); }

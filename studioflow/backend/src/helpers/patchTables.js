@@ -173,6 +173,11 @@ async function patchTables() {
     `);
 
     await addColumnIfMissing('batches',   'cover_url',         'MEDIUMTEXT NULL');
+    // Soft-delete with 30-day recovery window. is_active = 0 +
+    // deleted_at = NOW() on delete; purge cron permanently removes the
+    // row + cascaded children (schedules / events / attendance /
+    // batch_students) after 30 days. Restore clears both back.
+    await addColumnIfMissing('batches',   'deleted_at',        'TIMESTAMP NULL DEFAULT NULL');
 
     // Public page slugs
     await addColumnIfMissing('schools',  'slug', 'VARCHAR(80) NULL');

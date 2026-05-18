@@ -6,7 +6,8 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "migrate": "node src/helpers/migrate.js",
-    "seed": "node src/helpers/seed.js"
+    "seed": "node src/helpers/seed.js",
+    "purge-batches": "node src/jobs/purgeDeletedBatches.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",

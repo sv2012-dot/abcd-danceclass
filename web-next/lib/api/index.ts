@@ -37,11 +37,21 @@ export const students = {
 };
 
 export const batches = {
-  list: (schoolId: string) => api.get(`/schools/${schoolId}/batches`),
+  list: (schoolId: string, includeDeleted = false) =>
+    api.get(`/schools/${schoolId}/batches${includeDeleted ? '?include_deleted=true' : ''}`),
   get: (schoolId: string, id: string) => api.get(`/schools/${schoolId}/batches/${id}`),
   create: (schoolId: string, data: any) => api.post(`/schools/${schoolId}/batches`, data),
   update: (schoolId: string, id: string, data: any) => api.put(`/schools/${schoolId}/batches/${id}`, data),
+  // Soft-delete: stays in DB for 30 days, then purgeDeletedBatches cron
+  // hard-deletes it + all dependents.
   remove: (schoolId: string, id: string) => api.delete(`/schools/${schoolId}/batches/${id}`),
+  // Returns counts of what will be hidden, so the confirm dialog can
+  // show "you'll lose X events, Y attendance records, etc."
+  deletePreview: (schoolId: string, id: string | number) =>
+    api.get(`/schools/${schoolId}/batches/${id}/delete-preview`),
+  // Restore a soft-deleted batch within the 30-day window.
+  restore: (schoolId: string, id: string | number) =>
+    api.post(`/schools/${schoolId}/batches/${id}/restore`),
   enroll: (schoolId: string, id: string, student_ids: any) => api.put(`/schools/${schoolId}/batches/${id}/enroll`, { student_ids }),
   uploadCover: (schoolId: string, id: string, cover_url: string) => api.patch(`/schools/${schoolId}/batches/${id}/cover`, { cover_url }),
 };
