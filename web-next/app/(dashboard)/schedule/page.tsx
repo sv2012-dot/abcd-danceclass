@@ -1268,6 +1268,25 @@ export default function SchedulePage() {
               || evBatches[0]?.cover_url
               || null;
             const usingBatchCover = !e.cover_url && !!(primaryBatch?.cover_url || e._batchCoverUrl);
+            // ── Temporary debug log — remove after we confirm the fix ──
+            if (typeof window !== 'undefined' && e._isSchedule) {
+              const head = (v) => typeof v === 'string' ? v.slice(0, 40) : v;
+              // eslint-disable-next-line no-console
+              console.log('[hero debug]', {
+                eId: e.id,
+                eIsSchedule: e._isSchedule,
+                eBatchId: e._batchId,
+                eCoverUrl: head(e.cover_url),
+                primaryBatchFound: !!primaryBatch,
+                primaryBatchId: primaryBatch?.id,
+                primaryBatchCover: head(primaryBatch?.cover_url),
+                eBatchCoverUrlField: head(e._batchCoverUrl),
+                evBatches0Cover: head(evBatches[0]?.cover_url),
+                batchesLen: batches.length,
+                batchesIds: batches.map(b => b.id),
+                heroImgResolved: head(heroImg),
+              });
+            }
 
             // Close — if the user got here from the dashboard, route them
             // back to /home; otherwise just clear the panel in place.
