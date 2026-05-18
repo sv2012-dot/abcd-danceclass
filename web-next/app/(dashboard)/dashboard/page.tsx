@@ -836,7 +836,7 @@ function SuperAdminDash() {
 
       {/* Credentials created banner */}
       {created && (
-        <div style={{ background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
+        <div style={{ background: 'rgba(52,199,89,0.10)', border: '1.5px solid rgba(52,199,89,0.4)', borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: '#15803D', marginBottom: 10 }}>
             ✅ School "{created.name}" created — save these login details now:
           </div>
@@ -867,9 +867,35 @@ function SuperAdminDash() {
                     {s.name[0]}
                   </div>
 
-                  {/* School info */}
+                  {/* School info — name + plan / subscription badges */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: C.ebony }}>{s.name}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: C.ebony }}>{s.name}</div>
+                      {/* Pro / Free badge — every school gets one. */}
+                      <span style={{
+                        fontSize: 10, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
+                        padding: '2px 8px', borderRadius: 10,
+                        background: s.plan_tier === 'paid' ? 'linear-gradient(135deg,#7C3AED,#DC4EFF)' : 'var(--surface)',
+                        color: s.plan_tier === 'paid' ? '#fff' : 'var(--muted)',
+                        border: s.plan_tier === 'paid' ? 'none' : '1px solid var(--border)',
+                      }}>
+                        {s.plan_tier === 'paid' ? '★ Pro' : 'Free'}
+                      </span>
+                      {/* Subscribed badge — only renders when there's an
+                          active Stripe subscription id. Tells us at a
+                          glance that Stripe-side state is set up. */}
+                      {s.stripe_subscription_id && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
+                          padding: '2px 8px', borderRadius: 10,
+                          background: 'rgba(52,199,89,0.15)',
+                          color: '#16a34a',
+                          border: '1px solid rgba(52,199,89,0.3)',
+                        }}>
+                          ✓ Subscribed
+                        </span>
+                      )}
+                    </div>
                     <div style={{ color: C.boulder, fontSize: 12, marginTop: 2 }}>{s.city}{s.dance_style ? ` · ${s.dance_style}` : ''}</div>
                   </div>
 
@@ -880,8 +906,9 @@ function SuperAdminDash() {
                   </div>
                 </div>
 
-                {/* Credentials bar */}
-                <div style={{ borderTop: `1px solid ${C.border}`, padding: '10px 18px', background: '#FAFAFA', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                {/* Credentials bar — uses var(--surface) so it remains
+                    readable in dark mode. Was hardcoded #FAFAFA before. */}
+                <div style={{ borderTop: `1px solid ${C.border}`, padding: '10px 18px', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: C.grayChate, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 3 }}>Admin Login</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

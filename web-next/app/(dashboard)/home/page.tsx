@@ -1185,15 +1185,15 @@ function SuperAdminDash() {
 
       {/* New school credentials banner */}
       {created && (
-        <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:12, padding:'16px 20px', marginBottom:20 }}>
-          <div style={{ fontWeight:700, fontSize:13, color:'#15803D', marginBottom:10 }}>
+        <div style={{ background:'rgba(52,199,89,0.10)', border:'1.5px solid rgba(52,199,89,0.4)', borderRadius:12, padding:'16px 20px', marginBottom:20 }}>
+          <div style={{ fontWeight:700, fontSize:13, color:'#16a34a', marginBottom:10 }}>
             ✅ "{created.name}" created — save these login details now:
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:'6px 24px' }}>
             <SACredRow label="Admin Email" value={created.admin_email} />
             <SACredRow label="Password" value={created.admin_password} secret />
           </div>
-          <button onClick={() => setCreated(null)} style={{ marginTop:10, fontSize:12, color:'#15803D', background:'none', border:'none', cursor:'pointer', padding:0, fontWeight:600 }}>Dismiss</button>
+          <button onClick={() => setCreated(null)} style={{ marginTop:10, fontSize:12, color:'#16a34a', background:'none', border:'none', cursor:'pointer', padding:0, fontWeight:600 }}>Dismiss</button>
         </div>
       )}
 
@@ -1214,7 +1214,31 @@ function SuperAdminDash() {
                     {s.name[0]}
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:14, color:C.ebony }}>{s.name}</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                      <div style={{ fontWeight:700, fontSize:14, color:C.ebony }}>{s.name}</div>
+                      {/* Pro / Free badge */}
+                      <span style={{
+                        fontSize:10, fontWeight:800, letterSpacing:'.06em', textTransform:'uppercase',
+                        padding:'2px 8px', borderRadius:10,
+                        background: s.plan_tier === 'paid' ? 'linear-gradient(135deg,#7C3AED,#DC4EFF)' : 'var(--surface)',
+                        color: s.plan_tier === 'paid' ? '#fff' : 'var(--muted)',
+                        border: s.plan_tier === 'paid' ? 'none' : '1px solid var(--border)',
+                      }}>
+                        {s.plan_tier === 'paid' ? '★ Pro' : 'Free'}
+                      </span>
+                      {/* Subscribed badge — only when stripe_subscription_id is set */}
+                      {s.stripe_subscription_id && (
+                        <span style={{
+                          fontSize:10, fontWeight:800, letterSpacing:'.06em', textTransform:'uppercase',
+                          padding:'2px 8px', borderRadius:10,
+                          background:'rgba(52,199,89,0.15)',
+                          color:'#16a34a',
+                          border:'1px solid rgba(52,199,89,0.3)',
+                        }}>
+                          ✓ Subscribed
+                        </span>
+                      )}
+                    </div>
                     <div style={{ color:C.boulder, fontSize:12, marginTop:2 }}>{s.city}{s.dance_style ? ` · ${s.dance_style}` : ''}</div>
                   </div>
                   <div style={{ fontSize:12, color:C.grayChate, textAlign:'right', flexShrink:0 }}>
@@ -1223,8 +1247,8 @@ function SuperAdminDash() {
                   </div>
                 </div>
 
-                {/* Credentials bar */}
-                <div style={{ borderTop:`1px solid ${C.border}`, padding:'10px 18px', background:'#FAFAFA', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+                {/* Credentials bar — uses var(--surface) for dark-mode readability */}
+                <div style={{ borderTop:`1px solid ${C.border}`, padding:'10px 18px', background:'var(--surface)', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontSize:10, fontWeight:700, color:C.grayChate, textTransform:'uppercase', letterSpacing:'.08em', marginBottom:3 }}>Admin Login</div>
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
