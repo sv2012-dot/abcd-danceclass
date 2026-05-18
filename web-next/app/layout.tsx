@@ -6,6 +6,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import { ThemeProvider } from "@/lib/context/ThemeContext";
 import QueryProvider from "@/components/QueryProvider";
+import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 
 // Match the CRA's font (loaded via Google Fonts in CRA's index.html). The
 // design tokens in globals.css reference 'Open Sans' as --font-sans, so the
@@ -46,6 +47,7 @@ export default function RootLayout({
       className={`${openSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <GoogleAnalytics />
         <GoogleOAuthProvider clientId={googleClientId}>
           <QueryProvider>
             <AuthProvider>
