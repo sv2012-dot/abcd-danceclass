@@ -11,6 +11,7 @@ router.delete('/:id',  auth('superadmin'), c.softDelete);
 router.post('/:id/restore', auth('superadmin'), c.restore);
 router.get('/:id/stats', auth(), c.stats);
 router.post('/:id/reset-admin-password', auth('superadmin'), c.resetAdminPassword);
+router.post('/:id/reset-stripe',         auth('superadmin'), c.resetStripe);
 router.post('/:id/seed-sample', auth('superadmin'), async (req, res) => {
   try {
     const pool = require('../../config/db');

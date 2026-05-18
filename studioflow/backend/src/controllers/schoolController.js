@@ -81,6 +81,43 @@ exports.resetAdminPassword = async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
+// Clear stripe_customer_id / stripe_subscription_id and downgrade the
+// school back to 'free'. Use case: a school was created/tested against
+// Stripe test mode (so the stored customer id only exists in test), and
+// after flipping to live keys the saved id 404s. Wiping it lets the
+// next checkout attempt create a fresh live-mode customer.
+//
+// Superadmin-only. Does NOT touch Stripe directly — only the DB row.
+// If you also want to cancel a real live subscription, do that from the
+// Stripe dashboard first; otherwise this is purely a local clear.
+exports.resetStripe = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const [[before]] = await pool.query(
+      'SELECT name, plan_tier, stripe_customer_id, stripe_subscription_id FROM schools WHERE id = ? LIMIT 1',
+      [id]
+    );
+    if (!before) return res.status(404).json({ error: 'School not found' });
+    await pool.query(
+      `UPDATE schools
+          SET stripe_customer_id     = NULL,
+              stripe_subscription_id = NULL,
+              plan_tier              = 'free'
+        WHERE id = ?`,
+      [id]
+    );
+    console.log(`[reset-stripe] school #${id} (${before.name}) wiped: customer=${before.stripe_customer_id}, sub=${before.stripe_subscription_id}, was=${before.plan_tier}`);
+    res.json({
+      ok: true,
+      cleared: {
+        stripe_customer_id: before.stripe_customer_id,
+        stripe_subscription_id: before.stripe_subscription_id,
+        previous_plan: before.plan_tier,
+      },
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
 exports.get = async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM schools WHERE id = ?', [req.params.id]);

@@ -22,6 +22,7 @@ export const schools = {
   restore: (id: string) => api.post(`/schools/${id}/restore`),
   stats: (id: string) => api.get(`/schools/${id}/stats`),
   resetAdminPassword: (id: string, password: string) => api.post(`/schools/${id}/reset-admin-password`, { password }),
+  resetStripe: (id: string) => api.post(`/schools/${id}/reset-stripe`),
   seedSample: (id: string) => api.post(`/schools/${id}/seed-sample`),
 };
 

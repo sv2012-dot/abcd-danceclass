@@ -783,6 +783,20 @@ function SuperAdminDash() {
     },
   });
 
+  // ── Reset Stripe state ──
+  // Wipes the saved stripe_customer_id + stripe_subscription_id and
+  // downgrades the school to 'free'. Use when a test-mode customer id
+  // is poisoning live-mode checkouts ("No such customer" error).
+  const [stripeDoneId, setStripeDoneId] = useState(null);
+  const resetStripeMut = useMutation({
+    mutationFn: (id) => schoolsApi.resetStripe(id),
+    onSuccess: (_, id) => {
+      setStripeDoneId(id);
+      qc.invalidateQueries(['schools']);
+      setTimeout(() => setStripeDoneId(null), 4000);
+    },
+  });
+
   const createMut = useMutation({
     mutationFn: (data) => schoolsApi.create(data),
     onSuccess: () => {
@@ -905,9 +919,29 @@ function SuperAdminDash() {
                       <Button size="sm" variant="secondary" onClick={() => { setResetId(null); setResetPw(''); }}>Cancel</Button>
                     </div>
                   ) : (
-                    <Button size="sm" variant="secondary" onClick={() => { setResetId(s.id); setResetPw(''); setShowPw(false); }}>
-                      🔑 Reset Password
-                    </Button>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {stripeDoneId === s.id && (
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#15803D' }}>✓ Stripe reset</span>
+                      )}
+                      <Button size="sm" variant="secondary" onClick={() => { setResetId(s.id); setResetPw(''); setShowPw(false); }}>
+                        🔑 Reset Password
+                      </Button>
+                      {/* Reset Stripe — wipes stored customer/subscription id
+                          so next checkout creates a fresh live-mode customer.
+                          Confirm before clicking, since this also downgrades
+                          plan_tier to 'free' (cancel real subs in Stripe
+                          dashboard first if applicable). */}
+                      <Button size="sm" variant="secondary"
+                        disabled={resetStripeMut.isPending}
+                        onClick={() => {
+                          const msg = s.plan_tier === 'paid'
+                            ? `⚠ ${s.name} is on a PAID plan. This will clear the saved Stripe customer + subscription id and mark them as 'free' in the DB. The Stripe subscription itself is NOT cancelled — do that in the Stripe dashboard first if needed.\n\nContinue?`
+                            : `Clear Stripe customer id for ${s.name}? This lets the next checkout create a fresh live-mode customer (fixes the "No such customer" error after switching from test to live mode).`;
+                          if (window.confirm(msg)) resetStripeMut.mutate(s.id);
+                        }}>
+                        {resetStripeMut.isPending && resetStripeMut.variables === s.id ? '…' : '⚡ Reset Stripe'}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>

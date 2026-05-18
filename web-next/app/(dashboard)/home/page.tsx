@@ -1148,6 +1148,18 @@ function SuperAdminDash() {
     },
   });
 
+  // Reset Stripe (superadmin-only) — clears stored test-mode customer
+  // ids so live-mode checkout can create a fresh customer.
+  const [stripeDoneId, setStripeDoneId] = useState(null);
+  const resetStripeMut = useMutation({
+    mutationFn: (id) => schools.resetStripe(id),
+    onSuccess: (_, id) => {
+      setStripeDoneId(id);
+      qc.invalidateQueries(['schools']);
+      setTimeout(() => setStripeDoneId(null), 4000);
+    },
+  });
+
   const createMut = useMutation({
     mutationFn: (data) => schools.create(data),
     onSuccess: () => {
@@ -1251,9 +1263,24 @@ function SuperAdminDash() {
                       <Button size="sm" variant="secondary" onClick={() => { setResetId(null); setResetPw(''); }}>Cancel</Button>
                     </div>
                   ) : (
-                    <Button size="sm" variant="secondary" onClick={() => { setResetId(s.id); setResetPw(''); setShowPw(false); }}>
-                      🔑 Reset Password
-                    </Button>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {stripeDoneId === s.id && (
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#15803D' }}>✓ Stripe reset</span>
+                      )}
+                      <Button size="sm" variant="secondary" onClick={() => { setResetId(s.id); setResetPw(''); setShowPw(false); }}>
+                        🔑 Reset Password
+                      </Button>
+                      <Button size="sm" variant="secondary"
+                        disabled={resetStripeMut.isPending}
+                        onClick={() => {
+                          const msg = s.plan_tier === 'paid'
+                            ? `⚠ ${s.name} is on a PAID plan. This will clear the saved Stripe customer + subscription id and mark them as 'free' in the DB. The Stripe subscription itself is NOT cancelled — do that in the Stripe dashboard first if needed.\n\nContinue?`
+                            : `Clear Stripe customer id for ${s.name}? This lets the next checkout create a fresh live-mode customer (fixes the "No such customer" error after switching from test to live mode).`;
+                          if (window.confirm(msg)) resetStripeMut.mutate(s.id);
+                        }}>
+                        {resetStripeMut.isPending && resetStripeMut.variables === s.id ? '…' : '⚡ Reset Stripe'}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
