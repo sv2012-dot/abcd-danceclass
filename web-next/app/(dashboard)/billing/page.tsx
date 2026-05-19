@@ -1,14 +1,27 @@
 'use client';
 
 // /billing — the customer-facing subscription page.
-// Shows current plan, trial countdown, usage vs limits, and upgrade /
-// manage-billing buttons that bounce through Stripe Checkout / Portal.
+// Shows current plan, usage vs limits, and upgrade / manage-billing
+// buttons that bounce through Stripe Checkout / Portal.
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import api from '@/lib/api/client';
 import { useAuth } from '@/lib/context/AuthContext';
+
+// Viewport detector — used to switch the Hobby vs Pro comparison from
+// a 3-column table (desktop) to stacked rows (mobile).
+function useIsMobile(bp = 600) {
+  const [m, setM] = useState(false);
+  useEffect(() => {
+    const fn = () => setM(window.innerWidth < bp);
+    fn();
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, [bp]);
+  return m;
+}
 
 type PlanInfo = {
   plan: 'free' | 'paid';
@@ -148,9 +161,10 @@ function BillingContent() {
   }
 
   const isPaid = info.plan === 'paid';
-  const isTrial = info.source === 'trial';
   const isSub = info.source === 'subscription';
-  const daysLeft = daysBetween(info.trial_ends_at);
+  // isTrial / daysLeft removed — no trial path in the Hobby/Pro
+  // freemium model. Backend's effectivePlan returns trial_ends_at:
+  // null for everyone now, so these were always falsy anyway.
 
   const schoolName = school?.name || 'this studio';
 
@@ -304,6 +318,7 @@ function PlanCompareTable({
   onUpgrade: () => void;
   busy: string | null;
 }) {
+  const isMobile = useIsMobile();
   const rows = [
     { label: 'Students',              free: String(freeLimits.students ?? 30),                   pro: 'Unlimited' },
     { label: 'Batches / classes',     free: String(freeLimits.batches ?? 2),                     pro: 'Unlimited' },
@@ -319,7 +334,7 @@ function PlanCompareTable({
       background: 'var(--card)',
       border: '1.5px solid var(--border)',
       borderRadius: 16,
-      padding: '20px 22px',
+      padding: isMobile ? '18px 16px' : '20px 22px',
       marginBottom: 22,
     }}>
       <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 4px', color: 'var(--text)' }}>
@@ -328,26 +343,56 @@ function PlanCompareTable({
       <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 16px' }}>
         Upgrade for $5.99/month to unlock everything below.
       </p>
-      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface)' }}>
-              <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Feature</th>
-              <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>🎓 Hobby</th>
-              <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, color: MAGENTA, textTransform: 'uppercase', letterSpacing: '0.06em' }}>⭐ Pro</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={r.label} style={{ borderTop: '1px solid var(--border)' }}>
-                <td style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text)' }}>{r.label}</td>
-                <td style={{ padding: '10px 14px', color: 'var(--muted)' }}>{r.free}</td>
-                <td style={{ padding: '10px 14px', color: 'var(--text)', fontWeight: 700 }}>{r.pro}</td>
+
+      {isMobile ? (
+        /* ── Mobile: each row stacks the feature label on top, with
+            Hobby + Pro chips below. Pills are easier to scan than a
+            cramped 3-column table on a 360px screen. */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {rows.map((r) => (
+            <div key={r.label} style={{
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              borderRadius: 10, padding: '10px 12px',
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
+                {r.label}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 2 }}>🎓 Hobby</div>
+                  <div style={{ fontSize: 13, color: r.free === '—' ? 'var(--muted)' : 'var(--text)', fontWeight: 600 }}>{r.free}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: MAGENTA, textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 2 }}>⭐ Pro</div>
+                  <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 700 }}>{r.pro}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* ── Desktop: classic 3-column table. */
+        <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: 'var(--surface)' }}>
+                <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Feature</th>
+                <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>🎓 Hobby</th>
+                <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, color: MAGENTA, textTransform: 'uppercase', letterSpacing: '0.06em' }}>⭐ Pro</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.label} style={{ borderTop: '1px solid var(--border)' }}>
+                  <td style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text)' }}>{r.label}</td>
+                  <td style={{ padding: '10px 14px', color: 'var(--muted)' }}>{r.free}</td>
+                  <td style={{ padding: '10px 14px', color: 'var(--text)', fontWeight: 700 }}>{r.pro}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       <div style={{ marginTop: 16, textAlign: 'center' }}>
         <button
           onClick={onUpgrade}

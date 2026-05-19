@@ -84,12 +84,12 @@ function Dash() {
   );
 }
 
-const DEBUT_FEATURES = [
+const HOBBY_FEATURES = [
   { label:'Up to 30 students',           included:true  },
   { label:'Up to 2 active batches',      included:true  },
   { label:'Up to 4 recitals',            included:true  },
   { label:'All Smart ManchQ features',   included:true  },
-  { label:'20 AI actions per day',       included:true  },
+  { label:'10 AI actions per day',       included:true  },
   { label:'Class & event scheduling',    included:true  },
   { label:'Attendance tracking',         included:true  },
   { label:'Public RSVP pages',           included:true  },
@@ -99,8 +99,8 @@ const DEBUT_FEATURES = [
   { label:'Priority support',            included:false },
 ];
 
-const SPOTLIGHT_FEATURES = [
-  { label:'Everything in Debut, plus:',         included:true },
+const PRO_FEATURES = [
+  { label:'Everything in Hobby, plus:',         included:true },
   { label:'Unlimited students',                 included:true },
   { label:'Unlimited batches',                  included:true },
   { label:'Unlimited recitals',                 included:true },
@@ -115,7 +115,7 @@ const TABLE_ROWS = [
   { feature:'Students',                  hustler:'Up to 30',       director:'Unlimited'     },
   { feature:'Batches',                   hustler:'Up to 2',        director:'Unlimited'     },
   { feature:'Recitals',                  hustler:'Up to 4',        director:'Unlimited'     },
-  { feature:'Smart ManchQ AI',           hustler:'20 / day',       director:'60 / day'      },
+  { feature:'Smart ManchQ AI',           hustler:'10 / day',       director:'60 / day'      },
   { feature:'Public RSVP pages',         hustler:'✓',              director:'✓'             },
   { feature:'Attendance tracking',       hustler:'✓',              director:'✓'             },
   { feature:'Custom RSVP branding',      hustler:'—',              director:'✓'             },
@@ -127,14 +127,14 @@ const FAQ = [
     a:"It's the price of a coffee — small enough not to think about. We'd rather have hundreds of happy studios than ten begrudging ones." },
   { q:'I run more than one studio. How does pricing work?',
     a:"Each studio gets its own ManchQ workspace and its own subscription — $5.99/month each. Sign in, sign out, sign up again to create the second one. You can choose between them at the gate." },
-  { q:'Can I start on Debut and upgrade later?',
+  { q:'Can I start on Hobby and upgrade later?',
     a:'Absolutely. Start free, grow into it. Your data, schedules, students and recitals all carry over instantly when you upgrade.' },
-  { q:'Is there a free trial for Spotlight?',
-    a:'30 days, no credit card required. You get the full Spotlight experience so you can decide with confidence, not guesswork.' },
-  { q:"What happens if I go over Debut's limits?",
-    a:"We'll show a friendly nudge when you hit a limit. Your existing data stays put — you just can't add more until you upgrade or remove old records." },
+  { q:'Do I need to put in a credit card to start?',
+    a:"No. Hobby is free forever — sign up, set up your studio, no card needed. You only enter payment info if and when you decide to upgrade to Pro." },
+  { q:"What happens if I go over Hobby's limits?",
+    a:"We'll show a friendly upgrade prompt the moment you hit a limit (e.g. trying to add your 31st student). Your existing data stays — you just can't add more until you upgrade or remove old records." },
   { q:'Can I cancel anytime?',
-    a:'Yes, anytime. No lock-in, no fees. If you cancel, you stay on Spotlight until the end of your billing period, then drop to Debut.' },
+    a:'Yes, anytime. No lock-in, no fees. If you cancel, you stay on Pro until the end of your billing period, then drop to Hobby with all your data intact.' },
   { q:'Do you offer discounts for smaller studios?',
     a:"Honestly at $5.99 we're already priced for the smallest studios. If genuine hardship — reach out, we'll work something out." },
 ];
@@ -205,7 +205,7 @@ export default function PricingPage() {
           }}>
             <div style={{ marginBottom:24 }}>
               <div style={{ fontSize:10, fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', color:'#6B7280', marginBottom:10 }}>Free forever</div>
-              <h2 style={{ fontSize:28, fontWeight:900, color:'#fff', margin:'0 0 8px', letterSpacing:'-.02em' }}>Debut</h2>
+              <h2 style={{ fontSize:28, fontWeight:900, color:'#fff', margin:'0 0 8px', letterSpacing:'-.02em' }}>🎓 Hobby</h2>
               <p style={{ fontSize:13, color:'#9CA3AF', margin:'0 0 20px', lineHeight:1.55 }}>
                 For the driven instructor getting their studio off the ground. Zero cost, zero excuses.
               </p>
@@ -229,7 +229,7 @@ export default function PricingPage() {
             >Start free →</button>
 
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-              {DEBUT_FEATURES.map(({ label, included }) => (
+              {HOBBY_FEATURES.map(({ label, included }) => (
                 <div key={label} style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
                   {included ? <Check color={PURPLE} /> : <Dash />}
                   <span style={{ fontSize:13, color: included ? '#D1D5DB' : '#4B5563', lineHeight:1.4 }}>{label}</span>
@@ -256,7 +256,7 @@ export default function PricingPage() {
 
             <div style={{ marginBottom:24 }}>
               <div style={{ fontSize:10, fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', color:MAGENTA, marginBottom:10 }}>Full power</div>
-              <h2 style={{ fontSize:28, fontWeight:900, color:'#fff', margin:'0 0 8px', letterSpacing:'-.02em' }}>Spotlight</h2>
+              <h2 style={{ fontSize:28, fontWeight:900, color:'#fff', margin:'0 0 8px', letterSpacing:'-.02em' }}>⭐ Pro</h2>
               <p style={{ fontSize:13, color:'#C4B5FD', margin:'0 0 20px', lineHeight:1.55 }}>
                 For the studio that means business. Unlimited everything, the full toolkit, support that shows up.
               </p>
@@ -279,10 +279,10 @@ export default function PricingPage() {
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform='translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow='0 8px 28px rgba(124,58,237,0.55)'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform='none'; (e.currentTarget as HTMLElement).style.boxShadow='0 4px 20px rgba(124,58,237,0.45)'; }}
-            >Start 30-day free trial →</button>
+            >Upgrade to Pro →</button>
 
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-              {SPOTLIGHT_FEATURES.map(({ label }) => (
+              {PRO_FEATURES.map(({ label }) => (
                 <div key={label} style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
                   <Check color={MAGENTA} />
                   <span style={{ fontSize:13, color:'#E5E7EB', lineHeight:1.4 }}>{label}</span>
@@ -311,8 +311,8 @@ export default function PricingPage() {
           <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:20, overflow:'hidden' }}>
             <div style={{ display:'grid', gridTemplateColumns:'1.2fr 1fr 1fr', background:'rgba(255,255,255,0.05)', padding:'13px 22px' }}>
               <div style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'.08em' }}>Feature</div>
-              <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'.08em', textAlign:'center' }}>Debut</div>
-              <div style={{ fontSize:11, fontWeight:700, color:MAGENTA,   textTransform:'uppercase', letterSpacing:'.08em', textAlign:'center' }}>Spotlight</div>
+              <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'.08em', textAlign:'center' }}>Hobby</div>
+              <div style={{ fontSize:11, fontWeight:700, color:MAGENTA,   textTransform:'uppercase', letterSpacing:'.08em', textAlign:'center' }}>Pro</div>
             </div>
             {TABLE_ROWS.map((row, i) => (
               <div key={row.feature} style={{
@@ -403,7 +403,7 @@ export default function PricingPage() {
             Ready to run your studio?
           </h2>
           <p style={{ fontSize: isMobile ? 14 : 15, color:'#9CA3AF', margin:'0 0 28px', lineHeight:1.65 }}>
-            Start on Debut — free, forever. Upgrade to Spotlight when you're ready to unlock everything.
+            Start on Hobby — free, forever. Upgrade to Pro when you're ready to unlock everything.
           </p>
           <div style={{ display:'flex', gap:10, justifyContent:'center', flexDirection: isMobile ? 'column' : 'row' }}>
             <button

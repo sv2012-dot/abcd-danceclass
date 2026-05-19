@@ -40,7 +40,7 @@ const SLIDES: Slide[] = [
       'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z',
     ],
     title: 'Free forever',
-    body: 'Free base plan forever. Try Pro free for 30 days — no credit card. Just $5.99/month per studio after that.',
+    body: 'Free forever — no credit card needed. Upgrade to Pro for $5.99/month per studio whenever you outgrow the free tier.',
   },
   {
     // 2. Smart Features — wand / sparkle
