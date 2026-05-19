@@ -718,12 +718,12 @@ exports.registerSchool = async (req, res) => {
       });
     }
 
-    // Create school — new schools start with a 30-day trial of paid features
-    // (plan_tier='paid' + trial_ends_at). When trial expires they drop to
-    // 'free' on the fly via the effectivePlan() helper.
+    // Create school — new schools start on the Hobby (free) plan.
+    // Upgrades happen via Stripe checkout when the user hits a limit
+    // and taps the upgrade prompt. No trial period — see lib/plan.js.
     const [schoolResult] = await conn.query(
-      `INSERT INTO schools (name, owner_name, email, city, dance_style, is_active, plan_tier, trial_ends_at)
-       VALUES (?, ?, ?, ?, ?, 1, 'paid', DATE_ADD(NOW(), INTERVAL 30 DAY))`,
+      `INSERT INTO schools (name, owner_name, email, city, dance_style, is_active, plan_tier)
+       VALUES (?, ?, ?, ?, ?, 1, 'free')`,
       [schoolName, ownerName, ownerEmail, city || null, danceStyle || null]
     );
 

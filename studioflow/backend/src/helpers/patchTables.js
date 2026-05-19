@@ -161,16 +161,28 @@ async function patchTables() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // Grandfather: any existing school that's never been on a plan gets a
-    // fresh 30-day trial so demo/early-tester data stays usable.
+    // ── Limit-block telemetry ─────────────────────────────────────────
+    // Logs every time withinFreeLimits blocks a free-plan school from
+    // adding a record. Used to measure which limit converts best to Pro.
     await pool.query(`
-      UPDATE schools
-         SET plan_tier = 'paid',
-             trial_ends_at = DATE_ADD(NOW(), INTERVAL 30 DAY)
-       WHERE plan_tier = 'free'
-         AND trial_ends_at IS NULL
-         AND stripe_subscription_id IS NULL
+      CREATE TABLE IF NOT EXISTS limit_blocks (
+        id            INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+        school_id     INT UNSIGNED NOT NULL,
+        user_id       INT UNSIGNED NULL,
+        resource      VARCHAR(40) NOT NULL,
+        current_count INT NOT NULL DEFAULT 0,
+        plan_limit    INT NOT NULL DEFAULT 0,
+        created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        KEY ix_limit_blocks_school (school_id, created_at),
+        KEY ix_limit_blocks_resource (resource, created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
+
+    // ── Trial sunset migration ────────────────────────────────────────
+    // The old trial-based plan model is gone. Clear any leftover
+    // trial_ends_at values so effectivePlan treats everyone consistently
+    // (paid via Stripe, or Hobby). Safe to re-run — idempotent.
+    await pool.query(`UPDATE schools SET trial_ends_at = NULL WHERE trial_ends_at IS NOT NULL`);
 
     await addColumnIfMissing('batches',   'cover_url',         'MEDIUMTEXT NULL');
     // Soft-delete with 30-day recovery window. is_active = 0 +

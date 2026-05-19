@@ -51,13 +51,19 @@ async function smartUsageMiddleware(req, res, next) {
     const used = await getTodayCount(sid);
 
     if (used >= limit) {
+      // Telemetry: log AI-cap hits separately from CRUD-cap hits so we
+      // can see which converts better to Pro. Fire-and-forget.
+      pool.query(
+        `INSERT INTO limit_blocks (school_id, user_id, resource, current_count, plan_limit) VALUES (?,?,?,?,?)`,
+        [sid, req.user?.id || null, 'ai_daily', used, limit]
+      ).catch(err => console.warn('[limit_blocks] insert failed:', err.message));
       return res.status(429).json({
         error: 'rate_limit_exceeded',
         plan: eff.plan,
         limit,
         used,
         message: eff.plan === 'free'
-          ? `Your studio has used all ${limit} Smart actions for today. Upgrade for more, or wait until tomorrow.`
+          ? `Your studio has used all ${limit} Smart actions for today. Upgrade to Pro for more, or wait until tomorrow.`
           : `Your studio has used all ${limit} Smart actions for today. Resets at midnight.`,
         retry_after_seconds: 86400,
       });

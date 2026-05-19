@@ -77,7 +77,7 @@ function BillingContent() {
   useEffect(() => {
     const checkout = searchParams.get('checkout');
     if (checkout === 'success') {
-      toast.success('Welcome to Spotlight! ☕ Your subscription is active.');
+      toast.success('Welcome to Pro! ☕ Your subscription is active.');
       // Try webhook-driven refresh first (gives webhook a moment to land),
       // then fall back to direct Stripe sync so the UI always reflects truth.
       (async () => {
@@ -190,17 +190,11 @@ function BillingContent() {
               Current plan
             </div>
             <h2 style={{ fontSize: 24, fontWeight: 900, margin: 0, color: 'var(--text)' }}>
-              {isPaid ? '⭐ Pro' : '🎓 Free'}
-              {isTrial && daysLeft !== null && (
-                <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 700, padding: '3px 10px', borderRadius: 12, background: daysLeft <= 5 ? 'rgba(245,158,11,0.18)' : 'rgba(124,58,237,0.18)', color: daysLeft <= 5 ? '#F59E0B' : MAGENTA, verticalAlign: 'middle' }}>
-                  Trial — {daysLeft}d left
-                </span>
-              )}
+              {isPaid ? '⭐ Pro' : '🎓 Hobby'}
             </h2>
             <p style={{ fontSize: 13, color: 'var(--muted)', margin: '6px 0 0' }}>
               {isSub  && '$5.99/month · billed via Stripe'}
-              {isTrial && 'Enjoy every Pro feature during your trial'}
-              {info.source === 'default' && 'Limited features — upgrade for unlimited'}
+              {!isSub && 'Free forever · upgrade to Pro for unlimited everything'}
             </p>
           </div>
           <div>
@@ -238,26 +232,14 @@ function BillingContent() {
                   boxShadow: '0 4px 18px rgba(124,58,237,0.4)',
                 }}
               >
-                {busy === 'checkout' ? 'Loading…' : (isTrial ? '☕ Subscribe — $5.99/mo' : '☕ Upgrade for $5.99/mo')}
+                {busy === 'checkout' ? 'Loading…' : '☕ Upgrade to Pro · $5.99/mo'}
               </button>
             )}
           </div>
         </div>
 
-        {/* Trial copy — flat paragraph inside the main plan card. */}
-        {isTrial && daysLeft !== null && (
-          <p style={{
-            marginTop: 16, marginBottom: 0,
-            fontSize: 13, lineHeight: 1.55,
-            color: daysLeft <= 5 ? '#B45309' : 'var(--muted)',
-          }}>
-            {daysLeft <= 5 ? (
-              <>⏰ Your trial ends in <strong style={{ color: '#B45309' }}>{daysLeft} day{daysLeft === 1 ? '' : 's'}</strong>. Subscribe now to keep your Pro features — see what changes if you don't, below.</>
-            ) : (
-              <>You're enjoying every Pro feature during your trial. Subscribe now to keep unlimited students, batches, recitals and the full AI quota — or see what you'd lose on Free, below.</>
-            )}
-          </p>
-        )}
+        {/* Trial UI removed — there are no trials in the Hobby/Pro
+            freemium model. The plan card simply shows current state. */}
       </div>
 
       {/* Usage cards */}
@@ -296,14 +278,12 @@ function BillingContent() {
         </div>
       )}
 
-      {/* Pro vs Free comparison — surfaced for trial + free so the user
-          sees concretely what changes if they don't subscribe. Hidden
-          once they're an active subscriber (they already have Pro). */}
+      {/* Hobby vs Pro comparison — surfaced for non-subscribers so the
+          user sees exactly what upgrade unlocks. Hidden once they're
+          an active subscriber. */}
       {!isSub && (
         <PlanCompareTable
           freeLimits={info.free_limits}
-          isTrial={isTrial}
-          daysLeft={daysLeft}
           onUpgrade={handleUpgrade}
           busy={busy}
         />
@@ -318,11 +298,9 @@ function BillingContent() {
 }
 
 function PlanCompareTable({
-  freeLimits, isTrial, daysLeft, onUpgrade, busy,
+  freeLimits, onUpgrade, busy,
 }: {
   freeLimits: any;
-  isTrial: boolean;
-  daysLeft: number | null;
   onUpgrade: () => void;
   busy: string | null;
 }) {
@@ -331,9 +309,9 @@ function PlanCompareTable({
     { label: 'Batches / classes',     free: String(freeLimits.batches ?? 2),                     pro: 'Unlimited' },
     { label: 'Recitals',              free: String(freeLimits.recitals ?? 4),                    pro: 'Unlimited' },
     { label: 'Team members',          free: `${freeLimits.team_members ?? 1} (owner only)`,      pro: 'Unlimited' },
-    { label: 'Smart ManchQ AI / day', free: `${freeLimits.smart_calls_per_day ?? 20} actions`,   pro: '60 actions' },
-    { label: 'Smart Announce',        free: '—',                                                 pro: 'Included' },
-    { label: 'Smart Add (bulk)',      free: '—',                                                 pro: 'Included' },
+    { label: 'Smart ManchQ AI / day', free: `${freeLimits.smart_calls_per_day ?? 10} actions`,   pro: '60 actions' },
+    { label: 'Smart Announce',        free: 'Included',                                          pro: 'Included' },
+    { label: 'Smart Add (bulk)',      free: 'Included',                                          pro: 'Included' },
     { label: 'Per-event cover art',   free: '—',                                                 pro: 'Included' },
   ];
   return (
@@ -345,19 +323,17 @@ function PlanCompareTable({
       marginBottom: 22,
     }}>
       <h3 style={{ fontSize: 14, fontWeight: 800, margin: '0 0 4px', color: 'var(--text)' }}>
-        {isTrial ? 'What you keep with Pro · what you lose on Free' : 'Pro vs Free'}
+        Hobby vs Pro
       </h3>
       <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 16px' }}>
-        {isTrial && daysLeft !== null
-          ? `In ${daysLeft} day${daysLeft === 1 ? '' : 's'} your trial ends. Subscribe to lock in Pro for $5.99/month.`
-          : 'Upgrade for $5.99/month to unlock everything below.'}
+        Upgrade for $5.99/month to unlock everything below.
       </p>
       <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: 'var(--surface)' }}>
               <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Feature</th>
-              <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Free</th>
+              <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>🎓 Hobby</th>
               <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, color: MAGENTA, textTransform: 'uppercase', letterSpacing: '0.06em' }}>⭐ Pro</th>
             </tr>
           </thead>

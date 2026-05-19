@@ -62,18 +62,15 @@ export default function PlanBadge({ variant = 'inline' }: { variant?: 'inline' |
   const isTrial = info.source === 'trial';
   const days = daysUntil(info.trial_ends_at);
 
-  const urgent = isTrial && days !== null && days <= 5;
-
-  // ── Pro (paid OR trial): purple gradient badge.
-  //    Trial uses the SAME badge so the user sees what they have today;
-  //    the countdown is appended so they know it's time-bound. Urgent
-  //    (<=5 days) flips to amber to nudge subscription.
-  if (isSub || isTrial) {
-    const isUrgentTrial = isTrial && urgent;
+  // ── Pro (paid subscription) badge.
+  //    Trial path removed — Hobby/Pro freemium model has no in-between
+  //    state. Subscribers see the gradient pill; everyone else sees
+  //    the "Upgrade →" link below.
+  if (isSub) {
     return (
       <button
         onClick={(e) => { e.stopPropagation(); router.push('/billing'); }}
-        title={isSub ? 'Manage billing' : 'Subscribe before trial ends'}
+        title="Manage billing"
         style={{
           marginTop: 6,
           display: 'inline-flex',
@@ -82,9 +79,7 @@ export default function PlanBadge({ variant = 'inline' }: { variant?: 'inline' |
           padding: '2px 8px',
           borderRadius: 12,
           border: 'none',
-          background: isUrgentTrial
-            ? 'linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)'
-            : 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)',
+          background: 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)',
           color: '#fff',
           fontSize: 10,
           fontWeight: 800,
@@ -93,13 +88,13 @@ export default function PlanBadge({ variant = 'inline' }: { variant?: 'inline' |
           textTransform: 'uppercase',
         }}
       >
-        <span aria-hidden style={{ fontSize: 10 }}>{isUrgentTrial ? '⏰' : '★'}</span>
-        {isTrial ? `Pro · Trial — ${days}d left` : 'Pro'}
+        <span aria-hidden style={{ fontSize: 10 }}>★</span>
+        Pro
       </button>
     );
   }
 
-  // ── Free / default ── (trial + paid already handled above)
+  // ── Hobby (free) — Upgrade → link
   const label = 'Upgrade →';
 
   // Capsule variant — small pill button (used in the mobile drawer footer)

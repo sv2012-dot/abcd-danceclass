@@ -1,12 +1,16 @@
 /**
  * Plan helpers — single source of truth for "is this school on the paid plan?"
  *
- * A school is "effectively paid" if:
- *   1. They have an active Stripe subscription (current_period_end > now), OR
- *   2. They're inside their 30-day trial window (trial_ends_at > now)
+ * Two-tier freemium model (Hobby ⇄ Pro). No trial period — new schools
+ * start on Hobby (free) immediately. They upgrade to Pro ($5.99/mo)
+ * when they hit a limit and tap the upgrade prompt.
  *
- * The DB column plan_tier is the *intended* tier (set by webhooks). The
- * trial window is computed on the fly so we don't need a cron to downgrade.
+ * A school is "effectively paid" if they have an active Stripe
+ * subscription (current_period_end > now). That's the only path.
+ *
+ * NOTE: trial_ends_at column still exists for backwards compat but is
+ * ignored everywhere. patchTables clears any leftover trial values on
+ * boot (one-time migration — easy because there are no real users yet).
  */
 
 const { pool } = require('../database');
@@ -15,7 +19,7 @@ const FREE_LIMITS = {
   recitals: 4,
   batches: 2,
   students: 30,
-  smart_calls_per_day: 20,
+  smart_calls_per_day: 10,
   // Multi-user: free = owner only. No invites allowed.
   team_members: 1,
 };
@@ -28,14 +32,17 @@ const PAID_LIMITS = {
 };
 
 /**
- * Returns { plan: 'free'|'paid', source: 'subscription'|'trial'|'default',
- *           trial_ends_at, limits } for the given school row OR schoolId.
+ * Returns { plan: 'free'|'paid', source: 'subscription'|'default',
+ *           limits } for the given school row OR schoolId.
+ *
+ * trial_ends_at is no longer consulted; it's surfaced as null for
+ * compatibility with callers that still read it from the response.
  */
 async function effectivePlan(schoolOrId) {
   let school = schoolOrId;
   if (typeof schoolOrId === 'number' || typeof schoolOrId === 'string') {
     const [rows] = await pool.query(
-      `SELECT id, plan_tier, trial_ends_at, stripe_subscription_id, current_period_end
+      `SELECT id, plan_tier, stripe_subscription_id, current_period_end
          FROM schools WHERE id = ? LIMIT 1`,
       [schoolOrId]
     );
@@ -47,14 +54,10 @@ async function effectivePlan(schoolOrId) {
 
   // Active subscription wins
   if (school.stripe_subscription_id && school.current_period_end && new Date(school.current_period_end) > now) {
-    return { plan: 'paid', source: 'subscription', trial_ends_at: school.trial_ends_at, limits: PAID_LIMITS };
+    return { plan: 'paid', source: 'subscription', trial_ends_at: null, limits: PAID_LIMITS };
   }
-  // Trial still open
-  if (school.trial_ends_at && new Date(school.trial_ends_at) > now) {
-    return { plan: 'paid', source: 'trial', trial_ends_at: school.trial_ends_at, limits: PAID_LIMITS };
-  }
-  // Default — free
-  return { plan: 'free', source: 'default', trial_ends_at: school.trial_ends_at, limits: FREE_LIMITS };
+  // Default — Hobby (free). No trial path anymore.
+  return { plan: 'free', source: 'default', trial_ends_at: null, limits: FREE_LIMITS };
 }
 
 /**
@@ -87,12 +90,18 @@ function withinFreeLimits(resource) {
       );
       const limit = eff.limits[resource];
       if (row.n >= limit) {
+        // Telemetry: log the block so we can see which limits are
+        // pushing conversion. Fire-and-forget — never blocks the 402.
+        pool.query(
+          `INSERT INTO limit_blocks (school_id, user_id, resource, current_count, plan_limit) VALUES (?,?,?,?,?)`,
+          [schoolId, req.user?.id || null, resource, row.n, limit]
+        ).catch(err => console.warn('[limit_blocks] insert failed:', err.message));
         return res.status(402).json({
           error: 'plan_limit_reached',
           resource,
           limit,
           current: row.n,
-          message: `Free plan allows up to ${limit} ${resource}. Upgrade to add more.`,
+          message: `Hobby plan allows up to ${limit} ${resource}. Upgrade to Pro for unlimited.`,
         });
       }
       next();

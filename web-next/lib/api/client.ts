@@ -53,6 +53,22 @@ if (typeof window !== 'undefined') {
           }));
         }
       }
+      // 402 = plan_limit_reached (from withinFreeLimits middleware)
+      // 429 = AI daily cap (from smartUsage middleware)
+      // Fire a custom event so the global UpgradeModal can react —
+      // pages don't need to handle these errors individually.
+      if (err.response?.status === 402 || err.response?.status === 429) {
+        const data = err.response.data || {};
+        if (typeof window !== 'undefined' && (data.error === 'plan_limit_reached' || data.error === 'rate_limit_exceeded')) {
+          window.dispatchEvent(new CustomEvent('sf:limit-reached', {
+            detail: {
+              resource: data.resource || 'ai_daily',
+              current: data.current ?? data.used,
+              limit: data.limit,
+            },
+          }));
+        }
+      }
       if (err.response?.status === 401) {
         // Best-effort logging so we can debug auth bounces in production.
         try {
