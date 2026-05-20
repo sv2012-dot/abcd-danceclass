@@ -1,171 +1,195 @@
 'use client';
 
-import { useState } from 'react';
+// Google sign-in button — uses GIS (Google Identity Services) via the
+// <GoogleLogin> component from @react-oauth/google.
+//
+// Why <GoogleLogin> and not useGoogleLogin?
+//   useGoogleLogin opens an OAuth popup that mobile browsers (iOS Safari,
+//   Chrome Mobile) treat as a new tab. The original tab gets backgrounded
+//   and is often killed for memory pressure before postMessage can land,
+//   leaving the user stranded with their login state lost. GIS uses an
+//   iframe-based ID-token flow that works on mobile without that fragility.
+//
+// What we get back: a JWT "credential" (signed by Google).
+//   - login mode:    POST it to /auth/google as { credential } — the backend
+//                    already verifies it via google-auth-library.
+//   - register mode: decode it client-side to pre-fill the studio form, then
+//                    hand the credential up via onToken() for the parent to
+//                    submit with the studio details.
+
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useGoogleLogin } from '@react-oauth/google';
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import toast from 'react-hot-toast';
 import { redirectToDashboard } from '@/lib/redirectToDashboard';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useTheme } from '@/lib/context/ThemeContext';
 
-const GoogleIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.658 14.013 17.64 11.705 17.64 9.2z"/>
-    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
-    <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.039l3.007-2.332z"/>
-    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
-  </svg>
-);
-
 type Props = {
-  // 'login' (default): runs the full sign-in flow — call /auth/google and handle
-  //                    requires_choice / token / requiresRegistration branches.
-  // 'register':       just collect a Google access token and hand it back to
-  //                    the parent via onToken(). Parent decides what to do with it.
+  // 'login' (default): runs the full sign-in flow — POSTs the credential to
+  //                    /auth/google and handles the response branches.
+  // 'register':        decodes the credential and hands it back to the parent
+  //                    via onToken(). Parent submits it with the studio form.
   mode?: 'login' | 'register';
-  onToken?: (accessToken: string, profile: { email: string; name: string; picture?: string }) => void;
-  label?: string;
+  onToken?: (credential: string, profile: { email: string; name: string; picture?: string }) => void;
   disabled?: boolean;          // when true, the button is non-interactive
   disabledTitle?: string;      // tooltip explaining why
+  // `label` was used by the previous custom button. GIS renders its own
+  // branded button with a fixed copy ("Sign in with Google" / "Sign up with
+  // Google"), so it's no longer honoured. Kept in the prop type for source
+  // compatibility — callers can keep passing it without a TS error.
+  label?: string;
 };
 
-export default function GoogleSignIn({ mode = 'login', onToken, label, disabled = false, disabledTitle }: Props = {}) {
+// Decode a JWT payload (no signature verification — the backend re-verifies
+// the credential before trusting it). Handles UTF-8 names correctly.
+function decodeJwtPayload(token: string): Record<string, any> | null {
+  try {
+    const part = token.split('.')[1];
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(b64);
+    const utf8 = decodeURIComponent(
+      raw.split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
+    );
+    return JSON.parse(utf8);
+  } catch {
+    return null;
+  }
+}
+
+export default function GoogleSignIn({ mode = 'login', onToken, disabled = false, disabledTitle }: Props = {}) {
   const router = useRouter();
   const { setSession } = useAuth();
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState<number>(320);
 
-  // Google brand-approved palette pair. Both variants are blessed in
-  // Google's branding guidelines — we just can't invent our own.
-  // https://developers.google.com/identity/branding-guidelines
-  const isDark = theme === 'dark';
-  const palette = isDark
-    ? { bg: '#131314', text: '#E3E3E3', border: '#3C4043', hoverBg: '#1F2122', hoverBorder: '#5F6368' }
-    : { bg: '#FFFFFF', text: '#1F1F1F', border: '#DADCE0', hoverBg: '#F8F9FA', hoverBorder: '#C0C4C9' };
+  // GIS button takes a fixed pixel width — match it to the container so the
+  // button fills the auth island the same way our old custom button did.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.getBoundingClientRect().width;
+      if (w > 0) setWidth(Math.min(400, Math.floor(w))); // GIS caps at 400
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
-  const login = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setLoading(true);
+  const handleSuccess = async (resp: CredentialResponse) => {
+    const credential = resp?.credential;
+    if (!credential) {
+      toast.error("Google sign-in didn't return a credential. Try again.");
+      return;
+    }
 
-      // REGISTER MODE: don't call /auth/google. Just fetch the profile to confirm
-      // the token is real and hand it up to the parent component.
-      if (mode === 'register' && onToken) {
-        try {
-          const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-          });
-          if (!userInfoRes.ok) {
-            toast.error("Couldn't read your Google profile. Please try again.");
-            setLoading(false);
-            return;
-          }
-          const ui = await userInfoRes.json();
-          onToken(tokenResponse.access_token, {
-            email: ui.email,
-            name: ui.name,
-            picture: ui.picture,
-          });
-        } catch (e) {
-          toast.error("Couldn't reach Google. Check your connection.");
-        } finally {
-          setLoading(false);
-        }
+    // REGISTER MODE: decode + hand off to parent.
+    if (mode === 'register') {
+      const claims = decodeJwtPayload(credential);
+      if (!claims?.email) {
+        toast.error("Couldn't read your Google profile. Please try again.");
         return;
       }
+      onToken?.(credential, {
+        email: String(claims.email).toLowerCase(),
+        name: claims.name || '',
+        picture: claims.picture,
+      });
+      return;
+    }
 
-      // LOGIN MODE (default): full sign-in flow against our backend.
-      const t = toast.loading('Getting you in…');
-      try {
-        const apiUrl = (process.env.NEXT_PUBLIC_API_URL?.trim()) || 'http://localhost:5000/api';
-        const response = await fetch(`${apiUrl}/auth/google`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ access_token: tokenResponse.access_token }),
-        });
-        const data = await response.json();
+    // LOGIN MODE: full sign-in flow against our backend.
+    setLoading(true);
+    const t = toast.loading('Getting you in…');
+    try {
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL?.trim()) || 'http://localhost:5000/api';
+      const response = await fetch(`${apiUrl}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential }),
+      });
+      const data = await response.json();
 
-        if (response.ok) {
-          if (data.requires_choice && data.chooser_token) {
-            try {
-              sessionStorage.setItem('sf_pending_chooser', JSON.stringify({
-                chooser_token: data.chooser_token,
-                memberships: data.memberships || [],
-                user: data.user,
-              }));
-            } catch (_) {}
-            toast.dismiss(t);
-            router.replace('/auth/choose-school');
-          } else if (data.token) {
-            setSession(data.token, data.user, data.school || null);
-            toast.success(`Welcome back, ${data.user?.name?.split(' ')[0] || 'there'}!`, { id: t });
-            redirectToDashboard(router);
-          } else if (data.requiresRegistration) {
-            toast.success('Almost there — just a few details about your studio.', { id: t });
-            router.push(`/register?googleData=${encodeURIComponent(JSON.stringify(data.googleData))}`);
-          } else {
-            toast.error("Something didn't add up — please try again.", { id: t });
-          }
+      if (response.ok) {
+        if (data.requires_choice && data.chooser_token) {
+          try {
+            sessionStorage.setItem('sf_pending_chooser', JSON.stringify({
+              chooser_token: data.chooser_token,
+              memberships: data.memberships || [],
+              user: data.user,
+            }));
+          } catch (_) {}
+          toast.dismiss(t);
+          router.replace('/auth/choose-school');
+        } else if (data.token) {
+          setSession(data.token, data.user, data.school || null);
+          toast.success(`Welcome back, ${data.user?.name?.split(' ')[0] || 'there'}!`, { id: t });
+          redirectToDashboard(router);
+        } else if (data.requiresRegistration) {
+          toast.success('Almost there — just a few details about your studio.', { id: t });
+          router.push(`/register?googleData=${encodeURIComponent(JSON.stringify(data.googleData))}`);
         } else {
-          console.error('[GoogleSignIn] backend error', response.status, data);
-          toast.error("We couldn't sign you in. Please try again.", { id: t });
+          toast.error("Something didn't add up — please try again.", { id: t });
         }
-      } catch (error: any) {
-        console.error('[GoogleSignIn] fetch error:', error);
-        toast.error("Couldn't reach our servers. Check your connection and try again.", { id: t });
-      } finally {
-        setLoading(false);
+      } else {
+        console.error('[GoogleSignIn] backend error', response.status, data);
+        toast.error("We couldn't sign you in. Please try again.", { id: t });
       }
-    },
-    onError: (err) => {
-      console.error('[GoogleSignIn] Google OAuth error:', err);
-      toast.error("Google sign-in was cancelled or blocked.");
-    },
-  });
+    } catch (error: any) {
+      console.error('[GoogleSignIn] fetch error:', error);
+      toast.error("Couldn't reach our servers. Check your connection and try again.", { id: t });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const buttonLabel = label || (mode === 'register' ? 'Continue with Google' : 'Continue with Google');
+  const handleError = () => {
+    console.warn('[GoogleSignIn] GIS reported an error / cancellation');
+    toast.error("Google sign-in was cancelled or blocked.");
+  };
 
-  const isDisabled = loading || disabled;
+  const isDark = theme === 'dark';
+  const blocked = disabled || loading;
+
   return (
-    <button
-      onClick={() => login()}
-      disabled={isDisabled}
+    <div
+      ref={wrapRef}
       title={disabled && disabledTitle ? disabledTitle : undefined}
-      style={{
-        width: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        padding: '11px 14px',
-        background: palette.bg,
-        border: `1.5px solid ${palette.border}`,
-        borderRadius: 9,
-        fontSize: 15,
-        fontWeight: 600,
-        color: palette.text,
-        cursor: isDisabled ? 'not-allowed' : 'pointer',
-        opacity: isDisabled ? 0.55 : 1,
-        boxSizing: 'border-box',
-        transition: 'background .15s, border-color .15s, box-shadow .15s, opacity .15s',
-        letterSpacing: '0.01em',
-      }}
-      onMouseEnter={(e) => {
-        if (!isDisabled) {
-          const target = e.currentTarget;
-          target.style.background = palette.hoverBg;
-          target.style.borderColor = palette.hoverBorder;
-          target.style.boxShadow = isDark ? '0 1px 6px rgba(0,0,0,0.5)' : '0 1px 6px rgba(0,0,0,0.12)';
-        }
-      }}
-      onMouseLeave={(e) => {
-        const target = e.currentTarget;
-        target.style.background = palette.bg;
-        target.style.borderColor = palette.border;
-        target.style.boxShadow = 'none';
-      }}
+      style={{ position: 'relative', width: '100%', minHeight: 44 }}
     >
-      {!loading && <GoogleIcon />}
-      {loading ? (mode === 'register' ? 'Connecting…' : 'Signing in…') : buttonLabel}
-    </button>
+      <GoogleLogin
+        onSuccess={handleSuccess}
+        onError={handleError}
+        theme={isDark ? 'filled_black' : 'outline'}
+        size="large"
+        text={mode === 'register' ? 'signup_with' : 'continue_with'}
+        shape="rectangular"
+        width={width}
+        useOneTap={false}
+      />
+      {blocked && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: isDark ? 'rgba(10,10,15,0.55)' : 'rgba(255,255,255,0.6)',
+            borderRadius: 6,
+            cursor: 'not-allowed',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: isDark ? '#E3E3E3' : '#374151',
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          {loading ? 'Signing in…' : ''}
+        </div>
+      )}
+    </div>
   );
 }

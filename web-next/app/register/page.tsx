@@ -189,7 +189,10 @@ function RegisterForm() {
       schoolName: form.schoolName.trim(),
       city: form.city.trim() || null,
       danceStyle: form.danceStyle.trim() || null,
-      google_access_token: token,
+      // ID-token credential from GIS (not an OAuth access_token — the old
+      // implicit popup flow was unreliable on mobile). Backend verifies it
+      // via google-auth-library.
+      google_credential: token,
     });
   }
 

@@ -661,26 +661,42 @@ exports.seedSampleData = seedDummyData;
 // sign in. The caller re-submits with `acknowledge_existing: true` to proceed.
 exports.registerSchool = async (req, res) => {
   let { ownerName, ownerEmail, schoolName, city, danceStyle,
-        google_access_token, acknowledge_existing } = req.body;
+        google_access_token, google_credential, acknowledge_existing } = req.body;
 
   if (!schoolName || !ownerName) {
     return res.status(400).json({ error: 'Owner name and school name are required.' });
   }
 
-  // If a Google token is supplied, that's our source of email + name.
-  if (google_access_token) {
+  // Google source of truth for email + name. Two flows:
+  //   google_credential   — ID-token (JWT) from GIS / <GoogleLogin> button (current)
+  //   google_access_token — OAuth2 access token from the legacy useGoogleLogin
+  //                         popup flow. Kept for back-compat with any in-flight
+  //                         clients; can be removed once everyone's on the new
+  //                         frontend.
+  if (google_credential || google_access_token) {
     try {
-      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: { Authorization: `Bearer ${google_access_token}` },
-      });
-      if (!userInfoRes.ok) {
-        return res.status(401).json({ error: 'Google sign-in failed. Please try again.' });
+      if (google_credential) {
+        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+        const ticket = await client.verifyIdToken({
+          idToken: google_credential,
+          audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        ownerEmail = (payload.email || '').toLowerCase();
+        if (!ownerName || !ownerName.trim()) ownerName = payload.name || ownerEmail.split('@')[0];
+      } else {
+        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${google_access_token}` },
+        });
+        if (!userInfoRes.ok) {
+          return res.status(401).json({ error: 'Google sign-in failed. Please try again.' });
+        }
+        const userInfo = await userInfoRes.json();
+        ownerEmail = (userInfo.email || '').toLowerCase();
+        if (!ownerName || !ownerName.trim()) ownerName = userInfo.name || ownerEmail.split('@')[0];
       }
-      const userInfo = await userInfoRes.json();
-      ownerEmail = (userInfo.email || '').toLowerCase();
-      // Prefer the Google name only if no name was provided
-      if (!ownerName || !ownerName.trim()) ownerName = userInfo.name || ownerEmail.split('@')[0];
     } catch (e) {
+      console.error('Google sign-in verification failed:', e.message);
       return res.status(401).json({ error: 'Could not verify Google sign-in.' });
     }
   }
@@ -786,7 +802,7 @@ exports.registerSchool = async (req, res) => {
     // Google path → already verified email, sign them in immediately.
     // Email path → send a magic-link sign-in so the email gets verified,
     //              return "check your inbox" instead of a JWT.
-    if (google_access_token) {
+    if (google_credential || google_access_token) {
       const result = await finalizeAuth(userObj);
       return res.status(201).json({
         ...result,
