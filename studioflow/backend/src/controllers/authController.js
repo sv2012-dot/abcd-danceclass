@@ -477,16 +477,37 @@ exports.changePassword = async (req, res) => {
 
 // Google OAuth Login — accepts either an ID-token credential or an access_token
 exports.googleLogin = async (req, res) => {
-  const { credential, access_token } = req.body;
-  if (!credential && !access_token) {
-    return res.status(400).json({ error: 'Google credential or access token required' });
+  const { credential, access_token, code, redirect_uri } = req.body;
+  if (!credential && !access_token && !code) {
+    return res.status(400).json({ error: 'Google credential, code, or access token required' });
   }
 
   let email, name, picture;
 
   try {
-    if (credential) {
-      // Legacy ID-token flow (GoogleLogin component)
+    if (code) {
+      // Authorization-code flow (mobile-friendly full-page redirect). The
+      // frontend sent us the `code` from /auth/google/callback; exchange it
+      // here using the client secret, then verify the returned ID token.
+      const client = new OAuth2Client(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri
+      );
+      const { tokens } = await client.getToken({ code, redirect_uri });
+      if (!tokens.id_token) {
+        return res.status(401).json({ error: 'Google did not return an ID token.' });
+      }
+      const ticket = await client.verifyIdToken({
+        idToken: tokens.id_token,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      email   = payload.email;
+      name    = payload.name;
+      picture = payload.picture;
+    } else if (credential) {
+      // ID-token flow (GIS / <GoogleLogin> button)
       const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
       const ticket = await client.verifyIdToken({
         idToken: credential,
@@ -497,7 +518,7 @@ exports.googleLogin = async (req, res) => {
       name    = payload.name;
       picture = payload.picture;
     } else {
-      // Access-token flow (custom button via useGoogleLogin)
+      // Legacy access-token flow (kept for any in-flight clients)
       const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
         headers: { Authorization: `Bearer ${access_token}` },
       });
@@ -661,21 +682,38 @@ exports.seedSampleData = seedDummyData;
 // sign in. The caller re-submits with `acknowledge_existing: true` to proceed.
 exports.registerSchool = async (req, res) => {
   let { ownerName, ownerEmail, schoolName, city, danceStyle,
-        google_access_token, google_credential, acknowledge_existing } = req.body;
+        google_access_token, google_credential,
+        google_code, google_redirect_uri,
+        acknowledge_existing } = req.body;
 
   if (!schoolName || !ownerName) {
     return res.status(400).json({ error: 'Owner name and school name are required.' });
   }
 
-  // Google source of truth for email + name. Two flows:
-  //   google_credential   — ID-token (JWT) from GIS / <GoogleLogin> button (current)
-  //   google_access_token — OAuth2 access token from the legacy useGoogleLogin
-  //                         popup flow. Kept for back-compat with any in-flight
-  //                         clients; can be removed once everyone's on the new
-  //                         frontend.
-  if (google_credential || google_access_token) {
+  // Google source of truth for email + name. Three flows:
+  //   google_code         — auth-code flow (current; mobile-friendly redirect)
+  //   google_credential   — ID-token (JWT) from GIS button (transitional)
+  //   google_access_token — legacy OAuth2 access token from the old popup flow
+  if (google_code || google_credential || google_access_token) {
     try {
-      if (google_credential) {
+      if (google_code) {
+        const client = new OAuth2Client(
+          process.env.GOOGLE_CLIENT_ID,
+          process.env.GOOGLE_CLIENT_SECRET,
+          google_redirect_uri
+        );
+        const { tokens } = await client.getToken({ code: google_code, redirect_uri: google_redirect_uri });
+        if (!tokens.id_token) {
+          return res.status(401).json({ error: 'Google did not return an ID token.' });
+        }
+        const ticket = await client.verifyIdToken({
+          idToken: tokens.id_token,
+          audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        ownerEmail = (payload.email || '').toLowerCase();
+        if (!ownerName || !ownerName.trim()) ownerName = payload.name || ownerEmail.split('@')[0];
+      } else if (google_credential) {
         const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
         const ticket = await client.verifyIdToken({
           idToken: google_credential,
@@ -802,7 +840,7 @@ exports.registerSchool = async (req, res) => {
     // Google path → already verified email, sign them in immediately.
     // Email path → send a magic-link sign-in so the email gets verified,
     //              return "check your inbox" instead of a JWT.
-    if (google_credential || google_access_token) {
+    if (google_code || google_credential || google_access_token) {
       const result = await finalizeAuth(userObj);
       return res.status(201).json({
         ...result,

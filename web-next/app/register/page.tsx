@@ -182,18 +182,19 @@ function RegisterForm() {
     }
   }
 
-  function handleGoogleToken(token: string) {
-    if (!baseFormComplete) { toast.error(disabledTitle); return; }
-    submitRegister({
+  // Snapshot the form for the Google OAuth redirect button — see GoogleSignIn.
+  // The callback page (/auth/google/callback) submits this with the code.
+  function snapshotRegisterForm() {
+    if (!baseFormComplete) {
+      toast.error(disabledTitle);
+      throw new Error('Form incomplete');
+    }
+    return {
       ownerName: form.ownerName.trim(),
       schoolName: form.schoolName.trim(),
       city: form.city.trim() || null,
       danceStyle: form.danceStyle.trim() || null,
-      // ID-token credential from GIS (not an OAuth access_token — the old
-      // implicit popup flow was unreliable on mobile). Backend verifies it
-      // via google-auth-library.
-      google_credential: token,
-    });
+    };
   }
 
   function handleEmailSubmit(e: React.FormEvent) {
@@ -411,7 +412,7 @@ function RegisterForm() {
         <GoogleSignIn
           mode="register"
           label="Sign up with Google"
-          onToken={handleGoogleToken}
+          registerForm={snapshotRegisterForm}
           disabled={!baseFormComplete || submitting}
           disabledTitle={disabledTitle}
         />

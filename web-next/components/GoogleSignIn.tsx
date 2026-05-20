@@ -1,195 +1,164 @@
 'use client';
 
-// Google sign-in button — uses GIS (Google Identity Services) via the
-// <GoogleLogin> component from @react-oauth/google.
+// Google sign-in button — uses the OAuth 2.0 authorization code flow with a
+// full-page redirect (NOT a popup, NOT GIS iframe).
 //
-// Why <GoogleLogin> and not useGoogleLogin?
-//   useGoogleLogin opens an OAuth popup that mobile browsers (iOS Safari,
-//   Chrome Mobile) treat as a new tab. The original tab gets backgrounded
-//   and is often killed for memory pressure before postMessage can land,
-//   leaving the user stranded with their login state lost. GIS uses an
-//   iframe-based ID-token flow that works on mobile without that fragility.
+// Why? Both the popup flow (useGoogleLogin) and the GIS iframe (<GoogleLogin>)
+// proved unreliable on mobile — popups open as new tabs and lose state when
+// iOS Safari kills the backgrounded original tab. The full-page redirect has
+// no tab/iframe to lose: the browser navigates to Google, the user signs in,
+// Google redirects back to /auth/google/callback?code=...&state=... which
+// then completes the sign-in. Works in 100% of browsers including iOS in-app
+// webviews.
 //
-// What we get back: a JWT "credential" (signed by Google).
-//   - login mode:    POST it to /auth/google as { credential } — the backend
-//                    already verifies it via google-auth-library.
-//   - register mode: decode it client-side to pre-fill the studio form, then
-//                    hand the credential up via onToken() for the parent to
-//                    submit with the studio details.
+// Visual: custom button matching the original dark/light palette — Google's
+// branding rules allow custom buttons as long as the icon + "Sign in with
+// Google" / "Continue with Google" copy is present.
 
-import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { redirectToDashboard } from '@/lib/redirectToDashboard';
-import { useAuth } from '@/lib/context/AuthContext';
 import { useTheme } from '@/lib/context/ThemeContext';
 
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.658 14.013 17.64 11.705 17.64 9.2z"/>
+    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+    <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.039l3.007-2.332z"/>
+    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
+  </svg>
+);
+
 type Props = {
-  // 'login' (default): runs the full sign-in flow — POSTs the credential to
-  //                    /auth/google and handles the response branches.
-  // 'register':        decodes the credential and hands it back to the parent
-  //                    via onToken(). Parent submits it with the studio form.
+  // 'login' (default): just redirects to Google. Callback runs the sign-in flow.
+  // 'register':        stashes the studio-creation form data alongside the
+  //                    OAuth state so the callback can submit it with the code.
   mode?: 'login' | 'register';
-  onToken?: (credential: string, profile: { email: string; name: string; picture?: string }) => void;
-  disabled?: boolean;          // when true, the button is non-interactive
-  disabledTitle?: string;      // tooltip explaining why
-  // `label` was used by the previous custom button. GIS renders its own
-  // branded button with a fixed copy ("Sign in with Google" / "Sign up with
-  // Google"), so it's no longer honoured. Kept in the prop type for source
-  // compatibility — callers can keep passing it without a TS error.
+  // Called at click time to snapshot the form data before we redirect to
+  // Google. Must be synchronous and cheap.
+  registerForm?: () => Record<string, any>;
   label?: string;
+  disabled?: boolean;
+  disabledTitle?: string;
+  // Kept in the prop signature for source compatibility with the old
+  // useGoogleLogin/GIS variants. No longer called — the callback page owns
+  // the credential now. Will be removed once register/page stops passing it.
+  onToken?: (...args: any[]) => void;
 };
 
-// Decode a JWT payload (no signature verification — the backend re-verifies
-// the credential before trusting it). Handles UTF-8 names correctly.
-function decodeJwtPayload(token: string): Record<string, any> | null {
-  try {
-    const part = token.split('.')[1];
-    const b64 = part.replace(/-/g, '+').replace(/_/g, '/');
-    const raw = atob(b64);
-    const utf8 = decodeURIComponent(
-      raw.split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
-    );
-    return JSON.parse(utf8);
-  } catch {
-    return null;
+const OAUTH_STATE_KEY_PREFIX = 'sf_oauth_';
+
+function randomStateToken(): string {
+  // Prefer crypto.randomUUID where available (all modern browsers); fall back
+  // to a Math.random concatenation for ancient environments.
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
   }
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-export default function GoogleSignIn({ mode = 'login', onToken, disabled = false, disabledTitle }: Props = {}) {
-  const router = useRouter();
-  const { setSession } = useAuth();
+export default function GoogleSignIn({
+  mode = 'login',
+  registerForm,
+  label,
+  disabled = false,
+  disabledTitle,
+}: Props = {}) {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState<number>(320);
-
-  // GIS button takes a fixed pixel width — match it to the container so the
-  // button fills the auth island the same way our old custom button did.
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const measure = () => {
-      const w = el.getBoundingClientRect().width;
-      if (w > 0) setWidth(Math.min(400, Math.floor(w))); // GIS caps at 400
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  const handleSuccess = async (resp: CredentialResponse) => {
-    const credential = resp?.credential;
-    if (!credential) {
-      toast.error("Google sign-in didn't return a credential. Try again.");
-      return;
-    }
-
-    // REGISTER MODE: decode + hand off to parent.
-    if (mode === 'register') {
-      const claims = decodeJwtPayload(credential);
-      if (!claims?.email) {
-        toast.error("Couldn't read your Google profile. Please try again.");
-        return;
-      }
-      onToken?.(credential, {
-        email: String(claims.email).toLowerCase(),
-        name: claims.name || '',
-        picture: claims.picture,
-      });
-      return;
-    }
-
-    // LOGIN MODE: full sign-in flow against our backend.
-    setLoading(true);
-    const t = toast.loading('Getting you in…');
-    try {
-      const apiUrl = (process.env.NEXT_PUBLIC_API_URL?.trim()) || 'http://localhost:5000/api';
-      const response = await fetch(`${apiUrl}/auth/google`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential }),
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        if (data.requires_choice && data.chooser_token) {
-          try {
-            sessionStorage.setItem('sf_pending_chooser', JSON.stringify({
-              chooser_token: data.chooser_token,
-              memberships: data.memberships || [],
-              user: data.user,
-            }));
-          } catch (_) {}
-          toast.dismiss(t);
-          router.replace('/auth/choose-school');
-        } else if (data.token) {
-          setSession(data.token, data.user, data.school || null);
-          toast.success(`Welcome back, ${data.user?.name?.split(' ')[0] || 'there'}!`, { id: t });
-          redirectToDashboard(router);
-        } else if (data.requiresRegistration) {
-          toast.success('Almost there — just a few details about your studio.', { id: t });
-          router.push(`/register?googleData=${encodeURIComponent(JSON.stringify(data.googleData))}`);
-        } else {
-          toast.error("Something didn't add up — please try again.", { id: t });
-        }
-      } else {
-        console.error('[GoogleSignIn] backend error', response.status, data);
-        toast.error("We couldn't sign you in. Please try again.", { id: t });
-      }
-    } catch (error: any) {
-      console.error('[GoogleSignIn] fetch error:', error);
-      toast.error("Couldn't reach our servers. Check your connection and try again.", { id: t });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleError = () => {
-    console.warn('[GoogleSignIn] GIS reported an error / cancellation');
-    toast.error("Google sign-in was cancelled or blocked.");
-  };
 
   const isDark = theme === 'dark';
-  const blocked = disabled || loading;
+  // Google brand-approved palette pair.
+  // https://developers.google.com/identity/branding-guidelines
+  const palette = isDark
+    ? { bg: '#131314', text: '#E3E3E3', border: '#3C4043', hoverBg: '#1F2122', hoverBorder: '#5F6368' }
+    : { bg: '#FFFFFF', text: '#1F1F1F', border: '#DADCE0', hoverBg: '#F8F9FA', hoverBorder: '#C0C4C9' };
+
+  const buttonLabel = label || (mode === 'register' ? 'Sign up with Google' : 'Continue with Google');
+  const isDisabled = loading || disabled;
+
+  function startOAuthRedirect() {
+    if (isDisabled) return;
+
+    const clientId = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '').trim();
+    if (!clientId) {
+      toast.error('Google sign-in is not configured.');
+      return;
+    }
+
+    // Snapshot context (mode + register form) so the callback knows what to do.
+    const stateToken = randomStateToken();
+    const stateData = mode === 'register' && registerForm
+      ? { mode: 'register', form: registerForm() }
+      : { mode: 'login' };
+    try {
+      sessionStorage.setItem(OAUTH_STATE_KEY_PREFIX + stateToken, JSON.stringify(stateData));
+    } catch (_) {
+      // sessionStorage can be disabled in some private modes — fail loud so
+      // the user retries instead of silently breaking.
+      toast.error('Browser storage is disabled. Please enable cookies/storage and try again.');
+      return;
+    }
+
+    setLoading(true);
+
+    const redirectUri = `${window.location.origin}/auth/google/callback`;
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'openid email profile',
+      state: stateToken,
+      prompt: 'select_account',
+      access_type: 'online',
+      include_granted_scopes: 'true',
+    });
+
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  }
 
   return (
-    <div
-      ref={wrapRef}
+    <button
+      type="button"
+      onClick={startOAuthRedirect}
+      disabled={isDisabled}
       title={disabled && disabledTitle ? disabledTitle : undefined}
-      style={{ position: 'relative', width: '100%', minHeight: 44 }}
+      style={{
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        padding: '11px 14px',
+        background: palette.bg,
+        border: `1.5px solid ${palette.border}`,
+        borderRadius: 9,
+        fontSize: 15,
+        fontWeight: 600,
+        color: palette.text,
+        cursor: isDisabled ? 'not-allowed' : 'pointer',
+        opacity: isDisabled ? 0.55 : 1,
+        boxSizing: 'border-box',
+        transition: 'background .15s, border-color .15s, box-shadow .15s, opacity .15s',
+        letterSpacing: '0.01em',
+        fontFamily: 'inherit',
+      }}
+      onMouseEnter={(e) => {
+        if (!isDisabled) {
+          const t = e.currentTarget;
+          t.style.background = palette.hoverBg;
+          t.style.borderColor = palette.hoverBorder;
+          t.style.boxShadow = isDark ? '0 1px 6px rgba(0,0,0,0.5)' : '0 1px 6px rgba(0,0,0,0.12)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        const t = e.currentTarget;
+        t.style.background = palette.bg;
+        t.style.borderColor = palette.border;
+        t.style.boxShadow = 'none';
+      }}
     >
-      <GoogleLogin
-        onSuccess={handleSuccess}
-        onError={handleError}
-        theme={isDark ? 'filled_black' : 'outline'}
-        size="large"
-        text={mode === 'register' ? 'signup_with' : 'continue_with'}
-        shape="rectangular"
-        width={width}
-        useOneTap={false}
-      />
-      {blocked && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: isDark ? 'rgba(10,10,15,0.55)' : 'rgba(255,255,255,0.6)',
-            borderRadius: 6,
-            cursor: 'not-allowed',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: isDark ? '#E3E3E3' : '#374151',
-            fontSize: 13,
-            fontWeight: 600,
-          }}
-        >
-          {loading ? 'Signing in…' : ''}
-        </div>
-      )}
-    </div>
+      {!loading && <GoogleIcon />}
+      {loading ? 'Redirecting…' : buttonLabel}
+    </button>
   );
 }
