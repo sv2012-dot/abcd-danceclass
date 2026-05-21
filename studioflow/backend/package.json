@@ -24,6 +24,7 @@
     "morgan": "^1.10.0",
     "mysql2": "^3.6.5",
     "nodemailer": "^6.9.7",
+    "resend": "^6.12.3",
     "stripe": "^22.1.1"
   },
   "devDependencies": {
