@@ -35,6 +35,7 @@ const IC: Record<string, string | string[]> = {
   todo:     ['M9 11l3 3L22 4','M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'],
   studio:   ['M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z','M9 22V12h6v10'],
   parent:   ['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2','M23 21v-2a4 4 0 0 0-3-3.87','M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z'],
+  sparkles: ['M12 3l1.9 4.6L18 9.4l-4.1 1.8L12 16l-1.9-4.8L6 9.4l4.1-1.8z','M5 17l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8L2.5 20.5l1.8-.7z','M19 14l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5z'],
   dance:    ['M12 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z','M9 8l-3 6h4l1 8','M15 8l3 6h-4l-1 8','M9 14l6-2'],
   heart:    ['M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'],
   arrow:    ['M5 12h14','M12 5l7 7-7 7'],
@@ -55,6 +56,7 @@ const FEATURES = [
   { ic:'recital',  title:'Recital Management',   desc:'From early planning to curtain call. Venue, date, status, poster — manage your entire showcase from one beautiful hub.' },
   { ic:'todo',     title:'Team To-Dos',          desc:'Keep your team aligned with shared tasks, deadlines and assignments. Nothing slips through the cracks ever again.' },
   { ic:'studio',   title:'Multi-Studio Support', desc:'Running more than one location? ManchQ keeps every studio organised under one roof, one login.' },
+  { ic:'sparkles', title:'Smart Announce',       desc:"Type what's happening — AI drafts a polished, WhatsApp-ready message to your class in seconds. Fee reminders, class confirms, recital RSVPs and more." },
 ];
 
 const BENEFITS = [
@@ -280,7 +282,7 @@ export default function Home() {
               fontWeight:800, fontSize: isMobile ? 16 : 17, cursor:'pointer',
               boxShadow:'0 4px 28px rgba(124,58,237,0.50)', display:'flex', alignItems:'center', justifyContent:'center', gap:8,
             }}>
-              Register your studio <Icon paths={IC.arrow} size={16} stroke="#fff" sw={2} />
+              Get started for free <Icon paths={IC.arrow} size={16} stroke="#fff" sw={2} />
             </button>
             <button onClick={goLogin} style={{
               padding: isMobile ? '14px 32px' : '16px 32px',
@@ -510,7 +512,7 @@ export default function Home() {
               fontWeight:900, fontSize: isMobile ? 16 : 18, cursor:'pointer',
               boxShadow:'0 4px 32px rgba(124,58,237,0.60)', letterSpacing:'.02em',
             }}>
-              Register your studio →
+              Get started for free →
             </button>
             <button onClick={goLogin} style={{
               padding: isMobile ? '14px 32px' : '16px 36px',
