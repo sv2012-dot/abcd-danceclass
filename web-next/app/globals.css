@@ -123,7 +123,13 @@
    touch events on absolutely-positioned children — manifested as "no links
    are clickable on iPad" across the page. Apply to body only. */
 html {
-  /* nothing; intentionally left blank */
+  /* Native smooth-scroll for anchor links (e.g. <a href="#features">),
+     with an offset so section headings aren't hidden under the 60px
+     fixed navbar. Lets us use plain <a> instead of JS scrollTo handlers
+     — important because React onClick handlers can fail to attach on
+     iOS Chrome under certain hydration / event-delegation conditions. */
+  scroll-behavior: smooth;
+  scroll-padding-top: 68px;
 }
 body {
   font-family: var(--font-sans);

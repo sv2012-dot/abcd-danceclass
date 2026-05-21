@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 
@@ -141,21 +142,30 @@ function NavBar({ onLogin, onRegister, isMobile, onPricing }: { onLogin: () => v
 
         {!isMobile && (
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            <button onClick={() => scrollToSection('features')} style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', background:'none', border:'none', padding:'8px 14px', cursor:'pointer' }}>Features</button>
-            <button onClick={() => scrollToSection('why')}      style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', background:'none', border:'none', padding:'8px 14px', cursor:'pointer' }}>Why us</button>
-            <button onClick={() => scrollToSection('community')} style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', background:'none', border:'none', padding:'8px 14px', cursor:'pointer' }}>Community</button>
-            <button onClick={onPricing} style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', background:'none', border:'none', padding:'8px 14px', cursor:'pointer' }}>Pricing</button>
-            <button onClick={onLogin} style={{
+            {/* Section anchors — plain <a> so iPad Chrome / iOS WebKit can
+                navigate even if React's onClick hasn't hydrated.
+                Smooth scroll + 68px navbar offset come from globals.css
+                (scroll-behavior: smooth; scroll-padding-top: 68px). */}
+            <a href="#features"  style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', background:'none', border:'none', padding:'8px 14px', cursor:'pointer', textDecoration:'none' }}>Features</a>
+            <a href="#why"       style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', background:'none', border:'none', padding:'8px 14px', cursor:'pointer', textDecoration:'none' }}>Why us</a>
+            <a href="#community" style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', background:'none', border:'none', padding:'8px 14px', cursor:'pointer', textDecoration:'none' }}>Community</a>
+            {/* Internal route nav — Next.js Link gives SPA nav on desktop/
+                mobile while still rendering a native <a href> that works
+                without JS (iPad fallback). */}
+            <Link href="/pricing" style={{ fontSize:13, fontWeight:600, color:'#9CA3AF', background:'none', border:'none', padding:'8px 14px', cursor:'pointer', textDecoration:'none' }}>Pricing</Link>
+            <Link href="/login" style={{
               fontSize:13, fontWeight:600, color:'#fff',
               background:'none', border:'1.5px solid rgba(255,255,255,0.2)',
               padding:'8px 18px', borderRadius:10, cursor:'pointer',
-            }}>Sign in</button>
-            <button onClick={onRegister} style={{
+              textDecoration:'none', display:'inline-flex', alignItems:'center',
+            }}>Sign in</Link>
+            <Link href="/register" style={{
               padding:'9px 22px', borderRadius:10, border:'none',
               background:BTN_GRAD, color:'#fff',
               fontWeight:700, fontSize:13, cursor:'pointer',
               boxShadow:'0 2px 14px rgba(124,58,237,0.42)', whiteSpace:'nowrap',
-            }}>Register</button>
+              textDecoration:'none', display:'inline-flex', alignItems:'center',
+            }}>Register</Link>
           </div>
         )}
 
@@ -192,26 +202,26 @@ function NavBar({ onLogin, onRegister, isMobile, onPricing }: { onLogin: () => v
           zIndex:199, display:'flex', flexDirection:'column', overflowY:'auto',
         }}>
           <nav style={{ flex:1, paddingTop:8 }}>
-            {[
-              { label:'Features',  action: () => sectionTo('features')  },
-              { label:'Why us',    action: () => sectionTo('why')        },
-              { label:'Community', action: () => sectionTo('community')  },
-              { label:'Pricing',   action: () => navTo(onPricing)        },
-            ].map(({ label, action }) => (
-              <button key={label} onClick={action} style={NAV_LINK_STYLE}>{label}</button>
-            ))}
+            {/* Mobile drawer nav — anchors close the menu via onClick AND
+                navigate via href (works even if onClick is missed). */}
+            <a href="#features"  onClick={() => setMenuOpen(false)} style={{ ...NAV_LINK_STYLE, textDecoration:'none' }}>Features</a>
+            <a href="#why"       onClick={() => setMenuOpen(false)} style={{ ...NAV_LINK_STYLE, textDecoration:'none' }}>Why us</a>
+            <a href="#community" onClick={() => setMenuOpen(false)} style={{ ...NAV_LINK_STYLE, textDecoration:'none' }}>Community</a>
+            <Link href="/pricing" onClick={() => setMenuOpen(false)} style={{ ...NAV_LINK_STYLE, textDecoration:'none' }}>Pricing</Link>
           </nav>
           <div style={{ padding:'20px 24px', borderTop:'1px solid rgba(255,255,255,0.08)', display:'flex', flexDirection:'column', gap:10 }}>
-            <button onClick={() => navTo(onRegister)} style={{
+            <Link href="/register" onClick={() => setMenuOpen(false)} style={{
               width:'100%', padding:'14px', borderRadius:12, border:'none',
               background:BTN_GRAD, color:'#fff', fontWeight:700, fontSize:15, cursor:'pointer',
-            }}>Register</button>
-            <button onClick={() => navTo(onLogin)} style={{
+              textDecoration:'none', textAlign:'center', display:'block', boxSizing:'border-box',
+            }}>Register</Link>
+            <Link href="/login" onClick={() => setMenuOpen(false)} style={{
               width:'100%', padding:'14px', borderRadius:12,
               border:'1.5px solid rgba(255,255,255,0.18)',
               background:'rgba(255,255,255,0.04)', color:'#fff',
               fontWeight:600, fontSize:14, cursor:'pointer',
-            }}>Sign in</button>
+              textDecoration:'none', textAlign:'center', display:'block', boxSizing:'border-box',
+            }}>Sign in</Link>
           </div>
         </div>
       )}
@@ -280,30 +290,32 @@ export default function Home() {
             Focus on your passion — ManchQ handles the rest. Schedules, students, recitals — no spreadsheets, no WhatsApp chaos, just freedom to dance.
           </p>
           <div style={{ display:'flex', flexDirection: isMobile ? 'column' : 'row', gap:12, justifyContent:'center', alignItems:'center' }}>
-            <button onClick={goRegister} style={{
+            <Link href="/register" style={{
               padding: isMobile ? '15px 32px' : '16px 36px',
               width: isMobile ? '100%' : 'auto', maxWidth: isMobile ? 320 : 'none',
               borderRadius:14, border:'none', background:BTN_GRAD, color:'#fff',
               fontWeight:800, fontSize: isMobile ? 16 : 17, cursor:'pointer',
               boxShadow:'0 4px 28px rgba(124,58,237,0.50)', display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+              textDecoration:'none', boxSizing:'border-box',
             }}>
               Get started for free
-            </button>
-            <button onClick={goLogin} style={{
+            </Link>
+            <Link href="/login" style={{
               padding: isMobile ? '14px 32px' : '16px 32px',
               width: isMobile ? '100%' : 'auto', maxWidth: isMobile ? 320 : 'none',
               borderRadius:14, border:'1.5px solid rgba(255,255,255,0.18)',
               background:'rgba(255,255,255,0.06)', color:'#fff', fontWeight:700, fontSize:15,
               cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
               backdropFilter:'blur(8px)', boxSizing:'border-box',
+              textDecoration:'none',
             }}>
               Sign in
-            </button>
+            </Link>
           </div>
           <div style={{ marginTop:14, display:'flex', justifyContent:'center' }}>
-            <button onClick={() => scrollToSection('features')} style={{ background:'none', border:'none', color:'#9CA3AF', fontSize:13, cursor:'pointer', padding:'6px 12px' }}>
+            <a href="#features" style={{ background:'none', border:'none', color:'#9CA3AF', fontSize:13, cursor:'pointer', padding:'6px 12px', textDecoration:'none' }}>
               See what's inside ↓
-            </button>
+            </a>
           </div>
           <div style={{ marginTop:8, fontSize:13, color:'#9CA3AF' }}>No credit card required · Set up in minutes</div>
         </div>
@@ -510,24 +522,26 @@ export default function Home() {
           </h2>
           <p style={{ fontSize: isMobile ? 15 : 17, color:'#6B7280', margin:'0 0 36px', lineHeight:1.75 }}>Everything your studio needs. None of what it doesn't.</p>
           <div style={{ display:'flex', flexDirection: isMobile ? 'column' : 'row', gap:12, justifyContent:'center', alignItems:'center' }}>
-            <button onClick={goRegister} style={{
+            <Link href="/register" style={{
               padding: isMobile ? '16px 36px' : '18px 48px',
               width: isMobile ? '100%' : 'auto', maxWidth: isMobile ? 320 : 'none',
               borderRadius:16, border:'none', background:BTN_GRAD, color:'#fff',
               fontWeight:900, fontSize: isMobile ? 16 : 18, cursor:'pointer',
               boxShadow:'0 4px 32px rgba(124,58,237,0.60)', letterSpacing:'.02em',
+              textDecoration:'none', display:'inline-flex', alignItems:'center', justifyContent:'center', boxSizing:'border-box',
             }}>
               Get started for free
-            </button>
-            <button onClick={goLogin} style={{
+            </Link>
+            <Link href="/login" style={{
               padding: isMobile ? '14px 32px' : '16px 36px',
               width: isMobile ? '100%' : 'auto', maxWidth: isMobile ? 320 : 'none',
               borderRadius:16, border:'1.5px solid rgba(255,255,255,0.18)',
               background:'rgba(255,255,255,0.06)', color:'#fff', fontWeight:700, fontSize: isMobile ? 15 : 16,
               cursor:'pointer',
+              textDecoration:'none', display:'inline-flex', alignItems:'center', justifyContent:'center', boxSizing:'border-box',
             }}>
               Sign in
-            </button>
+            </Link>
           </div>
           <div style={{ marginTop:18, fontSize:13, color:'#9CA3AF' }}>No credit card required · Set up in minutes</div>
         </div>
@@ -544,7 +558,7 @@ export default function Home() {
           <a href="mailto:support@manchq.com" style={{ color:'#6a7fdb', textDecoration:'none' }}>support@manchq.com</a>
         </div>
         <div style={{ fontSize:12, display:'flex', gap:16, flexWrap:'wrap', justifyContent: isMobile ? 'center' : 'flex-end' }}>
-          <button onClick={goPricing} style={{ background:'none', border:'none', color:'#6a7fdb', cursor:'pointer', padding:0, fontSize:12 }}>Pricing</button>
+          <Link href="/pricing" style={{ color:'#6a7fdb', textDecoration:'none', fontSize:12 }}>Pricing</Link>
           <a href="/privacy" style={{ color:'#6a7fdb', textDecoration:'none' }}>Privacy Policy</a>
           <a href="/terms"   style={{ color:'#6a7fdb', textDecoration:'none' }}>Terms of Service</a>
         </div>
