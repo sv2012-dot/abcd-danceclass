@@ -1,21 +1,17 @@
 'use client';
 
-// Google sign-in button — uses the OAuth 2.0 authorization code flow with a
+// Google sign-in button — uses OAuth 2.0 authorization code flow with a
 // full-page redirect (NOT a popup, NOT GIS iframe).
 //
-// Why? Both the popup flow (useGoogleLogin) and the GIS iframe (<GoogleLogin>)
-// proved unreliable on mobile — popups open as new tabs and lose state when
-// iOS Safari kills the backgrounded original tab. The full-page redirect has
-// no tab/iframe to lose: the browser navigates to Google, the user signs in,
-// Google redirects back to /auth/google/callback?code=...&state=... which
-// then completes the sign-in. Works in 100% of browsers including iOS in-app
-// webviews.
-//
-// Visual: custom button matching the original dark/light palette — Google's
-// branding rules allow custom buttons as long as the icon + "Sign in with
-// Google" / "Continue with Google" copy is present.
+// Renders as a native <a href={oauthUrl}> styled to look like a button. This
+// is critical for iPad Chrome / iOS WebKit, where React's onClick handlers
+// sometimes fail to attach during hydration but native <a href> always
+// navigates. URL is built once on mount and stays stable; for register mode
+// the latest form snapshot is mirrored into sessionStorage on every form
+// change, so the OAuth callback always has fresh data even if no JS fires
+// at click time.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useTheme } from '@/lib/context/ThemeContext';
 
@@ -29,27 +25,26 @@ const GoogleIcon = () => (
 );
 
 type Props = {
-  // 'login' (default): just redirects to Google. Callback runs the sign-in flow.
+  // 'login' (default): just redirects to Google. Callback runs sign-in flow.
   // 'register':        stashes the studio-creation form data alongside the
   //                    OAuth state so the callback can submit it with the code.
   mode?: 'login' | 'register';
-  // Called at click time to snapshot the form data before we redirect to
-  // Google. Must be synchronous and cheap.
+  // For register mode — the live form state to mirror into sessionStorage.
+  // GoogleSignIn keeps the stash in sync as the form changes.
+  formData?: Record<string, any>;
+  // Legacy snapshot callback — still accepted for source compatibility, but
+  // the formData prop is the recommended path now (works without JS onClick).
   registerForm?: () => Record<string, any>;
   label?: string;
   disabled?: boolean;
   disabledTitle?: string;
-  // Kept in the prop signature for source compatibility with the old
-  // useGoogleLogin/GIS variants. No longer called — the callback page owns
-  // the credential now. Will be removed once register/page stops passing it.
+  // Kept for source compatibility with older variants; no longer called.
   onToken?: (...args: any[]) => void;
 };
 
 const OAUTH_STATE_KEY_PREFIX = 'sf_oauth_';
 
 function randomStateToken(): string {
-  // Prefer crypto.randomUUID where available (all modern browsers); fall back
-  // to a Math.random concatenation for ancient environments.
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
@@ -58,6 +53,7 @@ function randomStateToken(): string {
 
 export default function GoogleSignIn({
   mode = 'login',
+  formData,
   registerForm,
   label,
   disabled = false,
@@ -66,9 +62,13 @@ export default function GoogleSignIn({
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
 
+  // OAuth URL is built once on mount — needs window.location.origin so can't
+  // be a render-time constant. Until it's ready, the <a> renders with an
+  // intentionally inert href so accidental early taps no-op cleanly.
+  const [oauthUrl, setOauthUrl] = useState<string>('#');
+  const stateTokenRef = useRef<string>('');
+
   const isDark = theme === 'dark';
-  // Google brand-approved palette pair.
-  // https://developers.google.com/identity/branding-guidelines
   const palette = isDark
     ? { bg: '#131314', text: '#E3E3E3', border: '#3C4043', hoverBg: '#1F2122', hoverBorder: '#5F6368' }
     : { bg: '#FFFFFF', text: '#1F1F1F', border: '#DADCE0', hoverBg: '#F8F9FA', hoverBorder: '#C0C4C9' };
@@ -76,31 +76,17 @@ export default function GoogleSignIn({
   const buttonLabel = label || (mode === 'register' ? 'Sign up with Google' : 'Continue with Google');
   const isDisabled = loading || disabled;
 
-  function startOAuthRedirect() {
-    if (isDisabled) return;
-
+  // Build the OAuth URL + initial sessionStorage stash on mount. Stays
+  // stable for the lifetime of the component (one state token per page
+  // visit). Re-stashing on data change happens in the next effect.
+  useEffect(() => {
     const clientId = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '').trim();
     if (!clientId) {
-      toast.error('Google sign-in is not configured.');
+      // Leave the URL inert; click handler will toast.
       return;
     }
-
-    // Snapshot context (mode + register form) so the callback knows what to do.
     const stateToken = randomStateToken();
-    const stateData = mode === 'register' && registerForm
-      ? { mode: 'register', form: registerForm() }
-      : { mode: 'login' };
-    try {
-      sessionStorage.setItem(OAUTH_STATE_KEY_PREFIX + stateToken, JSON.stringify(stateData));
-    } catch (_) {
-      // sessionStorage can be disabled in some private modes — fail loud so
-      // the user retries instead of silently breaking.
-      toast.error('Browser storage is disabled. Please enable cookies/storage and try again.');
-      return;
-    }
-
-    setLoading(true);
-
+    stateTokenRef.current = stateToken;
     const redirectUri = `${window.location.origin}/auth/google/callback`;
     const params = new URLSearchParams({
       client_id: clientId,
@@ -112,16 +98,63 @@ export default function GoogleSignIn({
       access_type: 'online',
       include_granted_scopes: 'true',
     });
+    // Initial stash. For register mode this includes the current snapshot
+    // of formData (or registerForm() if formData prop isn't passed).
+    let stateData: any = { mode: 'login' };
+    if (mode === 'register') {
+      const initialForm = formData ?? (registerForm ? registerForm() : {});
+      stateData = { mode: 'register', form: initialForm };
+    }
+    try {
+      sessionStorage.setItem(OAUTH_STATE_KEY_PREFIX + stateToken, JSON.stringify(stateData));
+    } catch (_) {
+      // sessionStorage disabled — let the click toast take over.
+    }
+    setOauthUrl(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // mount only — state token shouldn't churn
 
-    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-  }
+  // Mirror live form data into sessionStorage so the OAuth callback always
+  // sees the latest values, even though we built the URL on mount.
+  useEffect(() => {
+    if (mode !== 'register') return;
+    if (!stateTokenRef.current) return;
+    if (!formData) return;
+    try {
+      sessionStorage.setItem(
+        OAUTH_STATE_KEY_PREFIX + stateTokenRef.current,
+        JSON.stringify({ mode: 'register', form: formData }),
+      );
+    } catch (_) {}
+  }, [mode, formData]);
 
+  // Click handler — runs on devices where React onClick works (most). On
+  // iPad where it doesn't, the <a href> handles navigation natively.
+  // We only use this to (a) block disabled state, (b) show the "Redirecting…"
+  // visual hint, and (c) toast if the OAuth URL wasn't built.
+  const onClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isDisabled) {
+      e.preventDefault();
+      return;
+    }
+    if (oauthUrl === '#') {
+      e.preventDefault();
+      toast.error('Google sign-in is not configured.');
+      return;
+    }
+    setLoading(true);
+    // Don't preventDefault — let the browser follow href to Google.
+  };
+
+  // Render an <a> styled identically to the previous <button>. Browser
+  // handles navigation natively, so iPad Chrome / iOS WebKit works even
+  // when React's onClick wouldn't fire.
   return (
-    <button
-      type="button"
-      onClick={startOAuthRedirect}
-      disabled={isDisabled}
+    <a
+      href={oauthUrl}
+      onClick={onClick}
       title={disabled && disabledTitle ? disabledTitle : undefined}
+      aria-disabled={isDisabled || undefined}
       style={{
         width: '100%',
         display: 'flex',
@@ -141,6 +174,10 @@ export default function GoogleSignIn({
         transition: 'background .15s, border-color .15s, box-shadow .15s, opacity .15s',
         letterSpacing: '0.01em',
         fontFamily: 'inherit',
+        textDecoration: 'none',
+        // Prevent iOS Safari from interpreting the tap as a long-press preview.
+        WebkitTouchCallout: 'none',
+        userSelect: 'none',
       }}
       onMouseEnter={(e) => {
         if (!isDisabled) {
@@ -159,6 +196,6 @@ export default function GoogleSignIn({
     >
       {!loading && <GoogleIcon />}
       {loading ? 'Redirecting…' : buttonLabel}
-    </button>
+    </a>
   );
 }

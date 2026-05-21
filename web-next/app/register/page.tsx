@@ -412,7 +412,15 @@ function RegisterForm() {
         <GoogleSignIn
           mode="register"
           label="Sign up with Google"
-          registerForm={snapshotRegisterForm}
+          // Live form snapshot — GoogleSignIn mirrors this into sessionStorage
+          // on every change so the OAuth callback always has the latest values,
+          // even on iPad where React's onClick may not fire at submit time.
+          formData={{
+            ownerName: form.ownerName.trim(),
+            schoolName: form.schoolName.trim(),
+            city: form.city.trim() || null,
+            danceStyle: form.danceStyle.trim() || null,
+          }}
           disabled={!baseFormComplete || submitting}
           disabledTitle={disabledTitle}
         />
