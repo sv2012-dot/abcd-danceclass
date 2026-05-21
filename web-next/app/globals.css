@@ -132,7 +132,22 @@ body {
 }
 
 a { color: var(--primary); text-decoration: none; }
-button { font-family: var(--font-sans); cursor: pointer; }
+button {
+  font-family: var(--font-sans);
+  cursor: pointer;
+  /* iOS tap-handling defenses:
+     - touch-action: manipulation removes the 300ms double-tap-to-zoom delay
+       on iOS Safari / Chrome iOS and ensures the first tap registers as a
+       click instead of being swallowed by gesture recognition.
+     - -webkit-tap-highlight-color: transparent suppresses the default grey
+       highlight; cosmetic but reinforces "this element is tappable" to WebKit.
+     - -webkit-touch-callout: none stops the long-press context menu from
+       hijacking taps on iPad. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+a { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 input, select, textarea { font-family: var(--font-sans); }
 input:focus, select:focus, textarea:focus {
   outline: none;
