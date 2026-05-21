@@ -145,10 +145,14 @@ export default function LoginPage() {
 
         {linkSent ? (
           <div style={{ textAlign: 'center', padding: '4px 0' }}>
-            <div style={{ fontSize: 38, marginBottom: 10 }}>✉️</div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: 'var(--text)' }}>Check your inbox</h2>
-            <p style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 16 }}>
-              We sent a sign-in link to <strong style={{ color: 'var(--text)' }}>{email}</strong>. It expires in 15 minutes.
+            {/* Envelope emoji removed per design. Extra breathing room
+                between elements (~32px more than before) so the success
+                state doesn't feel cramped. */}
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 40, color: 'var(--text)' }}>Check your inbox</h2>
+            <p style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 48 }}>
+              We sent a sign-in link to <strong style={{ color: 'var(--text)' }}>{email}</strong>.
+              <br />
+              It expires in 15 minutes.
             </p>
             <button
               onClick={() => { setLinkSent(false); setEmail(''); }}
@@ -156,7 +160,7 @@ export default function LoginPage() {
             >
               ← Use a different email
             </button>
-            <div style={{ marginTop: 18, padding: '10px 12px', background: 'var(--surface)', borderRadius: 9, fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.55, textAlign: 'left' }}>
+            <div style={{ marginTop: 50, padding: '10px 12px', background: 'var(--surface)', borderRadius: 9, fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.55, textAlign: 'left' }}>
               <strong style={{ color: 'var(--text)' }}>Didn't get it?</strong> Check spam or
               {' '}<a href="mailto:support@manchq.com" style={{ color: '#6a7fdb' }}>email support</a>.
             </div>
