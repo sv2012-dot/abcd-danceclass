@@ -222,15 +222,20 @@ export default function LoginPage() {
                   width: '100%',
                   marginTop: 12,
                   padding: '13px',
-                  background: loading || !email.trim() ? 'var(--muted)' : 'var(--text)',
-                  color: 'var(--card)',
+                  // Brand gradient — same as landing-page primary CTAs. Was
+                  // var(--text) before, which inverts in dark mode (white
+                  // button on dark card) and clashed with the rest of the
+                  // theme. Gradient keeps the look consistent across modes.
+                  background: 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)',
+                  color: '#fff',
                   border: 'none',
                   borderRadius: 10,
                   fontSize: 14.5,
                   fontWeight: 700,
                   cursor: loading || !email.trim() ? 'not-allowed' : 'pointer',
                   letterSpacing: '0.01em',
-                  opacity: loading || !email.trim() ? 0.7 : 1,
+                  opacity: loading || !email.trim() ? 0.4 : 1,
+                  boxShadow: loading || !email.trim() ? 'none' : '0 4px 18px rgba(124,58,237,0.32)',
                 }}
               >
                 {loading ? 'Sending link…' : 'Email me a sign-in link'}
