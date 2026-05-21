@@ -66,9 +66,9 @@ const BENEFITS = [
 ];
 
 const TRUST = [
-  { ic:'student',  label:'Student tracking', sub:'profiles, attendance & guardians' },
-  { ic:'calendar', label:'Class scheduling', sub:'smart calendar with recurrence'   },
-  { ic:'recital',  label:'Recital hub',      sub:'from planning to curtain call'    },
+  { ic:'sparkles', label:'Smart Announce',   sub:'AI-drafted, WhatsApp-ready'      },
+  { ic:'recital',  label:'Recital hub',      sub:'from planning to curtain call'   },
+  { ic:'calendar', label:'Class scheduling', sub:'smart calendar with recurrence'  },
 ];
 
 const PROVIDERS = [
