@@ -16,6 +16,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/context/AuthContext';
 import { redirectToDashboard } from '@/lib/redirectToDashboard';
@@ -320,24 +321,23 @@ function RegisterForm() {
           <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.65, margin: '0 0 24px' }}>
             We sent a sign-in link to <strong style={{ color: 'var(--text)' }}>{linkSentTo}</strong>. Open it to enter your new studio. The link expires in 15 minutes.
           </p>
-          <button
-            onClick={() => router.push('/login')}
-            style={{ background: 'none', border: 'none', color: '#6a7fdb', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
+          <Link
+            href="/login"
+            style={{ background: 'none', border: 'none', color: '#6a7fdb', fontWeight: 600, cursor: 'pointer', fontSize: 13, textDecoration: 'none' }}
           >
             ← Back to sign-in
-          </button>
+          </Link>
         </div>
       </AuthBackground>
     );
   }
 
-  if (authLoading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#888' }}>
-        Loading…
-      </div>
-    );
-  }
+  // Don't gate the form render on authLoading. With the backend
+  // occasionally slow (or down), this used to leave anyone with a
+  // stored token stuck on "Loading…" for the full 30s axios timeout.
+  // The form is safe to render even while auth resolves — if the
+  // user turns out to be signed-in, the interstitial below replaces
+  // the form once `user` is set.
 
   // ── Form column ──────────────────────────────────────────────────────
   const formColumn = (
@@ -496,12 +496,12 @@ function RegisterForm() {
       {/* Sign-in link */}
       <div style={{ marginTop: 18, textAlign: 'center', fontSize: 13, color: 'var(--muted)' }}>
         Already have an account?{' '}
-        <button
-          onClick={() => router.push('/login')}
+        <Link
+          href="/login"
           style={{ background: 'none', border: 'none', color: '#6a7fdb', cursor: 'pointer', fontWeight: 700, padding: 0, textDecoration: 'underline' }}
         >
           Sign in →
-        </button>
+        </Link>
       </div>
     </div>
   );
@@ -571,18 +571,18 @@ function RegisterForm() {
     <AuthBackground>
       {/* Top bar */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <button onClick={() => router.push('/')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Link href="/" style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
           <img src="/ManchQ-Logo.png" alt="ManchQ" style={{ width: 28, height: 28, display: 'block' }} />
           <span style={{ fontWeight: 800, fontSize: 16, color: '#fff' }}>
             Manch<span style={{ background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Q</span>
           </span>
-        </button>
-        <button
-          onClick={() => router.push('/login')}
-          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: 13, fontWeight: 600, padding: '7px 16px', borderRadius: 8, cursor: 'pointer', backdropFilter: 'blur(8px)' }}
+        </Link>
+        <Link
+          href="/login"
+          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: 13, fontWeight: 600, padding: '7px 16px', borderRadius: 8, cursor: 'pointer', backdropFilter: 'blur(8px)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
         >
           Sign in
-        </button>
+        </Link>
       </div>
 
       {/* The unified island */}

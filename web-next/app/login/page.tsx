@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/lib/context/AuthContext';
 import GoogleSignIn from '@/components/GoogleSignIn';
 import AuthBackground from '@/components/AuthBackground';
@@ -91,8 +92,8 @@ export default function LoginPage() {
       >
         {/* Header — logo only */}
         <div style={{ textAlign: 'center', marginBottom: 16 }}>
-          <button
-            onClick={() => router.push('/')}
+          <Link
+            href="/"
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, borderRadius: '50%', display: 'inline-flex' }}
             title="Go to homepage"
           >
@@ -101,7 +102,7 @@ export default function LoginPage() {
               alt="ManchQ"
               style={{ width: isMobile ? 56 : 68, height: isMobile ? 56 : 68, borderRadius: '50%', display: 'block' }}
             />
-          </button>
+          </Link>
         </div>
 
         {linkSent ? (
@@ -189,12 +190,12 @@ export default function LoginPage() {
 
             <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: 'var(--muted)' }}>
               New to ManchQ?{' '}
-              <button
-                onClick={() => router.push('/register')}
+              <Link
+                href="/register"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6a7fdb', fontWeight: 700, padding: 0, textDecoration: 'underline', fontSize: 12 }}
               >
                 Register your studio
-              </button>
+              </Link>
             </div>
           </>
         )}
