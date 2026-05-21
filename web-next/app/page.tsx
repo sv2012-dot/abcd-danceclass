@@ -155,7 +155,7 @@ function NavBar({ onLogin, onRegister, isMobile, onPricing }: { onLogin: () => v
               background:BTN_GRAD, color:'#fff',
               fontWeight:700, fontSize:13, cursor:'pointer',
               boxShadow:'0 2px 14px rgba(124,58,237,0.42)', whiteSpace:'nowrap',
-            }}>Register →</button>
+            }}>Register</button>
           </div>
         )}
 
@@ -205,7 +205,7 @@ function NavBar({ onLogin, onRegister, isMobile, onPricing }: { onLogin: () => v
             <button onClick={() => navTo(onRegister)} style={{
               width:'100%', padding:'14px', borderRadius:12, border:'none',
               background:BTN_GRAD, color:'#fff', fontWeight:700, fontSize:15, cursor:'pointer',
-            }}>Register →</button>
+            }}>Register</button>
             <button onClick={() => navTo(onLogin)} style={{
               width:'100%', padding:'14px', borderRadius:12,
               border:'1.5px solid rgba(255,255,255,0.18)',
@@ -250,9 +250,14 @@ export default function Home() {
         textAlign:'center', padding: isMobile ? '100px 20px 60px' : '120px 24px 80px',
         position:'relative', overflow:'hidden',
       }}>
-        <video autoPlay muted loop playsInline style={{
+        <video autoPlay muted loop playsInline aria-hidden style={{
           position:'absolute', inset:0, width:'100%', height:'100%',
           objectFit:'cover', filter:'blur(3px)', transform:'scale(1.04)', zIndex:0,
+          // iOS Safari lets <video> absorb taps from its native media UI layer
+          // even at z=0 behind other content. Without this, every CTA in the
+          // hero is unclickable on iPad. Background loop only — no controls
+          // means no reason for users to ever interact with it.
+          pointerEvents: 'none',
         }}>
           <source src="/manchq-hero-bg-long.mp4" type="video/mp4" />
         </video>
@@ -282,7 +287,7 @@ export default function Home() {
               fontWeight:800, fontSize: isMobile ? 16 : 17, cursor:'pointer',
               boxShadow:'0 4px 28px rgba(124,58,237,0.50)', display:'flex', alignItems:'center', justifyContent:'center', gap:8,
             }}>
-              Get started for free <Icon paths={IC.arrow} size={16} stroke="#fff" sw={2} />
+              Get started for free
             </button>
             <button onClick={goLogin} style={{
               padding: isMobile ? '14px 32px' : '16px 32px',
@@ -512,7 +517,7 @@ export default function Home() {
               fontWeight:900, fontSize: isMobile ? 16 : 18, cursor:'pointer',
               boxShadow:'0 4px 32px rgba(124,58,237,0.60)', letterSpacing:'.02em',
             }}>
-              Get started for free →
+              Get started for free
             </button>
             <button onClick={goLogin} style={{
               padding: isMobile ? '14px 32px' : '16px 36px',
