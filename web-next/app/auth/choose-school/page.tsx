@@ -93,6 +93,15 @@ export default function ChooseSchoolPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // If we already have valid chooser state, do nothing — the effect
+    // re-runs whenever authLoading flips (true → false on mount), and
+    // a second run would otherwise see an empty stash (popChooser
+    // removed it on the first run) and bounce to /login. This was a
+    // regression after the OAuth callback switched from SPA router
+    // navigation to location.replace, which causes AuthContext to
+    // re-initialise on the chooser page mount.
+    if (chooserToken && memberships.length) return;
+
     // Path A: post-sign-in stash from sessionStorage
     const stashed = popChooser();
     if (stashed?.chooser_token && stashed.memberships?.length) {
@@ -120,7 +129,7 @@ export default function ChooseSchoolPage() {
       router.replace('/login');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user]);
+  }, [authLoading, user, chooserToken, memberships.length]);
 
   const pick = async (m: Membership) => {
     if (!chooserToken) return;
