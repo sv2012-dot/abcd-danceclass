@@ -47,13 +47,28 @@ function CallbackInner() {
         return;
       }
 
-      // Retrieve stashed context (mode + register form).
+      // Retrieve stashed context (mode + register form). Try the cookie set
+      // by /api/auth/google/start (new flow) first; fall back to sessionStorage
+      // for any in-flight session started by the older client-side GoogleSignIn.
       let stateData: { mode?: string; form?: Record<string, any> } | null = null;
+      const cookieKey = OAUTH_STATE_KEY_PREFIX + stateToken;
       try {
-        const raw = sessionStorage.getItem(OAUTH_STATE_KEY_PREFIX + stateToken);
-        if (raw) stateData = JSON.parse(raw);
-        sessionStorage.removeItem(OAUTH_STATE_KEY_PREFIX + stateToken);
+        const cookies = document.cookie.split(/;\s*/);
+        const match = cookies.find(c => c.startsWith(cookieKey + '='));
+        if (match) {
+          const value = decodeURIComponent(match.slice(cookieKey.length + 1));
+          stateData = JSON.parse(value);
+          // Clear the cookie now that we've consumed it.
+          document.cookie = `${cookieKey}=; Path=/; Max-Age=0; SameSite=Lax`;
+        }
       } catch (_) {}
+      if (!stateData) {
+        try {
+          const raw = sessionStorage.getItem(cookieKey);
+          if (raw) stateData = JSON.parse(raw);
+          sessionStorage.removeItem(cookieKey);
+        } catch (_) {}
+      }
 
       if (!stateData) {
         toast.error('Sign-in state expired. Please try again.');
