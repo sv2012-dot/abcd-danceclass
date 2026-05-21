@@ -1,20 +1,13 @@
 // /auth/google/callback — server-rendered OAuth callback handler.
 //
-// This page is intentionally a Server Component with no React hydration
-// dependency. The OAuth code → token exchange runs as plain inline JS,
-// which executes on parse regardless of whether React hydrates. This
-// fixes the iPad / iOS WebKit issue where React's onClick / useEffect
-// silently fail to attach, which previously left users stuck on
-// "Completing sign-in…".
+// Pure inline <script> that runs on parse, regardless of React hydration.
+// On success: writes session to localStorage and redirects to /home.
+// On error:   redirects to /login?error=<message> so the verbose toast
+//             on /login shows the actual backend cause.
 //
-// Flow:
-//   1. GoogleSignIn POSTs to /api/auth/google/start
-//   2. /api/auth/google/start sets `sf_oauth_<state>` cookie with
-//      { mode, form? } and redirects to Google
-//   3. Google sends user back here with ?code=...&state=...
-//   4. Inline <script> reads cookie + URL params, POSTs to backend,
-//      writes session to localStorage, then redirects to /home
-//      (or /register?googleData=... / /auth/choose-school / etc.)
+// No DOM mutation after the script's initial run — React's hydration was
+// resetting our textContent changes on the spinner, which made errors
+// invisible. Redirecting with the error in the URL avoids the conflict.
 
 import { Suspense } from 'react';
 
@@ -22,14 +15,8 @@ const PROD_API = 'https://abcd-danceclass-production.up.railway.app/api';
 const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim()) || PROD_API;
 
 function buildInlineScript() {
-  // Anything that needs to be substituted from server-side must be
-  // JSON.stringified for safe embedding. Plain `${variable}` strings here
-  // are interpolated server-side at build time; the rest is plain JS that
-  // runs in the browser.
   return `
 (function () {
-  // Run as soon as the script is parsed — don't wait for DOMContentLoaded
-  // or any framework lifecycle. Heavy work goes inside an async IIFE.
   (async function () {
     var API_URL = ${JSON.stringify(API_URL)};
     var STATE_KEY = 'sf_oauth_';
@@ -66,12 +53,12 @@ function buildInlineScript() {
       return;
     }
 
-    // State data lookup — cookie first (set by /api/auth/google/start),
-    // sessionStorage as legacy fallback.
     var stateData = null;
     var cookieValue = readCookie(STATE_KEY + state);
     if (cookieValue) {
-      try { stateData = JSON.parse(cookieValue); } catch (_) {}
+      try { stateData = JSON.parse(cookieValue); } catch (e) {
+        console.warn('[google-callback] cookie parse failed', e);
+      }
       clearCookie(STATE_KEY + state);
     }
     if (!stateData) {
@@ -102,6 +89,8 @@ function buildInlineScript() {
       payload = { code: code, redirect_uri: redirectUri };
     }
 
+    console.log('[google-callback] POST', endpoint, 'mode:', stateData.mode);
+
     var res, data;
     try {
       res = await fetch(endpoint, {
@@ -109,18 +98,23 @@ function buildInlineScript() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      data = await res.json();
+      try { data = await res.json(); } catch (_) { data = {}; }
     } catch (e) {
+      console.error('[google-callback] network error', e);
       go('/login?error=network');
       return;
     }
+
+    console.log('[google-callback] response', res.status, data);
 
     if (res.ok && data.token) {
       try {
         localStorage.setItem('sf_token', data.token);
         if (data.user) localStorage.setItem('sf_user', JSON.stringify(data.user));
         if (data.school) localStorage.setItem('sf_school', JSON.stringify(data.school));
-      } catch (_) {}
+      } catch (e) {
+        console.warn('[google-callback] localStorage write failed', e);
+      }
       go('/home');
       return;
     }
@@ -149,7 +143,11 @@ function buildInlineScript() {
       go('/register?existing=1');
       return;
     }
-    go('/login?error=' + encodeURIComponent((data && data.error) || 'sign-in-failed'));
+
+    // Surface the actual backend error in the URL so /login's toast can show
+    // it verbatim ("Sign-in failed: <error>") instead of a generic message.
+    var msg = (data && data.error) ? data.error : ('HTTP ' + res.status);
+    go('/login?error=' + encodeURIComponent(msg));
   })();
 })();
 `.trim();
@@ -166,9 +164,9 @@ export default function GoogleCallbackPage() {
           alignItems: 'center',
           justifyContent: 'center',
           gap: 16,
-          background: 'var(--background)',
-          color: 'var(--foreground)',
-          fontFamily: 'var(--font-sans)',
+          background: '#0a0a0f',
+          color: '#f5f5f7',
+          fontFamily: 'var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         }}
       >
         <div
@@ -176,15 +174,17 @@ export default function GoogleCallbackPage() {
           style={{
             width: 36,
             height: 36,
-            border: '3px solid var(--border)',
-            borderTopColor: 'var(--primary)',
+            border: '3px solid rgba(255,255,255,0.08)',
+            borderTopColor: '#7C3AED',
             borderRadius: '50%',
             animation: 'sf-cb-spin 0.8s linear infinite',
           }}
         />
-        <div style={{ fontSize: 14, color: 'var(--muted-foreground)' }}>Completing sign-in…</div>
+        <div style={{ fontSize: 14, color: '#9ca3af' }}>Completing sign-in…</div>
         <style
-          dangerouslySetInnerHTML={{ __html: '@keyframes sf-cb-spin { to { transform: rotate(360deg); } }' }}
+          dangerouslySetInnerHTML={{
+            __html: '@keyframes sf-cb-spin { to { transform: rotate(360deg); } }',
+          }}
         />
         <script dangerouslySetInnerHTML={{ __html: buildInlineScript() }} />
       </div>
