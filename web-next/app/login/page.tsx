@@ -57,6 +57,38 @@ export default function LoginPage() {
     }
   }, [authLoading, user, router]);
 
+  // Native-form-submission fallback path: when the user is on iPad Chrome
+  // (React onSubmit doesn't fire), the form posts to /api/auth/magic-link
+  // which redirects back here with ?sent=<email>. Pick that up and render
+  // the "check your inbox" view as if React had handled it.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const sentEmail = params.get('sent');
+    if (sentEmail) {
+      setEmail(sentEmail);
+      setLinkSent(true);
+      // Clean the query param so a refresh doesn't get stuck on this state.
+      const url = new URL(window.location.href);
+      url.searchParams.delete('sent');
+      window.history.replaceState({}, '', url.toString());
+    }
+    const errCode = params.get('error');
+    if (errCode) {
+      const msg = errCode === 'invalid-email'
+        ? 'Please enter a valid email address.'
+        : errCode === 'send-failed'
+        ? 'Could not send the sign-in link. Please try again.'
+        : errCode === 'network'
+        ? "Couldn't reach our servers. Please try again."
+        : 'Sign-in failed. Please try again.';
+      toast.error(msg);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('error');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
+
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
@@ -155,9 +187,20 @@ export default function LoginPage() {
               No password &mdash; we'll send a one-time link.
             </p>
 
-            <form onSubmit={handleMagicLink} style={{ width: '100%', display: 'block', margin: 0 }}>
+            {/* action+method are the native-submission fallback for iPad
+                Chrome where React's onSubmit may not fire. When JS works,
+                onSubmit preventDefaults and runs the optimistic UX; when
+                it doesn't, the browser POSTs to /api/auth/magic-link which
+                relays to the backend and redirects back with ?sent=... */}
+            <form
+              onSubmit={handleMagicLink}
+              action="/api/auth/magic-link"
+              method="post"
+              style={{ width: '100%', display: 'block', margin: 0 }}
+            >
               <input
                 type="email"
+                name="email"
                 required
                 autoComplete="email"
                 value={email}
