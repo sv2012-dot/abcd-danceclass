@@ -75,11 +75,17 @@ export async function POST(req: NextRequest) {
   const res = NextResponse.redirect(googleUrl, { status: 303 });
 
   // Stash the state data in a cookie. Non-HttpOnly because the callback
-  // page (client component) reads it via document.cookie. SameSite=Lax so
-  // it survives the cross-site redirect back from Google. Short TTL.
+  // page reads it via document.cookie. SameSite=Lax so it survives the
+  // cross-site redirect back from Google. Short TTL.
+  //
+  // IMPORTANT: pass the JSON string raw. Next.js's cookies.set()
+  // URL-encodes the value automatically — wrapping it in
+  // encodeURIComponent here previously produced a double-encoded cookie
+  // that JSON.parse() couldn't read on the callback side, which made
+  // every sign-in attempt fail with "Sign-in state expired".
   res.cookies.set({
     name: OAUTH_COOKIE_PREFIX + stateToken,
-    value: encodeURIComponent(JSON.stringify(stateData)),
+    value: JSON.stringify(stateData),
     httpOnly: false,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
