@@ -75,14 +75,20 @@ export default function LoginPage() {
     }
     const errCode = params.get('error');
     if (errCode) {
-      const msg = errCode === 'invalid-email'
-        ? 'Please enter a valid email address.'
-        : errCode === 'send-failed'
-        ? 'Could not send the sign-in link. Please try again.'
-        : errCode === 'network'
-        ? "Couldn't reach our servers. Please try again."
-        : 'Sign-in failed. Please try again.';
-      toast.error(msg);
+      const knownMessages: Record<string, string> = {
+        'invalid-email':       'Please enter a valid email address.',
+        'send-failed':         'Could not send the sign-in link. Please try again.',
+        'network':             "Couldn't reach our servers. Please try again.",
+        'state-expired':       'Sign-in state expired. Please try again.',
+        'missing-params':      'Sign-in interrupted. Please try again.',
+        'oauth-misconfigured': "Google sign-in isn't configured. Contact support.",
+        'sign-in-failed':      'Sign-in failed. Please try again.',
+      };
+      // Surface the actual backend error code if it's not one we recognize —
+      // makes "Sign-in failed" debuggable instead of opaque. Lifted into a
+      // 7-second toast so users can read longer error strings.
+      const msg = knownMessages[errCode] || `Sign-in failed: ${errCode}`;
+      toast.error(msg, { duration: 7000 });
       const url = new URL(window.location.href);
       url.searchParams.delete('error');
       window.history.replaceState({}, '', url.toString());
