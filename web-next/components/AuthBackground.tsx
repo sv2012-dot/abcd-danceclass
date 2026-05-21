@@ -40,6 +40,11 @@ export default function AuthBackground({ children }: { children: ReactNode }) {
             style={{
               position: 'absolute', inset: 0, width: '100%', height: '100%',
               objectFit: 'cover', filter: 'blur(14px)', transform: 'scale(1.1)', zIndex: 0,
+              // iOS Safari lets <video> elements absorb taps from their
+              // native media UI layer even when stacked beneath content.
+              // Without this, every button on /login and /register was
+              // unclickable on iPad. Same fix as the homepage hero video.
+              pointerEvents: 'none',
             }}
           >
             <source src="/manchq-hero-bg-long.mp4" type="video/mp4" />
