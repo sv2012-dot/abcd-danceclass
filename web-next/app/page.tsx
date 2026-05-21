@@ -51,11 +51,10 @@ const IC: Record<string, string | string[]> = {
 
 const FEATURES = [
   { ic:'calendar', title:'Smart Scheduling',     desc:'Plan classes, rehearsals and recitals in one elegant calendar. Recurrence, studio booking and colour-coding built right in.' },
-  { ic:'student',  title:'Student Profiles',     desc:'Track every student — attendance, progress, guardian contacts — always at your fingertips, never lost in a spreadsheet.' },
+  { ic:'student',  title:'Student Profiles',     desc:'Track every student — attendance, progress, contact details — always at your fingertips, never lost in a spreadsheet.' },
   { ic:'recital',  title:'Recital Management',   desc:'From early planning to curtain call. Venue, date, status, poster — manage your entire showcase from one beautiful hub.' },
   { ic:'todo',     title:'Team To-Dos',          desc:'Keep your team aligned with shared tasks, deadlines and assignments. Nothing slips through the cracks ever again.' },
   { ic:'studio',   title:'Multi-Studio Support', desc:'Running more than one location? ManchQ keeps every studio organised under one roof, one login.' },
-  { ic:'parent',   title:'Parent Portal',        desc:"Give parents a window into their child's journey — schedules, updates and announcements in one clean place." },
 ];
 
 const BENEFITS = [
@@ -88,7 +87,7 @@ const PRIVACY_PILLARS = [
 const MOBILE_BULLETS = [
   'Full calendar and scheduling on any phone',
   'Add and edit events with a single tap',
-  'Parent portal works in any browser — no app to install',
+  'Works in any browser — no app to install',
   'Same great experience on desktop, tablet and mobile',
 ];
 
@@ -450,18 +449,6 @@ export default function Home() {
                 <div style={{ fontSize: isMobile ? 12 : 13, color:'#6B7280', lineHeight:1.65 }}>{desc}</div>
               </div>
             ))}
-          </div>
-          <div style={{ padding: isMobile ? '20px' : '26px 36px', borderRadius:18, background:'rgba(124,58,237,0.08)', border:'1.5px solid rgba(124,58,237,0.22)', display:'flex', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 16 : 24, flexDirection: isMobile ? 'column' : 'row' }}>
-            <div style={{ width: isMobile ? 44 : 54, height: isMobile ? 44 : 54, borderRadius:14, background:'rgba(124,58,237,0.18)', border:'1px solid rgba(124,58,237,0.32)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <Icon paths={IC.parent} size={isMobile ? 22 : 27} stroke={MAGENTA} sw={1.5} />
-            </div>
-            <div style={{ flex:1 }}>
-              <div style={{ fontWeight:800, fontSize: isMobile ? 15 : 18, color:'#fff', marginBottom:6 }}>Parent volunteers — a first-class feature</div>
-              <div style={{ fontSize: isMobile ? 13 : 14, color:'#6B7280', lineHeight:1.72 }}>Your biggest fans deserve their own space too. ManchQ lets you assign volunteer roles, coordinate availability and keep everyone in the loop — all within the same platform, no separate tools required.</div>
-            </div>
-            <button onClick={goLogin} style={{ flexShrink:0, padding:'10px 22px', borderRadius:10, border:'none', background:BTN_GRAD, color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', whiteSpace:'nowrap', boxShadow:'0 2px 14px rgba(124,58,237,0.4)' }}>
-              See how it works →
-            </button>
           </div>
         </div>
       </section>

@@ -655,7 +655,7 @@ async function seedDummyData(schoolId, danceStyle) {
     'Add remaining students to batches',
     'Customize batch schedules',
     'Upload batch cover photos',
-    'Share the parent portal link with guardians',
+    'Invite your students to view their schedule and updates',
   ];
   for (const title of todos) {
     await pool.query(

@@ -12,18 +12,18 @@
 // to a SmartPlanTodo on the frontend (lib/api/smart.ts).
 //
 // IMPORTANT: keep `task_text` < 80 chars (matches the old AI prompt rule),
-// action-verb-first, parent/parent-friendly language.
+// action-verb-first, audience-neutral language.
 const BASE_TODOS = [
   { d: 90, c: 'Venue',         t: 'Confirm venue booking and capacity' },
   { d: 75, c: 'Communications',t: 'Send save-the-date to all families' },
   { d: 60, c: 'Music',         t: 'Finalize song selection per group' },
-  { d: 60, c: 'Costumes',      t: 'Send costume sizing form to parents' },
+  { d: 60, c: 'Costumes',      t: 'Send out costume sizing forms' },
   { d: 45, c: 'Costumes',      t: 'Order costumes from supplier' },
   { d: 45, c: 'Communications',t: 'Open RSVP via the public page' },
   { d: 30, c: 'Tech',          t: 'Confirm sound and lighting requirements' },
   { d: 21, c: 'Rehearsal',     t: 'Schedule the first full run-through' },
   { d: 14, c: 'Tech',          t: 'Submit final music order to the tech team' },
-  { d: 14, c: 'Communications',t: 'Email program and arrival time to parents' },
+  { d: 14, c: 'Communications',t: 'Email the program and arrival time to everyone' },
   { d: 7,  c: 'Rehearsal',     t: 'Dress rehearsal' },
   { d: 3,  c: 'Communications',t: 'Send day-of reminder with venue address' },
   { d: 1,  c: 'Day-of',        t: 'Confirm volunteers and front-of-house' },

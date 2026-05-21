@@ -1440,7 +1440,7 @@ export default function SchedulePage() {
                         onClick={() => setSmartReplyEvent(e)}
                         style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"none", background:"linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", color:"#fff", cursor:"pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:"0 2px 12px rgba(124,58,237,0.32)" }}
                       >
-                        <SvgIcon name="mail" size={15} color="#fff" /> Message Parents
+                        <SvgIcon name="mail" size={15} color="#fff" /> Message Class
                       </button>
                       <button
                         onClick={() => handleMarkAllPresent(e)}

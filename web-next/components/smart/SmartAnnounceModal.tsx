@@ -45,21 +45,22 @@ const MAGENTA = '#DC4EFF';
 // Purpose presets — each maps to a HEADLINE shown above the message body.
 // The default set fits Class / Event / Recital / Batch contexts.
 const PURPOSE_PRESETS: { id: string; label: string; headline: string; purpose: string; tone: SmartReplyTone }[] = [
-  { id: 'confirm',  label: 'Confirm — class is on as scheduled', headline: 'Class confirmed',    purpose: 'Confirm the class is on as scheduled and reassure parents.',                       tone: 'friendly'   },
+  { id: 'confirm',  label: 'Confirm — class is on as scheduled', headline: 'Class confirmed',    purpose: 'Confirm the class is on as scheduled and reassure students.',                      tone: 'friendly'   },
   { id: 'cancel',   label: 'Cancel / reschedule',                headline: 'Class cancelled',    purpose: 'Cancel or reschedule this. Briefly explain without private details.',             tone: 'apologetic' },
   { id: 'reminder', label: 'Reminder day-before',                headline: 'Reminder',           purpose: 'Friendly reminder the day before. Mention any prep or items to bring.',           tone: 'friendly'   },
-  { id: 'rsvp',     label: 'Ask for RSVP',                       headline: 'Please RSVP',        purpose: 'Politely ask parents to RSVP via the public page so we can plan accordingly.',    tone: 'friendly'   },
+  { id: 'rsvp',     label: 'Ask for RSVP',                       headline: 'Please RSVP',        purpose: 'Politely ask everyone to RSVP via the public page so we can plan accordingly.',    tone: 'friendly'   },
   { id: 'custom',   label: 'Custom (write yourself)',            headline: 'Announcement',       purpose: '',                                                                                  tone: 'friendly'   },
 ];
 
 // Student-specific presets — surfaced ONLY when contextType === 'student'.
-// A teacher messaging an individual parent has different intents than a
-// batch-wide announcement: fees, praise, recital appreciation, etc.
+// One student's contact may be the student themselves (adult) or a guardian
+// (minor). The AI uses the saved contact details, so the purpose strings
+// stay audience-neutral and let it pick the right voice automatically.
 const STUDENT_PRESETS: { id: string; label: string; headline: string; purpose: string; tone: SmartReplyTone }[] = [
-  { id: 'fees',          label: 'Send fees reminder',           headline: 'Fee reminder',          purpose: "Friendly, parent-facing reminder that this student's monthly fee is due. Mention the convenient way to pay and that we appreciate timely payment.", tone: 'friendly' },
-  { id: 'praise_class',  label: 'Appreciate for class',         headline: 'A note about today',    purpose: "Tell the parent something specific and positive this student did in class today — effort, progress, attitude, a moment that stood out.",            tone: 'friendly' },
-  { id: 'praise_recital',label: 'Appreciation for recital',     headline: 'Thank you for the recital', purpose: "Thank the parent for bringing their child to the recital. Mention how the student performed and what it meant to have them there.",         tone: 'friendly' },
-  { id: 'thanks',        label: 'Thank you',                    headline: 'Thank you',             purpose: "A short, warm thank-you to the parent — for support, attendance, payment, or just being part of the studio community.",                            tone: 'friendly' },
+  { id: 'fees',          label: 'Send fees reminder',           headline: 'Fee reminder',          purpose: "Friendly reminder that the monthly fee is due. Mention the convenient way to pay and that we appreciate timely payment.",                              tone: 'friendly' },
+  { id: 'praise_class',  label: 'Appreciate for class',         headline: 'A note about today',    purpose: "Share something specific and positive this student did in class today — effort, progress, attitude, a moment that stood out.",                          tone: 'friendly' },
+  { id: 'praise_recital',label: 'Appreciation for recital',     headline: 'Thank you for the recital', purpose: "A heartfelt thank-you for being part of the recital. Mention how the student performed and what it meant to have them there.",                  tone: 'friendly' },
+  { id: 'thanks',        label: 'Thank you',                    headline: 'Thank you',             purpose: "A short, warm thank-you — for support, attendance, payment, or just being part of the studio community.",                                              tone: 'friendly' },
   { id: 'custom',        label: 'Custom (write yourself)',      headline: 'Message',               purpose: '',                                                                                                                                                  tone: 'friendly' },
 ];
 
@@ -70,9 +71,9 @@ const STUDENT_PRESETS: { id: string; label: string; headline: string; purpose: s
 // doesn't fit recitals.
 const RECITAL_PRESETS: { id: string; label: string; headline: string; purpose: string; tone: SmartReplyTone }[] = [
   { id: 'save_the_date', label: 'Save the date',                headline: 'Save the date',         purpose: 'Announce the recital date, venue (if booked), and ask families to save the date. Build excitement.',                                       tone: 'friendly' },
-  { id: 'rsvp',          label: 'Ask for RSVP',                 headline: 'Please RSVP',           purpose: 'Politely ask parents to RSVP via the public recital page so we can plan seating, costumes, and program order.',                                tone: 'friendly' },
+  { id: 'rsvp',          label: 'Ask for RSVP',                 headline: 'Please RSVP',           purpose: 'Politely ask everyone to RSVP via the public recital page so we can plan seating, costumes, and program order.',                                tone: 'friendly' },
   { id: 'tickets',       label: 'Ticket / seating info',        headline: 'Tickets & seating',     purpose: 'Share ticket pickup details and reserved-seating info. Mention guest count limits if any.',                                                  tone: 'friendly' },
-  { id: 'costume',       label: 'Costume / arrival prep',       headline: 'Costume & arrival',     purpose: "Day-before prep — what costume to wear, hair/makeup, arrival time, what to bring. Make it easy for parents to follow.",                       tone: 'friendly' },
+  { id: 'costume',       label: 'Costume / arrival prep',       headline: 'Costume & arrival',     purpose: "Day-before prep — what costume to wear, hair/makeup, arrival time, what to bring. Keep it easy to follow.",                                    tone: 'friendly' },
   { id: 'day_before',    label: 'Day-before reminder',          headline: 'Tomorrow!',             purpose: 'Warm reminder that the recital is tomorrow. Restate the venue, arrival time, and any final notes.',                                          tone: 'friendly' },
   { id: 'thanks_after',  label: 'Thank you after the show',     headline: 'What a show!',          purpose: 'Post-recital thank-you to all participating families. Celebrate the performance and tease the next term / class.',                          tone: 'friendly' },
   { id: 'reschedule',    label: 'Reschedule or change of plan', headline: 'Recital update',        purpose: 'Communicate a date / venue / time change clearly and apologize for any inconvenience. Give the new details up front.',                       tone: 'apologetic' },
@@ -247,7 +248,7 @@ export default function SmartAnnounceModal({ open, onClose, ctx, inline = false 
       open={open}
       onClose={handleClose}
       title="Smart Announce"
-      subtitle={ctx ? `About: ${ctx.title}` : 'Draft a parent-facing announcement.'}
+      subtitle={ctx ? `About: ${ctx.title}` : 'Draft a class announcement.'}
       maxWidth={620}
       inline={inline}
     >

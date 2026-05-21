@@ -138,7 +138,7 @@ const sendWelcomeEmail = async (schoolName, adminEmail, adminName, schoolId) => 
                   <li>Schedule classes and create batches</li>
                   <li>Organize recitals and performances</li>
                   <li>Track fees and payments</li>
-                  <li>Communicate with parents through our parent portal</li>
+                  <li>Send announcements, fee reminders, and recital updates from one place</li>
                   <li>Manage studios, vendors, and resources</li>
                 </ul>
               </div>

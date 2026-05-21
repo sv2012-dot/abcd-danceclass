@@ -110,7 +110,7 @@ const STEPS: any[] = [
   {
     illustration: <IllustrationBatches />,
     title: 'Batches & Students',
-    body: 'Batches are your classes. Each batch has a schedule, an enrollment list, and its own cover photo. Students live inside batches — add guardian contacts to unlock the parent portal.',
+    body: 'Batches are your classes. Each batch has a schedule, an enrollment list, and its own cover photo. Students live inside batches — add contact details to send announcements and reminders.',
     note: null,
   },
   {
