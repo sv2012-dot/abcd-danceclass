@@ -8,6 +8,13 @@ const patchTables = require('./helpers/patchTables');
 
 const app = express();
 
+// We sit behind Railway's edge proxy in production, which sets
+// X-Forwarded-For. Tell Express to trust exactly one upstream hop so
+// express-rate-limit can read the real client IP without the
+// ERR_ERL_UNEXPECTED_X_FORWARDED_FOR warning. Limiting to 1 (not `true`)
+// avoids the security warning about over-trusting proxy headers.
+app.set('trust proxy', 1);
+
 // Security
 app.use(helmet());
 
