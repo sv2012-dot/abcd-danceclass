@@ -1014,7 +1014,9 @@ function SchoolHomePage() {
             <Field label="Level"><Select value={batchForm.level} onChange={e=>setBatchForm({...batchForm,level:e.target.value})}>{LEVELS.map(l=><option key={l}>{l}</option>)}</Select></Field>
             <Field label="Instructor"><Input value={batchForm.teacher_name} onChange={e=>setBatchForm({...batchForm,teacher_name:e.target.value})} placeholder="e.g. Swapna Varma" /></Field>
             <Field label="Max Capacity"><Input type="number" value={batchForm.max_size} onChange={e=>setBatchForm({...batchForm,max_size:e.target.value})} placeholder="e.g. 12" /></Field>
-            <Field label="Notes" style={{gridColumn:"1/-1"}}><Textarea value={batchForm.notes} onChange={e=>setBatchForm({...batchForm,notes:e.target.value})} placeholder="Any additional notes…" /></Field>
+            {/* Notes removed from the create flow — keeps the form short
+                and focused. Notes are added later via inline edit on the
+                batch detail page (PSection "Notes" with click-to-edit). */}
           </div>
           {/* Action row — two equal columns spanning the full width.
               Cancel sits on the LEFT, primary CTA (Create Batch) on the

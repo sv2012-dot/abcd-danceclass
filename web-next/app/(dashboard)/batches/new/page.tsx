@@ -22,13 +22,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/context/AuthContext';
 import { batches as api, schedules as schedulesApi } from '@/lib/api';
-import { Field, Input, Select, Textarea } from '@/components/shared/Field';
+import { Field, Input, Select } from '@/components/shared/Field';
 import { TimeField, DurationField, DayOfWeekField } from '@/components/shared/date/Picker';
 import { dowIndexToCode, addMinutesToTime } from '@/lib/date';
 import SvgIcon from '@/components/shared/SvgIcon';
 
 const LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Mixed'];
-const EMPTY = { name: '', dance_style: '', level: 'Beginner', teacher_name: '', max_size: '', notes: '' };
+// notes intentionally absent — added via inline edit on the detail page.
+const EMPTY = { name: '', dance_style: '', level: 'Beginner', teacher_name: '', max_size: '' };
 const EMPTY_BLOCK = { daysOfWeek: [1], start_time: '17:00', duration: 60, room: '' };
 
 export default function NewBatchPage() {
@@ -287,11 +288,9 @@ export default function NewBatchPage() {
           </div>
         )}
 
-        {/* Notes */}
-        <SectionHeader title="Notes" />
-        <Field label="Notes" style={{ marginBottom: 0 }}>
-          <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Any additional notes about this batch…" />
-        </Field>
+        {/* Notes intentionally omitted from the create flow — added
+            later via inline edit on the batch detail page so the create
+            form stays short and focused. */}
       </div>
     </div>
   );

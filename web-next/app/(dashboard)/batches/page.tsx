@@ -47,6 +47,117 @@ function PSection({ title, children }) {
   );
 }
 
+// Inline Notes editor used on the batch detail view.
+// Two states:
+//   view mode   — shows the notes text, or a "Tap to add notes…" prompt
+//                 when empty. Clicking switches to edit mode.
+//   edit mode   — textarea + Cancel / Save. Save calls api.update with
+//                 the full current batch fields (PUT replaces the row, so
+//                 we have to send everything, not just notes) and the
+//                 parent invalidates the batches query on success.
+//
+// Notes were intentionally removed from the create form so the create
+// flow stays short; this editor is the canonical place to add/edit notes
+// after the batch exists.
+function NotesInlineEditor({ batch, schoolId, onSaved }) {
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState(batch.notes || '');
+  const [saving, setSaving] = React.useState(false);
+
+  // Sync draft if the underlying batch.notes changes (e.g. another tab
+  // saved, or the user switches between batches without the editor
+  // closing — actually it does close, but defensive sync just in case).
+  React.useEffect(() => {
+    if (!editing) setDraft(batch.notes || '');
+  }, [batch.notes, editing]);
+
+  const startEdit = () => { setDraft(batch.notes || ''); setEditing(true); };
+  const cancel    = () => { setEditing(false); setDraft(batch.notes || ''); };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      // PUT replaces — send the full current shape so we don't blank
+      // unrelated fields. max_size is `''` when blank in the form; the
+      // backend tolerates that.
+      await api.update(schoolId, batch.id, {
+        name: batch.name,
+        dance_style: batch.dance_style || '',
+        level: batch.level || 'Beginner',
+        teacher_name: batch.teacher_name || '',
+        max_size: batch.max_size || '',
+        notes: draft,
+      });
+      toast.success('Notes saved');
+      setEditing(false);
+      onSaved?.();
+    } catch (err) {
+      toast.error(err?.error || 'Failed to save notes');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          autoFocus
+          placeholder="Add notes about this batch…"
+          style={{
+            width: '100%',
+            background: 'var(--surface)',
+            border: '1.5px solid var(--border)',
+            borderRadius: 9,
+            padding: '12px 13px',
+            fontSize: 14,
+            color: 'var(--text)',
+            fontFamily: 'var(--font-b)',
+            minHeight: 110,
+            resize: 'vertical',
+            outline: 'none',
+            boxSizing: 'border-box',
+          }}
+        />
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
+          <Button variant="secondary" size="sm" onClick={cancel} disabled={saving}>Cancel</Button>
+          <Button size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+        </div>
+      </div>
+    );
+  }
+
+  const hasNotes = !!(batch.notes && batch.notes.trim());
+  return (
+    <div
+      onClick={startEdit}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(); } }}
+      style={{
+        cursor: 'pointer',
+        background: 'var(--surface)',
+        borderRadius: 9,
+        padding: '12px 13px',
+        fontSize: 13,
+        color: hasNotes ? 'var(--muted)' : 'var(--muted)',
+        lineHeight: 1.6,
+        fontStyle: hasNotes ? 'normal' : 'italic',
+        minHeight: 44,
+        whiteSpace: 'pre-wrap',
+        border: '1.5px dashed transparent',
+        transition: 'border-color .15s',
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; }}
+    >
+      {hasNotes ? batch.notes : 'Tap to add notes…'}
+    </div>
+  );
+}
+
 export default function BatchesPage() {
   const { user } = useAuth();
   const sid = user?.school_id;
@@ -756,12 +867,21 @@ export default function BatchesPage() {
                 <BatchAttendanceGrid schoolId={String(sid)} batchId={activeBatch.id} />
               </PSection>
 
-              {/* Notes */}
-              {activeBatch.notes && (
-                <PSection title="Notes">
-                  <p style={{ fontSize:13, color:"var(--muted)", lineHeight:1.6, background:"var(--surface)", borderRadius:9, padding:"10px 12px", margin:0 }}>{activeBatch.notes}</p>
-                </PSection>
-              )}
+              {/* Notes — inline-edit on the detail page.
+                  Notes were removed from the create form, so this is now
+                  where the user adds them. Empty state: a tap-to-add
+                  prompt. Filled state: text shown with a click-to-edit
+                  affordance. Switching to edit mode reveals a textarea
+                  with Save/Cancel; Save persists via api.update. */}
+              <PSection title="Notes">
+                <NotesInlineEditor
+                  batch={activeBatch}
+                  schoolId={sid}
+                  onSaved={() => qc.invalidateQueries({ queryKey: ['batches', sid] })}
+                />
+              </PSection>
+              {/* Old conditional render kept commented for trace:
+                  {activeBatch.notes && <PSection title="Notes">...</PSection>} */}
 
               {/* Bottom action row removed — Edit / Delete / cover camera
                   now live in the hero toolbar at the top of the panel. */}

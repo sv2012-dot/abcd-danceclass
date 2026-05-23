@@ -249,10 +249,16 @@ select:-webkit-autofill:focus {
             instead of a popup. Inline styles can't express a media query, so
             we override the relevant card properties here. */
 @media (max-width: 768px) {
+  /* Slot the modal BELOW the 56px AppShell top nav, recital-details style.
+     top:56 keeps the dashboard nav visible; bottom:0 + height:auto lets
+     the modal fill the remaining viewport without overflowing it. */
   .sf-modal-overlay {
+    top: 56px !important;
+    bottom: 0 !important;
+    height: auto !important;
     padding: 0 !important;
-    /* Solid background — the backdrop blur is irrelevant when the card fills
-       the screen, and removing it saves a noticeable amount of GPU work on
+    /* Solid background — backdrop blur is irrelevant when the card fills
+       the area, and removing it saves a noticeable amount of GPU work on
        older iPads. */
     background: var(--card) !important;
     -webkit-backdrop-filter: none !important;
@@ -263,18 +269,28 @@ select:-webkit-autofill:focus {
     border-radius: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
-    max-height: 100dvh !important;
-    height: 100dvh !important;
+    max-height: 100% !important;
+    height: 100% !important;
     box-shadow: none !important;
   }
   .sf-modal-header {
     /* Real divider on mobile so the sticky header reads as a page chrome
        once content scrolls beneath it. */
     border-bottom: 1px solid var(--border) !important;
-    padding: 14px 18px !important;
+    padding: 12px 16px !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
   }
   .sf-modal-body {
     padding: 18px 18px 32px !important;
+  }
+  /* Swap dismiss UI: back-pill replaces the X on mobile. */
+  .sf-modal-back-pill { display: inline-flex !important; }
+  .sf-modal-close-x   { display: none !important; }
+  /* Title sizes down and sits next to the back pill. */
+  .sf-modal-title {
+    font-size: 16px !important;
+    font-weight: 700 !important;
   }
 }
 

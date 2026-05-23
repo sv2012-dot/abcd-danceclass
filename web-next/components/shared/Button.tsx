@@ -45,10 +45,14 @@ const HOVER: Record<string, any> = {
   ghost: { background: 'var(--surface)' },
 };
 
+// Universal CTA height: 45px for the default (md) size — primary and
+// secondary buttons render the same height app-wide so action rows
+// (e.g. Cancel + Save) always line up. sm stays compact for inline
+// chips/ghost actions; lg slightly bigger for hero CTAs.
 const SIZES: Record<string, any> = {
-  sm: { padding: '6px 14px', fontSize: 12, borderRadius: 8 },
-  md: { padding: '10px 22px', fontSize: 14, borderRadius: 12 },
-  lg: { padding: '13px 28px', fontSize: 15, borderRadius: 12 },
+  sm: { padding: '6px 14px', fontSize: 12, borderRadius: 8, minHeight: 32 },
+  md: { padding: '11px 22px', fontSize: 14, borderRadius: 12, minHeight: 45 },
+  lg: { padding: '14px 28px', fontSize: 15, borderRadius: 12, minHeight: 50 },
 };
 
 export default function Button({
