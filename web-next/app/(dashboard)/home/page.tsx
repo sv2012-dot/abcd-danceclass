@@ -1016,13 +1016,15 @@ function SchoolHomePage() {
             <Field label="Max Capacity"><Input type="number" value={batchForm.max_size} onChange={e=>setBatchForm({...batchForm,max_size:e.target.value})} placeholder="e.g. 12" /></Field>
             <Field label="Notes" style={{gridColumn:"1/-1"}}><Textarea value={batchForm.notes} onChange={e=>setBatchForm({...batchForm,notes:e.target.value})} placeholder="Any additional notes…" /></Field>
           </div>
-          {/* Action row.
+          {/* Action row — two equal columns spanning the full width.
               Cancel sits on the LEFT, primary CTA (Create Batch) on the
               RIGHT — standard convention so the primary action is in the
-              thumb-comfortable position on the right side of the screen. */}
-          <div style={{display:"flex",gap:9,marginTop:8,justifyContent:"space-between"}}>
-            <Button variant="secondary" onClick={()=>{setShowAddBatch(false);setBatchForm(EMPTY_BATCH);}}>Cancel</Button>
-            <Button onClick={()=>addBatchMutation.mutate(batchForm)} disabled={!batchForm.name||addBatchMutation.isPending}>
+              thumb-comfortable position. Each button takes 50% of the
+              row via `1fr 1fr` grid + width:100% on the buttons (Button
+              defaults to inline-flex / sized-to-content otherwise). */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:8}}>
+            <Button variant="secondary" style={{width:"100%",justifyContent:"center"}} onClick={()=>{setShowAddBatch(false);setBatchForm(EMPTY_BATCH);}}>Cancel</Button>
+            <Button style={{width:"100%",justifyContent:"center"}} onClick={()=>addBatchMutation.mutate(batchForm)} disabled={!batchForm.name||addBatchMutation.isPending}>
               {addBatchMutation.isPending?"Saving…":"Create Batch"}
             </Button>
           </div>

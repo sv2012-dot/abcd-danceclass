@@ -10,6 +10,15 @@
 //     The class .sf-modal-mobile-fullscreen in globals.css drives this with
 //     a media query (inline styles can't do media queries).
 //
+// Why we Portal to document.body:
+//   The modal is rendered from inside AppShell's <main> (overflow:auto)
+//   which sits below a static dashboard top nav. Even with position:fixed
+//   inset:0, in this nesting the modal can render BELOW the top nav on
+//   iOS Safari and other engines — observed as "header hidden behind the
+//   nav" with the top of the modal cropped off. Portaling to body removes
+//   the modal from AppShell's stacking/containing tree entirely so
+//   position:fixed reliably means viewport.
+//
 // Body scroll lock:
 //   While the modal is open we freeze the underlying page using the
 //   position-fixed pattern (not just overflow:hidden, which iOS Safari
@@ -21,9 +30,15 @@
 //       peek through above the modal
 //     - restores the original scroll position on unmount
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function Modal({ title, onClose, children, wide }: any) {
+  // Portal target is mounted client-side; SSR pass renders nothing so the
+  // markup doesn't appear in the dashboard tree during hydration.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   // Escape-to-close
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -71,7 +86,9 @@ export default function Modal({ title, onClose, children, wide }: any) {
     };
   }, []);
 
-  return (
+  if (!mounted) return null;
+
+  const node = (
     <div
       className="sf-modal-overlay"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -80,7 +97,11 @@ export default function Modal({ title, onClose, children, wide }: any) {
         inset: 0,
         background: 'rgba(20,10,30,0.6)',
         backdropFilter: 'blur(4px)',
-        zIndex: 600,
+        // 9999 — above every known stacking context in the app (AppShell
+        // drawer is 1001, OnboardingWizard is 9998, Confetti is 9999 too
+        // but never visible at the same time as a form modal). Was 600
+        // before, which let the dashboard top nav win on some engines.
+        zIndex: 9999,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -150,4 +171,6 @@ export default function Modal({ title, onClose, children, wide }: any) {
       </div>
     </div>
   );
+
+  return createPortal(node, document.body);
 }
