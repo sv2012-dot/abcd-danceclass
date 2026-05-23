@@ -263,6 +263,15 @@ export default function BatchesPage() {
   });
 
   const openAdd = () => {
+    // On mobile, route to a dedicated full-page form at /batches/new.
+    // The slide-in panel on mobile had dual-scroll / picker-overflow / gap-
+    // above-modal issues that aren't solvable inside the fixed panel
+    // primitive. Desktop continues to use the panel exactly as before so
+    // the desktop experience is untouched.
+    if (isMobile) {
+      router.push("/batches/new");
+      return;
+    }
     setForm(EMPTY);
     setFormBlocks([]);
     setActiveId(null);
@@ -808,7 +817,11 @@ export default function BatchesPage() {
                               <TimeField value={block.start_time} onChange={v => update({ start_time: v })} />
                             </Field>
                             <Field label="Duration" style={{ marginBottom:0 }}>
-                              <DurationField value={block.duration} onChange={d => update({ duration: d })} startTime={block.start_time} />
+                              {/* label={null} — the parent <Field label="Duration"> already
+                                  renders the floating label; without this the picker's own
+                                  default "Duration" header rendered on top of it (visible as
+                                  a doubled label in the screenshot). */}
+                              <DurationField label={null} value={block.duration} onChange={d => update({ duration: d })} startTime={block.start_time} />
                             </Field>
                           </div>
                           <Field label="Studio / Location" style={{ marginBottom:0 }}>

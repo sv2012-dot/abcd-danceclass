@@ -1514,7 +1514,9 @@ export default function SchedulePage() {
                   <WhenField value={form.start_datetime} onChange={v=>setForm(f=>({...f,start_datetime:v,end_datetime:computeEndFromDuration(v,f.duration)}))} />
                 </Field>
                 <Field label="Duration">
-                  <DurationField
+                  {/* label={null} — Field already renders the floating label; without
+                      this the picker's default "Duration" header doubled up. */}
+                  <DurationField label={null}
                     value={form.duration}
                     onChange={d=>setForm(f=>({...f,duration:d,end_datetime:computeEndFromDuration(f.start_datetime,d)}))}
                     startTime={form.start_datetime}
