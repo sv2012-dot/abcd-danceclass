@@ -1022,9 +1022,20 @@ function SchoolHomePage() {
               Cancel sits on the LEFT, primary CTA (Create Batch) on the
               RIGHT — standard convention so the primary action is in the
               thumb-comfortable position. Each button takes 50% of the
-              row via `1fr 1fr` grid + width:100% on the buttons (Button
-              defaults to inline-flex / sized-to-content otherwise). */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:8}}>
+              row via `1fr 1fr` grid + width:100% on the buttons.
+
+              marginTop:20 + paddingTop:20 + borderTop matches the
+              breathing-room of the form fields above (Field has
+              margin-bottom:20px) and visually separates the action row
+              from the form content with a thin divider. */}
+          <div style={{
+            display:"grid",
+            gridTemplateColumns:"1fr 1fr",
+            gap:10,
+            marginTop:20,
+            paddingTop:20,
+            borderTop:"1px solid var(--border)",
+          }}>
             <Button variant="secondary" style={{width:"100%",justifyContent:"center"}} onClick={()=>{setShowAddBatch(false);setBatchForm(EMPTY_BATCH);}}>Cancel</Button>
             <Button style={{width:"100%",justifyContent:"center"}} onClick={()=>addBatchMutation.mutate(batchForm)} disabled={!batchForm.name||addBatchMutation.isPending}>
               {addBatchMutation.isPending?"Saving…":"Create Batch"}

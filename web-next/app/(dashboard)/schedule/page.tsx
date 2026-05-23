@@ -45,6 +45,26 @@ const EMPTY_FORM = {
   recurrence:"none", recurrence_end:"", color:"", notes:"",
 };
 
+// Duration dropdown options for the New Event form.
+// Replaces the old 6-chip DurationField. Built as 15/30/45 min sub-hour
+// entries plus hours 1..12 with 0/15/30/45 min increments — 51 options
+// total, stored as total minutes. Labels are spelled out ("1 hr 15 min")
+// rather than abbreviated so the dropdown is unambiguous when scanned.
+const DURATION_DROPDOWN_OPTIONS: { value: number; label: string }[] = (() => {
+  const opts: { value: number; label: string }[] = [];
+  // Sub-hour options first
+  for (const m of [15, 30, 45]) opts.push({ value: m, label: `${m} min` });
+  // 1 hr .. 12 hr 45 min in 15-min steps
+  for (let h = 1; h <= 12; h++) {
+    for (const m of [0, 15, 30, 45]) {
+      const value = h * 60 + m;
+      const label = m === 0 ? `${h} hr` : `${h} hr ${m} min`;
+      opts.push({ value, label });
+    }
+  }
+  return opts;
+})();
+
 // Display formatter — accepts canonical "HH:MM" 24h or legacy "HH:MM AM/PM"
 function fmtRecitalTime(t) {
   if (!t) return null;
@@ -1486,42 +1506,44 @@ export default function SchedulePage() {
                     {EVENT_TYPES.map(t=><option key={t}>{t}</option>)}
                   </Select>
                 </Field>
-                <div style={{gridColumn:"1/-1", marginBottom:12}}>
-                  <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Batches (optional)</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
-                    {batches.map(b => {
-                      const checked = form.batch_ids.includes(b.id) || form.batch_ids.includes(String(b.id));
-                      return (
-                        <button key={b.id} type="button" onClick={()=>{
-                          const id = b.id;
-                          setForm(f => ({ ...f, batch_ids: checked ? f.batch_ids.filter(x => x !== id && x !== String(id)) : [...f.batch_ids, id] }));
-                        }} style={{
-                          display:"inline-flex",alignItems:"center",gap:6,
-                          padding:"5px 13px",borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:700,
-                          border:`1.5px solid ${checked?"#6a7fdb":"var(--border)"}`,
-                          background:checked?"#6a7fdb22":"transparent",
-                          color:checked?"#6a7fdb":"var(--muted)",transition:"all .12s",
-                        }}>
-                          {checked && <span>✓</span>}
-                          {b.name}
-                        </button>
-                      );
-                    })}
-                    {batches.length === 0 && <span style={{fontSize:12,color:"var(--muted)"}}>No batches yet</span>}
-                  </div>
-                </div>
+                {/* Batch dropdown (was a multi-chip toggle list).
+                    Single-select via native <Select> for cleaner mobile UX.
+                    batch_ids stays an array (0 or 1 item) so the rest of
+                    the save/load pipeline keeps working unchanged. */}
+                <Field label="Batch (optional)" style={{gridColumn:"1/-1"}}>
+                  <Select
+                    value={form.batch_ids[0] != null ? String(form.batch_ids[0]) : ''}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setForm(f => ({ ...f, batch_ids: v ? [Number(v)] : [] }));
+                    }}
+                  >
+                    <option value="">{batches.length === 0 ? 'No batches yet' : '— None —'}</option>
+                    {batches.map(b => (
+                      <option key={b.id} value={String(b.id)}>{b.name}</option>
+                    ))}
+                  </Select>
+                </Field>
                 <Field label="Start *">
                   <WhenField value={form.start_datetime} onChange={v=>setForm(f=>({...f,start_datetime:v,end_datetime:computeEndFromDuration(v,f.duration)}))} />
                 </Field>
+                {/* Duration dropdown — exhaustive list from 15 min up to
+                    12 hr 45 min in 15-min steps. Value stored is total
+                    minutes, matching the existing form schema. The
+                    DURATION_DROPDOWN_OPTIONS list is built once at module
+                    scope below the imports. */}
                 <Field label="Duration">
-                  {/* label={null} — Field already renders the floating label; without
-                      this the picker's default "Duration" header doubled up. */}
-                  <DurationField label={null}
-                    value={form.duration}
-                    onChange={d=>setForm(f=>({...f,duration:d,end_datetime:computeEndFromDuration(f.start_datetime,d)}))}
-                    startTime={form.start_datetime}
-                    options={DURATION_OPTIONS}
-                  />
+                  <Select
+                    value={String(form.duration)}
+                    onChange={e => {
+                      const d = Number(e.target.value);
+                      setForm(f => ({ ...f, duration: d, end_datetime: computeEndFromDuration(f.start_datetime, d) }));
+                    }}
+                  >
+                    {DURATION_DROPDOWN_OPTIONS.map(o => (
+                      <option key={o.value} value={String(o.value)}>{o.label}</option>
+                    ))}
+                  </Select>
                 </Field>
                 <div style={{gridColumn:"1/-1", marginBottom:12}}>
                   <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Location / Room</div>
