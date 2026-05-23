@@ -8,14 +8,44 @@
 //      fallback for the case where React's event delegation hasn't hydrated
 //      yet on iPad WebKit — the browser will just post the form and we
 //      handle it server-side.
+//
+// Other iOS defenses on this page:
+//   - input font-size 16px so iOS Safari doesn't auto-zoom on focus
+//   - inputMode/autoComplete/autoCapitalize hints for the email keyboard
+//   - minHeight: 100dvh so the card stays centred when the address bar
+//     collapses mid-scroll
+//   - button minHeight 52px ≥ Apple HIG 44pt tap-target requirement
 
-import React, { useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ipadAuth } from '../_lib/api';
 
-export default function IpadLoginPage() {
+function IpadLoginInner() {
+  const params = useSearchParams();
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // If the user came back via the native-form fallback (no JS submit), the
+  // server redirect carries ?sent=email or ?error=... — surface that state.
+  useEffect(() => {
+    const sent = params.get('sent');
+    if (sent) {
+      setEmail(sent);
+      setStatus('sent');
+      return;
+    }
+    const err = params.get('error');
+    if (err) {
+      setStatus('error');
+      setErrorMsg(
+        err === 'invalid-email' ? 'Please enter a valid email address.' :
+        err === 'send-failed'   ? 'Could not send the link. Try again.' :
+        err === 'network'       ? 'Network error. Check your connection and retry.' :
+        'Something went wrong. Try again.'
+      );
+    }
+  }, [params]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,7 +64,7 @@ export default function IpadLoginPage() {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -66,6 +96,8 @@ export default function IpadLoginPage() {
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               marginBottom: 16,
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
             }}
           >
             iPad Demo
@@ -78,7 +110,7 @@ export default function IpadLoginPage() {
 
         {status === 'sent' ? (
           <div style={{ textAlign: 'center', padding: '16px 0' }}>
-            <div style={{ fontSize: 36, marginBottom: 14 }}>📬</div>
+            <div style={{ fontSize: 36, marginBottom: 14 }} aria-hidden>📬</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>Check your inbox</h2>
             <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6 }}>
               If <strong style={{ color: 'var(--text)' }}>{email}</strong> is on ManchQ, a link is on its way.
@@ -89,11 +121,13 @@ export default function IpadLoginPage() {
               style={{
                 marginTop: 22,
                 background: 'transparent',
-                border: 'none',
+                border: '1px solid var(--border)',
                 color: 'var(--muted)',
-                fontSize: 13,
+                fontSize: 14,
                 cursor: 'pointer',
-                padding: '8px 12px',
+                padding: '14px 22px',
+                minHeight: 48, // ≥ 44pt HIG tap-target
+                borderRadius: 10,
               }}
             >
               Use a different email
@@ -140,16 +174,19 @@ export default function IpadLoginPage() {
                   border: '1.5px solid var(--border)',
                   borderRadius: 12,
                   padding: '16px 14px',
-                  fontSize: 16, /* 16px prevents iOS auto-zoom on focus */
+                  // 16px exactly — iOS Safari zooms in on inputs < 16px on focus.
+                  fontSize: 16,
                   color: 'var(--text)',
                   outline: 'none',
                   boxSizing: 'border-box',
+                  minHeight: 52,
                 }}
               />
             </div>
 
             {status === 'error' && (
               <div
+                role="alert"
                 style={{
                   background: 'rgba(239,68,68,0.08)',
                   color: 'var(--destructive)',
@@ -179,6 +216,11 @@ export default function IpadLoginPage() {
                 cursor: 'pointer',
                 letterSpacing: '0.01em',
                 opacity: status === 'sending' || !email.trim() ? 0.7 : 1,
+                minHeight: 52,
+                // Re-assert touch defenses on the button itself in case the
+                // parent layout style is stripped by some upstream wrapper.
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
               }}
             >
               {status === 'sending' ? 'Sending…' : 'Send sign-in link'}
@@ -201,5 +243,29 @@ export default function IpadLoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// Next.js requires useSearchParams() to live under a Suspense boundary so
+// the rest of the page can stream while query-string hydration completes.
+export default function IpadLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: '100dvh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'var(--background)',
+          }}
+        >
+          <p style={{ color: 'var(--muted)' }}>Loading…</p>
+        </div>
+      }
+    >
+      <IpadLoginInner />
+    </Suspense>
   );
 }

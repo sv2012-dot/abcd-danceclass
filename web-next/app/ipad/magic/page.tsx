@@ -61,7 +61,7 @@ function MagicConsumer() {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -108,11 +108,15 @@ function MagicConsumer() {
                 display: 'inline-block',
                 background: 'var(--primary)',
                 color: '#fff',
-                padding: '12px 22px',
+                padding: '14px 24px',
                 borderRadius: 10,
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: 700,
                 textDecoration: 'none',
+                minHeight: 48, // ≥ 44pt HIG tap-target
+                lineHeight: '20px',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
               }}
             >
               Back to sign-in
@@ -130,7 +134,7 @@ export default function IpadMagicPage() {
       fallback={
         <div
           style={{
-            minHeight: '100vh',
+            minHeight: '100dvh',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

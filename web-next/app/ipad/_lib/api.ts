@@ -8,6 +8,12 @@
 //     /ipad does its own simple redirect on 401, no global event bus.
 //   - No portals / global modals are wired here, so we don't import the heavy
 //     axios setup from lib/api/client.ts.
+//
+// iOS hardening:
+//   - All localStorage access is wrapped in try/catch. iOS Private Browsing
+//     mode throws QuotaExceededError on every setItem; without the guard the
+//     login flow would crash silently. iOS can also wipe localStorage when
+//     storage pressure is high — readers tolerate null returns.
 
 const PROD_API = 'https://abcd-danceclass-production.up.railway.app/api';
 const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim())
@@ -17,33 +23,52 @@ export const IPAD_TOKEN_KEY = 'sf_ipad_token';
 export const IPAD_USER_KEY = 'sf_ipad_user';
 export const IPAD_SCHOOL_KEY = 'sf_ipad_school';
 
-export function getIpadToken(): string | null {
+// ── Safe storage helpers ──────────────────────────────────────────────
+// iOS Private Browsing makes localStorage.setItem throw. Reads can also
+// return null silently after the OS evicts the origin's storage. Wrap
+// everything so the /ipad flow degrades gracefully instead of crashing.
+
+function safeGet(key: string): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(IPAD_TOKEN_KEY);
+  try { return window.localStorage.getItem(key); } catch { return null; }
+}
+
+function safeSet(key: string, value: string): void {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.setItem(key, value); } catch { /* Private Browsing or quota — ignore */ }
+}
+
+function safeRemove(key: string): void {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.removeItem(key); } catch { /* ignore */ }
+}
+
+export function getIpadToken(): string | null {
+  return safeGet(IPAD_TOKEN_KEY);
 }
 
 export function setIpadSession(token: string, user: any, school: any | null) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(IPAD_TOKEN_KEY, token);
-  localStorage.setItem(IPAD_USER_KEY, JSON.stringify(user));
-  if (school) localStorage.setItem(IPAD_SCHOOL_KEY, JSON.stringify(school));
+  safeSet(IPAD_TOKEN_KEY, token);
+  safeSet(IPAD_USER_KEY, JSON.stringify(user));
+  if (school) safeSet(IPAD_SCHOOL_KEY, JSON.stringify(school));
 }
 
 export function clearIpadSession() {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(IPAD_TOKEN_KEY);
-  localStorage.removeItem(IPAD_USER_KEY);
-  localStorage.removeItem(IPAD_SCHOOL_KEY);
+  safeRemove(IPAD_TOKEN_KEY);
+  safeRemove(IPAD_USER_KEY);
+  safeRemove(IPAD_SCHOOL_KEY);
 }
 
 export function getIpadUser(): any | null {
-  if (typeof window === 'undefined') return null;
-  try { return JSON.parse(localStorage.getItem(IPAD_USER_KEY) || 'null'); } catch { return null; }
+  const v = safeGet(IPAD_USER_KEY);
+  if (!v) return null;
+  try { return JSON.parse(v); } catch { return null; }
 }
 
 export function getIpadSchool(): any | null {
-  if (typeof window === 'undefined') return null;
-  try { return JSON.parse(localStorage.getItem(IPAD_SCHOOL_KEY) || 'null'); } catch { return null; }
+  const v = safeGet(IPAD_SCHOOL_KEY);
+  if (!v) return null;
+  try { return JSON.parse(v); } catch { return null; }
 }
 
 // Minimal fetch wrapper — uses native fetch (no axios) so we keep the bundle

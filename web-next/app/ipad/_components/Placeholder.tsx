@@ -7,7 +7,7 @@ import React from 'react';
 
 export default function Placeholder({ title, emoji }: { title: string; emoji: string }) {
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--background)' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--background)' }}>
       <header
         style={{
           background: 'var(--card)',
@@ -25,8 +25,13 @@ export default function Placeholder({ title, emoji }: { title: string; emoji: st
             textDecoration: 'none',
             fontSize: 15,
             fontWeight: 600,
-            padding: '6px 10px',
+            padding: '12px 14px',
             borderRadius: 8,
+            minHeight: 44,
+            display: 'inline-flex',
+            alignItems: 'center',
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
           }}
         >
           ← Back
@@ -41,7 +46,7 @@ export default function Placeholder({ title, emoji }: { title: string; emoji: st
           margin: '0 auto',
         }}
       >
-        <div style={{ fontSize: 48, marginBottom: 16 }}>{emoji}</div>
+        <div style={{ fontSize: 48, marginBottom: 16 }} aria-hidden>{emoji}</div>
         <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: 'var(--text)' }}>
           {title} — coming soon
         </h2>

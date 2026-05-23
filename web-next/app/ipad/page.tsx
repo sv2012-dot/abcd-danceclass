@@ -2,13 +2,18 @@
 
 // /ipad — home/landing screen for the iPad demo replica.
 //
-// Renders four big tap-target tiles: Students, Schedule, Batches, Sign out.
-// Tiles are plain <a href> links so iPad WebKit never loses tap handling.
-// Read-only summary cards (school name, today) appear at the top.
+// Renders three big tap-target tiles: Students, Schedule, Batches, plus a
+// Sign-out button. Tiles are plain <a href> links so iPad WebKit never loses
+// tap handling. Read-only summary header at the top.
 //
 // First-push scope: just auth + landing. Subsequent pushes will add data
 // pages under /ipad/students, /ipad/schedule, /ipad/batches. Until those
-// land, those tiles route to a placeholder.
+// land, those tiles route to placeholder pages (created in the same commit).
+//
+// iOS defenses:
+//   - 100dvh containers
+//   - All tappable elements have minHeight ≥ 48px (HIG: 44pt)
+//   - touch-action / -webkit-tap-highlight reasserted per-tile
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -48,7 +53,7 @@ export default function IpadHomePage() {
     return (
       <div
         style={{
-          minHeight: '100vh',
+          minHeight: '100dvh',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -72,7 +77,7 @@ export default function IpadHomePage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--background)', paddingBottom: 80 }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--background)', paddingBottom: 80 }}>
       {/* Top bar */}
       <header
         style={{
@@ -82,9 +87,10 @@ export default function IpadHomePage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: 12,
         }}
       >
-        <div>
+        <div style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
           <div
             style={{
               fontSize: 10,
@@ -97,7 +103,17 @@ export default function IpadHomePage() {
           >
             iPad Demo
           </div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>
+          <h1
+            style={{
+              fontSize: 20,
+              fontWeight: 700,
+              color: 'var(--text)',
+              maxWidth: '60vw',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
             {school?.name || 'ManchQ'}
           </h1>
         </div>
@@ -107,11 +123,14 @@ export default function IpadHomePage() {
             background: 'transparent',
             border: '1px solid var(--border)',
             color: 'var(--muted)',
-            padding: '8px 14px',
+            padding: '12px 18px',
             borderRadius: 10,
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: 600,
             cursor: 'pointer',
+            minHeight: 48, // HIG tap-target
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
           }}
         >
           Sign out
@@ -119,7 +138,7 @@ export default function IpadHomePage() {
       </header>
 
       {/* Greeting */}
-      <section style={{ padding: '28px 24px 8px' }}>
+      <section style={{ padding: '28px 24px 8px', userSelect: 'none', WebkitUserSelect: 'none' }}>
         <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>{todayLabel}</p>
         <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)' }}>
           Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}
@@ -149,9 +168,13 @@ export default function IpadHomePage() {
               color: 'var(--text)',
               minHeight: 132,
               boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
             }}
           >
-            <div style={{ fontSize: 32, marginBottom: 10 }}>{t.emoji}</div>
+            <div style={{ fontSize: 32, marginBottom: 10 }} aria-hidden>{t.emoji}</div>
             <div style={{ fontSize: 17, fontWeight: 700 }}>{t.label}</div>
             <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Tap to open</div>
           </a>
