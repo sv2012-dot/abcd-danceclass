@@ -20,5 +20,8 @@ router.use('/upload',  require('./upload'));
 router.use('/smart',   require('./smart'));
 router.use('/billing', require('./billing'));
 router.use('/team',    require('./team'));
+// /ipad/* — isolated endpoints for the iPad demo replica. Purely additive;
+// does not modify any existing routes.
+router.use('/ipad',    require('./ipad'));
 
 module.exports = router;
