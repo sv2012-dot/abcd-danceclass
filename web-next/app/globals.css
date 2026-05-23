@@ -239,6 +239,43 @@ select:-webkit-autofill:focus {
   color: var(--primary);
 }
 
+/* ── Modal (shared <Modal> component) ───────────────────────────────────────────
+   Desktop: centered card with backdrop blur (driven by inline styles in
+            components/shared/Modal.tsx).
+   Mobile (<= 768px): full-screen page — no backdrop padding, no rounded
+            corners, fills 100dvh with a sticky header. Feels like a route
+            instead of a popup. Inline styles can't express a media query, so
+            we override the relevant card properties here. */
+@media (max-width: 768px) {
+  .sf-modal-overlay {
+    padding: 0 !important;
+    /* Solid background — the backdrop blur is irrelevant when the card fills
+       the screen, and removing it saves a noticeable amount of GPU work on
+       older iPads. */
+    background: var(--card) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    align-items: stretch !important;
+  }
+  .sf-modal-card {
+    border-radius: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: 100dvh !important;
+    height: 100dvh !important;
+    box-shadow: none !important;
+  }
+  .sf-modal-header {
+    /* Real divider on mobile so the sticky header reads as a page chrome
+       once content scrolls beneath it. */
+    border-bottom: 1px solid var(--border) !important;
+    padding: 14px 18px !important;
+  }
+  .sf-modal-body {
+    padding: 18px 18px 32px !important;
+  }
+}
+
 /* ── Scrollbar ───────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
