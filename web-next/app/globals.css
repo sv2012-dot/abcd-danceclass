@@ -223,10 +223,12 @@ select:-webkit-autofill:focus {
   transition: top .13s ease, font-size .13s ease, color .13s ease, letter-spacing .13s ease;
 }
 /* Resting state — label drops into the field. Only for a plain text input or
-   textarea that is empty AND not focused. Pickers/selects never match this. */
+   textarea that is empty AND not focused. Pickers/selects never match this.
+   top:12 matches Field.tsx's padding-top so the resting label sits at the
+   same vertical position the typed text would occupy. */
 .sf-field:has(> input:placeholder-shown):not(:has(> input:focus)) > .sf-field-label,
 .sf-field:has(> textarea:placeholder-shown):not(:has(> textarea:focus)) > .sf-field-label {
-  top: 14px;
+  top: 12px;
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0;

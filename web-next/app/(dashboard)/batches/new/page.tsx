@@ -88,45 +88,75 @@ export default function NewBatchPage() {
     </div>
   );
 
+  // Header height in px — the fixed header is taken out of normal flow,
+  // so the form body needs explicit top padding to clear it.
+  const HEADER_H = 56;
+  // The dashboard top nav (AppShell.tsx) is 56px tall. Our fixed header
+  // sits flush below it.
+  const TOP_NAV_H = 56;
+
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--background)', paddingBottom: 32 }}>
-      {/* Page header — replaces the modal/panel chrome. Sticky so Cancel /
-          Create stay reachable while the form scrolls. */}
+      {/* Page header.
+          Why position:fixed (not sticky):
+            sticky inside AppShell's overflow:auto <main> works on Chrome/
+            Firefox but is unreliable on iOS Safari, where it can land
+            "behind" the dashboard top nav for the first paint and then
+            jump into position. Fixed-positioning at top:56 anchors the
+            header exactly below the 56px AppShell nav regardless of scroll
+            container quirks. The matching paddingTop on the body below
+            reserves space so content doesn't render underneath. */}
       <header
         style={{
-          position: 'sticky',
-          top: 0,
+          position: 'fixed',
+          top: TOP_NAV_H,
+          left: 0,
+          right: 0,
           background: 'var(--card)',
           borderBottom: '1px solid var(--border)',
-          zIndex: 10,
-          padding: '14px 16px',
+          zIndex: 50,
+          padding: '10px 14px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
+          minHeight: HEADER_H,
+          boxSizing: 'border-box',
         }}
       >
+        {/* Back pill — same shape as the recital details back pill
+            (rounded pill, arrow + label) but tinted for the light-surface
+            header instead of the dark glassy hero variant. */}
         <button
           // router.push instead of router.back — back() would fail if the
           // user lands here via a deep link or page refresh (no history
           // entry to go back to). Always returns to the batches list.
           onClick={() => router.push('/batches')}
-          aria-label="Cancel"
+          aria-label="Back to batches"
           style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--muted)',
-            fontSize: 15,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '7px 14px 7px 11px',
+            borderRadius: 20,
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            color: 'var(--text)',
+            fontSize: 13,
             fontWeight: 600,
             cursor: 'pointer',
-            padding: '8px 4px',
-            minHeight: 44,
+            minHeight: 36,
             touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
           }}
         >
-          Cancel
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          Back
         </button>
-        <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>New Batch</h1>
+        <h1 style={{ fontFamily: 'var(--font-d)', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>New Batch</h1>
         <button
           onClick={handleSave}
           disabled={!form.name || saving}
@@ -135,20 +165,22 @@ export default function NewBatchPage() {
             color: '#fff',
             border: 'none',
             borderRadius: 10,
-            padding: '10px 18px',
+            padding: '9px 16px',
             fontSize: 14,
             fontWeight: 700,
             cursor: !form.name || saving ? 'default' : 'pointer',
-            minHeight: 44,
+            minHeight: 38,
             opacity: !form.name || saving ? 0.6 : 1,
             touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
           }}
         >
           {saving ? 'Saving…' : 'Create'}
         </button>
       </header>
 
-      <div style={{ padding: '8px 18px 32px', maxWidth: 560, margin: '0 auto' }}>
+      {/* paddingTop reserves space for the fixed header above. */}
+      <div style={{ padding: `${HEADER_H + 12}px 18px 32px`, maxWidth: 560, margin: '0 auto' }}>
         {/* Batch Details */}
         <SectionHeader title="Batch Details" />
         <Field label="Batch Name *">

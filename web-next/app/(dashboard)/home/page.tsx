@@ -1016,12 +1016,22 @@ function SchoolHomePage() {
             <Field label="Max Capacity"><Input type="number" value={batchForm.max_size} onChange={e=>setBatchForm({...batchForm,max_size:e.target.value})} placeholder="e.g. 12" /></Field>
             <Field label="Notes" style={{gridColumn:"1/-1"}}><Textarea value={batchForm.notes} onChange={e=>setBatchForm({...batchForm,notes:e.target.value})} placeholder="Any additional notes…" /></Field>
           </div>
-          <div style={{display:"flex",gap:9,marginTop:8}}>
+          {/* Action row.
+              Cancel sits on the LEFT, primary CTA (Create Batch) on the
+              RIGHT — standard convention so the primary action is in the
+              thumb-comfortable position on the right side of the screen. */}
+          <div style={{display:"flex",gap:9,marginTop:8,justifyContent:"space-between"}}>
+            <Button variant="secondary" onClick={()=>{setShowAddBatch(false);setBatchForm(EMPTY_BATCH);}}>Cancel</Button>
             <Button onClick={()=>addBatchMutation.mutate(batchForm)} disabled={!batchForm.name||addBatchMutation.isPending}>
               {addBatchMutation.isPending?"Saving…":"Create Batch"}
             </Button>
-            <Button variant="secondary" onClick={()=>{setShowAddBatch(false);setBatchForm(EMPTY_BATCH);}}>Cancel</Button>
-            <Button variant="ghost" style={{marginLeft:"auto"}} onClick={()=>{setShowAddBatch(false);router.push("/batches");}}>Go to Batches →</Button>
+          </div>
+          {/* "Go to Batches" lives on its own row below the action pair.
+              Previously it sat in-line with Cancel/Create and broke the
+              two-button grid; isolating it keeps the primary actions
+              visually paired. */}
+          <div style={{marginTop:12,textAlign:"center"}}>
+            <Button variant="ghost" onClick={()=>{setShowAddBatch(false);router.push("/batches");}}>Go to Batches →</Button>
           </div>
         </Modal>
       )}
