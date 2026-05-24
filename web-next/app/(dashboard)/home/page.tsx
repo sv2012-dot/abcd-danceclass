@@ -6,7 +6,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/context/AuthContext";
-import { events as api, batches as batchesApi, students as studentsApi, schools, recitals as recitalApi, todos as todosApi, schedules as schedulesApi, scheduleExceptions as scheduleExceptionsApi } from "@/lib/api";
+import { events as api, batches as batchesApi, students as studentsApi, schools, recitals as recitalApi, todos as todosApi, schedules as schedulesApi, scheduleExceptions as scheduleExceptionsApi, studios as studiosApi } from "@/lib/api";
 import toast from "react-hot-toast";
 import Button, { BTN_GRAD } from "@/components/shared/Button";
 import SmartAddModal from "@/components/smart/SmartAddModal";
@@ -547,11 +547,42 @@ function SchoolHomePage() {
   }, [rawEvents, scheduleList, exceptionList]);
 
   // ── mutations ─────────────────────────────────────────────────────────────
+  // Studio rooms list — needed for the auto-persist-location feature.
+  // When the user types a free-text location/venue when creating an event
+  // or recital, we look it up here (case-insensitive) and, if not found,
+  // create a "quick-add" studio with is_quick_add:1. Those quick-add
+  // entries surface on the Studios page in a "added from Events" callout
+  // so the user can later add full address/capacity details. This feature
+  // existed on the schedule page already; restoring it here for the home
+  // page Create Event + Create Recital modals (it was lost during the
+  // Node/Next.js migration on this page only).
+  const { data: studioRooms = [] } = useQuery({
+    queryKey: ["studio-rooms", sid],
+    queryFn:  () => studiosApi.list(sid).then((r: any) => (r && r.studios) ? r.studios : (Array.isArray(r) ? r : [])),
+    enabled:  !!sid,
+  });
+
+  const persistLocationIfNew = (raw: string | undefined | null) => {
+    if (!raw || !sid) return;
+    const loc = String(raw).trim();
+    if (!loc) return;
+    const alreadyExists = (studioRooms || []).some((s: any) => (s.name || '').toLowerCase() === loc.toLowerCase());
+    if (alreadyExists) return;
+    studiosApi.create(sid, { name: loc, is_quick_add: 1 }).then(() => {
+      qc.invalidateQueries({ queryKey: ["studio-rooms", sid] });
+      qc.invalidateQueries({ queryKey: ["studios", sid] });
+    }).catch(() => { /* non-fatal — duplicate or backend error, silent */ });
+  };
+
   const saveMutation = useMutation({
     mutationFn: data => modal?.id ? api.update(sid,modal.id,data) : api.create(sid,data),
-    onSuccess: () => {
+    onSuccess: (_res, variables: any) => {
       qc.invalidateQueries({queryKey:["events"],exact:false});
       qc.invalidateQueries({queryKey:["stats",sid]});
+      // Auto-persist the typed location as a quick-add studio so it
+      // appears in the location dropdown next time. Matches the
+      // schedule page behavior.
+      persistLocationIfNew(variables?.location);
       toast.success(modal?.id ? "Event updated" : "Event(s) created");
       setModal(null);
     },
@@ -579,9 +610,13 @@ function SchoolHomePage() {
   });
   const recitalSaveMutation = useMutation({
     mutationFn: data => recitalApi.create(sid, data),
-    onSuccess: (created) => {
+    onSuccess: (created, variables: any) => {
       qc.invalidateQueries({ queryKey:["recitals",sid] });
       qc.invalidateQueries({ queryKey:["stats",sid] });
+      // Auto-persist the typed venue as a quick-add studio (same
+      // pattern as events — venue and event location share the
+      // studios table so they autofill each other next time).
+      persistLocationIfNew(variables?.venue);
       toast.success("Recital created! Opening details…");
       setShowAddRecital(false);
       setRecitalForm({ title:'', event_date:'', event_time:'18:00', venue:'', description:'' });
