@@ -1,6 +1,20 @@
 'use client';
 
-import React, { useEffect } from 'react';
+// SmartModal — wrapper used by the Smart Add / Announce / Plan dialogs.
+//
+// Aligned with the shared <Modal> component pattern so all dialogs in the
+// app share the same chrome on mobile:
+//   - Portals to document.body (escapes AppShell's overflow:hidden + the
+//     dashboard nav's stacking context)
+//   - On mobile (<=768px): full-bleed below the 56px AppShell top nav
+//     (top:56, bottom:0) so the nav stays clickable above
+//   - Body scroll locked while open
+//   - X close button on the right of the header
+//   - Optional footer renders as a non-sticky strip at the bottom of the
+//     card body (callers pass primary CTA / cancel into footer)
+
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 type Props = {
   open: boolean;
@@ -14,6 +28,8 @@ type Props = {
   // Used when embedding the modal content directly inside a parent panel.
   inline?: boolean;
 };
+
+const TOP_NAV_H = 56;
 
 const SparkleHeader = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="url(#smartGrad)" aria-hidden style={{ flexShrink: 0 }}>
@@ -37,30 +53,58 @@ export default function SmartModal({
   maxWidth = 640,
   inline = false,
 }: Props) {
-  // Only lock body scroll / ESC in modal mode. Inline embedding shouldn't
-  // hijack global keyboard or scroll behavior.
+  // Portal target must mount client-side.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  // Listen for the global "dismiss all modals" event the AppShell top nav
+  // dispatches when the school name / hamburger is clicked.
   useEffect(() => {
     if (!open || inline) return;
-    const orig = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+    const handler = () => onClose();
+    window.addEventListener('sf:dismiss-modals', handler);
+    return () => window.removeEventListener('sf:dismiss-modals', handler);
+  }, [open, onClose, inline]);
+
+  // Lock body scroll + Escape-to-close while the modal is open.
+  // Uses the position:fixed pattern (matches the shared <Modal>) so iOS
+  // Safari can't scroll the page underneath the overlay.
+  useEffect(() => {
+    if (!open || inline || typeof window === 'undefined') return;
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const prev = {
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+      overflow: body.style.overflow,
+      paddingRight: body.style.paddingRight,
     };
+    const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.width = '100%';
+    body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
     return () => {
-      document.body.style.overflow = orig;
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.width = prev.width;
+      body.style.overflow = prev.overflow;
+      body.style.paddingRight = prev.paddingRight;
       window.removeEventListener('keydown', onKey);
+      window.scrollTo(0, scrollY);
     };
   }, [open, onClose, inline]);
 
   if (!open) return null;
 
-  // Inline = render the card content directly with no overlay / centering.
-  // Used when the consumer wants the dialog body to appear inside a parent
-  // section instead of as a top-level overlay.
   const card = (
     <div
       onClick={(e) => e.stopPropagation()}
+      className="sf-modal-card"
       style={{
         background: 'var(--card)',
         borderRadius: inline ? 12 : 16,
@@ -70,93 +114,112 @@ export default function SmartModal({
         border: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
-        maxHeight: inline ? undefined : 'calc(100vh - 80px)',
+        maxHeight: inline ? undefined : '90dvh',
+        WebkitOverflowScrolling: 'touch',
       }}
     >
-        {/* Header */}
-        <div
+      {/* Header — non-sticky, compact. Matches the shared <Modal>'s
+          padding/layout. The vertical sparkle bar sits to the left of
+          the title in lieu of the typed accent bar used elsewhere. */}
+      <div
+        className="sf-modal-header"
+        style={{
+          padding: '12px 14px 12px 18px',
+          background: 'var(--card)',
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 12,
+          borderBottom: '1px solid transparent',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minWidth: 0 }}>
+          <SparkleHeader />
+          <div style={{ minWidth: 0 }}>
+            <h2 className="sf-modal-title" style={{ fontSize: 17, fontWeight: 700, margin: 0, color: 'var(--text)', fontFamily: 'var(--font-d)' }}>{title}</h2>
+            {subtitle && (
+              <p style={{ fontSize: 12, margin: '3px 0 0', color: 'var(--muted)' }}>{subtitle}</p>
+            )}
+          </div>
+        </div>
+        <button
+          className="sf-modal-close-x"
+          onClick={onClose}
+          aria-label="Close"
           style={{
-            padding: '18px 20px 14px',
-            borderBottom: '1px solid var(--border)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: 12,
+            marginLeft: 'auto',
+            background: 'none',
+            border: 'none',
+            color: 'var(--muted)',
+            cursor: 'pointer',
+            fontSize: 22,
+            lineHeight: 1,
+            padding: 0,
+            width: 36,
+            height: 36,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 8,
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
             flexShrink: 0,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-            <SparkleHeader />
-            <div>
-              <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text)' }}>{title}</h2>
-              {subtitle && (
-                <p style={{ fontSize: 12, margin: '3px 0 0', color: 'var(--muted)' }}>{subtitle}</p>
-              )}
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--muted)',
-              padding: 4,
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Body — scrollable */}
-        <div style={{ padding: '18px 20px', overflowY: 'auto', flex: 1 }}>{children}</div>
-
-        {/* Footer (optional) */}
-        {footer && (
-          <div
-            style={{
-              padding: '12px 20px',
-              borderTop: '1px solid var(--border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              gap: 10,
-              flexShrink: 0,
-            }}
-          >
-            {footer}
-          </div>
-        )}
+          ×
+        </button>
       </div>
+
+      {/* Body — scrollable */}
+      <div className="sf-modal-body" style={{ padding: '14px 20px 20px', overflowY: 'auto', flex: 1 }}>{children}</div>
+
+      {/* Footer (optional). Flows with the form per the same pattern
+          as the Create New Event CTA row (no border-top separator). */}
+      {footer && (
+        <div
+          style={{
+            padding: '12px 20px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 10,
+            flexShrink: 0,
+          }}
+        >
+          {footer}
+        </div>
+      )}
+    </div>
   );
 
   // Inline mode: just the card, no overlay
   if (inline) return card;
 
-  // Modal mode: overlay + click-outside-to-close
-  return (
+  if (!mounted) return null;
+
+  // Overlay — Portal to body so the dashboard nav's stacking context
+  // can't trap us. CSS @media (max-width: 768px) in globals.css
+  // overrides top to 56px so the modal slots below the AppShell nav.
+  const overlay = (
     <div
+      className="sf-modal-overlay"
       onClick={onClose}
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.55)',
+        background: 'rgba(20,10,30,0.6)',
         backdropFilter: 'blur(4px)',
-        zIndex: 500,
+        zIndex: 9999,
         display: 'flex',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         justifyContent: 'center',
-        padding: '40px 16px',
-        overflowY: 'auto',
+        padding: 16,
+        height: '100dvh',
       }}
     >
       {card}
     </div>
   );
+
+  return createPortal(overlay, document.body);
 }

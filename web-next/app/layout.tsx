@@ -53,7 +53,16 @@ export default function RootLayout({
             <AuthProvider>
               <ThemeProvider>
                 {children}
-                <Toaster position="top-right" />
+                {/* containerStyle zIndex must exceed the AppShell top
+                    nav (zIndex 10000) so success/error toasts render
+                    ABOVE it. Defaults to 9999 which sits behind the nav
+                    and made toasts after Create Event appear to be
+                    swallowed. */}
+                <Toaster
+                  position="top-right"
+                  containerStyle={{ zIndex: 11000 }}
+                  toastOptions={{ style: { zIndex: 11000 } }}
+                />
               </ThemeProvider>
             </AuthProvider>
           </QueryProvider>

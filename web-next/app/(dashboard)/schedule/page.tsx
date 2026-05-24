@@ -1357,8 +1357,14 @@ export default function SchedulePage() {
                 }}>
                   {heroImg && (
                     <div style={{ width:"100%", paddingTop:"56.25%", position:"relative" }}>
+                      {/* objectPosition "center top" — the user crops
+                          posters expecting the TOP of the image (title,
+                          headshot) to be preserved across surfaces. The
+                          default centre crop was lopping off the top
+                          third on this wide 16:9 hero strip, contradict-
+                          ing the crop intent the user set on upload. */}
                       <img src={heroImg} alt={primaryBatch?.name || e.title}
-                        style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                        style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", objectPosition:"center top", display:"block" }} />
                     </div>
                   )}
                   {!heroImg && <div style={{ minHeight: isMobile ? 200 : 180 }} />}

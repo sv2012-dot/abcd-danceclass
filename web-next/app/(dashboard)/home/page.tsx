@@ -232,7 +232,11 @@ function RecitalImageCard({ r, index, onClick, schoolId, onPosterUpdate, canEdit
         e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}
       )}
     >
-      <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(0,0,0,.55) 0%,rgba(0,0,0,.10) 55%,transparent 100%)' }} />
+      {/* Bottom-to-top dim gradient. Bottom alpha bumped 0.55→0.78
+          to keep the recital title legible against posters that have
+          text or bright detail in their lower half (the user reported
+          poor contrast on a poster with a "BALLET" word mark). */}
+      <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(0,0,0,.78) 0%,rgba(0,0,0,.15) 55%,transparent 100%)' }} />
       <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'14px' }}>
         <div style={{ fontSize:13, fontWeight:800, color:'#fff', textTransform:'uppercase', letterSpacing:'.03em', lineHeight:1.25 }}>{r.title}</div>
         {cardMeta.length > 0 && <div style={{ fontSize:10, color:'rgba(255,255,255,.6)', marginTop:4, lineHeight:1.4 }}>{cardMeta.join(' · ')}</div>}
@@ -297,7 +301,9 @@ function FeaturedRecitalCard({ r, onClick, schoolId, onPosterUpdate, canEdit }) 
         e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}
       )}
     >
-      <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(0,0,0,.60) 0%,rgba(0,0,0,.15) 55%,transparent 100%)' }} />
+      {/* Same darker bottom alpha (0.60→0.82) as the small tile so
+          text legibility is consistent across both card sizes. */}
+      <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(0,0,0,.82) 0%,rgba(0,0,0,.18) 55%,transparent 100%)' }} />
       <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'20px 18px' }}>
         <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,.55)', textTransform:'uppercase', letterSpacing:'.14em', marginBottom:7 }}>Featured Recital</div>
         <div style={{ fontSize:16, fontWeight:800, color:'#fff', textTransform:'uppercase', lineHeight:1.2, letterSpacing:'.02em' }}>{r.title}</div>
