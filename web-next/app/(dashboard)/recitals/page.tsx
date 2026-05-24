@@ -980,9 +980,14 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
           }}>
             {/* Cover photo — locked 3:4 so hero height is always consistent */}
             {poster
-              ? <div style={{ width:"100%", paddingTop:"133.33%", position:"relative" }}>
+              ? <div style={{ width:"100%", paddingTop:"133.33%", position:"relative", background:"#000" }}>
+                  {/* objectFit:contain so the full uploaded poster is
+                      visible (respecting the user's crop on upload).
+                      The 3:4 hero frame remains constant; portrait /
+                      landscape posters get letterboxed against the
+                      #000 background instead of being further cropped. */}
                   <img src={poster} alt={recital.title}
-                    style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                    style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain", display:"block" }} />
                 </div>
               : <div style={{ minHeight:260 }} />
             }

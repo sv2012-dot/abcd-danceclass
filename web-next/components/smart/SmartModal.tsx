@@ -31,15 +31,18 @@ type Props = {
 
 const TOP_NAV_H = 56;
 
+// Header sparkle — same shape as the SmartButton Sparkle (single
+// 4-point star + accent dot), painted with the brand gradient.
 const SparkleHeader = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="url(#smartGrad)" aria-hidden style={{ flexShrink: 0 }}>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="url(#smartGrad)" aria-hidden style={{ flexShrink: 0 }}>
     <defs>
       <linearGradient id="smartGrad" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0%" stopColor="#7C3AED" />
         <stop offset="100%" stopColor="#DC4EFF" />
       </linearGradient>
     </defs>
-    <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z" />
+    <path d="M12 2 L13.6 10.4 L22 12 L13.6 13.6 L12 22 L10.4 13.6 L2 12 L10.4 10.4 Z" />
+    <circle cx="19" cy="5" r="1.3" />
   </svg>
 );
 

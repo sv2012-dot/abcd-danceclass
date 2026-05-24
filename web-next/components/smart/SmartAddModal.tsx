@@ -310,7 +310,7 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
       open={open}
       onClose={handleClose}
       title="Smart Add"
-      subtitle="Type or paste a casual schedule. We'll suggest events you can review and add in one click."
+      subtitle={rows.length === 0 ? "Describe your events in plain language. We'll parse them into your calendar automatically." : undefined}
       maxWidth={760}
       footer={
         rows.length > 0 ? (
@@ -332,55 +332,97 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
       {rows.length === 0 ? (
         <>
           {error && (
-            <div style={{ marginBottom: 12, padding: '10px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, fontSize: 13, color: '#DC2626', lineHeight: 1.5 }}>
+            <div style={{ marginBottom: 14, padding: '10px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, fontSize: 13, color: '#DC2626', lineHeight: 1.5 }}>
               {error}
             </div>
           )}
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={(e) => { setText(e.target.value); if (error) setError(null); }}
-            placeholder="e.g. Junio batch May 21, June 26 27, July 20"
-            disabled={parsing}
-            rows={4}
-            style={{
-              width: '100%',
-              boxSizing: 'border-box',
-              padding: '12px 14px',
-              fontSize: 14,
-              borderRadius: 10,
-              border: '1.5px solid var(--border)',
-              background: 'var(--surface)',
-              color: 'var(--text)',
-              outline: 'none',
-              fontFamily: 'inherit',
-              resize: 'vertical',
-            }}
-          />
-          <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Try:</span>
-            {examples.map((ex) => (
-              <button
-                key={ex}
-                onClick={() => setText(ex)}
-                disabled={parsing}
-                style={{ fontSize: 11, padding: '4px 9px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--muted)', cursor: 'pointer' }}
-              >
-                {ex}
-              </button>
-            ))}
+
+          {/* "TRY THESE PROMPTS" section — moved above the textarea per
+              the mock. Prompts render as tall full-text boxes (not the
+              prior small inline chips) so the user can read each whole
+              example before deciding which one to start with. */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+              Try these prompts:
+            </div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {examples.map((ex) => (
+                <button
+                  key={ex}
+                  type="button"
+                  onClick={() => setText(ex)}
+                  disabled={parsing}
+                  style={{
+                    textAlign: 'left',
+                    padding: '14px 16px',
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                    borderRadius: 10,
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    color: 'var(--text)',
+                    cursor: 'pointer',
+                    transition: 'border-color .12s',
+                    fontFamily: 'inherit',
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(124,58,237,0.4)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+                >
+                  {ex}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              Default time when missing:
-              <div style={{ minWidth: 140 }}>
-                <TimeField value={defaultTime} onChange={(v: string) => setDefaultTime(v)} size="sm" />
-              </div>
-            </label>
-            <SmartButton onClick={doParse} loading={parsing} disabled={!text.trim()} size="md">
-              {parsing ? 'Thinking…' : 'Create Events'}
-            </SmartButton>
+          {/* Textarea with gradient border (purple→magenta) to match
+              the Smart visual language. Slightly taller (rows=4) for
+              comfortable multi-line entry. */}
+          <div style={{
+            borderRadius: 12,
+            padding: 1.5,
+            background: 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)',
+            marginBottom: 16,
+          }}>
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={(e) => { setText(e.target.value); if (error) setError(null); }}
+              placeholder="e.g. Junio batch May 21, June 26 27, July 20"
+              disabled={parsing}
+              rows={4}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '14px 16px',
+                fontSize: 14,
+                borderRadius: 10,
+                border: 'none',
+                background: 'var(--surface)',
+                color: 'var(--text)',
+                outline: 'none',
+                fontFamily: 'inherit',
+                resize: 'vertical',
+              }}
+            />
+          </div>
+
+          {/* Full-width primary CTA — matches the Create New Event
+              modal pattern (no inline secondary content stealing
+              space). Uses the new 4-point sparkle icon via SmartButton. */}
+          <SmartButton onClick={doParse} loading={parsing} disabled={!text.trim()} size="md" style={{ width: '100%', justifyContent: 'center', padding: '14px 18px', fontSize: 15 }}>
+            {parsing ? 'Thinking…' : 'Create Events'}
+          </SmartButton>
+
+          {/* Default-time row — descriptive text on the left, the
+              time picker on the right. Renders as a quiet footer
+              under the primary action. */}
+          <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5, flex: 1, minWidth: 200 }}>
+              We will use this time as default if not specified in the prompt for creating the event.
+            </span>
+            <div style={{ minWidth: 130 }}>
+              <TimeField value={defaultTime} onChange={(v: string) => setDefaultTime(v)} size="sm" />
+            </div>
           </div>
         </>
       ) : (

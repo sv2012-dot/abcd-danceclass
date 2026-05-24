@@ -1357,14 +1357,16 @@ export default function SchedulePage() {
                 }}>
                   {heroImg && (
                     <div style={{ width:"100%", paddingTop:"56.25%", position:"relative" }}>
-                      {/* objectPosition "center top" — the user crops
-                          posters expecting the TOP of the image (title,
-                          headshot) to be preserved across surfaces. The
-                          default centre crop was lopping off the top
-                          third on this wide 16:9 hero strip, contradict-
-                          ing the crop intent the user set on upload. */}
+                      {/* objectFit:contain — show the FULL uploaded
+                          image (the crop the user set on upload). The
+                          prior objectFit:cover was still trimming
+                          portrait posters because the hero strip is
+                          16:9 wide. With `contain`, tall posters get
+                          centered with letterbox bands on the sides;
+                          the parent's #000 background reads as the
+                          frame so nothing looks broken. */}
                       <img src={heroImg} alt={primaryBatch?.name || e.title}
-                        style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", objectPosition:"center top", display:"block" }} />
+                        style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain", display:"block" }} />
                     </div>
                   )}
                   {!heroImg && <div style={{ minHeight: isMobile ? 200 : 180 }} />}

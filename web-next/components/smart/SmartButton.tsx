@@ -21,9 +21,13 @@ type Props = {
   title?: string;
 };
 
+// Single 4-point sparkle star with one accent dot — matches the icon
+// the user mocked for the Smart Add primary CTA. Used universally
+// wherever Smart features render (SmartButton + SmartModal header).
 const Sparkle = ({ size = 14 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden style={{ flexShrink: 0 }}>
-    <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z" />
+    <path d="M12 2 L13.6 10.4 L22 12 L13.6 13.6 L12 22 L10.4 13.6 L2 12 L10.4 10.4 Z" />
+    <circle cx="19" cy="5" r="1.3" />
   </svg>
 );
 
