@@ -306,6 +306,24 @@ select:-webkit-autofill:focus {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
+/* ── iOS zoom-on-focus prevention ───────────────────────────────────────────────
+   iOS Safari and iOS Chrome auto-zoom into form fields whose computed
+   font-size is less than 16px (Apple's "make it readable" UX). Once
+   zoomed, iOS never zooms back out automatically — the user has to
+   pinch out, which feels broken.
+
+   Bumping font-size to exactly 16px on mobile prevents the trigger.
+   Scoped to <= 768px so desktop keeps the denser 14px form text. The
+   `meta name="viewport" maximum-scale=1` approach doesn't work
+   anymore — Apple disabled it in iOS 10+ for accessibility. */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* ── Scrollbar ───────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
