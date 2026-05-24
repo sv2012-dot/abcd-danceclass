@@ -22,12 +22,18 @@
 
 import React from 'react';
 
+// Standard control height app-wide — Inputs, Selects and the date/time
+// picker triggers all render at this height so mixed form rows line up.
+// Also matches the 45px Button minHeight.
+const STANDARD_CTRL_HEIGHT = 45;
+
 const inp: React.CSSProperties = {
   width: '100%',
   background: 'var(--surface)',
   border: '1.5px solid var(--border)',
   borderRadius: 10,
   padding: '12px 13px',
+  minHeight: STANDARD_CTRL_HEIGHT,
   fontSize: 14,
   color: 'var(--text)',
   fontFamily: 'var(--font-b)',

@@ -46,6 +46,15 @@ export default function Modal({ title, onClose, children, wide }: any) {
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
+  // Global "dismiss all modals" event — dispatched by the AppShell top
+  // nav school-name click so the user can tap the school name from
+  // inside a form modal to cancel and go home in one gesture.
+  useEffect(() => {
+    const handler = () => onClose();
+    window.addEventListener('sf:dismiss-modals', handler);
+    return () => window.removeEventListener('sf:dismiss-modals', handler);
+  }, [onClose]);
+
   // Lock body scroll while the modal is mounted.
   useEffect(() => {
     if (typeof window === 'undefined') return;

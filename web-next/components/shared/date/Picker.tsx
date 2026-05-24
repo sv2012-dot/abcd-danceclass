@@ -26,12 +26,19 @@ const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct
 const DAYS_SHORT   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
 // ─── Shared visual chrome ───────────────────────────────────────────────────
+// Standard input/control height app-wide. Field inputs render at ~45px
+// (12px top + 14px text + 12px bottom + borders); the date/time picker
+// triggers used to render at ~32px which made them visibly shorter than
+// adjacent <Input>s in mixed form rows. minHeight matches them now.
+const STANDARD_CTRL_HEIGHT = 45;
+
 const triggerStyle = (open, size, hasValue) => ({
   width: '100%',
   background: 'var(--surface)',
   border: `1.5px solid ${open ? 'var(--accent)' : 'var(--border)'}`,
   borderRadius: 9,
-  padding: size === 'sm' ? '7px 11px' : '9px 13px',
+  padding: size === 'sm' ? '7px 11px' : '10px 13px',
+  minHeight: size === 'sm' ? undefined : STANDARD_CTRL_HEIGHT,
   cursor: 'pointer',
   boxShadow: open ? '0 0 0 3px rgba(124,58,237,0.12)' : 'none',
   transition: 'all .15s',
@@ -43,6 +50,7 @@ const triggerStyle = (open, size, hasValue) => ({
   fontWeight: 600,
   color: hasValue ? 'var(--text)' : 'var(--muted)',
   fontFamily: 'var(--font-b)',
+  boxSizing: 'border-box' as const,
 });
 
 const labelStyle = {

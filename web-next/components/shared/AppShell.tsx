@@ -426,9 +426,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         />
       )}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-        <header style={{ height: 56, background: 'var(--sidebar)', borderBottom: '1px solid var(--sidebar-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0, zIndex: 1000 }}>
+        {/* position:fixed + zIndex:10000 so the top nav sits ABOVE the
+            shared <Modal>'s portaled overlay (zIndex:9999). Without
+            this the modal backdrop covered the nav and the school-name
+            click area became unreachable while a form modal was open.
+            Main below gets paddingTop:56 to leave room for the fixed
+            header (since it's no longer in flex flow). */}
+        <header style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 56, background: 'var(--sidebar)', borderBottom: '1px solid var(--sidebar-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0, zIndex: 10000 }}>
           <div
-            onClick={() => router.push('/home')}
+            onClick={() => {
+              // Dismiss any open shared <Modal> instances before
+              // navigating. Listeners in Modal.tsx call onClose on this
+              // event so the user can tap the school name from inside a
+              // form modal to "cancel the activity and go back home"
+              // in one gesture.
+              try { window.dispatchEvent(new Event('sf:dismiss-modals')); } catch (_) {}
+              router.push('/home');
+            }}
             style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1, minWidth: 0 }}
           >
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: AVATAR_GRAD, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
@@ -470,7 +484,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <SidebarContent {...sidebarProps} showBrand={false} />
         </div>
 
-        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', background: dashBg, transition: 'background .3s' }}>
+        {/* paddingTop:56 reserves space for the now-fixed header above.
+            The padding sits inside main's scroll area so the existing
+            content below scrolls underneath the header cleanly. */}
+        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', background: dashBg, transition: 'background .3s', paddingTop: 56 }}>
           <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
             <div style={{ flex: 1, padding: '20px 16px', maxWidth: 1340, margin: '0 auto', boxSizing: 'border-box', width: '100%' }}>
               {children}

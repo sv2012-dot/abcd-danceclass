@@ -1151,11 +1151,14 @@ function SchoolHomePage() {
               <DateField value={dPart} onChange={d => updateStart({ date: d })} />
             </Field>
 
-            {/* #3 row 2 — Time as three side-by-side selects (hour / min /
-                AM-PM). Mins snap to 00/15/30/45; default 00 selected. */}
+            {/* Time row — four side-by-side selects: hour / min / AM-PM /
+                duration. Mins snap to 00/15/30/45; default 00 selected.
+                Duration was previously its own labelled Field; it now
+                lives here unheaded to match the rest of the row (visual
+                density on the create form). */}
             <div style={{gridColumn:"1/-1", marginBottom:20}}>
               <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Time *</div>
-              <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8}}>
+              <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1.4fr", gap:8}}>
                 <Select value={String(hour12)} onChange={e => updateStart({ hour12: Number(e.target.value) })}>
                   {Array.from({length: 12}, (_, i) => i + 1).map(h => <option key={h} value={String(h)}>{h}</option>)}
                 </Select>
@@ -1169,51 +1172,89 @@ function SchoolHomePage() {
                   <option value="AM">AM</option>
                   <option value="PM">PM</option>
                 </Select>
+                {/* Duration sentinel 180 = "3 hrs+" / open-ended; Ends-at
+                    hint hides when that's selected. */}
+                <Select
+                  value={String(form.duration)}
+                  onChange={e => {
+                    const d = Number(e.target.value);
+                    setForm(f => ({ ...f, duration: d, end_datetime: computeEndFromDuration(f.start_datetime, d) }));
+                  }}
+                >
+                  <option value="30">30 mins</option>
+                  <option value="60">1 hr</option>
+                  <option value="120">2 hrs</option>
+                  <option value="180">3 hrs+</option>
+                </Select>
               </div>
             </div>
 
-            {/* #9 — Duration shrunk to 4 options: 30 min, 1 hr, 2 hrs, 3 hrs+.
-                The 180-min value is a sentinel for "3 hrs+ / open-ended";
-                Ends-at line below hides when that's selected (the end time
-                isn't meaningful then). */}
-            <Field label="Duration" style={{gridColumn:"1/-1"}}>
-              <Select
-                value={String(form.duration)}
-                onChange={e => {
-                  const d = Number(e.target.value);
-                  setForm(f => ({ ...f, duration: d, end_datetime: computeEndFromDuration(f.start_datetime, d) }));
-                }}
-              >
-                <option value="30">30 mins</option>
-                <option value="60">1 hr</option>
-                <option value="120">2 hrs</option>
-                <option value="180">3 hrs+</option>
-              </Select>
-            </Field>
+            {/* Ends-at hint + Repeat checkbox on the same row.
+                - Ends-at hides when duration is 3 hrs+ (180 sentinel).
+                - Repeat checkbox is unchecked by default. Toggling it on
+                  sets recurrence='weekly' and recurrence_end=+6 months
+                  from the event date; toggling off clears both.
+                - On Edit (modal.id set) the checkbox reflects the saved
+                  state but stays disabled — changing recurrence on an
+                  existing event is not currently supported. */}
+            <div style={{
+              gridColumn:"1/-1",
+              display:"flex",
+              justifyContent:"space-between",
+              alignItems:"center",
+              marginTop:-8,
+              marginBottom:16,
+              gap:12,
+              flexWrap:"wrap",
+            }}>
+              {showEndsAt && endsAtLabel ? (
+                <span style={{fontSize:13, color:"var(--muted)"}}>
+                  Ends at <b style={{color:"var(--text)"}}>{endsAtLabel}</b>
+                </span>
+              ) : <span />}
+              <label style={{display:"inline-flex", alignItems:"center", gap:8, cursor: modal.id ? "default" : "pointer", fontSize:14, color: modal.id ? "var(--muted)" : "var(--text)", userSelect:"none"}}>
+                <input
+                  type="checkbox"
+                  disabled={!!modal.id}
+                  checked={form.recurrence !== "none"}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      // Base the +6 month default off the selected event
+                      // date when present, otherwise today.
+                      const base = dPart || new Date().toISOString().slice(0, 10);
+                      const d = new Date(base + 'T00:00:00');
+                      d.setMonth(d.getMonth() + 6);
+                      const sixMonthsOut = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                      setForm(f => ({ ...f, recurrence: 'weekly', recurrence_end: sixMonthsOut }));
+                    } else {
+                      setForm(f => ({ ...f, recurrence: 'none', recurrence_end: '' }));
+                    }
+                  }}
+                  style={{width:18, height:18, accentColor:"var(--accent)", cursor: modal.id ? "default" : "pointer"}}
+                />
+                Repeat
+              </label>
+            </div>
 
-            {/* #4 — Ends-at hint (hidden for 3 hrs+ per #9). */}
-            {showEndsAt && endsAtLabel && (
-              <div style={{gridColumn:"1/-1", fontSize:13, color:"var(--muted)", marginTop:-8, marginBottom:16}}>
-                Ends at <b style={{color:"var(--text)"}}>{endsAtLabel}</b>
-              </div>
+            {/* Dynamic recurrence rows — only render when the Repeat
+                checkbox above is on. Both rows span the full width. */}
+            {form.recurrence !== "none" && (
+              <>
+                <Field label="How often" style={{gridColumn:"1/-1"}}>
+                  <Select value={form.recurrence} onChange={e=>setForm({...form,recurrence:e.target.value})} disabled={!!modal.id}>
+                    <option value="weekly">Every week</option>
+                    <option value="biweekly">Every 2 weeks</option>
+                  </Select>
+                </Field>
+                <Field label="Repeat Until" style={{gridColumn:"1/-1"}}>
+                  <DateField value={form.recurrence_end || ""} onChange={v=>setForm({...form,recurrence_end:v})} futureOnly />
+                </Field>
+              </>
             )}
 
-            {/* #5 — label changed Location / Room → Location / Venue. */}
+            {/* #5 — label Location / Room → Location / Venue (unchanged
+                from previous push). */}
             <Field label="Location / Venue" style={{gridColumn:"1/-1"}}><Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder="e.g. Studio A" /></Field>
-
-            {/* #6 — Repeat unchanged. */}
-            <Field label="Repeat">
-              <Select value={form.recurrence} onChange={e=>setForm({...form,recurrence:e.target.value})} disabled={!!modal.id}>
-                <option value="none">No repeat</option>
-                <option value="weekly">Weekly</option>
-                <option value="biweekly">Every 2 weeks</option>
-              </Select>
-            </Field>
-            {form.recurrence!=="none" && !modal.id && (
-              <Field label="Repeat Until">
-                <DateField value={form.recurrence_end || ""} onChange={v=>setForm({...form,recurrence_end:v})} futureOnly />
-              </Field>
-            )}
           </div>
 
           {/* #7 — Studio required checkbox and Notes textarea removed from
