@@ -123,7 +123,10 @@ export default function Modal({ title, onClose, children, wide }: any) {
           flexDirection: 'column',
         }}
       >
-        {/* Sticky header — stays visible while scrolling long forms. */}
+        {/* Header — NOT sticky. Forms have a Cancel button at the bottom
+            that handles dismiss-while-scrolled; keeping the header in
+            normal flow means it scrolls away as the user fills the form,
+            giving more vertical room for content on short screens. */}
         <div
           className="sf-modal-header"
           style={{
@@ -131,50 +134,17 @@ export default function Modal({ title, onClose, children, wide }: any) {
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '20px 24px 14px',
-            position: 'sticky',
-            top: 0,
             background: 'var(--card)',
-            zIndex: 1,
             gap: 12,
             borderBottom: '1px solid transparent', // real border on mobile via CSS
           }}
         >
-          {/* Mobile-only Back pill — same shape as the recital details back
-              button (rounded pill, arrow + Back label). Hidden on desktop
-              via .sf-modal-back-pill CSS. */}
-          <button
-            className="sf-modal-back-pill"
-            onClick={onClose}
-            aria-label="Back"
-            style={{
-              display: 'none', // shown on mobile via globals.css media query
-              alignItems: 'center',
-              gap: 6,
-              padding: '7px 14px 7px 11px',
-              borderRadius: 20,
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              color: 'var(--text)',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              minHeight: 36,
-              touchAction: 'manipulation',
-              WebkitTapHighlightColor: 'transparent',
-              flexShrink: 0,
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <line x1="19" y1="12" x2="5" y2="12" />
-              <polyline points="12 19 5 12 12 5" />
-            </svg>
-            Back
-          </button>
-
           <h2 className="sf-modal-title" style={{ fontFamily: 'var(--font-d)', fontSize: 18, color: 'var(--text)' }}>{title}</h2>
 
-          {/* Desktop X close — hidden on mobile (the Back pill is the
-              dismiss UI there). */}
+          {/* X close on the right — single dismiss button across desktop
+              AND mobile (the prior mobile-only Back pill has been
+              removed; users dismiss via X here or Cancel at the form
+              bottom). 44x44 tap target per Apple HIG. */}
           <button
             className="sf-modal-close-x"
             onClick={onClose}

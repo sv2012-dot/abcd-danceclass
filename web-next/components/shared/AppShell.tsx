@@ -457,7 +457,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button
-              onClick={() => setMenuOpen((o) => !o)}
+              onClick={() => {
+                // Same dismiss-modals event the school-name fires.
+                // Without this, opening the drawer while a modal is
+                // open would slide the drawer in BEHIND the modal
+                // (drawer zIndex 1001 < modal 9999) and look broken.
+                // Dismissing the modal first guarantees a clean reveal.
+                try { window.dispatchEvent(new Event('sf:dismiss-modals')); } catch (_) {}
+                setMenuOpen((o) => !o);
+              }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--sidebar-foreground)', display: 'flex', alignItems: 'center', padding: 4 }}
               aria-label="Toggle menu"
             >
