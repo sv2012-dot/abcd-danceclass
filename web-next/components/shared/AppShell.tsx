@@ -432,7 +432,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             click area became unreachable while a form modal was open.
             Main below gets paddingTop:56 to leave room for the fixed
             header (since it's no longer in flex flow). */}
-        <header style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 56, background: 'var(--sidebar)', borderBottom: '1px solid var(--sidebar-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0, zIndex: 10000 }}>
+        <header className="sf-app-nav" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 56, background: 'var(--sidebar)', borderBottom: '1px solid var(--sidebar-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0, zIndex: 10000 }}>
           <div
             onClick={() => {
               // Dismiss any open shared <Modal> instances before

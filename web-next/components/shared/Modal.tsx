@@ -123,45 +123,50 @@ export default function Modal({ title, onClose, children, wide }: any) {
           flexDirection: 'column',
         }}
       >
-        {/* Header — NOT sticky. Forms have a Cancel button at the bottom
-            that handles dismiss-while-scrolled; keeping the header in
-            normal flow means it scrolls away as the user fills the form,
-            giving more vertical room for content on short screens. */}
+        {/* Header — NOT sticky. Compact vertical padding (matches a
+            single Field row at ~45px control height + small gap).
+            Title left, X flush-right via marginLeft:auto on the X
+            (justifyContent:space-between also works but marginLeft
+            is more robust if a 3rd element ever lands in the header). */}
         <div
           className="sf-modal-header"
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '20px 24px 14px',
+            padding: '10px 14px 10px 18px',
             background: 'var(--card)',
             gap: 12,
             borderBottom: '1px solid transparent', // real border on mobile via CSS
           }}
         >
-          <h2 className="sf-modal-title" style={{ fontFamily: 'var(--font-d)', fontSize: 18, color: 'var(--text)' }}>{title}</h2>
+          <h2 className="sf-modal-title" style={{ fontFamily: 'var(--font-d)', fontSize: 17, color: 'var(--text)' }}>{title}</h2>
 
-          {/* X close on the right — single dismiss button across desktop
-              AND mobile (the prior mobile-only Back pill has been
-              removed; users dismiss via X here or Cancel at the form
-              bottom). 44x44 tap target per Apple HIG. */}
+          {/* X close. Smaller (36×36) than the previous 44×44 so the
+              header collapses to about the height of a single form
+              control. Still well above the HIG-minimum 36 tap target
+              on real input devices. */}
           <button
             className="sf-modal-close-x"
             onClick={onClose}
             aria-label="Close"
             style={{
+              marginLeft: 'auto',
               background: 'none',
               border: 'none',
               color: 'var(--muted)',
               cursor: 'pointer',
-              fontSize: 24,
+              fontSize: 22,
               lineHeight: 1,
-              padding: '8px 10px',
-              minWidth: 44,
-              minHeight: 44,
+              padding: 0,
+              width: 36,
+              height: 36,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               borderRadius: 8,
               touchAction: 'manipulation',
               WebkitTapHighlightColor: 'transparent',
+              flexShrink: 0,
             }}
           >
             ×

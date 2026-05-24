@@ -1098,7 +1098,33 @@ function SchoolHomePage() {
             <Field label="Doors / Start Time">
               <TimeField value={recitalForm.event_time} onChange={v=>setRecitalForm({...recitalForm,event_time:v})} nullable />
             </Field>
-            <Field label="Venue" style={{gridColumn:"1/-1"}}><Input value={recitalForm.venue} onChange={e=>setRecitalForm({...recitalForm,venue:e.target.value})} placeholder="e.g. Riverside Auditorium" /></Field>
+            {/* Venue with chip list of saved studio rooms — same UX
+                as the event modal. Favorites pinned first; tap to fill. */}
+            <div style={{gridColumn:"1/-1"}}>
+              <Field label="Venue" style={{marginBottom: studioRooms.length > 0 ? 10 : undefined}}>
+                <Input value={recitalForm.venue} onChange={e=>setRecitalForm({...recitalForm,venue:e.target.value})} placeholder={studioRooms.length > 0 ? "Or type a custom venue…" : "e.g. Riverside Auditorium"} />
+              </Field>
+              {studioRooms.length > 0 && (
+                <div style={{display:"flex", flexWrap:"wrap", gap:7, marginBottom:20}}>
+                  {[...studioRooms].sort((a:any,b:any) => (b.is_favorite?1:0)-(a.is_favorite?1:0)).map((s:any) => {
+                    const active = recitalForm.venue === s.name;
+                    return (
+                      <button key={s.id} type="button" onClick={() => setRecitalForm(f => ({ ...f, venue: active ? "" : s.name }))} style={{
+                        display:"inline-flex", alignItems:"center", gap:5,
+                        padding:"5px 13px", borderRadius:20, cursor:"pointer", fontSize:12, fontWeight:700,
+                        border:`1.5px solid ${active?"var(--accent)":s.is_favorite?"#F59E0B":"var(--border)"}`,
+                        background: active?"var(--accent)":s.is_favorite?"#FFFBEB":"transparent",
+                        color: active?"#fff":s.is_favorite?"#B45309":"var(--muted)", transition:"all .12s",
+                      }}>
+                        {!!s.is_favorite && !active && <span style={{fontSize:11}}>★</span>}
+                        {active && <span>✓</span>}
+                        {s.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             <Field label="Notes" style={{gridColumn:"1/-1"}}><Textarea value={recitalForm.description} onChange={e=>setRecitalForm({...recitalForm,description:e.target.value})} placeholder="Any notes about the recital…" /></Field>
           </div>
           <div style={{display:"flex",gap:9,marginTop:8}}>
@@ -1152,23 +1178,49 @@ function SchoolHomePage() {
           endsAtLabel = sharedFormatTime(endHHMM);
         }
 
+        // Type-driven field requirements (change #3):
+        //   Class      → Batch required,  Title optional, no Recital pick
+        //   Rehearsal  → Recital required, Batch optional, Title optional
+        //   Workshop   → Title required,  Batch optional, no Recital pick
+        //   Other      → Title required,  Batch optional, no Recital pick
+        const t = form.type;
+        const batchRequired   = t === 'Class';
+        const titleRequired   = t === 'Workshop' || t === 'Other';
+        const showRecitalPick = t === 'Rehearsal';
+        // Save validation: start_datetime always required + the above
+        // per-type required flags.
+        const canSave =
+          !!form.start_datetime &&
+          !(titleRequired && !form.title) &&
+          !(batchRequired && form.batch_ids.length === 0) &&
+          !(showRecitalPick && !(form as any).recital_id);
+
         return (
         <Modal title={modal.id ? "Edit Event" : "Create New Event"} onClose={()=>setModal(null)} wide>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"0 16px"}}>
-            <Field label="Title *" style={{gridColumn:"1/-1"}}><Input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="e.g. Junior Ballet Class" /></Field>
 
-            {/* #1 — Recital removed from Event Type dropdown on this form.
-                The full EVENT_TYPES list is preserved at module scope
-                because other views (filters, badge colors) still use it. */}
+            {/* #3 — Event Type FIRST so the downstream field-requirement
+                logic (Batch / Title / Recital required) is clear from
+                the top of the form. */}
             <Field label="Event Type">
-              <Select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
-                {EVENT_TYPES.filter(t => t !== "Recital").map(t=><option key={t}>{t}</option>)}
+              <Select value={form.type} onChange={e => {
+                const next = e.target.value;
+                setForm(f => {
+                  // Clear the recital pick if we're leaving Rehearsal —
+                  // the field disappears, the stale id shouldn't persist.
+                  const cleaned: any = { ...f, type: next };
+                  if (next !== 'Rehearsal') delete cleaned.recital_id;
+                  return cleaned;
+                });
+              }}>
+                {EVENT_TYPES.filter(x => x !== "Recital").map(x => <option key={x}>{x}</option>)}
               </Select>
             </Field>
 
-            {/* #2 — Batches single-select dropdown (was multi-chip toggle).
-                batch_ids stays an array so save/load logic is unchanged. */}
-            <Field label="Batch (optional)" style={{gridColumn:"1/-1"}}>
+            {/* Batch — required for Class, optional for everything else.
+                The asterisk in the label communicates the requirement
+                without a separate validator UI. */}
+            <Field label={batchRequired ? "Batch *" : "Batch (optional)"} style={{gridColumn:"1/-1"}}>
               <Select
                 value={form.batch_ids[0] != null ? String(form.batch_ids[0]) : ''}
                 onChange={e => {
@@ -1181,7 +1233,42 @@ function SchoolHomePage() {
               </Select>
             </Field>
 
-            {/* #3 row 1 — Date alone. */}
+            {/* Recital picker — appears only when Event Type is Rehearsal.
+                Stored on form as an extra recital_id key (the backend
+                ignores unknown payload fields). When picked we also
+                prefill the title with "Rehearsal — {recital.title}" so
+                the rehearsal is identifiable on the calendar; the user
+                is still free to edit the title afterwards. */}
+            {showRecitalPick && (
+              <Field label="For Recital *" style={{gridColumn:"1/-1"}}>
+                <Select
+                  value={(form as any).recital_id ? String((form as any).recital_id) : ''}
+                  onChange={e => {
+                    const v = e.target.value;
+                    const recital = (recitalList || []).find((r: any) => String(r.id) === v);
+                    setForm(f => ({
+                      ...f,
+                      recital_id: v ? Number(v) : null,
+                      title: recital ? `Rehearsal — ${recital.title}` : f.title,
+                    } as any));
+                  }}
+                >
+                  <option value="">{(recitalList || []).length === 0 ? 'No recitals yet' : '— Select a recital —'}</option>
+                  {(recitalList || []).map((r: any) => (
+                    <option key={r.id} value={String(r.id)}>{r.title}</option>
+                  ))}
+                </Select>
+              </Field>
+            )}
+
+            {/* Title — required for Workshop/Other, optional for Class/
+                Rehearsal. Always visible so the user can override the
+                auto-set Rehearsal title if they want. */}
+            <Field label={titleRequired ? "Title *" : "Title (optional)"} style={{gridColumn:"1/-1"}}>
+              <Input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="e.g. Junior Ballet Class" />
+            </Field>
+
+            {/* Date row. */}
             <Field label="Date *" style={{gridColumn:"1/-1"}}>
               <DateField value={dPart} onChange={d => updateStart({ date: d })} />
             </Field>
@@ -1287,28 +1374,50 @@ function SchoolHomePage() {
               </>
             )}
 
-            {/* #5 — label Location / Room → Location / Venue (unchanged
-                from previous push). */}
-            <Field label="Location / Venue" style={{gridColumn:"1/-1"}}><Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder="e.g. Studio A" /></Field>
+            {/* Location / Venue with chip list of saved studio rooms
+                below — restores the chip-suggestion UX the old CRA app
+                had on /schedule. Favorites are pinned first (★ amber);
+                tapping a chip fills the input. Typing free-text and
+                saving still auto-creates a quick-add studio (see
+                persistLocationIfNew in saveMutation). */}
+            <div style={{gridColumn:"1/-1"}}>
+              <Field label="Location / Venue" style={{marginBottom: studioRooms.length > 0 ? 10 : undefined}}>
+                <Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder={studioRooms.length > 0 ? "Or type a custom location…" : "e.g. Studio A"} />
+              </Field>
+              {studioRooms.length > 0 && (
+                <div style={{display:"flex", flexWrap:"wrap", gap:7, marginBottom:20}}>
+                  {[...studioRooms].sort((a:any,b:any) => (b.is_favorite?1:0)-(a.is_favorite?1:0)).map((s:any) => {
+                    const active = form.location === s.name;
+                    return (
+                      <button key={s.id} type="button" onClick={() => setForm(f => ({ ...f, location: active ? "" : s.name }))} style={{
+                        display:"inline-flex", alignItems:"center", gap:5,
+                        padding:"5px 13px", borderRadius:20, cursor:"pointer", fontSize:12, fontWeight:700,
+                        border:`1.5px solid ${active?"var(--accent)":s.is_favorite?"#F59E0B":"var(--border)"}`,
+                        background: active?"var(--accent)":s.is_favorite?"#FFFBEB":"transparent",
+                        color: active?"#fff":s.is_favorite?"#B45309":"var(--muted)", transition:"all .12s",
+                      }}>
+                        {!!s.is_favorite && !active && <span style={{fontSize:11}}>★</span>}
+                        {active && <span>✓</span>}
+                        {s.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* #7 — Studio required checkbox and Notes textarea removed from
-              creation. Both fields stay on the model; the existing Edit
-              Event panel on /schedule keeps them editable inline after
-              the event is created (notes via PDetailRow, studio_required
-              via the panel toggle). */}
-
-          {/* #8 — Cancel and Create Event stacked vertically, each on
-              its own row. Primary CTA on top, Cancel below. */}
+          {/* CTA — Cancel + Create Event stacked. Separator/borderTop
+              removed per request; the color contrast between Button
+              and form background provides enough visual separation
+              and the row flows with the rest of the form. */}
           <div style={{
             display:"grid",
             gridTemplateColumns:"1fr",
             gap:10,
-            marginTop:20,
-            paddingTop:20,
-            borderTop:"1px solid var(--border)",
+            marginTop:8,
           }}>
-            <Button style={{width:"100%",justifyContent:"center"}} onClick={()=>saveMutation.mutate(form)} disabled={!form.title||!form.start_datetime||saveMutation.isPending}>
+            <Button style={{width:"100%",justifyContent:"center"}} onClick={()=>saveMutation.mutate(form)} disabled={!canSave||saveMutation.isPending}>
               {saveMutation.isPending?"Saving…":modal.id?"Save Changes":form.recurrence!=="none"?"Create Recurring Events":"Create Event"}
             </Button>
             <Button variant="secondary" style={{width:"100%",justifyContent:"center"}} onClick={()=>setModal(null)}>Cancel</Button>
