@@ -1076,40 +1076,132 @@ function SchoolHomePage() {
       )}
 
       {/* ── Add Event Modal ──────────────────────────────────────────────── */}
-      {modal !== null && (
+      {modal !== null && (() => {
+        // Date + time decomposition for the split picker (change #3).
+        // form.start_datetime is "YYYY-MM-DDTHH:MM" (school-local, no TZ).
+        // We split it into 4 controls: date, hour (1-12), minute (00/15/
+        // 30/45), AM/PM. Recompose on every change. When date is empty
+        // we still keep a sensible time so the dropdowns render selected
+        // values (default 9:00 AM).
+        const dt = form.start_datetime || '';
+        const [dPart, tPart] = dt ? dt.split('T') : ['', ''];
+        const [h24Str, mStr] = (tPart || '09:00').split(':');
+        const h24 = Number(h24Str);
+        const m   = Number(mStr) || 0;
+        const ampm: 'AM' | 'PM' = h24 >= 12 ? 'PM' : 'AM';
+        const hour12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : (h24 || 12);
+        // Snap the displayed minutes to the nearest allowed bucket so the
+        // dropdown always shows a selected option.
+        const minsSnapped = [0, 15, 30, 45].includes(m) ? m : 0;
+
+        const updateStart = (patch: { date?: string; hour12?: number; ampm?: 'AM' | 'PM'; mins?: number }) => {
+          const newDate   = patch.date   !== undefined ? patch.date   : dPart;
+          const newHour12 = patch.hour12 !== undefined ? patch.hour12 : hour12;
+          const newAmpm   = patch.ampm   !== undefined ? patch.ampm   : ampm;
+          const newMins   = patch.mins   !== undefined ? patch.mins   : minsSnapped;
+          if (!newDate) {
+            setForm(f => ({ ...f, start_datetime: '', end_datetime: '' }));
+            return;
+          }
+          const newH24 = newAmpm === 'PM' ? (newHour12 === 12 ? 12 : newHour12 + 12) : (newHour12 === 12 ? 0 : newHour12);
+          const composed = `${newDate}T${String(newH24).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
+          setForm(f => ({ ...f, start_datetime: composed, end_datetime: computeEndFromDuration(composed, f.duration) }));
+        };
+
+        // Format "Ends at" (change #4 + #9). Hidden when duration is the
+        // 3-hrs+ open-ended sentinel (180 min).
+        const showEndsAt = form.start_datetime && form.duration && form.duration < 180;
+        let endsAtLabel = '';
+        if (showEndsAt && form.end_datetime) {
+          const endHHMM = form.end_datetime.split('T')[1]?.slice(0, 5) || '';
+          endsAtLabel = sharedFormatTime(endHHMM);
+        }
+
+        return (
         <Modal title={modal.id ? "Edit Event" : "New Event"} onClose={()=>setModal(null)} wide>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"0 16px"}}>
             <Field label="Title *" style={{gridColumn:"1/-1"}}><Input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="e.g. Junior Ballet Class" /></Field>
-            <Field label="Event Type"><Select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>{EVENT_TYPES.map(t=><option key={t}>{t}</option>)}</Select></Field>
-            <div style={{gridColumn:"1/-1"}}>
-              <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Batches (optional)</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
-                {batches.map(b => {
-                  const checked = form.batch_ids.includes(b.id)||form.batch_ids.includes(String(b.id));
-                  return (
-                    <button key={b.id} type="button" onClick={()=>setForm(f=>({...f,batch_ids:checked?f.batch_ids.filter(x=>x!==b.id&&x!==String(b.id)):[...f.batch_ids,b.id]}))} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"5px 13px",borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:700,border:`1.5px solid ${checked?"#6a7fdb":"var(--border)"}`,background:checked?"#6a7fdb22":"transparent",color:checked?"#6a7fdb":"var(--muted)"}}>
-                      {checked&&<span>✓</span>}{b.name}
-                    </button>
-                  );
-                })}
-                {batches.length===0 && <span style={{fontSize:12,color:"var(--muted)"}}>No batches yet</span>}
+
+            {/* #1 — Recital removed from Event Type dropdown on this form.
+                The full EVENT_TYPES list is preserved at module scope
+                because other views (filters, badge colors) still use it. */}
+            <Field label="Event Type">
+              <Select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
+                {EVENT_TYPES.filter(t => t !== "Recital").map(t=><option key={t}>{t}</option>)}
+              </Select>
+            </Field>
+
+            {/* #2 — Batches single-select dropdown (was multi-chip toggle).
+                batch_ids stays an array so save/load logic is unchanged. */}
+            <Field label="Batch (optional)" style={{gridColumn:"1/-1"}}>
+              <Select
+                value={form.batch_ids[0] != null ? String(form.batch_ids[0]) : ''}
+                onChange={e => {
+                  const v = e.target.value;
+                  setForm(f => ({ ...f, batch_ids: v ? [Number(v)] : [] }));
+                }}
+              >
+                <option value="">{batches.length === 0 ? 'No batches yet' : '— None —'}</option>
+                {batches.map(b => <option key={b.id} value={String(b.id)}>{b.name}</option>)}
+              </Select>
+            </Field>
+
+            {/* #3 row 1 — Date alone. */}
+            <Field label="Date *" style={{gridColumn:"1/-1"}}>
+              <DateField value={dPart} onChange={d => updateStart({ date: d })} />
+            </Field>
+
+            {/* #3 row 2 — Time as three side-by-side selects (hour / min /
+                AM-PM). Mins snap to 00/15/30/45; default 00 selected. */}
+            <div style={{gridColumn:"1/-1", marginBottom:20}}>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Time *</div>
+              <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8}}>
+                <Select value={String(hour12)} onChange={e => updateStart({ hour12: Number(e.target.value) })}>
+                  {Array.from({length: 12}, (_, i) => i + 1).map(h => <option key={h} value={String(h)}>{h}</option>)}
+                </Select>
+                <Select value={String(minsSnapped)} onChange={e => updateStart({ mins: Number(e.target.value) })}>
+                  <option value="0">00</option>
+                  <option value="15">15</option>
+                  <option value="30">30</option>
+                  <option value="45">45</option>
+                </Select>
+                <Select value={ampm} onChange={e => updateStart({ ampm: e.target.value as 'AM' | 'PM' })}>
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </Select>
               </div>
             </div>
-            <Field label="Start *">
-              <WhenField value={form.start_datetime} onChange={v=>setForm(f=>({...f,start_datetime:v,end_datetime:computeEndFromDuration(v,f.duration)}))} />
+
+            {/* #9 — Duration shrunk to 4 options: 30 min, 1 hr, 2 hrs, 3 hrs+.
+                The 180-min value is a sentinel for "3 hrs+ / open-ended";
+                Ends-at line below hides when that's selected (the end time
+                isn't meaningful then). */}
+            <Field label="Duration" style={{gridColumn:"1/-1"}}>
+              <Select
+                value={String(form.duration)}
+                onChange={e => {
+                  const d = Number(e.target.value);
+                  setForm(f => ({ ...f, duration: d, end_datetime: computeEndFromDuration(f.start_datetime, d) }));
+                }}
+              >
+                <option value="30">30 mins</option>
+                <option value="60">1 hr</option>
+                <option value="120">2 hrs</option>
+                <option value="180">3 hrs+</option>
+              </Select>
             </Field>
-            <Field label="Duration">
-              {/* label={null} — Field already renders the floating label;
-                  without this the picker's default "Duration" header doubled up. */}
-              <DurationField
-                label={null}
-                value={form.duration}
-                onChange={d=>setForm(f=>({...f,duration:d,end_datetime:computeEndFromDuration(f.start_datetime,d)}))}
-                startTime={form.start_datetime}
-                options={DURATION_OPTIONS}
-              />
-            </Field>
-            <Field label="Location / Room" style={{gridColumn:"1/-1"}}><Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder="e.g. Studio A" /></Field>
+
+            {/* #4 — Ends-at hint (hidden for 3 hrs+ per #9). */}
+            {showEndsAt && endsAtLabel && (
+              <div style={{gridColumn:"1/-1", fontSize:13, color:"var(--muted)", marginTop:-8, marginBottom:16}}>
+                Ends at <b style={{color:"var(--text)"}}>{endsAtLabel}</b>
+              </div>
+            )}
+
+            {/* #5 — label changed Location / Room → Location / Venue. */}
+            <Field label="Location / Venue" style={{gridColumn:"1/-1"}}><Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder="e.g. Studio A" /></Field>
+
+            {/* #6 — Repeat unchanged. */}
             <Field label="Repeat">
               <Select value={form.recurrence} onChange={e=>setForm({...form,recurrence:e.target.value})} disabled={!!modal.id}>
                 <option value="none">No repeat</option>
@@ -1123,24 +1215,31 @@ function SchoolHomePage() {
               </Field>
             )}
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:12,margin:"10px 0",padding:12,background:"var(--surface)",borderRadius:10}}>
-            <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
-              <input type="checkbox" checked={form.requires_studio} onChange={e=>setForm({...form,requires_studio:e.target.checked})} style={{width:16,height:16,accentColor:"var(--accent)"}} />
-              <span style={{display:"inline-flex",alignItems:"center",gap:6}}><SvgIcon name="home" size={14} style={{marginRight:6}} /> Studio required</span>
-            </label>
-            {form.requires_studio && (
-              <span style={{fontSize:12,color:"var(--muted)"}}>Studio booking status can be updated after saving.</span>
-            )}
-          </div>
-          <Field label="Notes"><Textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} /></Field>
-          <div style={{display:"flex",gap:9,marginTop:8}}>
-            <Button onClick={()=>saveMutation.mutate(form)} disabled={!form.title||!form.start_datetime||saveMutation.isPending}>
+
+          {/* #7 — Studio required checkbox and Notes textarea removed from
+              creation. Both fields stay on the model; the existing Edit
+              Event panel on /schedule keeps them editable inline after
+              the event is created (notes via PDetailRow, studio_required
+              via the panel toggle). */}
+
+          {/* #8 — Cancel and Create Event stacked vertically, each on
+              its own row. Primary CTA on top, Cancel below. */}
+          <div style={{
+            display:"grid",
+            gridTemplateColumns:"1fr",
+            gap:10,
+            marginTop:20,
+            paddingTop:20,
+            borderTop:"1px solid var(--border)",
+          }}>
+            <Button style={{width:"100%",justifyContent:"center"}} onClick={()=>saveMutation.mutate(form)} disabled={!form.title||!form.start_datetime||saveMutation.isPending}>
               {saveMutation.isPending?"Saving…":modal.id?"Save Changes":form.recurrence!=="none"?"Create Recurring Events":"Create Event"}
             </Button>
-            <Button variant="secondary" onClick={()=>setModal(null)}>Cancel</Button>
+            <Button variant="secondary" style={{width:"100%",justifyContent:"center"}} onClick={()=>setModal(null)}>Cancel</Button>
           </div>
         </Modal>
-      )}
+        );
+      })()}
 
       {/* Smart Add modal — bulk create events from natural language */}
       <SmartAddModal
