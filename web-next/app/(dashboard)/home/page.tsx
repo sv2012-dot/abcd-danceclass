@@ -1110,23 +1110,37 @@ function SchoolHomePage() {
                 <Input value={recitalForm.venue} onChange={e=>setRecitalForm({...recitalForm,venue:e.target.value})} placeholder={studioRooms.length > 0 ? "Or type a custom venue…" : "e.g. Riverside Auditorium"} />
               </Field>
               {studioRooms.length > 0 && (
-                <div style={{display:"flex", flexWrap:"wrap", gap:7, marginBottom:20}}>
-                  {[...studioRooms].sort((a:any,b:any) => (b.is_favorite?1:0)-(a.is_favorite?1:0)).map((s:any) => {
-                    const active = recitalForm.venue === s.name;
-                    return (
-                      <button key={s.id} type="button" onClick={() => setRecitalForm(f => ({ ...f, venue: active ? "" : s.name }))} style={{
-                        display:"inline-flex", alignItems:"center", gap:5,
-                        padding:"5px 13px", borderRadius:20, cursor:"pointer", fontSize:12, fontWeight:700,
-                        border:`1.5px solid ${active?"var(--accent)":s.is_favorite?"#F59E0B":"var(--border)"}`,
-                        background: active?"var(--accent)":s.is_favorite?"#FFFBEB":"transparent",
-                        color: active?"#fff":s.is_favorite?"#B45309":"var(--muted)", transition:"all .12s",
-                      }}>
-                        {!!s.is_favorite && !active && <span style={{fontSize:11}}>★</span>}
-                        {active && <span>✓</span>}
-                        {s.name}
-                      </button>
-                    );
-                  })}
+                <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:7, marginBottom:20}}>
+                  {/* Top 4 venues, favorites pinned first then newest. */}
+                  {[...studioRooms]
+                    .sort((a:any, b:any) =>
+                      (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0) ||
+                      (Number(b.id) || 0) - (Number(a.id) || 0)
+                    )
+                    .slice(0, 4)
+                    .map((s:any) => {
+                      const active = recitalForm.venue === s.name;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          title={s.name}
+                          onClick={() => setRecitalForm(f => ({ ...f, venue: active ? "" : s.name }))}
+                          style={{
+                            display:"flex", alignItems:"center", justifyContent:"center", gap:5,
+                            padding:"6px 12px", borderRadius:20, cursor:"pointer", fontSize:12, fontWeight:700,
+                            border:`1.5px solid ${active?"var(--accent)":s.is_favorite?"#F59E0B":"var(--border)"}`,
+                            background: active?"var(--accent)":s.is_favorite?"#FFFBEB":"transparent",
+                            color: active?"#fff":s.is_favorite?"#B45309":"var(--muted)", transition:"all .12s",
+                            minWidth: 0,
+                          }}
+                        >
+                          {!!s.is_favorite && !active && <span style={{fontSize:11, flexShrink:0}}>★</span>}
+                          {active && <span style={{flexShrink:0}}>✓</span>}
+                          <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name}</span>
+                        </button>
+                      );
+                    })}
                 </div>
               )}
             </div>
@@ -1183,8 +1197,8 @@ function SchoolHomePage() {
           endsAtLabel = sharedFormatTime(endHHMM);
         }
 
-        // Type-driven field requirements (change #3):
-        //   Class      → Batch required,  Title optional, no Recital pick
+        // Type-driven field requirements:
+        //   Class      → Batch required,  Title HIDDEN (auto-set to batch name)
         //   Rehearsal  → Recital required, Batch optional, Title optional
         //   Workshop   → Title required,  Batch optional, no Recital pick
         //   Other      → Title required,  Batch optional, no Recital pick
@@ -1192,8 +1206,10 @@ function SchoolHomePage() {
         const batchRequired   = t === 'Class';
         const titleRequired   = t === 'Workshop' || t === 'Other';
         const showRecitalPick = t === 'Rehearsal';
-        // Save validation: start_datetime always required + the above
-        // per-type required flags.
+        // For Class, Title field is hidden — the batch name is the
+        // title (matches the auto-title behavior when events are
+        // created from a batch).
+        const hideTitle       = t === 'Class';
         const canSave =
           !!form.start_datetime &&
           !(titleRequired && !form.title) &&
@@ -1234,7 +1250,15 @@ function SchoolHomePage() {
                 value={form.batch_ids[0] != null ? String(form.batch_ids[0]) : ''}
                 onChange={e => {
                   const v = e.target.value;
-                  setForm(f => ({ ...f, batch_ids: v ? [Number(v)] : [] }));
+                  const picked = (batches || []).find((b: any) => String(b.id) === v);
+                  setForm(f => ({
+                    ...f,
+                    batch_ids: v ? [Number(v)] : [],
+                    // When type is Class, the batch name IS the event
+                    // title — mirrors the batch-created-event behavior
+                    // so titles stay consistent across creation paths.
+                    title: f.type === 'Class' && picked ? picked.name : f.title,
+                  }));
                 }}
               >
                 <option value="">{batches.length === 0 ? 'No batches yet' : '— None —'}</option>
@@ -1270,12 +1294,14 @@ function SchoolHomePage() {
               </Field>
             )}
 
-            {/* Title — required for Workshop/Other, optional for Class/
-                Rehearsal. Always visible so the user can override the
-                auto-set Rehearsal title if they want. */}
-            <Field label={titleRequired ? "Title *" : "Title (optional)"} style={{gridColumn:"1/-1"}}>
-              <Input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="e.g. Junior Ballet Class" />
-            </Field>
+            {/* Title — visible for Rehearsal / Workshop / Other.
+                Hidden for Class (the batch name IS the title for that
+                type, set automatically when the batch is picked). */}
+            {!hideTitle && (
+              <Field label={titleRequired ? "Title *" : "Title (optional)"} style={{gridColumn:"1/-1"}}>
+                <Input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="e.g. Junior Ballet Class" />
+              </Field>
+            )}
 
             {/* Date row. */}
             <Field label="Date *" style={{gridColumn:"1/-1"}}>
@@ -1284,35 +1310,40 @@ function SchoolHomePage() {
 
             {/* Time row — four side-by-side selects: hour / min / AM-PM /
                 duration. Mins snap to 00/15/30/45; default 00 selected.
-                Duration was previously its own labelled Field; it now
-                lives here unheaded to match the rest of the row (visual
-                density on the create form). */}
+                Column widths give AM/PM and Duration enough room for
+                their text + chevron (PM was truncating in the prior
+                1fr-each layout on narrow viewports). Inline
+                paddingRight:24 override shrinks the chevron gutter on
+                the narrow columns so the values fit. */}
             <div style={{gridColumn:"1/-1", marginBottom:20}}>
               <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Time *</div>
-              <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1.4fr", gap:8}}>
-                <Select value={String(hour12)} onChange={e => updateStart({ hour12: Number(e.target.value) })}>
+              <div style={{display:"grid", gridTemplateColumns:"0.9fr 0.9fr 1.1fr 1.3fr", gap:6}}>
+                <Select value={String(hour12)} onChange={e => updateStart({ hour12: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
                   {Array.from({length: 12}, (_, i) => i + 1).map(h => <option key={h} value={String(h)}>{h}</option>)}
                 </Select>
-                <Select value={String(minsSnapped)} onChange={e => updateStart({ mins: Number(e.target.value) })}>
+                <Select value={String(minsSnapped)} onChange={e => updateStart({ mins: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
                   <option value="0">00</option>
                   <option value="15">15</option>
                   <option value="30">30</option>
                   <option value="45">45</option>
                 </Select>
-                <Select value={ampm} onChange={e => updateStart({ ampm: e.target.value as 'AM' | 'PM' })}>
+                <Select value={ampm} onChange={e => updateStart({ ampm: e.target.value as 'AM' | 'PM' })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
                   <option value="AM">AM</option>
                   <option value="PM">PM</option>
                 </Select>
-                {/* Duration sentinel 180 = "3 hrs+" / open-ended; Ends-at
-                    hint hides when that's selected. */}
+                {/* Duration: short labels ("30 m", "1 hr", "2 hrs",
+                    "3 hrs+") to fit the narrow column. 180-min value is
+                    the sentinel for "3 hrs+ / open-ended"; Ends-at line
+                    below hides when that's selected. */}
                 <Select
                   value={String(form.duration)}
                   onChange={e => {
                     const d = Number(e.target.value);
                     setForm(f => ({ ...f, duration: d, end_datetime: computeEndFromDuration(f.start_datetime, d) }));
                   }}
+                  style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}
                 >
-                  <option value="30">30 mins</option>
+                  <option value="30">30 m</option>
                   <option value="60">1 hr</option>
                   <option value="120">2 hrs</option>
                   <option value="180">3 hrs+</option>
@@ -1337,6 +1368,13 @@ function SchoolHomePage() {
               marginBottom:16,
               gap:12,
               flexWrap:"wrap",
+              // paddingLeft aligns the "Ends at" text with the input's
+              // text content above (Input has 13px internal padding +
+              // 1.5px border = 14.5px to text). Without this, the text
+              // sat flush at the modal-body padding edge and looked
+              // out-of-line during a vertical scan of the form.
+              paddingLeft: 14,
+              paddingRight: 14,
             }}>
               {showEndsAt && endsAtLabel ? (
                 <span style={{fontSize:13, color:"var(--muted)"}}>
@@ -1394,23 +1432,41 @@ function SchoolHomePage() {
                 <Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder={studioRooms.length > 0 ? "Or type a custom location…" : "e.g. Studio A"} />
               </Field>
               {studioRooms.length > 0 && (
-                <div style={{display:"flex", flexWrap:"wrap", gap:7, marginBottom:20}}>
-                  {[...studioRooms].sort((a:any,b:any) => (b.is_favorite?1:0)-(a.is_favorite?1:0)).map((s:any) => {
-                    const active = form.location === s.name;
-                    return (
-                      <button key={s.id} type="button" onClick={() => setForm(f => ({ ...f, location: active ? "" : s.name }))} style={{
-                        display:"inline-flex", alignItems:"center", gap:5,
-                        padding:"5px 13px", borderRadius:20, cursor:"pointer", fontSize:12, fontWeight:700,
-                        border:`1.5px solid ${active?"var(--accent)":s.is_favorite?"#F59E0B":"var(--border)"}`,
-                        background: active?"var(--accent)":s.is_favorite?"#FFFBEB":"transparent",
-                        color: active?"#fff":s.is_favorite?"#B45309":"var(--muted)", transition:"all .12s",
-                      }}>
-                        {!!s.is_favorite && !active && <span style={{fontSize:11}}>★</span>}
-                        {active && <span>✓</span>}
-                        {s.name}
-                      </button>
-                    );
-                  })}
+                <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:7, marginBottom:20}}>
+                  {/* Top 4 venues only — favorites pinned first, then the
+                      newest (highest id ≈ most recently created, used as a
+                      proxy for "last used" since the studios table has no
+                      last_used_at column). 2-column grid + truncated chip
+                      text guarantees 2 chips per row on phones. */}
+                  {[...studioRooms]
+                    .sort((a:any, b:any) =>
+                      (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0) ||
+                      (Number(b.id) || 0) - (Number(a.id) || 0)
+                    )
+                    .slice(0, 4)
+                    .map((s:any) => {
+                      const active = form.location === s.name;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          title={s.name}
+                          onClick={() => setForm(f => ({ ...f, location: active ? "" : s.name }))}
+                          style={{
+                            display:"flex", alignItems:"center", justifyContent:"center", gap:5,
+                            padding:"6px 12px", borderRadius:20, cursor:"pointer", fontSize:12, fontWeight:700,
+                            border:`1.5px solid ${active?"var(--accent)":s.is_favorite?"#F59E0B":"var(--border)"}`,
+                            background: active?"var(--accent)":s.is_favorite?"#FFFBEB":"transparent",
+                            color: active?"#fff":s.is_favorite?"#B45309":"var(--muted)", transition:"all .12s",
+                            minWidth: 0, // allows the inner span to ellipsis
+                          }}
+                        >
+                          {!!s.is_favorite && !active && <span style={{fontSize:11, flexShrink:0}}>★</span>}
+                          {active && <span style={{flexShrink:0}}>✓</span>}
+                          <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name}</span>
+                        </button>
+                      );
+                    })}
                 </div>
               )}
             </div>
