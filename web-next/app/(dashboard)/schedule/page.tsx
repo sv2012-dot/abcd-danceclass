@@ -1527,116 +1527,268 @@ export default function SchedulePage() {
             );
           })()}
 
-          {/* ── EDIT / ADD mode: event form ── */}
-          {(panelMode === 'edit' || panelMode === 'add') && (
-            <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"0 16px"}}>
-                <Field label="Title *" style={{gridColumn:"1/-1"}}>
-                  <Input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="e.g. Junior Ballet Class" />
-                </Field>
+          {/* ── EDIT / ADD mode: event form ──
+              Field layout mirrors the home page Create New Event modal:
+              Event Type first → conditional Batch / Recital / Title
+              → Date → Time row (hour + min + AM-PM + duration) → Ends
+              at + Repeat checkbox → recurrence rows → Location chips.
+              Studio-required toggle and Notes textarea removed from the
+              create form (kept on the model, editable post-create on the
+              detail panel). Save logic untouched. */}
+          {(panelMode === 'edit' || panelMode === 'add') && (() => {
+            // Date + time decomposition for the split picker.
+            const dt = form.start_datetime || '';
+            const [dPart, tPart] = dt ? dt.split('T') : ['', ''];
+            const [h24Str, mStr] = (tPart || '09:00').split(':');
+            const h24 = Number(h24Str);
+            const m   = Number(mStr) || 0;
+            const ampm = h24 >= 12 ? 'PM' : 'AM';
+            const hour12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : (h24 || 12);
+            const minsSnapped = [0, 15, 30, 45].includes(m) ? m : 0;
+
+            const updateStart = (patch) => {
+              const newDate   = patch.date   !== undefined ? patch.date   : dPart;
+              const newHour12 = patch.hour12 !== undefined ? patch.hour12 : hour12;
+              const newAmpm   = patch.ampm   !== undefined ? patch.ampm   : ampm;
+              const newMins   = patch.mins   !== undefined ? patch.mins   : minsSnapped;
+              if (!newDate) {
+                setForm(f => ({ ...f, start_datetime: '', end_datetime: '' }));
+                return;
+              }
+              const newH24 = newAmpm === 'PM' ? (newHour12 === 12 ? 12 : newHour12 + 12) : (newHour12 === 12 ? 0 : newHour12);
+              const composed = `${newDate}T${String(newH24).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
+              setForm(f => ({ ...f, start_datetime: composed, end_datetime: computeEndFromDuration(composed, f.duration) }));
+            };
+
+            // Type-driven field requirements:
+            //   Class      → Batch required, Title HIDDEN (batch name = title)
+            //   Rehearsal  → Recital required, Batch optional, Title optional
+            //   Workshop / Other → Title required, Batch optional
+            const t = form.type;
+            const batchRequired   = t === 'Class';
+            const titleRequired   = t === 'Workshop' || t === 'Other';
+            const showRecitalPick = t === 'Rehearsal';
+            const hideTitle       = t === 'Class';
+            const canSave =
+              !!form.start_datetime &&
+              !(titleRequired && !form.title) &&
+              !(batchRequired && form.batch_ids.length === 0) &&
+              !(showRecitalPick && !(form).recital_id);
+
+            const showEndsAt = form.start_datetime && form.duration && form.duration < 180;
+            let endsAtLabel = '';
+            if (showEndsAt && form.end_datetime) {
+              const endHHMM = form.end_datetime.split('T')[1]?.slice(0, 5) || '';
+              endsAtLabel = sharedFormatTime(endHHMM);
+            }
+            const accentColor = TYPE_COLORS[form.type] || '#888';
+
+            return (
+            <div style={{ flex:1, overflowY:"auto", padding:"20px 22px", position:"relative" }}>
+              {/* Type-coded accent bar — flush to the left edge of the
+                  panel body, matches the home Modal accent. */}
+              <span aria-hidden style={{ position:"absolute", top:0, bottom:0, left:0, width:4, background:accentColor }} />
+              <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:"0 16px"}}>
+
                 <Field label="Event Type">
-                  <Select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
-                    {EVENT_TYPES.map(t=><option key={t}>{t}</option>)}
+                  <Select value={form.type} onChange={e => {
+                    const next = e.target.value;
+                    setForm(f => {
+                      const cleaned = { ...f, type: next };
+                      if (next !== 'Rehearsal') delete cleaned.recital_id;
+                      return cleaned;
+                    });
+                  }}>
+                    {EVENT_TYPES.filter(x => x !== 'Recital').map(x => <option key={x}>{x}</option>)}
                   </Select>
                 </Field>
-                {/* Batch dropdown (was a multi-chip toggle list).
-                    Single-select via native <Select> for cleaner mobile UX.
-                    batch_ids stays an array (0 or 1 item) so the rest of
-                    the save/load pipeline keeps working unchanged. */}
-                <Field label="Batch (optional)" style={{gridColumn:"1/-1"}}>
+
+                <Field label={batchRequired ? "Batch *" : "Batch (optional)"} style={{gridColumn:"1/-1"}}>
                   <Select
                     value={form.batch_ids[0] != null ? String(form.batch_ids[0]) : ''}
                     onChange={e => {
                       const v = e.target.value;
-                      setForm(f => ({ ...f, batch_ids: v ? [Number(v)] : [] }));
+                      const picked = (batches || []).find(b => String(b.id) === v);
+                      setForm(f => ({
+                        ...f,
+                        batch_ids: v ? [Number(v)] : [],
+                        title: f.type === 'Class' && picked ? picked.name : f.title,
+                      }));
                     }}
                   >
                     <option value="">{batches.length === 0 ? 'No batches yet' : '— None —'}</option>
-                    {batches.map(b => (
-                      <option key={b.id} value={String(b.id)}>{b.name}</option>
-                    ))}
+                    {batches.map(b => <option key={b.id} value={String(b.id)}>{b.name}</option>)}
                   </Select>
                 </Field>
-                <Field label="Start *">
-                  <WhenField value={form.start_datetime} onChange={v=>setForm(f=>({...f,start_datetime:v,end_datetime:computeEndFromDuration(v,f.duration)}))} />
+
+                {showRecitalPick && (
+                  <Field label="For Recital *" style={{gridColumn:"1/-1"}}>
+                    <Select
+                      value={(form).recital_id ? String((form).recital_id) : ''}
+                      onChange={e => {
+                        const v = e.target.value;
+                        const recital = (recitalsList || []).find(r => String(r.id) === v);
+                        setForm(f => ({
+                          ...f,
+                          recital_id: v ? Number(v) : null,
+                          title: recital ? `Rehearsal — ${recital.title}` : f.title,
+                        }));
+                      }}
+                    >
+                      <option value="">{(recitalsList || []).length === 0 ? 'No recitals yet' : '— Select a recital —'}</option>
+                      {(recitalsList || []).map(r => <option key={r.id} value={String(r.id)}>{r.title}</option>)}
+                    </Select>
+                  </Field>
+                )}
+
+                {!hideTitle && (
+                  <Field label={titleRequired ? "Title *" : "Title (optional)"} style={{gridColumn:"1/-1"}}>
+                    <Input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="e.g. Junior Ballet Class" />
+                  </Field>
+                )}
+
+                <Field label="Date *" style={{gridColumn:"1/-1"}}>
+                  <DateField value={dPart} onChange={d => updateStart({ date: d })} />
                 </Field>
-                {/* Duration dropdown — exhaustive list from 15 min up to
-                    12 hr 45 min in 15-min steps. Value stored is total
-                    minutes, matching the existing form schema. The
-                    DURATION_DROPDOWN_OPTIONS list is built once at module
-                    scope below the imports. */}
-                <Field label="Duration">
+
+                {/* Time row — Field-wrapped hour with the "Time *"
+                    floating label; 3 unheaded selects beside it. */}
+                <div style={{gridColumn:"1/-1", display:"grid", gridTemplateColumns:"0.9fr 0.9fr 1.1fr 1.3fr", gap:6}}>
+                  <Field label="Time *" style={{marginBottom:20}}>
+                    <Select value={String(hour12)} onChange={e => updateStart({ hour12: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
+                      {Array.from({length: 12}, (_, i) => i + 1).map(h => <option key={h} value={String(h)}>{h}</option>)}
+                    </Select>
+                  </Field>
+                  <Select value={String(minsSnapped)} onChange={e => updateStart({ mins: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center', alignSelf:'start'}}>
+                    <option value="0">00</option>
+                    <option value="15">15</option>
+                    <option value="30">30</option>
+                    <option value="45">45</option>
+                  </Select>
+                  <Select value={ampm} onChange={e => updateStart({ ampm: e.target.value })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center', alignSelf:'start'}}>
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </Select>
                   <Select
                     value={String(form.duration)}
                     onChange={e => {
                       const d = Number(e.target.value);
                       setForm(f => ({ ...f, duration: d, end_datetime: computeEndFromDuration(f.start_datetime, d) }));
                     }}
+                    style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center', alignSelf:'start'}}
                   >
-                    {DURATION_DROPDOWN_OPTIONS.map(o => (
-                      <option key={o.value} value={String(o.value)}>{o.label}</option>
-                    ))}
+                    <option value="30">30 m</option>
+                    <option value="60">1 hr</option>
+                    <option value="120">2 hrs</option>
+                    <option value="180">3 hrs+</option>
                   </Select>
-                </Field>
-                <div style={{gridColumn:"1/-1", marginBottom:12}}>
-                  <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Location / Room</div>
-                  <Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder={studioRooms.length > 0 ? "Or type a custom location…" : "e.g. Studio A"} />
+                </div>
+
+                {/* Ends-at + Repeat checkbox row. */}
+                <div style={{
+                  gridColumn:"1/-1",
+                  display:"flex",
+                  justifyContent:"space-between",
+                  alignItems:"center",
+                  marginTop:-8,
+                  marginBottom:16,
+                  gap:12,
+                  flexWrap:"wrap",
+                  paddingLeft: 14,
+                  paddingRight: 14,
+                }}>
+                  {showEndsAt && endsAtLabel ? (
+                    <span style={{fontSize:13, color:"var(--muted)"}}>
+                      Ends at <b style={{color:"var(--text)"}}>{endsAtLabel}</b>
+                    </span>
+                  ) : <span />}
+                  <label style={{display:"inline-flex", alignItems:"center", gap:8, cursor: panelMode === 'edit' ? "default" : "pointer", fontSize:14, color: panelMode === 'edit' ? "var(--muted)" : "var(--text)", userSelect:"none"}}>
+                    <input
+                      type="checkbox"
+                      disabled={panelMode === 'edit'}
+                      checked={form.recurrence !== "none"}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          const base = dPart || new Date().toISOString().slice(0, 10);
+                          const d = new Date(base + 'T00:00:00');
+                          d.setMonth(d.getMonth() + 6);
+                          const sixMonthsOut = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                          setForm(f => ({ ...f, recurrence: 'weekly', recurrence_end: sixMonthsOut }));
+                        } else {
+                          setForm(f => ({ ...f, recurrence: 'none', recurrence_end: '' }));
+                        }
+                      }}
+                      style={{width:18, height:18, accentColor:"var(--accent)", cursor: panelMode === 'edit' ? "default" : "pointer"}}
+                    />
+                    Repeat
+                  </label>
+                </div>
+
+                {form.recurrence !== "none" && (
+                  <>
+                    <Field label="How often" style={{gridColumn:"1/-1"}}>
+                      <Select value={form.recurrence} onChange={e=>setForm({...form,recurrence:e.target.value})} disabled={panelMode === 'edit'}>
+                        <option value="weekly">Every week</option>
+                        <option value="biweekly">Every 2 weeks</option>
+                      </Select>
+                    </Field>
+                    <Field label="Repeat Until" style={{gridColumn:"1/-1"}}>
+                      <DateField value={form.recurrence_end || ""} onChange={v=>setForm({...form,recurrence_end:v})} futureOnly />
+                    </Field>
+                  </>
+                )}
+
+                {/* Location chip list — favorites pinned, top 4. */}
+                <div style={{gridColumn:"1/-1"}}>
+                  <Field label="Location / Venue" style={{marginBottom: studioRooms.length > 0 ? 10 : undefined}}>
+                    <Input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder={studioRooms.length > 0 ? "Or type a custom location…" : "e.g. Studio A"} />
+                  </Field>
                   {studioRooms.length > 0 && (
-                    <div style={{display:"flex",flexWrap:"wrap",gap:7,marginTop:8}}>
-                      {[...studioRooms].sort((a,b) => (b.is_favorite?1:0)-(a.is_favorite?1:0)).map(s => {
-                        const active = form.location === s.name;
-                        return (
-                          <button key={s.id} type="button" onClick={() => setForm(f => ({ ...f, location: active ? "" : s.name }))} style={{
-                            display:"inline-flex",alignItems:"center",gap:5,
-                            padding:"5px 13px",borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:700,
-                            border:`1.5px solid ${active?"var(--accent)":s.is_favorite?"#F59E0B":"var(--border)"}`,
-                            background:active?"var(--accent)":s.is_favorite?"#FFFBEB":"transparent",
-                            color:active?"#fff":s.is_favorite?"#B45309":"var(--muted)",transition:"all .12s",
-                          }}>
-                            {!!s.is_favorite && !active && <span style={{fontSize:11}}>★</span>}
-                            {active && <span>✓</span>}
-                            {s.name}
-                          </button>
-                        );
-                      })}
+                    <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:7, marginBottom:20}}>
+                      {[...studioRooms]
+                        .sort((a, b) =>
+                          (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0) ||
+                          (Number(b.id) || 0) - (Number(a.id) || 0)
+                        )
+                        .slice(0, 4)
+                        .map(s => {
+                          const active = form.location === s.name;
+                          return (
+                            <button
+                              key={s.id}
+                              type="button"
+                              title={s.name}
+                              onClick={() => setForm(f => ({ ...f, location: active ? "" : s.name }))}
+                              style={{
+                                display:"flex", alignItems:"center", justifyContent:"center", gap:5,
+                                padding:"6px 12px", borderRadius:20, cursor:"pointer", fontSize:12, fontWeight:700,
+                                border:`1.5px solid ${active?"var(--accent)":s.is_favorite?"#F59E0B":"var(--border)"}`,
+                                background: active?"var(--accent)":s.is_favorite?"#FFFBEB":"transparent",
+                                color: active?"#fff":s.is_favorite?"#B45309":"var(--muted)", transition:"all .12s",
+                                minWidth: 0,
+                              }}
+                            >
+                              {!!s.is_favorite && !active && <span style={{fontSize:11, flexShrink:0}}>★</span>}
+                              {active && <span style={{flexShrink:0}}>✓</span>}
+                              <span style={{overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{s.name}</span>
+                            </button>
+                          );
+                        })}
                     </div>
                   )}
                 </div>
-                <Field label="Repeat">
-                  <Select value={form.recurrence} onChange={e=>setForm({...form,recurrence:e.target.value})} disabled={panelMode === 'edit'}>
-                    <option value="none">No repeat</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="biweekly">Every 2 weeks</option>
-                  </Select>
-                </Field>
-                {form.recurrence !== "none" && panelMode === 'add' && (
-                  <Field label="Repeat Until">
-                    <DateField value={form.recurrence_end || ""} onChange={v=>setForm({...form,recurrence_end:v})} futureOnly />
-                  </Field>
-                )}
               </div>
-              {/* Studio booking */}
-              <div style={{display:"flex",alignItems:"center",gap:12,margin:"10px 0",padding:12,background:"var(--surface)",borderRadius:10}}>
-                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
-                  <input type="checkbox" checked={form.requires_studio} onChange={e=>setForm({...form,requires_studio:e.target.checked})}
-                    style={{width:16,height:16,accentColor:"var(--accent)"}} />
-                  <span style={{display:"inline-flex",alignItems:"center",gap:6}}><SvgIcon name="home" size={14} /> Studio required</span>
-                </label>
-                {form.requires_studio && (
-                  <span style={{fontSize:12,color:"var(--muted)"}}>Studio booking status can be updated after saving.</span>
-                )}
-              </div>
-              <Field label="Notes">
-                <Textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} />
-              </Field>
-              <div style={{display:"flex",gap:9,marginTop:16}}>
-                <Button onClick={()=>saveMutation.mutate(form)} disabled={!form.title||!form.start_datetime||saveMutation.isPending}>
+
+              {/* CTA stacked, no separator. */}
+              <div style={{display:"grid", gridTemplateColumns:"1fr", gap:10, marginTop:8}}>
+                <Button style={{width:"100%", justifyContent:"center"}} onClick={()=>saveMutation.mutate(form)} disabled={!canSave||saveMutation.isPending}>
                   {saveMutation.isPending ? "Saving…" : panelMode === 'edit' ? "Save Changes" : form.recurrence!=="none" ? "Create Recurring Events" : "Create Event"}
                 </Button>
-                <Button variant="secondary" onClick={() => { if (panelMode === 'add') setDetailEvent(null); setPanelMode('view'); }}>Cancel</Button>
+                <Button variant="secondary" style={{width:"100%", justifyContent:"center"}} onClick={() => { if (panelMode === 'add') setDetailEvent(null); setPanelMode('view'); }}>Cancel</Button>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ── ADD-RECITAL mode: recital quick-create form ── */}
           {panelMode === 'add-recital' && (
