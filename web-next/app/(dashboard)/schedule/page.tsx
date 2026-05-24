@@ -1074,12 +1074,22 @@ export default function SchedulePage() {
       {isMobile ? (
         /* ── MOBILE LAYOUT ──────────────────────────────────────────────── */
         <div>
-          {/* Mobile header: prev / MONTH YEAR / next */}
+          {/* Mobile header: prev / MONTH YEAR / next.
+              Typography matches the SectionTitle pattern from the home
+              dashboard ("UPCOMING RECITALS") — month in solid var(--text),
+              year painted in the BTN_GRAD gradient. Unifies the section-
+              header look across the app. */}
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
             <button onClick={()=>navCalendar(-1)} style={{background:"none",border:"none",cursor:"pointer",padding:"6px 10px",color:"var(--accent)",fontSize:24,lineHeight:1,fontWeight:300}}>‹</button>
-            <span style={{fontFamily:"var(--font-d)",fontSize:17,fontWeight:700,color:"var(--accent)",textTransform:"uppercase",letterSpacing:"0.06em"}}>
-              {MONTHS[cursor.getMonth()]} {cursor.getFullYear()}
-            </span>
+            <h2 style={{ fontSize:22, fontWeight:800, color:'var(--text)', margin:0, letterSpacing:'-0.02em', textTransform:'uppercase' }}>
+              {MONTHS[cursor.getMonth()]}{' '}
+              <span style={{
+                background: 'linear-gradient(135deg, #7C3AED 0%, #D946EF 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}>{cursor.getFullYear()}</span>
+            </h2>
             <button onClick={()=>navCalendar(1)} style={{background:"none",border:"none",cursor:"pointer",padding:"6px 10px",color:"var(--accent)",fontSize:24,lineHeight:1,fontWeight:300}}>›</button>
           </div>
 
@@ -1219,7 +1229,22 @@ export default function SchedulePage() {
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
             {view !== "list" && <>
               <button onClick={()=>navCalendar(-1)} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:16,color:"var(--text)"}}>‹</button>
-              <span style={{fontFamily:"var(--font-d)",fontSize:16,fontWeight:700,minWidth:180,textAlign:"center"}}>{label}</span>
+              {/* Month label uses the SectionTitle pattern from home
+                  (uppercase month + gradient year) when in month view;
+                  week view keeps the plain date-range label. */}
+              {view === "month" ? (
+                <span style={{ fontSize:22, fontWeight:800, color:'var(--text)', letterSpacing:'-0.02em', textTransform:'uppercase', minWidth:180, textAlign:'center' }}>
+                  {MONTHS[cursor.getMonth()]}{' '}
+                  <span style={{
+                    background: 'linear-gradient(135deg, #7C3AED 0%, #D946EF 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }}>{cursor.getFullYear()}</span>
+                </span>
+              ) : (
+                <span style={{fontFamily:"var(--font-d)",fontSize:16,fontWeight:700,minWidth:180,textAlign:"center"}}>{label}</span>
+              )}
               <button onClick={()=>navCalendar(1)} style={{background:"var(--surface)",border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:16,color:"var(--text)"}}>›</button>
             </>}
             <button onClick={()=>setCursor(new Date())} style={{background:"var(--surface)",border:"1.5px solid var(--border)",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,fontWeight:600,color:"var(--muted)"}}>Today</button>

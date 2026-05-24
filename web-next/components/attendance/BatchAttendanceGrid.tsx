@@ -2,6 +2,12 @@
 
 // Compact attendance grid for a batch: students × class dates.
 // Each cell colored by status. Click a student name to see their detail.
+//
+// Header is a month navigator (← MAY 2026 →) instead of the prior
+// "Last 7d / 30d / 90d" range buttons. Constraining the data window to
+// a single calendar month keeps the table's column count manageable on
+// mobile (typical 4-12 class dates per month for a batch). Users browse
+// historical months with the arrow buttons.
 
 import React, { useEffect, useState } from 'react';
 import { attendance, type AttendanceStatus } from '@/lib/api';
@@ -9,7 +15,6 @@ import { attendance, type AttendanceStatus } from '@/lib/api';
 type Props = {
   schoolId: string;
   batchId: number;
-  rangeDays?: number;  // defaults to 30
 };
 
 type StudentRow = { id: number; name: string };
@@ -27,6 +32,8 @@ const STATUS_COLOR: Record<AttendanceStatus, string> = {
   absent: '#EF4444',
 };
 
+const MONTHS_UPPER = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
 function fmtShort(d: string) {
   try {
     const dt = new Date(String(d).slice(0, 10) + 'T12:00:00');
@@ -34,27 +41,34 @@ function fmtShort(d: string) {
   } catch { return d; }
 }
 
-export default function BatchAttendanceGrid({ schoolId, batchId, rangeDays = 30 }: Props) {
+// First and last day of a month, returned as "YYYY-MM-DD" strings.
+function monthBounds(d: Date) {
+  const first = new Date(d.getFullYear(), d.getMonth(), 1);
+  const last  = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  const fmt = (x: Date) =>
+    `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+  return { from: fmt(first), to: fmt(last) };
+}
+
+export default function BatchAttendanceGrid({ schoolId, batchId }: Props) {
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [byStudent, setByStudent] = useState<Record<number, StudentStats>>({});
   const [allDates, setAllDates] = useState<string[]>([]);
-  const [days, setDays] = useState<number>(rangeDays);
+  // Cursor for the currently displayed month — defaults to current month.
+  const [cursor, setCursor] = useState<Date>(() => {
+    const d = new Date(); d.setDate(1); return d;
+  });
 
   useEffect(() => {
     if (!schoolId || !batchId) return;
     setLoading(true);
-    const today = new Date();
-    const from = new Date(); from.setDate(today.getDate() - days);
+    const { from, to } = monthBounds(cursor);
     attendance
-      .batchStats(schoolId, batchId, {
-        from: from.toISOString().slice(0, 10),
-        to: today.toISOString().slice(0, 10),
-      })
+      .batchStats(schoolId, batchId, { from, to })
       .then((data: any) => {
         setStudents(data.students || []);
         setByStudent(data.byStudent || {});
-        // Build a unique set of dates across all students
         const dateSet = new Set<string>();
         for (const s of Object.values(data.byStudent || {}) as StudentStats[]) {
           for (const d of s.dates) dateSet.add(d);
@@ -67,10 +81,47 @@ export default function BatchAttendanceGrid({ schoolId, batchId, rangeDays = 30 
         setAllDates([]);
       })
       .finally(() => setLoading(false));
-  }, [schoolId, batchId, days]);
+  }, [schoolId, batchId, cursor]);
+
+  const navMonth = (dir: number) => {
+    const d = new Date(cursor);
+    d.setMonth(d.getMonth() + dir);
+    setCursor(d);
+  };
+
+  // Section header — month navigator. Same uppercase + gradient-year
+  // typography as the schedule page month header / home page SectionTitle.
+  const header = (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
+      <button
+        onClick={() => navMonth(-1)}
+        aria-label="Previous month"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 10px', color: 'var(--accent)', fontSize: 22, lineHeight: 1, fontWeight: 300 }}
+      >‹</button>
+      <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>
+        {MONTHS_UPPER[cursor.getMonth()]}{' '}
+        <span style={{
+          background: 'linear-gradient(135deg, #7C3AED 0%, #D946EF 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+        }}>{cursor.getFullYear()}</span>
+      </span>
+      <button
+        onClick={() => navMonth(1)}
+        aria-label="Next month"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 10px', color: 'var(--accent)', fontSize: 22, lineHeight: 1, fontWeight: 300 }}
+      >›</button>
+    </div>
+  );
 
   if (loading) {
-    return <p style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center', padding: '14px 0' }}>Loading attendance…</p>;
+    return (
+      <div>
+        {header}
+        <p style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center', padding: '14px 0' }}>Loading attendance…</p>
+      </div>
+    );
   }
 
   const hasAnyAttendance = allDates.length > 0;
@@ -84,33 +135,15 @@ export default function BatchAttendanceGrid({ schoolId, batchId, rangeDays = 30 
     lookup.set(Number(sid), m);
   }
 
+  const monthLabel = `${MONTHS_UPPER[cursor.getMonth()]} ${cursor.getFullYear()}`;
+
   return (
     <div>
-      {/* Range selector */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-        {[7, 30, 90].map((d) => (
-          <button
-            key={d}
-            onClick={() => setDays(d)}
-            style={{
-              fontSize: 11,
-              padding: '4px 10px',
-              borderRadius: 14,
-              border: days === d ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-              background: days === d ? 'rgba(124,58,237,0.08)' : 'var(--card)',
-              color: days === d ? 'var(--accent)' : 'var(--muted)',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            Last {d}d
-          </button>
-        ))}
-      </div>
+      {header}
 
       {!hasAnyAttendance ? (
-        <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
-          No attendance marked in the last {days} days for this batch. Mark some from the schedule page first.
+        <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, textAlign: 'center', padding: '12px 0' }}>
+          No attendance marked in {monthLabel} for this batch. Mark some from the schedule page first.
         </p>
       ) : (
         <>

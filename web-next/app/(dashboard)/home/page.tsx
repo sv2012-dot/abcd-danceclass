@@ -1088,8 +1088,13 @@ function SchoolHomePage() {
 
       {/* ── Add Recital Modal ───────────────────────────────────────────── */}
       {showAddRecital && (
-        <Modal title="New Recital" onClose={()=>{setShowAddRecital(false);setRecitalForm({title:'',event_date:'',event_time:'18:00',venue:'',description:''});}}>
-          <div style={{height:4,background:"linear-gradient(90deg,#c4527a,#e8607a)",borderRadius:4,marginBottom:16}} />
+        <Modal
+          title="Create New Recital"
+          accentColor="#c4527a"
+          onClose={()=>{setShowAddRecital(false);setRecitalForm({title:'',event_date:'',event_time:'18:00',venue:'',description:''});}}
+        >
+          {/* Old horizontal pink bar replaced by the vertical accent
+              bar to the left of the title (Modal accentColor prop). */}
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"0 16px"}}>
             <Field label="Recital Title *" style={{gridColumn:"1/-1"}}><Input value={recitalForm.title} onChange={e=>setRecitalForm({...recitalForm,title:e.target.value})} placeholder="e.g. Spring Showcase 2026" /></Field>
             <Field label="Date *">
@@ -1195,8 +1200,12 @@ function SchoolHomePage() {
           !(batchRequired && form.batch_ids.length === 0) &&
           !(showRecitalPick && !(form as any).recital_id);
 
+        // Accent color tracks the selected event type — surfaces the
+        // type-coding in the modal title (vertical bar on the left).
+        const accentColor = TYPE_COLORS[form.type] || TYPE_COLORS.Other;
+
         return (
-        <Modal title={modal.id ? "Edit Event" : "Create New Event"} onClose={()=>setModal(null)} wide>
+        <Modal title={modal.id ? "Edit Event" : "Create New Event"} accentColor={accentColor} onClose={()=>setModal(null)} wide>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"0 16px"}}>
 
             {/* #3 — Event Type FIRST so the downstream field-requirement

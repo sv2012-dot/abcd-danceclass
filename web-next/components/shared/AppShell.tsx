@@ -100,10 +100,12 @@ const NAV_ITEMS: Record<string, any[]> = {
   ],
   school_admin: [
     { to: '/home', label: 'Dashboard', icon: 'dashboard' },
-    // Batches + Students share an entry with in-page tabs
-    { to: '/batches', label: 'Classes', icon: 'batches', matchPaths: ['/batches', '/students'] },
     { to: '/schedule', label: 'My Events', icon: 'schedule' },
     { to: '/todos', label: 'To-Dos', icon: 'todos' },
+    // Batches + Students share an entry with in-page tabs — label is
+    // now "Students" (was "Classes"); destination /batches unchanged
+    // so the page itself isn't affected per request.
+    { to: '/batches', label: 'Students', icon: 'batches', matchPaths: ['/batches', '/students'] },
     // Studios + Vendors share an entry with in-page tabs
     { to: '/studios', label: 'Resources', icon: 'studios', matchPaths: ['/studios', '/vendors'] },
     { to: '/team', label: 'Team', icon: 'team' },
@@ -111,9 +113,9 @@ const NAV_ITEMS: Record<string, any[]> = {
   ],
   teacher: [
     { to: '/home', label: 'Dashboard', icon: 'dashboard' },
-    { to: '/batches', label: 'Classes', icon: 'batches', matchPaths: ['/batches', '/students'] },
     { to: '/schedule', label: 'My Events', icon: 'schedule' },
     { to: '/todos', label: 'To-Dos', icon: 'todos' },
+    { to: '/batches', label: 'Students', icon: 'batches', matchPaths: ['/batches', '/students'] },
     { to: '/studios', label: 'Resources', icon: 'studios', matchPaths: ['/studios', '/vendors'] },
     { to: '/about', label: 'About', icon: 'about' },
   ],

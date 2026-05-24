@@ -158,6 +158,170 @@ function NotesInlineEditor({ batch, schoolId, onSaved }) {
   );
 }
 
+// Inline Class Schedule editor used on the batch detail view.
+//
+// Two states:
+//   view  — day-of-week pills + per-row chips (read-only display)
+//   edit  — formBlocks UI (DayOfWeekField + TimeField + DurationField
+//           + room Input) with Add Time Slot button and Cancel/Save
+//
+// On Save we diff edited blocks against the existing schedule rows by
+// (day_of_week, start_time, end_time, room) — preserves IDs of unchanged
+// rows, creates new rows, deletes rows no longer in the edited blocks.
+// Same diff/upsert/delete pipeline the create-batch handleSave uses.
+function ScheduleInlineEditor({ schoolId, batchId, schedules, sortedSchedules, activeColor, onSaved }) {
+  const [editing, setEditing] = React.useState(false);
+  const [blocks, setBlocks]   = React.useState([]);
+  const [saving, setSaving]   = React.useState(false);
+
+  // Group schedule rows into blocks (same shape the form uses): one
+  // block per unique (start_time, end_time, room) tuple, with daysOfWeek
+  // collected across rows. Matches groupSchedulesIntoBlocks above.
+  const buildBlocks = React.useCallback(() => {
+    const map = new Map();
+    for (const s of schedules) {
+      const start = s.start_time?.slice(0, 5) || '09:00';
+      const end   = s.end_time?.slice(0, 5)   || '10:00';
+      const room  = s.room || '';
+      const key = `${start}|${end}|${room}`;
+      if (!map.has(key)) {
+        map.set(key, { daysOfWeek: [], start_time: start, duration: diffMinutes(start, end) || 60, room });
+      }
+      const idx = dowCodeToIndex(s.day_of_week);
+      if (idx >= 0) map.get(key).daysOfWeek.push(idx);
+    }
+    return Array.from(map.values()).map((b) => ({ ...b, daysOfWeek: b.daysOfWeek.sort((a, b) => a - b) }));
+  }, [schedules]);
+
+  const startEdit = () => {
+    setBlocks(buildBlocks());
+    setEditing(true);
+  };
+  const cancel = () => {
+    setEditing(false);
+    setBlocks([]);
+  };
+  const addSlot = () => setBlocks((bs) => [...bs, { daysOfWeek: [1], start_time: '17:00', duration: 60, room: '' }]);
+  const removeSlot = (idx) => setBlocks((bs) => bs.filter((_, i) => i !== idx));
+  const updateSlot = (idx, patch) => setBlocks((bs) => {
+    const u = [...bs]; u[idx] = { ...u[idx], ...patch }; return u;
+  });
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      // Diff against existing schedules by (day, start, end, room).
+      const existingByKey = new Map();
+      for (const s of schedules) {
+        const k = `${s.day_of_week}|${s.start_time?.slice(0,5)}|${s.end_time?.slice(0,5)}|${s.room || ''}`;
+        existingByKey.set(k, s.id);
+      }
+      const usedIds = new Set();
+      const opsForExisting = [];
+      const opsForNew = [];
+      for (const block of blocks) {
+        const end_time = addMinutesToTime(block.start_time, block.duration);
+        for (const dowIdx of block.daysOfWeek) {
+          const day_of_week = dowIndexToCode(dowIdx);
+          const payload = { batch_id: batchId, day_of_week, start_time: block.start_time, end_time, room: block.room || null };
+          const key = `${day_of_week}|${block.start_time}|${end_time}|${block.room || ''}`;
+          const existingId = existingByKey.get(key);
+          if (existingId && !usedIds.has(existingId)) {
+            usedIds.add(existingId);
+            opsForExisting.push(schedulesApi.update(schoolId, existingId, payload));
+          } else {
+            opsForNew.push(schedulesApi.create(schoolId, payload));
+          }
+        }
+      }
+      const toDelete = schedules.filter((s) => !usedIds.has(s.id));
+      await Promise.all(toDelete.map((s) => schedulesApi.remove(schoolId, s.id)));
+      await Promise.all(opsForExisting);
+      await Promise.all(opsForNew);
+      toast.success('Schedule updated');
+      setEditing(false);
+      onSaved?.();
+    } catch (err) {
+      toast.error(err?.error || 'Failed to update schedule');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+          <Button size="sm" variant="ghost" onClick={addSlot}>+ Add Time Slot</Button>
+        </div>
+        {blocks.length === 0 ? (
+          <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>No time slots. Tap "+ Add Time Slot" above.</p>
+        ) : (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {blocks.map((block, idx) => (
+              <div key={idx} style={{ padding: '14px 16px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                  <button onClick={() => removeSlot(idx)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 14, padding: '2px 6px', borderRadius: 6 }}>✕ Remove</button>
+                </div>
+                <div style={{ marginBottom: 14 }}>
+                  <DayOfWeekField value={block.daysOfWeek} onChange={(v) => updateSlot(idx, { daysOfWeek: v })} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(140px, 1fr) 2fr', gap: 12, marginBottom: 12 }}>
+                  <Field label="Start time" style={{ marginBottom: 0 }}>
+                    <TimeField value={block.start_time} onChange={(v) => updateSlot(idx, { start_time: v })} />
+                  </Field>
+                  <Field label="Duration" style={{ marginBottom: 0 }}>
+                    <DurationField label={null} value={block.duration} onChange={(d) => updateSlot(idx, { duration: d })} startTime={block.start_time} />
+                  </Field>
+                </div>
+                <Field label="Studio / Location" style={{ marginBottom: 0 }}>
+                  <Input value={block.room} onChange={(e) => updateSlot(idx, { room: e.target.value })} placeholder="e.g. Studio A" />
+                </Field>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+          <Button variant="secondary" size="sm" onClick={cancel} disabled={saving}>Cancel</Button>
+          <Button size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Schedule'}</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // View mode — day pills + per-row chips, with an Edit affordance.
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 8 }}>
+        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+          {DAY_ORDER.map((d) => {
+            const has = schedules.some((s) => s.day_of_week === d);
+            return (
+              <div key={d} style={{ width: 36, height: 26, borderRadius: 6, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', background: has ? activeColor : 'var(--surface)', color: has ? '#fff' : 'var(--muted)', transition: 'all .15s' }}>{d}</div>
+            );
+          })}
+        </div>
+        <Button size="sm" variant="ghost" onClick={startEdit}>Edit</Button>
+      </div>
+      {sortedSchedules.length === 0 ? (
+        <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>No classes scheduled. Tap Edit to add a time slot.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 6 }}>
+          {sortedSchedules.map((s) => (
+            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 9, background: activeColor + '12', border: `1px solid ${activeColor}25` }}>
+              <div style={{ fontWeight: 800, fontSize: 12, color: activeColor, minWidth: 30 }}>{s.day_of_week}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 600 }}>{sharedFormatTime(s.start_time?.slice(0, 5))} – {sharedFormatTime(s.end_time?.slice(0, 5))}</div>
+                {s.room && <div style={{ fontSize: 10, color: 'var(--muted)', display: 'flex', alignItems: 'center' }}><SvgIcon name="map-pin" size={10} color="var(--muted)" style={{ marginRight: 4 }} />{s.room}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function BatchesPage() {
   const { user } = useAuth();
   const sid = user?.school_id;
@@ -441,12 +605,11 @@ export default function BatchesPage() {
               <> · <span style={{ color: "var(--warn, #F59E0B)" }}>{list.filter(b => b.deleted_at).length} in trash</span></>
             )}
           </p>
-        </div>
-        <div style={{ display:"flex", gap:8, alignItems:"center", marginLeft:"auto" }}>
-          {/* Show-recently-deleted toggle — surfaces soft-deleted batches
-              within their 30-day restore window. Mirrors the school
-              superadmin "Show deleted" pattern. */}
-          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted)", cursor: "pointer", userSelect: "none" }}>
+          {/* "Show recently deleted" toggle — moved to the LEFT (under
+              the subtitle) so it doesn't crowd the primary New Batch
+              CTA on the right. Surfaces soft-deleted batches within
+              their 30-day restore window. */}
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted)", cursor: "pointer", userSelect: "none", marginTop: 6 }}>
             <input
               type="checkbox"
               checked={showDeleted}
@@ -455,6 +618,8 @@ export default function BatchesPage() {
             />
             Show recently deleted
           </label>
+        </div>
+        <div style={{ display:"flex", gap:8, alignItems:"center", marginLeft:"auto" }}>
           <Button onClick={openAdd}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <SvgIcon name="plus" size={14} color="currentColor" />
@@ -763,30 +928,24 @@ export default function BatchesPage() {
             </div>
             {/* Scrollable body — lives in the same overflow container as the hero */}
             <div style={{ padding:"14px 18px" }}>
-              {/* Class Schedule */}
+              {/* Class Schedule — inline editable.
+                  ScheduleInlineEditor renders the view UI by default
+                  (day pills + per-row chips). Tap Edit → switches to
+                  the same formBlocks editor the create form uses. Save
+                  diffs against batchSchedules, creating/updating/
+                  deleting schedule rows as needed. */}
               <PSection title="Class Schedule">
-                <div style={{ display:"flex", gap:3, marginBottom:12 }}>
-                  {DAY_ORDER.map(d => {
-                    const has = batchSchedules.some(s => s.day_of_week === d);
-                    return <div key={d} style={{ width:36, height:26, borderRadius:6, fontSize:9, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center",
-                      background:has ? activeColor : "var(--surface)", color:has ? "#fff" : "var(--muted)", transition:"all .15s" }}>{d}</div>;
-                  })}
-                </div>
-                {sortedSchedules.length === 0 ? (
-                  <p style={{ fontSize:12, color:"var(--muted)", margin:0 }}>No classes scheduled.</p>
-                ) : (
-                  <div style={{ display:"grid", gap:6 }}>
-                    {sortedSchedules.map(s => (
-                      <div key={s.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderRadius:9, background:activeColor+"12", border:`1px solid ${activeColor}25` }}>
-                        <div style={{ fontWeight:800, fontSize:12, color:activeColor, minWidth:30 }}>{s.day_of_week}</div>
-                        <div style={{ flex:1 }}>
-                          <div style={{ fontSize:12, fontWeight:600 }}>{sharedFormatTime(s.start_time?.slice(0,5))} – {sharedFormatTime(s.end_time?.slice(0,5))}</div>
-                          {s.room && <div style={{ fontSize:10, color:"var(--muted)", display:"flex", alignItems:"center" }}><SvgIcon name="map-pin" size={10} color="var(--muted)" style={{marginRight:4}} />{s.room}</div>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <ScheduleInlineEditor
+                  schoolId={sid}
+                  batchId={activeBatch.id}
+                  schedules={batchSchedules}
+                  sortedSchedules={sortedSchedules}
+                  activeColor={activeColor}
+                  onSaved={() => {
+                    qc.invalidateQueries({ queryKey: ['schedules', sid] });
+                    qc.invalidateQueries({ queryKey: ['batches', sid] });
+                  }}
+                />
               </PSection>
 
               {/* Students */}

@@ -33,7 +33,12 @@ import { createPortal } from 'react-dom';
 // AppShell top nav height — modal slots directly below this on mobile.
 const TOP_NAV_H = 56;
 
-export default function Modal({ title, onClose, children, wide }: any) {
+// accentColor (optional) — when provided, renders a vertical color bar
+// to the LEFT of the modal title (acts as a type-coded accent). Used by
+// the New Event modal (color follows form.type via TYPE_COLORS) and the
+// New Recital modal (fixed pink). Replaces the old horizontal bar that
+// sat above the form content.
+export default function Modal({ title, onClose, children, wide, accentColor }: any) {
   // Portal target is mounted client-side; SSR pass renders nothing so the
   // markup doesn't appear in the dashboard tree during hydration.
   const [mounted, setMounted] = useState(false);
@@ -139,6 +144,21 @@ export default function Modal({ title, onClose, children, wide }: any) {
             borderBottom: '1px solid transparent', // real border on mobile via CSS
           }}
         >
+          {/* Optional color accent — vertical bar to the LEFT of the
+              title. Only renders when accentColor is passed. */}
+          {accentColor && (
+            <span
+              aria-hidden
+              style={{
+                display: 'inline-block',
+                width: 4,
+                height: 24,
+                borderRadius: 2,
+                background: accentColor,
+                flexShrink: 0,
+              }}
+            />
+          )}
           <h2 className="sf-modal-title" style={{ fontFamily: 'var(--font-d)', fontSize: 17, color: 'var(--text)' }}>{title}</h2>
 
           {/* X close. Smaller (36×36) than the previous 44×44 so the
