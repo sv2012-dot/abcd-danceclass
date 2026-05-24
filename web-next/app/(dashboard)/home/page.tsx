@@ -759,9 +759,16 @@ function SchoolHomePage() {
       {isMobile && isAdmin && (
         <div ref={createMenuRef} style={{position:"relative",marginBottom:24,display:"flex",justifyContent:"flex-end"}}>
           <button onClick={()=>setCreateMenuOpen(o=>!o)} style={{
-            width:"50%",padding:"13px 20px",borderRadius:14,border:"none",
+            // width:50% was wrapping the text on iPhone SE (375px →
+            // ~188px button, minus 40px padding + icon gaps left
+            // ~90px for "Create New" which line-broke). Bumped to
+            // 60% min-width on smallest screens and forced single-line
+            // text via whiteSpace:nowrap so it never wraps.
+            width:"60%", minWidth:200,
+            padding:"13px 18px",borderRadius:14,border:"none",
             background:C.accentGrad,color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",
             display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+            whiteSpace:"nowrap",
             boxShadow:"0 4px 20px rgba(124,58,237,.3)",
           }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1309,46 +1316,44 @@ function SchoolHomePage() {
             </Field>
 
             {/* Time row — four side-by-side selects: hour / min / AM-PM /
-                duration. Mins snap to 00/15/30/45; default 00 selected.
-                Column widths give AM/PM and Duration enough room for
-                their text + chevron (PM was truncating in the prior
-                1fr-each layout on narrow viewports). Inline
-                paddingRight:24 override shrinks the chevron gutter on
-                the narrow columns so the values fit. */}
-            <div style={{gridColumn:"1/-1", marginBottom:20}}>
-              <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Time *</div>
-              <div style={{display:"grid", gridTemplateColumns:"0.9fr 0.9fr 1.1fr 1.3fr", gap:6}}>
+                duration. The first (hour) is wrapped in a <Field
+                label="Time *"> so the row gets a floating chip label
+                consistent with the Date and Batch rows above. The
+                other three sit unheaded next to it. Column widths +
+                shrunken chevron gutter keep "PM" from truncating. */}
+            <div style={{gridColumn:"1/-1", display:"grid", gridTemplateColumns:"0.9fr 0.9fr 1.1fr 1.3fr", gap:6}}>
+              <Field label="Time *" style={{marginBottom:20}}>
                 <Select value={String(hour12)} onChange={e => updateStart({ hour12: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
                   {Array.from({length: 12}, (_, i) => i + 1).map(h => <option key={h} value={String(h)}>{h}</option>)}
                 </Select>
-                <Select value={String(minsSnapped)} onChange={e => updateStart({ mins: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
-                  <option value="0">00</option>
-                  <option value="15">15</option>
-                  <option value="30">30</option>
-                  <option value="45">45</option>
-                </Select>
-                <Select value={ampm} onChange={e => updateStart({ ampm: e.target.value as 'AM' | 'PM' })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
-                  <option value="AM">AM</option>
-                  <option value="PM">PM</option>
-                </Select>
-                {/* Duration: short labels ("30 m", "1 hr", "2 hrs",
-                    "3 hrs+") to fit the narrow column. 180-min value is
-                    the sentinel for "3 hrs+ / open-ended"; Ends-at line
-                    below hides when that's selected. */}
-                <Select
-                  value={String(form.duration)}
-                  onChange={e => {
-                    const d = Number(e.target.value);
-                    setForm(f => ({ ...f, duration: d, end_datetime: computeEndFromDuration(f.start_datetime, d) }));
-                  }}
-                  style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}
-                >
-                  <option value="30">30 m</option>
-                  <option value="60">1 hr</option>
-                  <option value="120">2 hrs</option>
-                  <option value="180">3 hrs+</option>
-                </Select>
-              </div>
+              </Field>
+              <Select value={String(minsSnapped)} onChange={e => updateStart({ mins: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center', alignSelf:'start'}}>
+                <option value="0">00</option>
+                <option value="15">15</option>
+                <option value="30">30</option>
+                <option value="45">45</option>
+              </Select>
+              <Select value={ampm} onChange={e => updateStart({ ampm: e.target.value as 'AM' | 'PM' })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center', alignSelf:'start'}}>
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </Select>
+              {/* Duration: short labels ("30 m", "1 hr", "2 hrs",
+                  "3 hrs+") to fit the narrow column. 180-min value is
+                  the sentinel for "3 hrs+ / open-ended"; Ends-at line
+                  below hides when that's selected. */}
+              <Select
+                value={String(form.duration)}
+                onChange={e => {
+                  const d = Number(e.target.value);
+                  setForm(f => ({ ...f, duration: d, end_datetime: computeEndFromDuration(f.start_datetime, d) }));
+                }}
+                style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center', alignSelf:'start'}}
+              >
+                <option value="30">30 m</option>
+                <option value="60">1 hr</option>
+                <option value="120">2 hrs</option>
+                <option value="180">3 hrs+</option>
+              </Select>
             </div>
 
             {/* Ends-at hint + Repeat checkbox on the same row.

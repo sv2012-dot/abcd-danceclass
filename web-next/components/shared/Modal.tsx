@@ -128,14 +128,14 @@ export default function Modal({ title, onClose, children, wide, accentColor }: a
           flexDirection: 'column',
         }}
       >
-        {/* Header — NOT sticky. Compact vertical padding (matches a
-            single Field row at ~45px control height + small gap).
-            Title left, X flush-right via marginLeft:auto on the X
-            (justifyContent:space-between also works but marginLeft
-            is more robust if a 3rd element ever lands in the header). */}
+        {/* Header — NOT sticky. position:relative so the accent bar
+            below can absolutely-position flush to the left edge and
+            stretch full header height. Compact vertical padding
+            matches a single Field row at ~45px control height. */}
         <div
           className="sf-modal-header"
           style={{
+            position: 'relative',
             display: 'flex',
             alignItems: 'center',
             padding: '10px 14px 10px 18px',
@@ -144,18 +144,21 @@ export default function Modal({ title, onClose, children, wide, accentColor }: a
             borderBottom: '1px solid transparent', // real border on mobile via CSS
           }}
         >
-          {/* Optional color accent — vertical bar to the LEFT of the
-              title. Only renders when accentColor is passed. */}
+          {/* Optional color accent — vertical bar absolutely flush to
+              the LEFT edge of the header div, stretching from top to
+              bottom (no rounded corners). Previously rendered as a
+              24px inline span inside the header padding, which left a
+              gap above/below and didn't touch the modal's edge. */}
           {accentColor && (
             <span
               aria-hidden
               style={{
-                display: 'inline-block',
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: 0,
                 width: 4,
-                height: 24,
-                borderRadius: 2,
                 background: accentColor,
-                flexShrink: 0,
               }}
             />
           )}

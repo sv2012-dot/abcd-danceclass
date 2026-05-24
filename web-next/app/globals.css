@@ -1,5 +1,16 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── Native form-control color scheme ───────────────────────────────────────────
+   color-scheme tells the user agent which color palette to use when
+   rendering native form controls (checkboxes, radios, date pickers,
+   scrollbars). Without this, the browser defaults to light and our
+   dark-mode pages render white checkbox boxes against dark surfaces
+   (the Repeat checkbox in the Create New Event modal was visibly
+   broken). Pairs with our .dark class — when the theme switches, the
+   browser swaps the native control palette automatically. */
+:root  { color-scheme: light; }
+.dark  { color-scheme: dark; }
+
 /* ── Design Tokens: Light Mode ──────────────────────────────────────────────── */
 :root {
   /* Core palette — Purple theme */
