@@ -21,13 +21,27 @@ type Props = {
   title?: string;
 };
 
-// Single 4-point sparkle star with one accent dot — matches the icon
-// the user mocked for the Smart Add primary CTA. Used universally
-// wherever Smart features render (SmartButton + SmartModal header).
+// Lucide "sparkles" icon — the user-specified SVG, used universally
+// for Smart features (SmartButton + SmartModal header). Stroke-based
+// (currentColor) so it tints from the parent text color.
 const Sparkle = ({ size = 14 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden style={{ flexShrink: 0 }}>
-    <path d="M12 2 L13.6 10.4 L22 12 L13.6 13.6 L12 22 L10.4 13.6 L2 12 L10.4 10.4 Z" />
-    <circle cx="19" cy="5" r="1.3" />
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+    style={{ flexShrink: 0 }}
+  >
+    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+    <path d="M20 3v4" />
+    <path d="M22 5h-4" />
+    <path d="M4 17v2" />
+    <path d="M5 18H3" />
   </svg>
 );
 

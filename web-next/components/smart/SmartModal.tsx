@@ -31,18 +31,34 @@ type Props = {
 
 const TOP_NAV_H = 56;
 
-// Header sparkle — same shape as the SmartButton Sparkle (single
-// 4-point star + accent dot), painted with the brand gradient.
+// Header sparkle — same Lucide "sparkles" path as the SmartButton
+// Sparkle. Stroked with the brand gradient (vs SmartButton's
+// currentColor) so it reads as the Smart feature accent in the
+// modal header.
 const SparkleHeader = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="url(#smartGrad)" aria-hidden style={{ flexShrink: 0 }}>
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="url(#smartGrad)"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+    style={{ flexShrink: 0 }}
+  >
     <defs>
       <linearGradient id="smartGrad" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0%" stopColor="#7C3AED" />
         <stop offset="100%" stopColor="#DC4EFF" />
       </linearGradient>
     </defs>
-    <path d="M12 2 L13.6 10.4 L22 12 L13.6 13.6 L12 22 L10.4 13.6 L2 12 L10.4 10.4 Z" />
-    <circle cx="19" cy="5" r="1.3" />
+    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+    <path d="M20 3v4" />
+    <path d="M22 5h-4" />
+    <path d="M4 17v2" />
+    <path d="M5 18H3" />
   </svg>
 );
 
