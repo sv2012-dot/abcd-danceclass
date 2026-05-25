@@ -1281,9 +1281,18 @@ export default function SchedulePage() {
           display:"flex", flexDirection:"column",
           boxShadow: isMobile ? "0 -4px 32px rgba(0,0,0,.14)" : "-6px 0 32px rgba(0,0,0,.09)",
         }}>
-          {/* Panel header — hidden on mobile view (replaced by Netflix hero) */}
+          {/* Panel header — hidden on mobile view (replaced by Netflix hero).
+              When in add/edit mode, the left edge gets a 4px type-coded
+              accent stripe that spans only the header height (not the
+              content body — that was the prior "spilled" bar). */}
           {!(isMobile && panelMode === 'view' && detailEvent) && (
-          <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+          <div style={{ position:"relative", padding:"16px 20px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+            {(panelMode === 'add' || panelMode === 'edit') && (
+              <span aria-hidden style={{ position:"absolute", top:0, bottom:0, left:0, width:4, background: TYPE_COLORS[form.type] || '#888' }} />
+            )}
+            {panelMode === 'add-recital' && (
+              <span aria-hidden style={{ position:"absolute", top:0, bottom:0, left:0, width:4, background: '#c4527a' }} />
+            )}
             <span style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em" }}>
               {panelMode === 'add' ? "New Event" : panelMode === 'edit' ? "Edit Event" : panelMode === 'add-recital' ? "New Recital" : "Event Details"}
             </span>
@@ -1580,13 +1589,16 @@ export default function SchedulePage() {
               const endHHMM = form.end_datetime.split('T')[1]?.slice(0, 5) || '';
               endsAtLabel = sharedFormatTime(endHHMM);
             }
-            const accentColor = TYPE_COLORS[form.type] || '#888';
+            // accentColor previously rendered as a left-edge bar inside
+            // this form body; moved to the panel header above (see the
+            // TYPE_COLORS[form.type] usage near "Panel header" comment)
+            // so it doesn't spill down the content area.
 
             return (
-            <div style={{ flex:1, overflowY:"auto", padding:"20px 22px", position:"relative" }}>
-              {/* Type-coded accent bar — flush to the left edge of the
-                  panel body, matches the home Modal accent. */}
-              <span aria-hidden style={{ position:"absolute", top:0, bottom:0, left:0, width:4, background:accentColor }} />
+            <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
+              {/* Type-coded accent bar moved up to the panel header
+                  so it only spans the header height (no longer
+                  "spills" down the full content area). */}
               <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:"0 16px"}}>
 
                 <Field label="Event Type">
