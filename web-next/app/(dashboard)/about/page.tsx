@@ -692,6 +692,17 @@ export default function SchoolAboutPage() {
             <Eyebrow>Contact</Eyebrow>
             <h2 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 900, letterSpacing: '-0.6px', color: 'var(--text)', marginBottom: isMobile ? 20 : 32 }}>Get in touch.</h2>
             <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 20 : 48, flexWrap: 'wrap' }}>
+              {/* Owner / Director — surfaces on the public cancelled and
+                  completed recital pages as the "Contact" name. Set at
+                  registration; editable here so school admins can keep
+                  it current. */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>Owner / Director</div>
+                {editMode
+                  ? <EText value={D.owner_name} onChange={set('owner_name')} style={{ fontSize: 15, color: 'var(--text)', fontWeight: 500 }} />
+                  : D.owner_name ? <div style={{ fontSize: 15, color: 'var(--text)', fontWeight: 500 }}>{D.owner_name}</div> : <span style={{ color: '#aaa', fontSize: 14 }}>—</span>
+                }
+              </div>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>Email</div>
                 {editMode

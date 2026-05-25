@@ -1629,6 +1629,40 @@ export default function SchedulePage() {
 
                 {/* ── Body content (still inside the shared scroll container) ── */}
                 <div style={{ padding: isMobile ? "18px 16px 24px" : "22px 22px 28px" }}>
+                  {/* Past-event treatment — renders only when the event
+                      start_datetime is before today. Adds a "✓ Past event"
+                      pill + a celebratory "wrapped 🎉" block at the top of
+                      the body, no other detail panel content changes. */}
+                  {(() => {
+                    if (!e.start_datetime) return null;
+                    const ed = new Date(String(e.start_datetime).slice(0, 10) + 'T00:00:00');
+                    if (isNaN(ed.getTime())) return null;
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    if (ed.getTime() >= today.getTime()) return null;
+                    return (
+                      <div style={{ marginBottom: 20 }}>
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          padding: '5px 11px', borderRadius: 999,
+                          background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.35)',
+                          fontSize: 10, fontWeight: 800, letterSpacing: '.06em', color: '#34d399', textTransform: 'uppercase',
+                          marginBottom: 12,
+                        }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                          Past event
+                        </div>
+                        <h3 style={{ fontFamily: 'var(--font-d), Georgia, serif', fontSize: isMobile ? 22 : 24, fontWeight: 400, lineHeight: 1.18, letterSpacing: '-0.4px', color: 'var(--text)', marginBottom: 10 }}>
+                          This event has{' '}
+                          <span style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #D946EF 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>wrapped</span>
+                          <span style={{ fontSize: 22, marginLeft: 6, verticalAlign: 'middle' }} role="img" aria-label="celebrate">🎉</span>
+                        </h3>
+                        <div style={{ width: 28, height: 2, background: 'linear-gradient(90deg, #7C3AED, #D946EF)', marginBottom: 12, borderRadius: 2 }} />
+                        <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.7, margin: 0 }}>
+                          Thank you to every family who came out for our <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{e.title}</strong>. The energy in the room was unforgettable.
+                        </p>
+                      </div>
+                    );
+                  })()}
                   <div style={{ display:"grid", gap:14, marginBottom:20 }}>
                     <PDetailRow icon="calendar" label="Date">{fmtDate(e.start_datetime)}</PDetailRow>
                     <PDetailRow icon="clock" label="Time">{fmtTime(e.start_datetime)} – {fmtTime(e.end_datetime)}</PDetailRow>
