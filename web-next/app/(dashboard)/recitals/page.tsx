@@ -1127,6 +1127,42 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
             </div>
           </div>
 
+          {/* Past-event treatment — renders only when the recital's
+              event_date is before today. Adds the "✓ Past event" pill
+              + "wrapped 🎉" headline + gradient rule + thank-you note
+              between the hero and the Smart Announce CTA. Doesn't
+              change anything else on the recital detail. */}
+          {(() => {
+            if (!recital?.event_date) return null;
+            const ed = new Date(String(recital.event_date).slice(0, 10) + 'T00:00:00');
+            if (isNaN(ed.getTime())) return null;
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            if (ed.getTime() >= today.getTime()) return null;
+            return (
+              <div style={{ margin: '16px 0 0' }}>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '5px 11px', borderRadius: 999,
+                  background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.35)',
+                  fontSize: 10, fontWeight: 800, letterSpacing: '.06em', color: '#34d399', textTransform: 'uppercase',
+                  marginBottom: 12,
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  Past event
+                </div>
+                <h3 style={{ fontFamily: 'var(--font-d), Georgia, serif', fontSize: 22, fontWeight: 400, lineHeight: 1.18, letterSpacing: '-0.4px', color: 'var(--text)', marginBottom: 10 }}>
+                  This recital has{' '}
+                  <span style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #D946EF 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>wrapped</span>
+                  <span style={{ fontSize: 22, marginLeft: 6, verticalAlign: 'middle' }} role="img" aria-label="celebrate">🎉</span>
+                </h3>
+                <div style={{ width: 28, height: 2, background: 'linear-gradient(90deg, #7C3AED, #D946EF)', marginBottom: 12, borderRadius: 2 }} />
+                <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.7, margin: 0 }}>
+                  Thank you to every family who came out for our <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{recital.title}</strong>. The energy in the room was unforgettable.
+                </p>
+              </div>
+            );
+          })()}
+
           {/* ── Primary CTA — Smart Announce ── */}
           <button onClick={() => setShowSmartAnnounce(true)} style={{
             display:"flex", alignItems:"center", justifyContent:"center", gap:8,
