@@ -182,7 +182,9 @@ export const vendors = {
 };
 
 // ── Attendance ──────────────────────────────────────────────────────────────
-export type AttendanceStatus = 'present' | 'absent' | 'excused' | 'late';
+// 'excused' removed from the UI — backend still accepts it for legacy
+// rows but users can no longer mark new excused statuses.
+export type AttendanceStatus = 'present' | 'absent' | 'late';
 
 // ── Smart ManchQ usage ──────────────────────────────────────────────────────
 export const smart = {

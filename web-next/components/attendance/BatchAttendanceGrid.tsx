@@ -19,7 +19,8 @@ type Props = {
 
 type StudentRow = { id: number; name: string };
 type StudentStats = {
-  present: number; late: number; absent: number; excused: number;
+  // excused kept for backend-compat type; not displayed in the UI.
+  present: number; late: number; absent: number; excused?: number;
   total: number; rate: number | null;
   dates: string[];
   statuses: AttendanceStatus[];
@@ -28,7 +29,6 @@ type StudentStats = {
 const STATUS_COLOR: Record<AttendanceStatus, string> = {
   present: '#10B981',
   late: '#F59E0B',
-  excused: '#6366F1',
   absent: '#EF4444',
 };
 
@@ -215,7 +215,7 @@ export default function BatchAttendanceGrid({ schoolId, batchId }: Props) {
 
           {/* Legend — filled circles, matches the cell dots above */}
           <div style={{ display: 'flex', gap: 12, marginTop: 10, fontSize: 11, flexWrap: 'wrap' }}>
-            {(['present', 'late', 'excused', 'absent'] as AttendanceStatus[]).map((s) => (
+            {(['present', 'late', 'absent'] as AttendanceStatus[]).map((s) => (
               <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--muted)' }}>
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLOR[s], display: 'inline-block' }} />
                 {s}

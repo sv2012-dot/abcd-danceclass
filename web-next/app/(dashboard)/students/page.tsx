@@ -252,7 +252,6 @@ const BATCH_COVERS = [
 const ATT_META = {
   present: { label: "Present", color: "#34c759" },
   late:    { label: "Late",    color: "#F59E0B" },
-  excused: { label: "Excused", color: "#6366F1" },
   absent:  { label: "Absent",  color: "#EF5350" },
 };
 
@@ -1151,7 +1150,7 @@ export default function StudentsPage() {
               Fees, and Notes. Edit mode keeps inline fields inside the
               same dark frame so the page doesn't reflow on toggle. */}
           {!showAdd && selected && (() => {
-            const stats   = profileAtt.stats || { total: 0, present: 0, late: 0, absent: 0, excused: 0, rate: null };
+            const stats   = profileAtt.stats || { total: 0, present: 0, late: 0, absent: 0, rate: null };
             const records = profileAtt.records || [];
             const batchNames = String(selected.batches || "").split(",").map(x => x.trim()).filter(Boolean);
             const batchCount = batchNames.length;

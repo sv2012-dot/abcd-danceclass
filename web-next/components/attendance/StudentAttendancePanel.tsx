@@ -13,7 +13,9 @@ type Props = {
   rangeDays?: number;  // defaults to 90
 };
 
-type Stats = { total: number; present: number; late: number; absent: number; excused: number; rate: number | null };
+// excused kept optional for back-compat with legacy stored rows; not
+// displayed in the UI.
+type Stats = { total: number; present: number; late: number; absent: number; excused?: number; rate: number | null };
 type AttendanceRecord = {
   id: number; class_date: string; status: AttendanceStatus; notes?: string | null;
   event_id: number | null; schedule_id: number | null;
@@ -23,7 +25,6 @@ type AttendanceRecord = {
 const STATUS_META: Record<AttendanceStatus, { label: string; color: string; icon: string }> = {
   present: { label: 'Present', color: '#10B981', icon: '✓' },
   late:    { label: 'Late',    color: '#F59E0B', icon: '⏱' },
-  excused: { label: 'Excused', color: '#6366F1', icon: '∼' },
   absent:  { label: 'Absent',  color: '#EF4444', icon: '✗' },
 };
 
@@ -56,7 +57,7 @@ export default function StudentAttendancePanel({ schoolId, studentId, rangeDays 
         setRange(data.range || null);
       })
       .catch(() => {
-        setStats({ total: 0, present: 0, late: 0, absent: 0, excused: 0, rate: null });
+        setStats({ total: 0, present: 0, late: 0, absent: 0, rate: null });
         setRecords([]);
       })
       .finally(() => setLoading(false));
@@ -88,7 +89,7 @@ export default function StudentAttendancePanel({ schoolId, studentId, rangeDays 
 
       {/* Status breakdown chips */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-        {(['present', 'late', 'excused', 'absent'] as AttendanceStatus[]).map((s) => {
+        {(['present', 'late', 'absent'] as AttendanceStatus[]).map((s) => {
           const n = stats[s];
           const meta = STATUS_META[s];
           return (
