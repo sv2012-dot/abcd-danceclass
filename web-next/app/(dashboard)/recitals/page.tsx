@@ -1103,6 +1103,30 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
 
             {/* Bottom: title + meta chips */}
             <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"0 18px 20px", zIndex:10 }}>
+              {/* Past-event pill — appears above the "Performance"
+                  eyebrow when the recital date is in the past. Sits
+                  inside the hero overlay so it's the first thing the
+                  eye lands on, ahead of the title block. */}
+              {(() => {
+                if (!recital?.event_date) return null;
+                const ed = new Date(String(recital.event_date).slice(0, 10) + 'T00:00:00');
+                if (isNaN(ed.getTime())) return null;
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                if (ed.getTime() >= today.getTime()) return null;
+                return (
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '5px 11px', borderRadius: 999,
+                    background: 'rgba(16,185,129,0.18)', border: '1px solid rgba(16,185,129,0.45)',
+                    fontSize: 10, fontWeight: 800, letterSpacing: '.06em', color: '#34d399', textTransform: 'uppercase',
+                    marginBottom: 10,
+                    backdropFilter: 'blur(6px)',
+                  }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    Past event
+                  </div>
+                );
+              })()}
               <div style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,.5)", textTransform:"uppercase", letterSpacing:".14em", marginBottom:6 }}>Performance</div>
               <h1 style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:900, color:"#fff", margin:"0 0 10px", lineHeight:1.2 }}>
                 {recital.title}
@@ -1127,11 +1151,12 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
             </div>
           </div>
 
-          {/* Past-event treatment — renders only when the recital's
-              event_date is before today. Adds the "✓ Past event" pill
-              + "wrapped 🎉" headline + gradient rule + thank-you note
-              between the hero and the Smart Announce CTA. Doesn't
-              change anything else on the recital detail. */}
+          {/* Past-event tribute — renders only when the recital's
+              event_date is before today. The "✓ Past event" pill is
+              now rendered inside the hero overlay above; this block
+              keeps only the celebratory headline, rule, and tribute
+              copy. Inserted between the hero and the Smart Announce
+              CTA. */}
           {(() => {
             if (!recital?.event_date) return null;
             const ed = new Date(String(recital.event_date).slice(0, 10) + 'T00:00:00');
@@ -1140,24 +1165,14 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
             if (ed.getTime() >= today.getTime()) return null;
             return (
               <div style={{ margin: '16px 0 0' }}>
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '5px 11px', borderRadius: 999,
-                  background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.35)',
-                  fontSize: 10, fontWeight: 800, letterSpacing: '.06em', color: '#34d399', textTransform: 'uppercase',
-                  marginBottom: 12,
-                }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                  Past event
-                </div>
                 <h3 style={{ fontFamily: 'var(--font-d), Georgia, serif', fontSize: 22, fontWeight: 400, lineHeight: 1.18, letterSpacing: '-0.4px', color: 'var(--text)', marginBottom: 10 }}>
                   This recital has{' '}
                   <span style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #D946EF 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>wrapped</span>
                   <span style={{ fontSize: 22, marginLeft: 6, verticalAlign: 'middle' }} role="img" aria-label="celebrate">🎉</span>
                 </h3>
                 <div style={{ width: 28, height: 2, background: 'linear-gradient(90deg, #7C3AED, #D946EF)', marginBottom: 12, borderRadius: 2 }} />
-                <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.7, margin: 0 }}>
-                  Thank you to every family who came out for our <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{recital.title}</strong>. The energy in the room was unforgettable.
+                <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.75, margin: 0 }}>
+                  Pulling off this <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{recital.title}</strong> was a labor of love, and seeing it come together on stage made every late rehearsal worth it. Congratulations to the students, families, and everyone behind the scenes — well done. The energy in the room was unforgettable.
                 </p>
               </div>
             );

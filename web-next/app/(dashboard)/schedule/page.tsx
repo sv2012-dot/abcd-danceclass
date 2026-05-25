@@ -1657,8 +1657,8 @@ export default function SchedulePage() {
                           <span style={{ fontSize: 22, marginLeft: 6, verticalAlign: 'middle' }} role="img" aria-label="celebrate">🎉</span>
                         </h3>
                         <div style={{ width: 28, height: 2, background: 'linear-gradient(90deg, #7C3AED, #D946EF)', marginBottom: 12, borderRadius: 2 }} />
-                        <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.7, margin: 0 }}>
-                          Thank you to every family who came out for our <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{e.title}</strong>. The energy in the room was unforgettable.
+                        <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.75, margin: 0 }}>
+                          Pulling off this <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{e.title}</strong> was a labor of love, and seeing it come together on stage made every late rehearsal worth it. Congratulations to the students, families, and everyone behind the scenes — well done. The energy in the room was unforgettable.
                         </p>
                       </div>
                     );
