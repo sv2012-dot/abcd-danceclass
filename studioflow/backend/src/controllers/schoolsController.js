@@ -55,17 +55,39 @@ const create = async (req, res) => {
 
 const update = async (req, res) => {
   try {
-    const { name, owner_name, email, phone, city, address, dance_style, is_active, profile_json } = req.body;
+    const {
+      name, owner_name, email, phone, city, address, dance_style, is_active, profile_json,
+      // Free-form public-contact fields (Team page → Public Contact).
+      // Passed independently of owner_name/email/phone above. An explicit
+      // empty string clears the value (NULLIF) so admins can blank them
+      // out; an undefined leaves the existing value untouched.
+      public_contact_name, public_contact_email, public_contact_phone,
+    } = req.body;
     const pj = profile_json !== undefined ? JSON.stringify(profile_json) : null;
+    // Helper: pick the new value if defined (incl. empty string → NULL),
+    // otherwise pass null so COALESCE keeps the existing column value.
+    const newOrKeep = (v) => v === undefined ? null : (v === '' ? null : v);
+    const pcName  = public_contact_name  !== undefined ? newOrKeep(public_contact_name)  : undefined;
+    const pcEmail = public_contact_email !== undefined ? newOrKeep(public_contact_email) : undefined;
+    const pcPhone = public_contact_phone !== undefined ? newOrKeep(public_contact_phone) : undefined;
     await pool.query(
       `UPDATE schools SET
         name=COALESCE(?,name), owner_name=COALESCE(?,owner_name),
         email=COALESCE(?,email), phone=COALESCE(?,phone), city=COALESCE(?,city),
         address=COALESCE(?,address), dance_style=COALESCE(?,dance_style),
         is_active=COALESCE(?,is_active),
-        profile_json=IF(? IS NOT NULL, ?, profile_json)
+        profile_json=IF(? IS NOT NULL, ?, profile_json),
+        public_contact_name  = IF(? = 1, ?, public_contact_name),
+        public_contact_email = IF(? = 1, ?, public_contact_email),
+        public_contact_phone = IF(? = 1, ?, public_contact_phone)
        WHERE id=?`,
-      [name,owner_name,email,phone,city,address,dance_style,is_active,pj,pj,req.params.schoolId]
+      [
+        name, owner_name, email, phone, city, address, dance_style, is_active, pj, pj,
+        public_contact_name  !== undefined ? 1 : 0, pcName,
+        public_contact_email !== undefined ? 1 : 0, pcEmail,
+        public_contact_phone !== undefined ? 1 : 0, pcPhone,
+        req.params.schoolId,
+      ]
     );
     const [updated] = await pool.query('SELECT * FROM schools WHERE id=?', [req.params.schoolId]);
     res.json({ school: updated[0] });

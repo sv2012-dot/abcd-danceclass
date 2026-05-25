@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/context/AuthContext';
-import { team } from '@/lib/api';
+import { team, schools as schoolsApi } from '@/lib/api';
 
 type Member = {
   id: number;
@@ -73,6 +73,58 @@ export default function TeamPage() {
   const [xferOpen, setXferOpen] = useState(false);
   const [xferTarget, setXferTarget] = useState<Member | null>(null);
   const [xferConfirm, setXferConfirm] = useState('');
+
+  // ── Public Contact (separate from team / owner data) ───────────────
+  // Free-form fields the admin maintains explicitly for public recital
+  // pages. Loaded from /schools/{id} on mount, saved via the same
+  // endpoint. Nothing renders publicly until the admin fills these in.
+  const schoolId = (user as any)?.school_id;
+  const [pcName,  setPcName]  = useState<string>('');
+  const [pcEmail, setPcEmail] = useState<string>('');
+  const [pcPhone, setPcPhone] = useState<string>('');
+  const [pcDirty, setPcDirty] = useState(false);
+  const [pcSaving, setPcSaving] = useState(false);
+  // Loaded baseline so Cancel can revert. null until first load.
+  const [pcLoaded, setPcLoaded] = useState<{ name: string; email: string; phone: string } | null>(null);
+
+  useEffect(() => {
+    if (!schoolId) return;
+    (async () => {
+      try {
+        const r: any = await schoolsApi.get(String(schoolId));
+        const s = r?.school || r || {};
+        const n = s.public_contact_name  || '';
+        const e = s.public_contact_email || '';
+        const p = s.public_contact_phone || '';
+        setPcName(n); setPcEmail(e); setPcPhone(p);
+        setPcLoaded({ name: n, email: e, phone: p });
+      } catch (_) { /* silent — section just stays empty */ }
+    })();
+  }, [schoolId]);
+
+  const pcCancel = () => {
+    if (!pcLoaded) return;
+    setPcName(pcLoaded.name); setPcEmail(pcLoaded.email); setPcPhone(pcLoaded.phone);
+    setPcDirty(false);
+  };
+  const pcSave = async () => {
+    if (!schoolId) return;
+    setPcSaving(true);
+    try {
+      await schoolsApi.update(String(schoolId), {
+        public_contact_name:  pcName.trim(),
+        public_contact_email: pcEmail.trim(),
+        public_contact_phone: pcPhone.trim(),
+      });
+      setPcLoaded({ name: pcName.trim(), email: pcEmail.trim(), phone: pcPhone.trim() });
+      setPcDirty(false);
+      toast.success('Public contact updated');
+    } catch (err: any) {
+      toast.error(err?.error || 'Could not save public contact');
+    } finally {
+      setPcSaving(false);
+    }
+  };
 
   const meId = user?.id != null ? Number(user.id) : null;
   const isMeOwner = (meId != null && members.find(m => m.id === meId)?.is_owner === 1) || false;
@@ -174,6 +226,73 @@ export default function TeamPage() {
           Invite admins and teachers to help run your studio. Everyone signs in with a magic link &mdash; no passwords to share.
         </p>
       </div>
+
+      {/* Public Contact — surfaces on the public cancelled and
+          completed recital pages. Free-form; nothing is shared until
+          the admin fills these in. Decoupled from team / owner data
+          on purpose. */}
+      <section style={{ background: 'var(--card)', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>Public Contact</h2>
+        <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 14px', lineHeight: 1.55 }}>
+          Who should families reach out to when an event was cancelled or has wrapped? These details show on public recital links — leave blank to share only the school name.
+        </p>
+        <div style={{
+          background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)',
+          borderRadius: 9, padding: '10px 12px', marginBottom: 14, fontSize: 12, color: '#d97706', lineHeight: 1.55,
+        }}>
+          ⚠️ Only put info you're comfortable sharing publicly. A studio shared email / phone is safer than a personal one.
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>Name</label>
+            <input
+              type="text"
+              value={pcName}
+              onChange={(e) => { setPcName(e.target.value); setPcDirty(true); }}
+              placeholder="e.g. Swapna Varma"
+              style={{ width: '100%', background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>Email</label>
+            <input
+              type="email"
+              value={pcEmail}
+              onChange={(e) => { setPcEmail(e.target.value); setPcDirty(true); }}
+              placeholder="e.g. hello@studio.com"
+              style={{ width: '100%', background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>Phone</label>
+            <input
+              type="tel"
+              value={pcPhone}
+              onChange={(e) => { setPcPhone(e.target.value); setPcDirty(true); }}
+              placeholder="e.g. (206) 555-0142"
+              style={{ width: '100%', background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+        </div>
+        {pcDirty && (
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 14 }}>
+            <button
+              onClick={pcCancel}
+              disabled={pcSaving}
+              style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 14px', fontWeight: 600, fontSize: 13, color: 'var(--muted)', cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={pcSave}
+              disabled={pcSaving}
+              style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+            >
+              {pcSaving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        )}
+      </section>
 
       {/* Invite form */}
       <section style={{ background: 'var(--card)', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>

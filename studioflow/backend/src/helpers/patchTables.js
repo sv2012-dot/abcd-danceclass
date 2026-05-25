@@ -140,6 +140,14 @@ async function patchTables() {
     await addColumnIfMissing('recitals',  'participant_count', 'INT NULL');
     await addColumnIfMissing('studios',   'is_quick_add',      'TINYINT(1) NOT NULL DEFAULT 0');
     await addColumnIfMissing('schools',   'deleted_at',        'DATETIME NULL DEFAULT NULL');
+    // ── Public contact (Team page → "Public Contact" block) ─────────────
+    // Free-form contact fields the school admin maintains separately
+    // from team/owner/about data. ONLY these surface on public recital
+    // pages (cancelled and completed states). Nulls hide the row, so
+    // nothing leaks until manually filled.
+    await addColumnIfMissing('schools',   'public_contact_name',  'VARCHAR(140) NULL');
+    await addColumnIfMissing('schools',   'public_contact_email', 'VARCHAR(180) NULL');
+    await addColumnIfMissing('schools',   'public_contact_phone', 'VARCHAR(40)  NULL');
 
     // ── Billing / Stripe ────────────────────────────────────────────────
     // Single paid tier ($5.99/mo). New schools start with a 30-day trial

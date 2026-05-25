@@ -9,11 +9,12 @@ function slugify(str) {
 exports.getRecital = async (req, res) => {
   try {
     const { schoolSlug, recitalSlug } = req.params;
-    // Pull contact fields (owner_name, email, phone) so the public
-    // page can show them in the Contact block on both cancelled and
-    // completed states. Frontend hides any row whose value is null.
+    // Pull the dedicated public_contact_* fields (set via Team page
+    // → Public Contact block). NOT owner_name/email/phone — those are
+    // internal-only. The frontend renders only the rows whose value
+    // is non-null, so nothing leaks until the admin fills them in.
     const [schools] = await pool.query(
-      'SELECT id, name, city, slug, owner_name, email, phone FROM schools WHERE slug = ? AND deleted_at IS NULL LIMIT 1',
+      'SELECT id, name, city, slug, public_contact_name, public_contact_email, public_contact_phone FROM schools WHERE slug = ? AND deleted_at IS NULL LIMIT 1',
       [schoolSlug]
     );
     if (!schools[0]) return res.status(404).json({ error: 'School not found' });
@@ -31,7 +32,7 @@ exports.getRecital = async (req, res) => {
     // shows a generic message + the school name from the URL.
     if (!recitals[0]) {
       return res.json({
-        school: { name: school.name, city: school.city, slug: school.slug, contact_name: school.owner_name || null, email: school.email || null, phone: school.phone || null },
+        school: { name: school.name, city: school.city, slug: school.slug, contact_name: school.public_contact_name || null, email: school.public_contact_email || null, phone: school.public_contact_phone || null },
         recital: null,
         cancelled: true,
       });
@@ -47,7 +48,7 @@ exports.getRecital = async (req, res) => {
     );
 
     res.json({
-      school: { name: school.name, city: school.city, slug: school.slug, contact_name: school.owner_name || null, email: school.email || null, phone: school.phone || null },
+      school: { name: school.name, city: school.city, slug: school.slug, contact_name: school.public_contact_name || null, email: school.public_contact_email || null, phone: school.public_contact_phone || null },
       recital: { ...recital, rsvp_stats: { total: Number(stats.total), confirmed: Number(stats.confirmed) } },
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
