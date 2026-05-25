@@ -101,7 +101,7 @@ const NAV_ITEMS: Record<string, any[]> = {
   ],
   school_admin: [
     { to: '/home', label: 'Dashboard', icon: 'dashboard' },
-    { to: '/schedule', label: 'My Events', icon: 'schedule' },
+    { to: '/schedule', label: 'Schedule', icon: 'schedule' },
     { to: '/todos', label: 'To-Dos', icon: 'todos' },
     // Batches + Students share an entry with in-page tabs — label is
     // now "Students" (was "Classes"); destination /batches unchanged
@@ -114,7 +114,7 @@ const NAV_ITEMS: Record<string, any[]> = {
   ],
   teacher: [
     { to: '/home', label: 'Dashboard', icon: 'dashboard' },
-    { to: '/schedule', label: 'My Events', icon: 'schedule' },
+    { to: '/schedule', label: 'Schedule', icon: 'schedule' },
     { to: '/todos', label: 'To-Dos', icon: 'todos' },
     { to: '/batches', label: 'Students', icon: 'batches', matchPaths: ['/batches', '/students'] },
     { to: '/studios', label: 'Resources', icon: 'studios', matchPaths: ['/studios', '/vendors'] },

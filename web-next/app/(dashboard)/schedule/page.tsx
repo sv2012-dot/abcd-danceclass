@@ -185,6 +185,23 @@ export default function SchedulePage() {
       if (!isNaN(d as any)) { setCursor(d); setSelectedDay(d); }
       router.replace('/schedule');
     }
+
+    // ?filter=Recital&date=YYYY-MM-DD — deep-link from the home page
+    // Upcoming Recitals "View All" link. Pre-selects the chip + sets
+    // cursor + selected day so the first recital is highlighted.
+    const filterParam = searchParams.get('filter');
+    const dateParam   = searchParams.get('date');
+    if (filterParam || dateParam) {
+      if (filterParam) {
+        setFilterChips(new Set([`type:${filterParam}`]));
+      }
+      if (dateParam) {
+        const [yr, mo, dy] = dateParam.split('-').map(Number);
+        const d = new Date(yr, mo - 1, dy);
+        if (!isNaN(d as any)) { setCursor(d); setSelectedDay(d); }
+      }
+      router.replace('/schedule');
+    }
   }, [searchParams]); // eslint-disable-line
 
 
@@ -1040,66 +1057,8 @@ export default function SchedulePage() {
           return true;
         });
     const dateLabel = d.toLocaleDateString([], {weekday:"long",month:"long",day:"numeric"});
-    // Build the available filter chip set — event types that appear
-    // anywhere this month + all batches the school has. "All" first.
-    const typesInUse = Array.from(new Set(events.map(e => e.type).filter(t => t && t !== 'Recital')));
     return (
       <div>
-        {/* ── Filter chip strip (Option A) — horizontally scrollable row.
-            Tap to toggle filters; "All" clears everything. Multi-select:
-            chips combine with AND so the user can scope to e.g. Class +
-            Junior Ballet at once. Batch names are truncated with ellipsis
-            to fit roughly half the screen width. */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 6,
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            padding: '0 4px 12px',
-            margin: '0 -4px',
-            scrollbarWidth: 'none' as any,
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setFilterChips(new Set())}
-            style={chipStyle(filterChips.size === 0)}
-          >
-            All
-          </button>
-          {typesInUse.map(t => {
-            const key = `type:${t}`;
-            const active = filterChips.has(key);
-            return (
-              <button key={key} type="button" onClick={() => toggleChip(key)} style={chipStyle(active, TYPE_COLORS[t])}>
-                {t}
-              </button>
-            );
-          })}
-          {(batches || []).map((b: any) => {
-            const key = `batch:${b.id}`;
-            const active = filterChips.has(key);
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => toggleChip(key)}
-                title={b.name}
-                style={{
-                  ...chipStyle(active),
-                  maxWidth: '50vw',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  display: 'inline-block',
-                }}
-              >
-                {b.name}
-              </button>
-            );
-          })}
-        </div>
         <div style={{fontSize:12,fontWeight:700,color:"var(--muted)",marginBottom:0,textTransform:"uppercase",letterSpacing:"0.06em",padding:"0 4px 12px"}}>{dateLabel}{filterChips.size > 0 && ` · ${dayEvents.length} of ${dayEventsRaw.length}`}</div>
         {dayEvents.length === 0 ? (
           <div style={{textAlign:"center",padding:"32px 0",color:"var(--muted)",fontSize:13}}>{filterChips.size > 0 ? "No events match the current filters" : "No events scheduled"}</div>
@@ -1176,6 +1135,75 @@ export default function SchedulePage() {
       {isMobile ? (
         /* ── MOBILE LAYOUT ──────────────────────────────────────────────── */
         <div>
+          {/* Filter chip strip — sits ABOVE the month selector on
+              mobile. "All" first (default), then a Recital chip, then
+              event-type chips, then a pipe separator, then batch chips
+              truncated to ~9 chars (≈ "Rehearsal" width). Multi-select:
+              chips combine with AND. */}
+          {(() => {
+            const typesInUse = ['Recital','Class','Rehearsal','Workshop','Other']
+              .filter(t => events.some(e => e.type === t) || t === 'Recital' || t === 'Class');
+            const showPipe = (batches || []).length > 0;
+            return (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  overflowX: 'auto',
+                  WebkitOverflowScrolling: 'touch',
+                  padding: '0 4px 12px',
+                  margin: '0 -4px',
+                  scrollbarWidth: 'none' as any,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setFilterChips(new Set())}
+                  style={chipStyle(filterChips.size === 0)}
+                >
+                  All
+                </button>
+                {typesInUse.map(t => {
+                  const key = `type:${t}`;
+                  const active = filterChips.has(key);
+                  return (
+                    <button key={key} type="button" onClick={() => toggleChip(key)} style={chipStyle(active, TYPE_COLORS[t])}>
+                      {t}
+                    </button>
+                  );
+                })}
+                {showPipe && (
+                  <span aria-hidden style={{ display:'inline-block', width:1, height:18, background:'var(--border)', flexShrink:0, margin:'0 4px' }} />
+                )}
+                {(batches || []).map((b: any) => {
+                  const key = `batch:${b.id}`;
+                  const active = filterChips.has(key);
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => toggleChip(key)}
+                      title={b.name}
+                      style={{
+                        ...chipStyle(active),
+                        // Truncate to ~9 chars (the length of "Rehearsal",
+                        // the widest type label) so batch chips visually
+                        // align with the type-chip column width.
+                        maxWidth: '9ch',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {b.name}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
           {/* Mobile header: prev / MONTH YEAR / next.
               Typography matches the SectionTitle pattern from the home
               dashboard ("UPCOMING RECITALS") — month in solid var(--text),

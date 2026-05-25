@@ -897,7 +897,18 @@ function SchoolHomePage() {
                   : thisWeekEvents.slice(0,5).map(e => <ThisWeekRow key={e.id} e={e} onNavigate={()=>router.push(`/schedule?openEventId=${e.id}&eventDate=${encodeURIComponent(e.start_datetime || '')}&from=dashboard`)} />)
                 }
               </div>
-              <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>router.push('/schedule')} />
+              <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>{
+                const firstRecital = upcoming[0];
+                if (firstRecital?.event_date) {
+                  // Pass the recital filter + date so /schedule opens
+                  // on the month of the first upcoming recital with
+                  // the Recital chip pre-selected and that day picked.
+                  const d = String(firstRecital.event_date).slice(0, 10);
+                  router.push(`/schedule?filter=Recital&date=${d}`);
+                } else {
+                  router.push('/schedule');
+                }
+              }} />
               {upcoming.length === 0
                 ? <div style={{ padding:'28px 20px', color:C.grayChate, fontSize:13, textAlign:'center', background:C.white, borderRadius:16, border:`1.5px solid ${C.border}` }}>No upcoming recitals</div>
                 : <div style={{ display:'grid', gridTemplateColumns: isDesktop ? 'repeat(3,minmax(0,1fr))' : 'repeat(2,minmax(0,1fr))', gap:12 }}>
@@ -945,7 +956,18 @@ function SchoolHomePage() {
 
         {/* Upcoming Recitals — row 1: 2-col grid tiles, row 2: featured full-width */}
         <div style={{ minWidth:0, overflow:'hidden' }}>
-          <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>router.push('/schedule')} />
+          <SectionTitle first="UPCOMING" accent="RECITALS" onViewAll={()=>{
+                const firstRecital = upcoming[0];
+                if (firstRecital?.event_date) {
+                  // Pass the recital filter + date so /schedule opens
+                  // on the month of the first upcoming recital with
+                  // the Recital chip pre-selected and that day picked.
+                  const d = String(firstRecital.event_date).slice(0, 10);
+                  router.push(`/schedule?filter=Recital&date=${d}`);
+                } else {
+                  router.push('/schedule');
+                }
+              }} />
           {upcoming.length === 0
             ? <div style={{padding:"28px 20px",color:C.grayChate,fontSize:13,textAlign:"center",background:C.white,borderRadius:16,border:`1.5px solid ${C.border}`}}>No upcoming recitals</div>
             : <div style={{ minWidth:0 }}>

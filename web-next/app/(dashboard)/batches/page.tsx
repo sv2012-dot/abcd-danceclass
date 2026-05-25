@@ -263,17 +263,92 @@ function ScheduleInlineEditor({ schoolId, batchId, schedules, sortedSchedules, a
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
                   <button onClick={() => removeSlot(idx)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 14, padding: '2px 6px', borderRadius: 6 }}>✕ Remove</button>
                 </div>
-                <div style={{ marginBottom: 14 }}>
-                  <DayOfWeekField value={block.daysOfWeek} onChange={(v) => updateSlot(idx, { daysOfWeek: v })} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(140px, 1fr) 2fr', gap: 12, marginBottom: 12 }}>
-                  <Field label="Start time" style={{ marginBottom: 0 }}>
-                    <TimeField value={block.start_time} onChange={(v) => updateSlot(idx, { start_time: v })} />
-                  </Field>
-                  <Field label="Duration" style={{ marginBottom: 0 }}>
-                    <DurationField label={null} value={block.duration} onChange={(d) => updateSlot(idx, { duration: d })} startTime={block.start_time} />
-                  </Field>
-                </div>
+                {/* Day dropdown — single-select per time slot. For
+                    batches that meet on multiple days, add a separate
+                    time slot per day via "+ Add Time Slot". Replaces
+                    the prior 7-pill multi-select. */}
+                <Field label="Meets on">
+                  <Select
+                    value={(block.daysOfWeek && block.daysOfWeek.length > 0) ? String(block.daysOfWeek[0]) : ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      updateSlot(idx, { daysOfWeek: v === '' ? [] : [Number(v)] });
+                    }}
+                  >
+                    <option value="">Select a day</option>
+                    <option value="0">Sunday</option>
+                    <option value="1">Monday</option>
+                    <option value="2">Tuesday</option>
+                    <option value="3">Wednesday</option>
+                    <option value="4">Thursday</option>
+                    <option value="5">Friday</option>
+                    <option value="6">Saturday</option>
+                  </Select>
+                </Field>
+
+                {/* Time + Duration row — 4 dropdowns inline (Hour /
+                    Min / AM-PM / Duration), matching the home Create
+                    New Event form pattern. "Time *" lives as the
+                    floating label on the first (hour) Select. Mins
+                    snap to 00/15/30/45. Stored values: block.start_time
+                    stays HH:MM (24-hour), duration stays minutes. */}
+                {(() => {
+                  // Decompose existing start_time (HH:MM) into 12h
+                  // representation for the hour/min/am-pm dropdowns.
+                  const [hStr, mStr] = (block.start_time || '17:00').split(':');
+                  const h24 = Number(hStr);
+                  const m   = Number(mStr) || 0;
+                  const ampm: 'AM' | 'PM' = h24 >= 12 ? 'PM' : 'AM';
+                  const hour12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : (h24 || 12);
+                  const minsSnapped = [0, 15, 30, 45].includes(m) ? m : 0;
+                  const composeTime = (h12: number, ap: 'AM' | 'PM', mins: number) => {
+                    const h24n = ap === 'PM' ? (h12 === 12 ? 12 : h12 + 12) : (h12 === 12 ? 0 : h12);
+                    return `${String(h24n).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+                  };
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: '0.9fr 0.9fr 1.1fr 1.3fr', gap: 6, marginBottom: 12 }}>
+                      <Field label="Time *" style={{ marginBottom: 0 }}>
+                        <Select
+                          value={String(hour12)}
+                          onChange={(e) => updateSlot(idx, { start_time: composeTime(Number(e.target.value), ampm, minsSnapped) })}
+                          style={{ paddingLeft: 10, paddingRight: 24, backgroundPosition: 'right 8px center' }}
+                        >
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+                            <option key={h} value={String(h)}>{h}</option>
+                          ))}
+                        </Select>
+                      </Field>
+                      <Select
+                        value={String(minsSnapped)}
+                        onChange={(e) => updateSlot(idx, { start_time: composeTime(hour12, ampm, Number(e.target.value)) })}
+                        style={{ paddingLeft: 10, paddingRight: 24, backgroundPosition: 'right 8px center', alignSelf: 'start' }}
+                      >
+                        <option value="0">00</option>
+                        <option value="15">15</option>
+                        <option value="30">30</option>
+                        <option value="45">45</option>
+                      </Select>
+                      <Select
+                        value={ampm}
+                        onChange={(e) => updateSlot(idx, { start_time: composeTime(hour12, e.target.value as 'AM' | 'PM', minsSnapped) })}
+                        style={{ paddingLeft: 10, paddingRight: 24, backgroundPosition: 'right 8px center', alignSelf: 'start' }}
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </Select>
+                      <Select
+                        value={String(block.duration)}
+                        onChange={(e) => updateSlot(idx, { duration: Number(e.target.value) })}
+                        style={{ paddingLeft: 10, paddingRight: 24, backgroundPosition: 'right 8px center', alignSelf: 'start' }}
+                      >
+                        <option value="30">30 m</option>
+                        <option value="60">1 hr</option>
+                        <option value="120">2 hrs</option>
+                        <option value="180">3 hrs+</option>
+                      </Select>
+                    </div>
+                  );
+                })()}
                 <Field label="Studio / Location" style={{ marginBottom: 0 }}>
                   <Input value={block.room} onChange={(e) => updateSlot(idx, { room: e.target.value })} placeholder="e.g. Studio A" />
                 </Field>
