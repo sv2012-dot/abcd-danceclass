@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { recitals } from '@/lib/api';
 
 type ClientProps = {
@@ -390,26 +390,14 @@ export function RecitalClient({ schoolSlug, recitalSlug, initialData, autoScroll
 
   // Cancelled state: school exists but recital row is gone (the
   // school admin deleted it). Backend returns
-  // { school, recital: null, cancelled: true } so we can show a
-  // friendly message with the school name instead of a generic
-  // 404. The school name comes from the URL slug → school lookup.
+  // { school, recital: null, cancelled: true } with contact_name /
+  // email / phone pulled from the schools row. Renders the
+  // "editorial + contact" mock layout — serif headline, gradient
+  // rule, contact rows that hide individually when null, and an
+  // "Explore ManchQ" link in lieu of a school CTA.
   if (data && (data as any).cancelled) {
-    const schoolName = (data as any).school?.name || 'the studio';
-    return (
-      <div style={{ minHeight: '100vh', background: OUTER, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'system-ui,sans-serif' }}>
-        <div style={{ textAlign: 'center', maxWidth: 380 }}>
-          <div style={{ color: 'rgba(255,255,255,0.25)', marginBottom: 18 }}><TheatreIcon size={56} /></div>
-          <h2 style={{ color: '#fff', marginBottom: 10, fontSize: 22, fontWeight: 800 }}>
-            Looks like this event was cancelled
-          </h2>
-          <p style={{ color: '#9b8aab', fontSize: 14, lineHeight: 1.7, marginBottom: 26 }}>
-            This recital page is no longer active. If you have questions, please reach out to{' '}
-            <strong style={{ color: '#fff' }}>{schoolName}</strong> directly.
-          </p>
-          <a href="/" style={{ color: MAGENTA, fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>← Back to ManchQ</a>
-        </div>
-      </div>
-    );
+    const sch = (data as any).school || {};
+    return <CancelledView school={sch} />;
   }
 
   if (error || !data || !(data as any).recital) {
@@ -428,6 +416,25 @@ export function RecitalClient({ schoolSlug, recitalSlug, initialData, autoScroll
   }
 
   const { school, recital } = data;
+
+  // Completed state: recital exists but the event date is in the
+  // past. Renders the "wrapped 🎉" mock layout — keeps the poster
+  // hero with a "Past event" stamp, replaces the RSVP/details
+  // section with a thank-you headline + shared contact block.
+  // Detection uses date-only comparison in the user's local TZ to
+  // avoid edge cases at midnight in other zones.
+  const eventDateStr = (recital?.event_date && String(recital.event_date).slice(0, 10)) || null;
+  const isPastEvent = (() => {
+    if (!eventDateStr) return false;
+    const ed = new Date(eventDateStr + 'T00:00:00');
+    if (isNaN(ed.getTime())) return false;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return ed.getTime() < today.getTime();
+  })();
+  if (isPastEvent) {
+    return <CompletedView school={school} recital={recital} />;
+  }
+
   const hasPoster = recital.poster_url && recital.poster_url.length > 20;
   const fmtDateSh = formatDateShort(recital.event_date);
   const fmtTime = formatTime(recital.event_time);
@@ -560,6 +567,153 @@ export function RecitalClient({ schoolSlug, recitalSlug, initialData, autoScroll
           </span>
         </footer>
 
+      </div>
+    </div>
+  );
+}
+
+// ── Shared icons + contact block + footer link for past-state views ───────
+const PersonIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+  </svg>
+);
+const MailIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
+  </svg>
+);
+const PhoneIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+  </svg>
+);
+
+// Contact rows — render only the rows whose field is set on the
+// school's About page (contact_name = owner_name, email, phone).
+// Returns null if NO contact info is set, so the parent can skip
+// the whole block.
+function ContactBlock({ school }: { school: any }) {
+  const rows: { Icon: () => React.ReactElement; value: string }[] = [];
+  if (school?.contact_name) rows.push({ Icon: PersonIcon, value: school.contact_name });
+  if (school?.email) rows.push({ Icon: MailIcon, value: school.email });
+  if (school?.phone) rows.push({ Icon: PhoneIcon, value: school.phone });
+  if (rows.length === 0) return null;
+  return (
+    <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.08)', width: '100%' }}>
+      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#9b8aab', marginBottom: 10 }}>Contact</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {rows.map((r, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#f3f3f7' }}>
+            <span style={{ color: PURPLE, width: 14, display: 'flex', flexShrink: 0 }}><r.Icon /></span>
+            {r.value}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ExploreLink() {
+  return (
+    <a
+      href="/"
+      style={{
+        marginTop: 18, display: 'inline-flex', alignSelf: 'flex-start',
+        fontSize: 12, color: MAGENTA, textDecoration: 'none', fontWeight: 600,
+      }}
+    >
+      Explore ManchQ
+    </a>
+  );
+}
+
+// ── Cancelled view (editorial layout + contact block) ─────────────────────
+function CancelledView({ school }: { school: any }) {
+  const name = school?.name || 'the studio';
+  return (
+    <div style={{ minHeight: '100vh', background: OUTER, display: 'flex', justifyContent: 'center', fontFamily: 'system-ui,sans-serif' }}>
+      <div style={{ width: '100%', maxWidth: 430, background: BG, minHeight: '100vh', padding: '64px 28px 40px', display: 'flex', flexDirection: 'column', color: '#fff' }}>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase', color: MAGENTA, marginBottom: 18 }}>
+          Programme update
+        </div>
+        <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 30, fontWeight: 400, lineHeight: 1.18, letterSpacing: '-0.5px', marginBottom: 18 }}>
+          This event has been cancelled.
+        </h1>
+        <div style={{ width: 32, height: 2, background: GRAD, marginBottom: 18 }} />
+        <p style={{ fontSize: 14, color: '#9b8aab', lineHeight: 1.7, marginBottom: 28 }}>
+          The recital page you opened is no longer active. For any questions about this performance, please reach out to{' '}
+          <strong style={{ color: '#fff', fontWeight: 600 }}>{name}</strong> directly.
+        </p>
+        <div style={{ marginTop: 'auto' }}>
+          <ContactBlock school={school} />
+          <ExploreLink />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Completed view (poster hero + "wrapped 🎉" + contact block) ───────────
+function CompletedView({ school, recital }: { school: any; recital: any }) {
+  const hasPoster = recital?.poster_url && String(recital.poster_url).length > 20;
+  const fmtDateLong = formatDate(recital?.event_date);
+  const fmtT = formatTime(recital?.event_time);
+  const whenLine = [fmtDateLong, fmtT, recital?.venue].filter(Boolean).join(' · ');
+  return (
+    <div style={{ minHeight: '100vh', background: OUTER, display: 'flex', justifyContent: 'center', fontFamily: 'system-ui,sans-serif' }}>
+      <div style={{ width: '100%', maxWidth: 430, background: BG, color: '#fff', minHeight: '100vh', display: 'flex', flexDirection: 'column', boxShadow: '0 0 60px rgba(124,58,237,0.1), 0 0 0 1px rgba(255,255,255,0.04)' }}>
+
+        {/* Poster hero — same 3:4 frame as the active page so the
+            link still feels like a keepsake. "Past event ✓" stamp
+            top-right and the title + when line painted over the
+            bottom gradient. */}
+        <div style={{ position: 'relative', background: hasPoster ? '#000' : 'linear-gradient(135deg,#1a1035 0%,#2d1b69 100%)', flexShrink: 0 }}>
+          {hasPoster ? (
+            <div style={{ width: '100%', paddingTop: '133.33%', position: 'relative' }}>
+              <img src={recital.poster_url} alt={recital.title} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
+            </div>
+          ) : (
+            <div style={{ minHeight: 280 }} />
+          )}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(13,10,26,.95) 0%, rgba(0,0,0,.25) 55%, transparent 100%)' }} />
+
+          <div style={{
+            position: 'absolute', top: 16, right: 16,
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '6px 12px', borderRadius: 999,
+            background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,.18)',
+            fontSize: 10, fontWeight: 800, letterSpacing: '.06em', color: '#fff', textTransform: 'uppercase',
+          }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            Past event
+          </div>
+
+          <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '20px', color: '#fff' }}>
+            <div style={{ fontSize: 10, letterSpacing: '.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,.7)', marginBottom: 6 }}>
+              Performance
+            </div>
+            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, fontWeight: 400, lineHeight: 1.15, marginBottom: 6 }}>{recital?.title}</h1>
+            {whenLine && (
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,.75)' }}>{whenLine}</div>
+            )}
+          </div>
+        </div>
+
+        {/* Body — serif "wrapped 🎉" headline, thanks, contact, explore. */}
+        <div style={{ padding: '28px 24px 28px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 28, fontWeight: 400, lineHeight: 1.18, letterSpacing: '-0.4px', color: '#fff', marginBottom: 14 }}>
+            This recital has <span style={{ background: GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>wrapped</span>
+            <span style={{ fontSize: 24, marginLeft: 6, verticalAlign: 'middle' }} role="img" aria-label="celebrate">🎉</span>
+          </h2>
+          <div style={{ width: 32, height: 2, background: GRAD, marginBottom: 20 }} />
+          <p style={{ fontSize: 14, color: '#9b8aab', lineHeight: 1.75, marginBottom: 6 }}>
+            Thank you to every family who came out for our {recital?.title}. The energy in the room was unforgettable.
+          </p>
+          <ContactBlock school={school} />
+          <ExploreLink />
+        </div>
       </div>
     </div>
   );
