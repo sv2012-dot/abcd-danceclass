@@ -174,23 +174,18 @@ function ScheduleInlineEditor({ schoolId, batchId, schedules, sortedSchedules, a
   const [blocks, setBlocks]   = React.useState([]);
   const [saving, setSaving]   = React.useState(false);
 
-  // Group schedule rows into blocks (same shape the form uses): one
-  // block per unique (start_time, end_time, room) tuple, with daysOfWeek
-  // collected across rows. Matches groupSchedulesIntoBlocks above.
+  // Build blocks as ONE row per schedule entry (no grouping). Each
+  // block has a single dayOfWeek so the edit UI maps cleanly to
+  // "tap a day pill, get a row for that day". The save logic still
+  // expands daysOfWeek (length always 1 here) to per-day schedule
+  // rows, so the existing pipeline is unchanged.
   const buildBlocks = React.useCallback(() => {
-    const map = new Map();
-    for (const s of schedules) {
-      const start = s.start_time?.slice(0, 5) || '09:00';
-      const end   = s.end_time?.slice(0, 5)   || '10:00';
-      const room  = s.room || '';
-      const key = `${start}|${end}|${room}`;
-      if (!map.has(key)) {
-        map.set(key, { daysOfWeek: [], start_time: start, duration: diffMinutes(start, end) || 60, room });
-      }
-      const idx = dowCodeToIndex(s.day_of_week);
-      if (idx >= 0) map.get(key).daysOfWeek.push(idx);
-    }
-    return Array.from(map.values()).map((b) => ({ ...b, daysOfWeek: b.daysOfWeek.sort((a, b) => a - b) }));
+    return schedules.map((s) => ({
+      daysOfWeek: [dowCodeToIndex(s.day_of_week)].filter((i) => i >= 0),
+      start_time: s.start_time?.slice(0, 5) || '09:00',
+      duration: diffMinutes(s.start_time, s.end_time) || 60,
+      room: s.room || '',
+    }));
   }, [schedules]);
 
   const startEdit = () => {
@@ -201,7 +196,12 @@ function ScheduleInlineEditor({ schoolId, batchId, schedules, sortedSchedules, a
     setEditing(false);
     setBlocks([]);
   };
-  const addSlot = () => setBlocks((bs) => [...bs, { daysOfWeek: [1], start_time: '17:00', duration: 60, room: '' }]);
+  // Tap a day pill → appends a row for that day. Multiple taps on
+  // the same day create multiple rows (e.g., a class that meets
+  // twice on Mondays at different times).
+  const addDayRow = (dowIdx) => {
+    setBlocks((bs) => [...bs, { daysOfWeek: [dowIdx], start_time: '17:00', duration: 60, room: '' }]);
+  };
   const removeSlot = (idx) => setBlocks((bs) => bs.filter((_, i) => i !== idx));
   const updateSlot = (idx, patch) => setBlocks((bs) => {
     const u = [...bs]; u[idx] = { ...u[idx], ...patch }; return u;
@@ -249,42 +249,54 @@ function ScheduleInlineEditor({ schoolId, batchId, schedules, sortedSchedules, a
   };
 
   if (editing) {
+    // Day-of-week pill labels (Sun..Sat). Index 0..6 matches the
+    // app's dowCodeToIndex convention (0 = Sunday).
+    const DAY_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     return (
       <div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-          <Button size="sm" variant="ghost" onClick={addSlot}>+ Add Time Slot</Button>
+        {/* Clickable day pills — tap to ADD a row for that day. Same
+            visual treatment as the view-mode day pills above, but
+            interactive. */}
+        <div style={{ display: 'flex', gap: 3, marginBottom: 14, flexWrap: 'wrap' }}>
+          {DAY_LABELS.map((label, dowIdx) => (
+            <button
+              key={dowIdx}
+              type="button"
+              onClick={() => addDayRow(dowIdx)}
+              title={`Add a time slot on ${label}`}
+              style={{
+                width: 38, height: 30, borderRadius: 6, fontSize: 11, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'var(--surface)',
+                color: 'var(--muted)',
+                border: '1px solid var(--border)',
+                cursor: 'pointer',
+                transition: 'all .12s',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = activeColor; (e.currentTarget as HTMLElement).style.color = activeColor; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--muted)'; }}
+            >
+              {label[0]}
+            </button>
+          ))}
         </div>
         {blocks.length === 0 ? (
-          <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>No time slots. Tap "+ Add Time Slot" above.</p>
+          <p style={{ fontSize: 12, color: 'var(--muted)', margin: '4px 0 0' }}>Tap a day above to add a time slot.</p>
         ) : (
           <div style={{ display: 'grid', gap: 10 }}>
             {blocks.map((block, idx) => (
-              <div key={idx} style={{ padding: '14px 16px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-                  <button onClick={() => removeSlot(idx)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 14, padding: '2px 6px', borderRadius: 6 }}>✕ Remove</button>
+              <div key={idx} style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                {/* Day label + remove button — replaces the prior
+                    in-row day dropdown. The row IS the day (one row
+                    per day per time slot). */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: activeColor, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {(block.daysOfWeek && block.daysOfWeek.length > 0) ? DAY_LABELS[block.daysOfWeek[0]] : 'Day?'}
+                  </span>
+                  <button onClick={() => removeSlot(idx)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 13, padding: '2px 6px', borderRadius: 6 }}>✕ Remove</button>
                 </div>
-                {/* Day dropdown — single-select per time slot. For
-                    batches that meet on multiple days, add a separate
-                    time slot per day via "+ Add Time Slot". Replaces
-                    the prior 7-pill multi-select. */}
-                <Field label="Meets on">
-                  <Select
-                    value={(block.daysOfWeek && block.daysOfWeek.length > 0) ? String(block.daysOfWeek[0]) : ''}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      updateSlot(idx, { daysOfWeek: v === '' ? [] : [Number(v)] });
-                    }}
-                  >
-                    <option value="">Select a day</option>
-                    <option value="0">Sunday</option>
-                    <option value="1">Monday</option>
-                    <option value="2">Tuesday</option>
-                    <option value="3">Wednesday</option>
-                    <option value="4">Thursday</option>
-                    <option value="5">Friday</option>
-                    <option value="6">Saturday</option>
-                  </Select>
-                </Field>
 
                 {/* Time + Duration row — 4 dropdowns inline (Hour /
                     Min / AM-PM / Duration), matching the home Create

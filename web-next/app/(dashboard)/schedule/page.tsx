@@ -776,10 +776,28 @@ export default function SchedulePage() {
     for (let d = 1; d <= totalDays; d++) cells.push(d);
     while (cells.length % 7 !== 0) cells.push(null);
 
+    // Apply the chip filter to the calendar dots so the calendar
+    // reflects the active filter (e.g. only Recital dots when
+    // "Recital" is selected). filterChips is empty on desktop where
+    // no chip UI is shown — so desktop behavior is unaffected.
+    const matchesChips = (ev) => {
+      if (filterChips.size === 0) return true;
+      for (const chip of filterChips) {
+        if (chip.startsWith('type:')) {
+          if (ev.type !== chip.slice(5)) return false;
+        } else if (chip.startsWith('batch:')) {
+          const id = chip.slice(6);
+          const evBatchIds = (ev.batches || []).map((b) => String(b.id));
+          if (ev.batch_id) evBatchIds.push(String(ev.batch_id));
+          if (!evBatchIds.includes(id)) return false;
+        }
+      }
+      return true;
+    };
     const eventsOnDay = (day) => {
       if (!day) return [];
       const dateStr = `${y}-${String(m+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-      return events.filter(e => e.start_datetime?.slice(0,10) === dateStr);
+      return events.filter(e => e.start_datetime?.slice(0,10) === dateStr && matchesChips(e));
     };
 
     const isToday = d => d && y === today.getFullYear() && m === today.getMonth() && d === today.getDate();
@@ -974,10 +992,28 @@ export default function SchedulePage() {
     for (let d = 1; d <= totalDays; d++) cells.push(d);
     while (cells.length % 7 !== 0) cells.push(null);
 
+    // Apply the chip filter to the calendar dots so the calendar
+    // reflects the active filter (e.g. only Recital dots when
+    // "Recital" is selected). filterChips is empty on desktop where
+    // no chip UI is shown — so desktop behavior is unaffected.
+    const matchesChips = (ev) => {
+      if (filterChips.size === 0) return true;
+      for (const chip of filterChips) {
+        if (chip.startsWith('type:')) {
+          if (ev.type !== chip.slice(5)) return false;
+        } else if (chip.startsWith('batch:')) {
+          const id = chip.slice(6);
+          const evBatchIds = (ev.batches || []).map((b) => String(b.id));
+          if (ev.batch_id) evBatchIds.push(String(ev.batch_id));
+          if (!evBatchIds.includes(id)) return false;
+        }
+      }
+      return true;
+    };
     const eventsOnDay = (day) => {
       if (!day) return [];
       const dateStr = `${y}-${String(m+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-      return events.filter(e => e.start_datetime?.slice(0,10) === dateStr);
+      return events.filter(e => e.start_datetime?.slice(0,10) === dateStr && matchesChips(e));
     };
 
     const isTodayCell = d => d && y === today.getFullYear() && m === today.getMonth() && d === today.getDate();
@@ -1141,8 +1177,10 @@ export default function SchedulePage() {
               truncated to ~9 chars (≈ "Rehearsal" width). Multi-select:
               chips combine with AND. */}
           {(() => {
-            const typesInUse = ['Recital','Class','Rehearsal','Workshop','Other']
-              .filter(t => events.some(e => e.type === t) || t === 'Recital' || t === 'Class');
+            // Always show the full type set (Recital, Class, Rehearsal,
+            // Workshop, Other) so the filter is consistent regardless
+            // of what's currently in view.
+            const typesInUse = ['Recital','Class','Rehearsal','Workshop','Other'];
             const showPipe = (batches || []).length > 0;
             return (
               <div
@@ -1179,24 +1217,23 @@ export default function SchedulePage() {
                 {(batches || []).map((b: any) => {
                   const key = `batch:${b.id}`;
                   const active = filterChips.has(key);
+                  // Truncate the TEXT (not the pill) — chip keeps its
+                  // left/right padding intact. Substring at 10 chars
+                  // and append "…" when the original is longer.
+                  const fullName = b.name || '';
+                  const display = fullName.length > 10 ? fullName.slice(0, 10) + '…' : fullName;
                   return (
                     <button
                       key={key}
                       type="button"
                       onClick={() => toggleChip(key)}
-                      title={b.name}
+                      title={fullName}
                       style={{
                         ...chipStyle(active),
-                        // Truncate to ~9 chars (the length of "Rehearsal",
-                        // the widest type label) so batch chips visually
-                        // align with the type-chip column width.
-                        maxWidth: '9ch',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {b.name}
+                      {display}
                     </button>
                   );
                 })}
