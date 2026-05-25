@@ -388,7 +388,31 @@ export function RecitalClient({ schoolSlug, recitalSlug, initialData, autoScroll
     );
   }
 
-  if (error || !data) {
+  // Cancelled state: school exists but recital row is gone (the
+  // school admin deleted it). Backend returns
+  // { school, recital: null, cancelled: true } so we can show a
+  // friendly message with the school name instead of a generic
+  // 404. The school name comes from the URL slug → school lookup.
+  if (data && (data as any).cancelled) {
+    const schoolName = (data as any).school?.name || 'the studio';
+    return (
+      <div style={{ minHeight: '100vh', background: OUTER, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'system-ui,sans-serif' }}>
+        <div style={{ textAlign: 'center', maxWidth: 380 }}>
+          <div style={{ color: 'rgba(255,255,255,0.25)', marginBottom: 18 }}><TheatreIcon size={56} /></div>
+          <h2 style={{ color: '#fff', marginBottom: 10, fontSize: 22, fontWeight: 800 }}>
+            Looks like this event was cancelled
+          </h2>
+          <p style={{ color: '#9b8aab', fontSize: 14, lineHeight: 1.7, marginBottom: 26 }}>
+            This recital page is no longer active. If you have questions, please reach out to{' '}
+            <strong style={{ color: '#fff' }}>{schoolName}</strong> directly.
+          </p>
+          <a href="/" style={{ color: MAGENTA, fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>← Back to ManchQ</a>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !data || !(data as any).recital) {
     return (
       <div style={{ minHeight: '100vh', background: OUTER, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'system-ui,sans-serif' }}>
         <div style={{ textAlign: 'center', maxWidth: 360 }}>

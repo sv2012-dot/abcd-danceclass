@@ -20,7 +20,19 @@ exports.getRecital = async (req, res) => {
       'SELECT id, title, event_date, event_time, venue, status, description, important_info, poster_url, slug FROM recitals WHERE school_id = ? AND slug = ? LIMIT 1',
       [school.id, recitalSlug]
     );
-    if (!recitals[0]) return res.status(404).json({ error: 'Recital not found' });
+    // No recital row but the school IS valid → return a "cancelled"
+    // payload instead of 404 so the frontend can render a friendly
+    // "this event was cancelled or moved" page with the school name
+    // (vs the generic "page not found"). Recitals are hard-deleted
+    // today so we have no record of what the recital was; the page
+    // shows a generic message + the school name from the URL.
+    if (!recitals[0]) {
+      return res.json({
+        school: { name: school.name, city: school.city, slug: school.slug },
+        recital: null,
+        cancelled: true,
+      });
+    }
     const recital = recitals[0];
     if (recital.important_info) { try { recital.important_info = JSON.parse(recital.important_info); } catch { recital.important_info = []; } }
 

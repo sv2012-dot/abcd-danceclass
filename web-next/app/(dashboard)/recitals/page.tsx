@@ -347,6 +347,9 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
 
   // Delete confirmation
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // User must type the exact recital title to confirm deletion —
+  // safety gate since recital delete is hard-delete (no undo).
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   // Capture event_date before deletion so we can navigate correctly after cache is cleared
   const eventDateRef = useRef(null);
 
@@ -1623,31 +1626,74 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
           </div>
         )}
 
-        {/* ── Delete confirmation modal ── */}
-        {confirmDelete && (
-          <Modal title="Delete Recital" onClose={() => setConfirmDelete(false)}>
-            <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+        {/* ── Delete confirmation modal — type-the-title gate.
+            Mirrors the Batches page delete pattern: lists what will
+            be lost + requires the user to type the recital title
+            exactly. Prevents accidental deletes since recitals are
+            HARD-deleted (no undo, no restore window). */}
+        {confirmDelete && (() => {
+          const titleTyped = String(deleteConfirmText || '').trim();
+          const titleMatches = !!recital?.title && titleTyped === recital.title;
+          const rsvpCount = Number(recital?.rsvp_stats?.total || 0);
+          return (
+          <Modal title="Delete Recital" onClose={() => { setConfirmDelete(false); setDeleteConfirmText(''); }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
               <p style={{ margin:0, fontSize:14, color:"var(--text)", lineHeight:1.6 }}>
-                Are you sure you want to delete <strong>{recital?.title}</strong>? This action cannot be undone.
+                Permanently delete <strong>{recital?.title}</strong>?
               </p>
+              <div style={{ background:"rgba(239,68,68,0.07)", border:"1px solid rgba(239,68,68,0.25)", borderRadius:10, padding:"12px 14px" }}>
+                <div style={{ fontSize:11, fontWeight:700, color:"#EF4444", textTransform:"uppercase", letterSpacing:".07em", marginBottom:6 }}>
+                  This cannot be undone
+                </div>
+                <ul style={{ margin:0, paddingLeft:18, fontSize:13, color:"var(--text)", lineHeight:1.7 }}>
+                  <li>The public recital page will go offline</li>
+                  {rsvpCount > 0 && <li><strong>{rsvpCount}</strong> RSVP{rsvpCount === 1 ? '' : 's'} will be erased</li>}
+                  <li>Poster, description, program, and invitees are removed</li>
+                  <li>The link can't be restored — you'll need to recreate the recital</li>
+                </ul>
+              </div>
+              <div>
+                <label style={{ display:"block", fontSize:12, color:"var(--muted)", marginBottom:6 }}>
+                  Type the recital title to confirm: <strong style={{ color:"var(--text)" }}>{recital?.title}</strong>
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder={recital?.title || 'Recital title'}
+                  autoFocus
+                  style={{
+                    width:"100%", padding:"10px 12px", borderRadius:9,
+                    border:`1.5px solid ${titleMatches ? '#10B981' : 'var(--border)'}`,
+                    background:"var(--surface)", color:"var(--text)", fontSize:14,
+                    outline:"none", boxSizing:"border-box",
+                  }}
+                />
+              </div>
               <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
-                <button onClick={() => setConfirmDelete(false)} style={{
+                <button onClick={() => { setConfirmDelete(false); setDeleteConfirmText(''); }} style={{
                   padding:"9px 20px", borderRadius:10, border:"1.5px solid var(--border)",
                   background:"var(--card)", color:"var(--text)", fontWeight:600, fontSize:13, cursor:"pointer",
                 }}>
                   Cancel
                 </button>
-                <button onClick={() => { setConfirmDelete(false); deleteMutation.mutate(); }} disabled={deleteMutation.isPending} style={{
-                  padding:"9px 20px", borderRadius:10, border:"none",
-                  background:"#ff3b30", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer",
-                  opacity: deleteMutation.isPending ? 0.7 : 1,
-                }}>
-                  {deleteMutation.isPending ? "Deleting…" : "Yes, Delete"}
+                <button
+                  onClick={() => { if (titleMatches) { setConfirmDelete(false); setDeleteConfirmText(''); deleteMutation.mutate(); } }}
+                  disabled={!titleMatches || deleteMutation.isPending}
+                  style={{
+                    padding:"9px 20px", borderRadius:10, border:"none",
+                    background: titleMatches ? "#ff3b30" : "#9CA3AF",
+                    color:"#fff", fontWeight:700, fontSize:13,
+                    cursor: titleMatches && !deleteMutation.isPending ? "pointer" : "not-allowed",
+                    opacity: deleteMutation.isPending ? 0.7 : 1,
+                  }}>
+                  {deleteMutation.isPending ? "Deleting…" : "Delete recital"}
                 </button>
               </div>
             </div>
           </Modal>
-        )}
+          );
+        })()}
 
         {/* ── Inline Edit Event modal ── */}
         {editOpen && (

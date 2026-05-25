@@ -157,6 +157,7 @@ type SidebarProps = {
   onAboutClick: () => void;
   onSmartAdd: () => void;
   onLogout: () => void;
+  onReplayTour?: () => void;
   membershipCount?: number;
   onSwitchSchool?: () => void;
 };
@@ -165,7 +166,7 @@ function SidebarContent({
   showBrand = true,
   schoolName, city, brief, isSuperAdmin, user, navItems, pathname,
   hoveredNav, setHoveredNav, canHover, theme, toggleTheme,
-  onAboutClick, onSmartAdd, onLogout,
+  onAboutClick, onSmartAdd, onLogout, onReplayTour,
   membershipCount = 0, onSwitchSchool,
 }: SidebarProps) {
   return (
@@ -262,6 +263,18 @@ function SidebarContent({
             onClick={onSwitchSchool}
             title="Switch to another studio you're a member of"
           >Switch studio →</button>
+        )}
+        {/* Replay the welcome / guided-tour wizard. Discoverable from
+            the account area so the user can re-trigger the tour
+            after dismissing it the first time. */}
+        {onReplayTour && (
+          <button
+            style={{ display: 'block', background: 'none', border: 'none', color: 'var(--sidebar-muted)', fontSize: 12, cursor: 'pointer', textAlign: 'left', padding: 0, marginBottom: 6 }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#7C3AED'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--sidebar-muted)'; }}
+            onClick={onReplayTour}
+            title="Re-watch the welcome tour"
+          >Replay welcome tour →</button>
         )}
         <button
           style={{ background: 'none', border: 'none', color: 'var(--sidebar-muted)', fontSize: 13, cursor: 'pointer', textAlign: 'left', padding: 0 }}
@@ -381,6 +394,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     onAboutClick: () => router.push('/about'),
     onSmartAdd: () => setShowSmartAdd(true),
     onLogout: handleLogout,
+    // Replay the welcome wizard: clear the per-school "seen it"
+    // flag in localStorage then re-show. Only school_admins saw the
+    // tour originally, but offering it to teachers is harmless too.
+    onReplayTour: () => {
+      try {
+        if (user?.school_id) localStorage.removeItem(`manchq_onboarded_${user.school_id}`);
+      } catch (_) { /* private browsing — ignore */ }
+      setShowOnboarding(true);
+    },
     membershipCount: memberships?.length || 0,
     onSwitchSchool: () => router.push('/auth/choose-school'),
   };

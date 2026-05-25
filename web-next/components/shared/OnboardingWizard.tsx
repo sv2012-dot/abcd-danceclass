@@ -205,22 +205,12 @@ export default function OnboardingWizard({ schoolId, onDismiss }: any) {
           {body}
         </p>
 
-        {note && (
-          <div style={{
-            width: '100%', background: 'rgba(220,78,255,0.08)',
-            border: '1.5px solid rgba(220,78,255,0.22)',
-            borderRadius: 12, padding: '12px 16px', marginBottom: 20, textAlign: 'left',
-          }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: MAGENTA, textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>
-              Sample data included
-            </div>
-            <p style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.65, margin: 0 }}>
-              {note}
-            </p>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+        {/* Action buttons render BEFORE the sample-data note so the
+            primary CTA stays above the fold on small mobile viewports.
+            On iPhone SE / similar the note + buttons combo overflowed
+            and the bottom button got clipped — putting buttons first
+            guarantees they're always reachable. */}
+        <div style={{ display: 'flex', gap: 10, width: '100%', marginBottom: note ? 16 : 0 }}>
           {step > 0 && (
             <button
               onClick={() => setStep((s) => s - 1)}
@@ -251,6 +241,21 @@ export default function OnboardingWizard({ schoolId, onDismiss }: any) {
             {isLast ? "Let's go" : 'Next'}
           </button>
         </div>
+
+        {note && (
+          <div style={{
+            width: '100%', background: 'rgba(220,78,255,0.08)',
+            border: '1.5px solid rgba(220,78,255,0.22)',
+            borderRadius: 12, padding: '12px 16px', textAlign: 'left',
+          }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: MAGENTA, textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>
+              Sample data included
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.65, margin: 0 }}>
+              {note}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
