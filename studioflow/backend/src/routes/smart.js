@@ -178,12 +178,18 @@ Return JSON only.`;
 // ── 3. Smart Reply — draft a message about an event/recital/batch/student ─
 router.post('/draft-message', async (req, res) => {
   try {
-    const { context, context_id, purpose, tone, custom } = req.body || {};
+    const { context, context_id, purpose, tone, custom, date } = req.body || {};
     if (!context || !context_id || !purpose) {
       return res.status(400).json({ error: 'context, context_id, purpose required' });
     }
-    const validContexts = ['event', 'recital', 'batch', 'student'];
+    // 'schedule_instance' = one specific date of a recurring class (no
+    // events table row — synthesized on the frontend from the schedules
+    // row + a date). Requires the `date` field in the request body.
+    const validContexts = ['event', 'recital', 'batch', 'student', 'schedule_instance'];
     if (!validContexts.includes(context)) return res.status(400).json({ error: 'invalid context' });
+    if (context === 'schedule_instance' && !date) {
+      return res.status(400).json({ error: 'date (YYYY-MM-DD) required for schedule_instance context' });
+    }
 
     const validTones = ['friendly', 'formal', 'apologetic'];
     const finalTone = validTones.includes(tone) ? tone : 'friendly';
@@ -236,6 +242,42 @@ Style: ${b.dance_style || 'not specified'}`;
       const s = rows[0];
       contextDetails = `STUDENT: ${s.name}
 Guardian: ${s.guardian_name || '(unknown)'}`;
+    } else if (context === 'schedule_instance') {
+      // Recurring class instance — context_id is the schedules.id, and
+      // `date` (YYYY-MM-DD) pins the specific occurrence. Join with
+      // batches for the human label, then synthesize an event-shaped
+      // context with batch name, day-of-week, time window, room, and
+      // the exact date so the AI can reference the class precisely.
+      const [rows] = await pool.query(
+        `SELECT s.day_of_week, s.start_time, s.end_time, s.room,
+                b.name AS batch_name, b.level, b.dance_style
+           FROM schedules s
+           JOIN batches b ON b.id = s.batch_id
+          WHERE s.id = ? AND b.school_id = ?
+          LIMIT 1`,
+        [context_id, sid]
+      );
+      if (!rows[0]) return res.status(404).json({ error: 'schedule not found' });
+      const sc = rows[0];
+      // Build "8:00 PM" style time labels from HH:MM:SS DB strings.
+      const fmt = (t) => {
+        if (!t) return '';
+        const [hh, mm] = String(t).split(':');
+        const h = Number(hh);
+        const m = Number(mm);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+        return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+      };
+      const timeLabel = sc.start_time
+        ? `${fmt(sc.start_time)}${sc.end_time ? ` to ${fmt(sc.end_time)}` : ''}`
+        : 'TBD';
+      contextDetails = `CLASS INSTANCE: ${sc.batch_name}
+Specific date: ${date} (${sc.day_of_week})
+Time: ${timeLabel}
+Location: ${sc.room || 'TBD'}
+Level: ${sc.level || 'not specified'}
+Style: ${sc.dance_style || 'not specified'}`;
     }
 
     const [schools] = await pool.query('SELECT name FROM schools WHERE id = ? LIMIT 1', [sid]);

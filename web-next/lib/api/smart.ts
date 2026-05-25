@@ -34,7 +34,11 @@ export type SmartPlanResponse = {
   summary: string;
 };
 
-export type SmartReplyContext = 'event' | 'recital' | 'batch' | 'student';
+// 'schedule_instance' = one specific date of a recurring class. Requires
+// a date param alongside context_id (the schedules.id). Used when the
+// user clicks Smart Announce on a synthetic "sched_42_2026-05-23"
+// event in the schedule calendar.
+export type SmartReplyContext = 'event' | 'recital' | 'batch' | 'student' | 'schedule_instance';
 export type SmartReplyTone = 'friendly' | 'formal' | 'apologetic';
 
 export type SmartReplyResponse = {
@@ -58,7 +62,10 @@ export const smart = {
     contextId: number,
     purpose: string,
     tone: SmartReplyTone = 'friendly',
-    custom?: string
+    custom?: string,
+    // YYYY-MM-DD — required when context === 'schedule_instance',
+    // ignored for all other context types.
+    date?: string
   ) =>
     api.post('/smart/draft-message', {
       context,
@@ -66,5 +73,6 @@ export const smart = {
       purpose,
       tone,
       custom,
+      date,
     }) as Promise<SmartReplyResponse>,
 };

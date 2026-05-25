@@ -22,8 +22,11 @@ function friendlyError(e: any): string {
 // Frontend already knows these from the page that opened the modal, so we
 // pass them as props instead of fetching again.
 export type AnnounceContextData = {
-  contextType: SmartReplyContext;    // 'event' | 'recital' | 'batch' | 'student'
+  contextType: SmartReplyContext;    // 'event' | 'recital' | 'batch' | 'student' | 'schedule_instance'
   contextId: number;
+  // Required when contextType === 'schedule_instance' — the specific
+  // class date in YYYY-MM-DD. Ignored for other context types.
+  date?: string;
   title: string;                     // e.g. "Sunday Test Batch"
   subtitle?: string;                 // e.g. "Class"
   dateLabel?: string;                // e.g. "Thu, May 21"
@@ -202,7 +205,9 @@ export default function SmartAnnounceModal({ open, onClose, ctx, inline = false 
     setGenerating(true);
     setError(null);
     try {
-      const res = await smart.draftMessage(ctx.contextType, ctx.contextId, purpose, tone);
+      // For schedule_instance the backend requires the specific date
+      // (YYYY-MM-DD). Other context types ignore the date param.
+      const res = await smart.draftMessage(ctx.contextType, ctx.contextId, purpose, tone, undefined, ctx.date);
       setBody(res.message);
       setSchoolName(res.school_name || '');
       setCopied(false);

@@ -2058,9 +2058,35 @@ export default function SchedulePage() {
           const s = e.start_datetime ? new Date(e.start_datetime) : null;
           const en = e.end_datetime ? new Date(e.end_datetime) : null;
           const fmtTime = (d) => d ? d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
+          // Pick the right context type, id, and (for schedule
+          // instances) date:
+          //   - Recital     → recital, id = _recitalId
+          //   - Recurring class instance (_isSchedule = true) →
+          //     schedule_instance, id = _scheduleId, date = the
+          //     specific class date. Backend joins schedule + batch
+          //     and builds an event-shaped context with the exact
+          //     date so the AI can reference the class precisely.
+          //     Replaces the prior "contextType:'event' with a
+          //     synthetic id" → "event not found" failure mode.
+          //   - Real event  → event, id = e.id
+          let contextType = 'event';
+          let contextId = e.id;
+          let dateForCtx = undefined;
+          if (e._isRecital) {
+            contextType = 'recital';
+            contextId = e._recitalId;
+          } else if (e._isSchedule) {
+            contextType = 'schedule_instance';
+            contextId = e._scheduleId;
+            dateForCtx = e.start_datetime ? String(e.start_datetime).slice(0, 10) : undefined;
+          } else {
+            contextType = 'event';
+            contextId = e.id;
+          }
           return {
-            contextType: e._isRecital ? 'recital' : 'event',
-            contextId: e._isRecital ? e._recitalId : e.id,
+            contextType,
+            contextId,
+            date: dateForCtx,
             title: e.title,
             subtitle: e.type,
             dateLabel: s ? s.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : undefined,
