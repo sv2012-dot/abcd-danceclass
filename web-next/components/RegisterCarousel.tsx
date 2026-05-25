@@ -43,17 +43,15 @@ const SLIDES: Slide[] = [
     body: 'Free forever — no credit card needed. Upgrade to Pro for $5.99/month per studio whenever you outgrow the free tier.',
   },
   {
-    // 2. Smart Features — wand / sparkle
+    // 2. Smart Features — public/sparkles.svg path data, kept in
+    //    sync with components/shared/Sparkles.tsx and SvgIcon's
+    //    sparkles entry. Edit those files together if changing.
     iconPaths: [
-      'M12 3v3',
-      'M12 18v3',
-      'M3 12h3',
-      'M18 12h3',
-      'M5.6 5.6l2.1 2.1',
-      'M16.3 16.3l2.1 2.1',
-      'M5.6 18.4l2.1-2.1',
-      'M16.3 7.7l2.1-2.1',
-      'M12 8l1.4 2.6L16 12l-2.6 1.4L12 16l-1.4-2.6L8 12l2.6-1.4z',
+      'm12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z',
+      'M5 3v4',
+      'M19 17v4',
+      'M3 5h4',
+      'M17 19h4',
     ],
     title: 'Smart Features',
     body: 'AI turns plain-text prompts into scheduled classes in seconds. Draft WhatsApp-ready messages in one click.',

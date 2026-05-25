@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Sparkles from '@/components/shared/Sparkles';
 
 const PURPLE = '#7C3AED';
 const MAGENTA = '#DC4EFF';
@@ -21,29 +22,9 @@ type Props = {
   title?: string;
 };
 
-// Lucide "sparkles" icon — the user-specified SVG, used universally
-// for Smart features (SmartButton + SmartModal header). Stroke-based
-// (currentColor) so it tints from the parent text color.
-const Sparkle = ({ size = 14 }: { size?: number }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden
-    style={{ flexShrink: 0 }}
-  >
-    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-    <path d="M20 3v4" />
-    <path d="M22 5h-4" />
-    <path d="M4 17v2" />
-    <path d="M5 18H3" />
-  </svg>
-);
+// Sparkle wraps the shared <Sparkles /> component so this button keeps
+// its own loading-spinner swap (Spinner below) and minimum-size logic
+// without each Smart caller having to know about the icon internals.
 
 const Spinner = ({ size = 14 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden style={{ flexShrink: 0, animation: 'smart-spin 0.8s linear infinite' }}>
@@ -117,7 +98,7 @@ export default function SmartButton({
       onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
     >
       <style>{`@keyframes smart-spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
-      {loading ? <Spinner size={fontSize + 1} /> : <Sparkle size={fontSize + 1} />}
+      {loading ? <Spinner size={fontSize + 1} /> : <Sparkles size={fontSize + 1} />}
       {children}
     </button>
   );

@@ -9,6 +9,7 @@ import { useTheme } from '@/lib/context/ThemeContext';
 import SvgIcon from './SvgIcon';
 import OnboardingWizard from './OnboardingWizard';
 import SmartAddModal from '../smart/SmartAddModal';
+import Sparkles from './Sparkles';
 import PlanBadge from './PlanBadge';
 
 const Icons: Record<string, React.ReactNode> = {
@@ -213,9 +214,7 @@ function SidebarContent({
             onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
             title="Smart Add — paste a casual schedule"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
-            </svg>
+            <Sparkles size={15} />
             Smart Add
           </button>
         </div>

@@ -22,6 +22,7 @@ import SmartAnnounceModal from "@/components/smart/SmartAnnounceModal";
 import AttendanceModal from "@/components/attendance/AttendanceModal";
 import { RecitalDetail } from "../recitals/page";
 import SvgIcon from "@/components/shared/SvgIcon";
+import Sparkles from "@/components/shared/Sparkles";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const EVENT_TYPES = ["Class", "Recital", "Rehearsal", "Workshop", "Other"];
@@ -1136,9 +1137,7 @@ export default function SchedulePage() {
               onMouseEnter={ev=>{ev.currentTarget.style.transform="scale(1.08)";ev.currentTarget.style.boxShadow="0 6px 28px rgba(124,58,237,0.7)";}}
               onMouseLeave={ev=>{ev.currentTarget.style.transform="scale(1)";ev.currentTarget.style.boxShadow="0 4px 20px rgba(124,58,237,0.55)";}}
             >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2l1.8 5.4L19 9.2l-5.2 1.8L12 16l-1.8-5L5 9.2l5.2-1.8L12 2zM19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
-              </svg>
+              <Sparkles size={22} stroke="#fff" strokeWidth={2.2} />
             </button>
           )}
         </div>
