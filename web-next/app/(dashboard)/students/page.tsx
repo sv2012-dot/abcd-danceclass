@@ -462,17 +462,46 @@ function EnrollmentsCard({ selected, batchList, editing, draft, saving, onStart,
           {batchList.length === 0 ? (
             <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>No batches yet — create one in Batches.</p>
           ) : (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-              {batchList.map((b) => {
-                const on = (draft || []).includes(b.id);
-                return (
-                  <button key={b.id} type="button" onClick={() => onToggle(b.id)}
-                    style={{ padding: "6px 14px", borderRadius: 18, cursor: "pointer", fontSize: 12, fontWeight: 700, border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent)" : "transparent", color: on ? "#fff" : "var(--muted)", transition: "all .12s" }}>
-                    {on && "✓ "}{b.name}
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              {/* Native single-select dropdown — "Select" placeholder
+                  when nothing chosen. Adding more than one batch is a
+                  follow-up: tapping Save persists the dropdown choice
+                  as a single-batch enrolment for now. */}
+              <select
+                value={(draft && draft.length > 0) ? String(draft[0]) : ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "") {
+                    // clear: pass an empty-array signal via onToggle on
+                    // all currently-drafted ids
+                    (draft || []).forEach((id) => onToggle(id));
+                  } else {
+                    const targetId = Number(v);
+                    // Clear any other ids first so dropdown represents
+                    // exactly one selection.
+                    (draft || []).filter((id) => id !== targetId).forEach((id) => onToggle(id));
+                    if (!(draft || []).includes(targetId)) onToggle(targetId);
+                  }
+                }}
+                style={{
+                  width: "100%",
+                  padding: "12px 13px",
+                  minHeight: 45,
+                  borderRadius: 10,
+                  border: "1.5px solid var(--border)",
+                  background: "var(--card)",
+                  color: "var(--text)",
+                  fontSize: 14,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                <option value="">Select</option>
+                {batchList.map((b) => (
+                  <option key={b.id} value={String(b.id)}>{b.name}</option>
+                ))}
+              </select>
+            </>
           )}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
             <button onClick={onCancel} disabled={saving}
@@ -487,15 +516,47 @@ function EnrollmentsCard({ selected, batchList, editing, draft, saving, onStart,
         </>
       ) : batchNames.length > 0 ? (
         <div style={{ display: "grid", gap: 8 }}>
-          {batchNames.map((bn, i) => (
-            <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", padding: 10, background: "var(--card)", borderRadius: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: BATCH_COVERS[i % BATCH_COVERS.length] }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{bn}</div>
+          {batchNames.map((bn, i) => {
+            // Look up the batch object by name (case-insensitive) to
+            // pull cover_url. Falls back to the colored swatch gradient
+            // if no image is set.
+            const b = (batchList || []).find((x: any) => (x.name || '').toLowerCase() === bn.toLowerCase());
+            const coverUrl = b?.cover_url || null;
+            return (
+              <div key={i} style={{
+                display: "flex",
+                alignItems: "stretch",
+                background: "var(--card)",
+                borderRadius: 12,
+                overflow: "hidden", // clips the image to the rounded card edge
+                minHeight: 64,
+              }}>
+                {/* Image flush on top / left / bottom; 16:9 aspect ratio
+                    preserved so the natural ratio of the batch cover is
+                    intact. If no cover_url, fall back to the colored
+                    swatch (still flush). */}
+                <div style={{
+                  position: "relative",
+                  aspectRatio: "16 / 9",
+                  height: "auto",
+                  flexShrink: 0,
+                  background: coverUrl ? "#000" : BATCH_COVERS[i % BATCH_COVERS.length],
+                }}>
+                  {coverUrl && (
+                    <img
+                      src={coverUrl}
+                      alt={bn}
+                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", padding: "0 12px" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{bn}</div>
+                </div>
+                <span style={{ color: "var(--muted)", fontSize: 14, display: "flex", alignItems: "center", paddingRight: 12 }}>›</span>
               </div>
-              <span style={{ color: "var(--muted)", fontSize: 14 }}>›</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <p style={{ fontSize: 12, color: "var(--muted)", margin: 0, fontStyle: "italic" }}>Not enrolled in any batch yet — tap Add to enroll.</p>
@@ -833,9 +894,33 @@ export default function StudentsPage() {
         </div>
       </div>
 
-      {/* ── Search + Fee Settings row ── */}
+      {/* ── Search + Fee Settings row ──
+          Search input takes full width on mobile (flex:1, no maxWidth)
+          with a search-lens line-art icon at the right end of the field. */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: feeSettingsOpen ? 0 : 18, flexWrap: "wrap" }}>
-        <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search students…" style={{ maxWidth: 280 }} />
+        <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search"
+            style={{ width: "100%", paddingRight: 40 }}
+          />
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+            style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", pointerEvents: "none" }}
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </div>
         <button
           onClick={() => setFeeSettingsOpen(o => !o)}
           title="Fee tracking settings"

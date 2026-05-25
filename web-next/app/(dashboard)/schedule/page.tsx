@@ -255,6 +255,9 @@ export default function SchedulePage() {
   const [selectedDay, setSelectedDay] = useState(today);
   const [showSmartAdd, setShowSmartAdd] = useState(false);
   const [smartReplyEvent, setSmartReplyEvent] = useState(null);   // event obj or null (overlay modal)
+  // Bumped after a Mark-All-Present write so the inline
+  // AttendanceModal refetches and resets isDirty.
+  const [attendanceRefreshSignal, setAttendanceRefreshSignal] = useState(0);
   const [attendanceEvent, setAttendanceEvent] = useState(null);   // event obj or null (overlay modal)
   // Inline dialog inside the panel — only one open at a time.
   // 'attendance' → renders <AttendanceModal inline /> below the action stack
@@ -285,14 +288,9 @@ export default function SchedulePage() {
         toast.error('No students in linked batch to mark');
         return;
       }
-      const existingMarks = Object.keys((data && data.attendance) || {}).length;
-      const ok = window.confirm(
-        existingMarks > 0
-          ? `Mark all ${students.length} students present? This will overwrite ${existingMarks} existing mark${existingMarks !== 1 ? 's' : ''}.`
-          : `Mark all ${students.length} students present in "${event.title}"?`
-      );
-      if (!ok) return;
-
+      // No confirm() — Mark All Present is now an instant action per
+      // spec. Backend updates override the existing per-student state
+      // (1 status per student per class).
       const entries = students.map(s => ({ student_id: s.id, status: 'present' }));
       const body = { class_date: classDate, entries };
       if (isSchedule) {
@@ -300,6 +298,10 @@ export default function SchedulePage() {
       } else {
         await attendanceApi.saveForEvent(String(sid), eventId, body);
       }
+      // Bump the inline AttendanceModal's refresh signal so it
+      // re-fetches and reflects the all-present state immediately,
+      // resetting isDirty so Cancel/Save stay hidden.
+      setAttendanceRefreshSignal(n => n + 1);
       toast.success(`Marked ${students.length} present`);
     } catch (e) {
       toast.error(e?.error || e?.message || 'Failed to mark attendance');
@@ -1600,7 +1602,7 @@ export default function SchedulePage() {
                         onClick={() => setSmartReplyEvent(e)}
                         style={{ width:"100%", padding:"12px 16px", borderRadius:10, border:"none", background:"linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)", color:"#fff", cursor:"pointer", fontSize:14, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:"0 2px 12px rgba(124,58,237,0.32)" }}
                       >
-                        <SvgIcon name="mail" size={15} color="#fff" /> Message Class
+                        <Sparkles size={16} stroke="#fff" strokeWidth={2.2} /> Smart Message
                       </button>
                       <button
                         onClick={() => handleMarkAllPresent(e)}
@@ -1629,6 +1631,7 @@ export default function SchedulePage() {
                           scheduleId={e._isSchedule ? e._scheduleId : undefined}
                           classDate={e.start_datetime ? String(e.start_datetime).slice(0, 10) : new Date().toISOString().slice(0, 10)}
                           eventTitle={e.title}
+                          refreshSignal={attendanceRefreshSignal}
                         />
                       </div>
                     </div>

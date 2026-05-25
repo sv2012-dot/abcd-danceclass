@@ -30,6 +30,10 @@ type Props = {
   // Used when the consumer wants the attendance UI to appear inside a parent
   // section rather than as a top-level dialog.
   inline?: boolean;
+  // Bump this number (from the parent) to force a roster + marks refetch.
+  // Used after a parent-driven Mark-All-Present write so the inline list
+  // immediately reflects the new server state.
+  refreshSignal?: number;
 };
 
 // 3 statuses now (Excused removed per spec — not user-markable any longer).
@@ -139,7 +143,9 @@ function SwipeRow({
         </div>
       )}
 
-      {/* The actual row — translates under finger */}
+      {/* The actual row — translates under finger.
+          flexWrap:nowrap forces one row per student on mobile; name
+          gets ellipsis-truncated so the 3 status buttons never wrap. */}
       <div
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -148,18 +154,18 @@ function SwipeRow({
           position: 'relative',
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
-          padding: '10px 12px',
+          gap: 8,
+          padding: '8px 10px',
           background: 'var(--surface)',
           border: '1px solid var(--border)',
           borderRadius: 10,
-          flexWrap: 'wrap',
+          flexWrap: 'nowrap',
           transform: `translateX(${dx}px)`,
           transition: dx === 0 ? 'transform 0.2s ease-out' : 'none',
           touchAction: 'pan-y',
         }}
       >
-        <div style={{ flex: '1 1 140px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Real StudentAvatar (photo if set, gradient initial fallback)
               for visual consistency with /students and the batch panel. */}
           <StudentAvatar student={student} size={36} />
@@ -200,15 +206,24 @@ function SwipeRow({
   );
 }
 
-export default function AttendanceModal({ open, onClose, schoolId, eventId, scheduleId, classDate, eventTitle, inline = false }: Props) {
+export default function AttendanceModal({ open, onClose, schoolId, eventId, scheduleId, classDate, eventTitle, inline = false, refreshSignal }: Props) {
   const [students, setStudents] = useState<Student[]>([]);
   const [marks, setMarks] = useState<Record<number, AttendanceStatus>>({});
+  // savedMarks = the last known server-persisted state. Cancel/Save
+  // buttons only appear when `marks` differs from this; Save flushes
+  // to the server then resyncs savedMarks. Mark-All-Present from the
+  // parent updates the server externally → a refreshSignal bump
+  // re-fetches and resets both.
+  const [savedMarks, setSavedMarks] = useState<Record<number, AttendanceStatus>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   // Inline-mode collapse: "Take Attendance" header is a toggle. Default
   // open so the user sees the roster immediately on event detail; can
   // collapse to reclaim vertical space.
   const [inlineOpen, setInlineOpen] = useState(true);
+
+  // Deep compare via JSON.stringify is fine for these small maps.
+  const isDirty = JSON.stringify(marks) !== JSON.stringify(savedMarks);
 
   // Lock body scroll while open + ESC to close — only in modal mode.
   useEffect(() => {
@@ -241,13 +256,16 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
           existing[Number(sid)] = (rec as any).status;
         }
         setMarks(existing);
+        setSavedMarks(existing); // sync the "clean" baseline on load.
       })
       .catch(() => {
         toast.error('Could not load class roster');
         setStudents([]);
       })
       .finally(() => setLoading(false));
-  }, [open, eventId, scheduleId, schoolId, classDate]);
+    // refreshSignal in deps so parent Mark-All-Present writes trigger
+    // a refetch and reset isDirty.
+  }, [open, eventId, scheduleId, schoolId, classDate, refreshSignal]);
 
   const setStatus = (studentId: number, status: AttendanceStatus) => {
     setMarks((prev) => ({ ...prev, [studentId]: status }));
@@ -279,8 +297,11 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
       } else if (scheduleId) {
         await attendance.saveForSchedule(schoolId, scheduleId, body);
       }
+      // Sync the "clean" baseline so Cancel/Save hide until the user
+      // makes a new edit. The block stays open per spec.
+      setSavedMarks({ ...marks });
       toast.success(`Attendance saved — ${presentCount} of ${students.length} present`);
-      onClose();
+      if (!inline) onClose();
     } catch (e: any) {
       toast.error(e?.error || e?.message || 'Failed to save attendance');
     } finally {
@@ -297,23 +318,26 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
     } catch { return classDate; }
   })();
 
-  // Inline body — matches the user's mock: collapsible "Take Attendance"
-  // header with chevron, "Tip: Swipe to mark" + "X of Y marked" tip
-  // line, student list (StudentAvatar + 3 status buttons), then Cancel +
-  // Save buttons at the bottom. Excused removed per spec.
+  // Inline body — collapsible "Take Attendance" with chevron, tip line,
+  // student list, and Cancel/Save that only appear when the user has
+  // edited the saved state.
+  //
+  // Layout: NO outer card border/padding so the student rows are flush
+  // with the sibling Smart Message / Mark All Present buttons above
+  // (which span the parent event-detail action column). The student
+  // rows render in a single line each (no flex-wrap) — long names
+  // truncate with ellipsis.
   if (inline) {
     return (
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'var(--card)',
-          borderRadius: 12,
-          border: '1px solid var(--border)',
+          background: 'transparent',
           width: '100%',
           display: 'flex', flexDirection: 'column',
         }}
       >
-        {/* Collapsible header */}
+        {/* Collapsible header — flush left, no border */}
         <button
           type="button"
           onClick={() => setInlineOpen((o) => !o)}
@@ -321,10 +345,9 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
           style={{
             display: 'flex', alignItems: 'center', gap: 10,
             width: '100%',
-            padding: '14px 18px',
+            padding: '12px 0',
             background: 'transparent',
             border: 'none',
-            borderBottom: inlineOpen ? '1px solid var(--border)' : 'none',
             cursor: 'pointer',
             textAlign: 'left',
           }}
@@ -344,8 +367,9 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
 
         {inlineOpen && (
           <>
-            {/* Body */}
-            <div style={{ padding: '12px 18px 16px' }}>
+            {/* Body — no inner horizontal padding so rows align with the
+                Smart Message / Mark All Present buttons above. */}
+            <div style={{ padding: '0 0 10px' }}>
               {loading ? (
                 <p style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 13, padding: 20 }}>Loading roster…</p>
               ) : students.length === 0 ? (
@@ -354,8 +378,7 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
                 </p>
               ) : (
                 <>
-                  {/* Tip-line row: tip on left, X of Y marked on right. */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                     <span style={{ fontSize: 12, color: 'var(--muted)' }}>Tip: Swipe to mark</span>
                     <span style={{ fontSize: 12, color: 'var(--muted)' }}>{markedCount} of {students.length} marked</span>
                   </div>
@@ -373,13 +396,16 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
               )}
             </div>
 
-            {/* Cancel + Save action row at the bottom of the card. */}
-            {!loading && students.length > 0 && (
-              <div style={{ padding: '0 18px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {/* Cancel + Save — only shown while the user has unsaved
+                edits relative to the last persisted state. Mark All
+                Present from the parent persists externally so this row
+                stays hidden after that. */}
+            {!loading && students.length > 0 && isDirty && (
+              <div style={{ padding: '0 0 6px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <button
                   type="button"
-                  onClick={() => { setMarks({}); }}
-                  disabled={saving || markedCount === 0}
+                  onClick={() => { setMarks({ ...savedMarks }); }}
+                  disabled={saving}
                   style={{
                     padding: '12px',
                     minHeight: 45,
@@ -389,8 +415,8 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
                     color: 'var(--text)',
                     fontSize: 14,
                     fontWeight: 700,
-                    cursor: saving || markedCount === 0 ? 'not-allowed' : 'pointer',
-                    opacity: saving || markedCount === 0 ? 0.5 : 1,
+                    cursor: saving ? 'not-allowed' : 'pointer',
+                    opacity: saving ? 0.6 : 1,
                   }}
                 >
                   Cancel
@@ -398,17 +424,17 @@ export default function AttendanceModal({ open, onClose, schoolId, eventId, sche
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={saving || markedCount === 0}
+                  disabled={saving}
                   style={{
                     padding: '12px',
                     minHeight: 45,
                     borderRadius: 10,
                     border: 'none',
-                    background: saving || markedCount === 0 ? '#5b6b88' : 'var(--accent)',
+                    background: saving ? '#5b6b88' : 'var(--accent)',
                     color: '#fff',
                     fontSize: 14,
                     fontWeight: 700,
-                    cursor: saving || markedCount === 0 ? 'not-allowed' : 'pointer',
+                    cursor: saving ? 'not-allowed' : 'pointer',
                   }}
                 >
                   {saving ? 'Saving…' : 'Save'}
