@@ -163,6 +163,9 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
   const [yearAssumed, setYearAssumed] = useState<number | null>(null);
   const [defaultTime, setDefaultTime] = useState('17:00'); // 5 PM
   const [batchesCache, setBatchesCache] = useState<{ id: number; name: string }[]>([]);
+  // Collapsible "TRY THESE PROMPTS" section — open by default for
+  // first-time users; user can collapse to reclaim vertical space.
+  const [promptsOpen, setPromptsOpen] = useState(true);
   // Sample names used to build example prompts — pulled once when the
   // modal opens so the suggested chips reference REAL data the studio
   // already has. Falls back to STATIC_EXAMPLES when empty.
@@ -337,49 +340,87 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
             </div>
           )}
 
-          {/* "TRY THESE PROMPTS" section — moved above the textarea per
-              the mock. Prompts render as tall full-text boxes (not the
-              prior small inline chips) so the user can read each whole
-              example before deciding which one to start with. */}
+          {/* "TRY THESE PROMPTS" — collapsible. Label is a button that
+              toggles the prompt boxes below. Smaller font on the
+              prompt text (12px) so they fit in fewer lines and pack
+              tighter visually. */}
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
-              Try these prompts:
-            </div>
-            <div style={{ display: 'grid', gap: 10 }}>
-              {examples.map((ex) => (
-                <button
-                  key={ex}
-                  type="button"
-                  onClick={() => setText(ex)}
-                  disabled={parsing}
-                  style={{
-                    textAlign: 'left',
-                    padding: '14px 16px',
-                    fontSize: 13,
-                    lineHeight: 1.5,
-                    borderRadius: 10,
-                    border: '1px solid var(--border)',
-                    background: 'var(--surface)',
-                    color: 'var(--text)',
-                    cursor: 'pointer',
-                    transition: 'border-color .12s',
-                    fontFamily: 'inherit',
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(124,58,237,0.4)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
-                >
-                  {ex}
-                </button>
-              ))}
-            </div>
+            <button
+              type="button"
+              onClick={() => setPromptsOpen((o) => !o)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'none',
+                border: 'none',
+                padding: '4px 0',
+                marginBottom: promptsOpen ? 10 : 0,
+                cursor: 'pointer',
+                fontSize: 11,
+                color: 'var(--muted)',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+              }}
+              aria-expanded={promptsOpen}
+            >
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ transform: promptsOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform .15s' }}
+                aria-hidden
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+              Try these prompts
+            </button>
+            {promptsOpen && (
+              <div style={{ display: 'grid', gap: 8 }}>
+                {examples.map((ex) => (
+                  <button
+                    key={ex}
+                    type="button"
+                    onClick={() => setText(ex)}
+                    disabled={parsing}
+                    style={{
+                      textAlign: 'left',
+                      padding: '11px 14px',
+                      fontSize: 12,
+                      lineHeight: 1.5,
+                      borderRadius: 10,
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface)',
+                      color: 'var(--text)',
+                      cursor: 'pointer',
+                      transition: 'border-color .12s',
+                      fontFamily: 'inherit',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(124,58,237,0.4)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+                  >
+                    {ex}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Textarea with gradient border (purple→magenta) to match
-              the Smart visual language. Slightly taller (rows=4) for
-              comfortable multi-line entry. */}
+          {/* Textarea with crisp 1px gradient border. Outer wrapper
+              paints the gradient; inner textarea has a transparent
+              background to let the gradient show through 1px on every
+              side. resize:both so the native bottom-right resize
+              handle is fully visible (the prior resize:vertical
+              produced only a horizontal scrub line and felt hidden). */}
           <div style={{
             borderRadius: 12,
-            padding: 1.5,
+            padding: 1,
             background: 'linear-gradient(135deg, #7C3AED 0%, #DC4EFF 100%)',
             marginBottom: 16,
           }}>
@@ -395,13 +436,15 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
                 boxSizing: 'border-box',
                 padding: '14px 16px',
                 fontSize: 14,
-                borderRadius: 10,
+                borderRadius: 11,
                 border: 'none',
                 background: 'var(--surface)',
                 color: 'var(--text)',
                 outline: 'none',
                 fontFamily: 'inherit',
-                resize: 'vertical',
+                resize: 'both',
+                display: 'block',
+                minHeight: 110,
               }}
             />
           </div>
@@ -445,42 +488,25 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
             );
           })()}
 
-          <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-            {/* header — desktop only */}
-            {!narrow && (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '36px 1.4fr 80px 1.6fr 80px',
-                gap: 8,
-                padding: '8px 12px',
-                background: 'var(--surface)',
-                borderBottom: '1px solid var(--border)',
-                fontSize: 10,
-                fontWeight: 700,
-                color: 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.07em',
-              }}>
-                <div></div>
-                <div>Date</div>
-                <div>Time</div>
-                <div>Batch</div>
-                <div>Type</div>
-              </div>
-            )}
-
+          {/* Preview rows — one rounded card per parsed event with
+              spacing between. Replaces the prior single bordered
+              list. Mobile + desktop both use the stacked layout
+              (Date+Time row → Batch → Type) to match the mock; the
+              prior desktop inline grid is gone for visual consistency. */}
+          <div style={{ display: 'grid', gap: 12 }}>
             {rows.map((r, i) => (
               <div
                 key={i}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: narrow ? '36px 1fr' : '36px 1.4fr 80px 1.6fr 80px',
-                  gap: 8,
-                  padding: narrow ? '12px' : '8px 12px',
-                  alignItems: narrow ? 'flex-start' : 'center',
-                  borderBottom: i < rows.length - 1 ? '1px solid var(--border)' : 'none',
+                  gridTemplateColumns: '28px 1fr',
+                  gap: 12,
+                  padding: '14px 14px',
+                  borderRadius: 12,
+                  border: '1px solid var(--border)',
                   background: r._selected ? 'var(--card)' : 'var(--surface)',
                   opacity: r._selected ? 1 : 0.55,
+                  alignItems: 'start',
                 }}
               >
                 <input
@@ -489,89 +515,72 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
                   onChange={(e) =>
                     setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _selected: e.target.checked } : row)))
                   }
-                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                  style={{ width: 18, height: 18, cursor: 'pointer', marginTop: 6, accentColor: 'var(--accent)' }}
                 />
-                {narrow ? (
-                  // ── Mobile: stacked card layout ──
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      <DateField value={r._editDate} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDate: v } : row)))} size="sm" />
-                      <TimeField value={r._editTime} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editTime: v } : row)))} size="sm" />
-                    </div>
-                    <select
-                      value={r.batch_id ?? ''}
-                      onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, batch_id: e.target.value ? Number(e.target.value) : null, proposed_batch_name: null } : row)))}
-                      style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)', fontSize: 13, cursor: 'pointer', width: '100%' }}
-                    >
-                      {r.proposed_batch_name && !r.batch_id ? (
-                        <option value="">+ Create "{r.proposed_batch_name}"</option>
-                      ) : (
-                        <option value="">— No batch —</option>
-                      )}
-                      {batchesCache.map((b) => (
-                        <option key={b.id} value={b.id}>{b.name}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={r.type}
-                      onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, type: e.target.value as any } : row)))}
-                      style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)', fontSize: 13, cursor: 'pointer', width: '100%' }}
-                    >
-                      <option>Class</option>
-                      <option>Recital</option>
-                      <option>Rehearsal</option>
-                      <option>Workshop</option>
-                      <option>Other</option>
-                    </select>
-                    {r.warning && (
-                      <div style={{ fontSize: 11, color: '#B45309', marginTop: 2 }}>⚠ {r.warning === 'duplicate' ? 'Same date appears twice — unchecked by default. Check it to add anyway.' : r.warning}</div>
-                    )}
-                    {r.proposed_batch_name && !r.batch_id && (
-                      <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
-                        Will create a new batch named "{r.proposed_batch_name}" — or pick one above.
-                      </div>
-                    )}
+                {/* Stacked layout for mobile + desktop alike — matches
+                    the mock. Date+Time on first row, then full-width
+                    Batch select, then full-width Type select. */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <DateField value={r._editDate} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDate: v } : row)))} size="md" />
+                    <TimeField value={r._editTime} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editTime: v } : row)))} size="md" />
                   </div>
-                ) : (
-                  // ── Desktop: inline grid columns ──
-                  <>
-                    <DateField value={r._editDate} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDate: v } : row)))} size="sm" />
-                    <TimeField value={r._editTime} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editTime: v } : row)))} size="sm" />
-                    <select
-                      value={r.batch_id ?? ''}
-                      onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, batch_id: e.target.value ? Number(e.target.value) : null, proposed_batch_name: null } : row)))}
-                      style={{ padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)', fontSize: 12, cursor: 'pointer' }}
-                    >
-                      {r.proposed_batch_name && !r.batch_id ? (
-                        <option value="">+ Create "{r.proposed_batch_name}"</option>
-                      ) : (
-                        <option value="">— No batch —</option>
-                      )}
-                      {batchesCache.map((b) => (
-                        <option key={b.id} value={b.id}>{b.name}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={r.type}
-                      onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, type: e.target.value as any } : row)))}
-                      style={{ padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)', fontSize: 12, cursor: 'pointer' }}
-                    >
-                      <option>Class</option>
-                      <option>Recital</option>
-                      <option>Rehearsal</option>
-                      <option>Workshop</option>
-                      <option>Other</option>
-                    </select>
-                    {r.warning && (
-                      <div style={{ gridColumn: '2 / -1', fontSize: 11, color: '#B45309', marginTop: 2 }}>⚠ {r.warning === 'duplicate' ? 'Same date appears twice — unchecked by default. Check it to add anyway.' : r.warning}</div>
+                  <select
+                    value={r.batch_id ?? ''}
+                    onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, batch_id: e.target.value ? Number(e.target.value) : null, proposed_batch_name: null } : row)))}
+                    style={{
+                      padding: '12px 13px',
+                      minHeight: 45,
+                      borderRadius: 9,
+                      border: '1.5px solid var(--border)',
+                      background: 'var(--surface)',
+                      color: 'var(--text)',
+                      fontSize: 14,
+                      cursor: 'pointer',
+                      width: '100%',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {r.proposed_batch_name && !r.batch_id ? (
+                      <option value="">+ Create "{r.proposed_batch_name}"</option>
+                    ) : (
+                      <option value="">— No batch —</option>
                     )}
-                    {r.proposed_batch_name && !r.batch_id && (
-                      <div style={{ gridColumn: '2 / -1', fontSize: 11, color: '#6B7280', marginTop: 2 }}>
-                        Will create a new batch named "{r.proposed_batch_name}" — or pick one above.
-                      </div>
-                    )}
-                  </>
-                )}
+                    {batchesCache.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={r.type}
+                    onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, type: e.target.value as any } : row)))}
+                    style={{
+                      padding: '12px 13px',
+                      minHeight: 45,
+                      borderRadius: 9,
+                      border: '1.5px solid var(--border)',
+                      background: 'var(--surface)',
+                      color: 'var(--text)',
+                      fontSize: 14,
+                      cursor: 'pointer',
+                      width: '100%',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <option>Class</option>
+                    <option>Recital</option>
+                    <option>Rehearsal</option>
+                    <option>Workshop</option>
+                    <option>Other</option>
+                  </select>
+                  {r.warning && (
+                    <div style={{ fontSize: 11, color: '#B45309', marginTop: 2 }}>⚠ {r.warning === 'duplicate' ? 'Same date appears twice — unchecked by default. Check it to add anyway.' : r.warning}</div>
+                  )}
+                  {r.proposed_batch_name && !r.batch_id && (
+                    <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                      Will create a new batch named "{r.proposed_batch_name}" — or pick one above.
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>

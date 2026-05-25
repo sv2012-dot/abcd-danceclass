@@ -34,11 +34,11 @@ const TOP_NAV_H = 56;
 // Header sparkle — same Lucide "sparkles" path as the SmartButton
 // Sparkle. Stroked with the brand gradient (vs SmartButton's
 // currentColor) so it reads as the Smart feature accent in the
-// modal header.
+// modal header. Sized 24 to be visually weighty next to the title.
 const SparkleHeader = () => (
   <svg
-    width="20"
-    height="20"
+    width="24"
+    height="24"
     viewBox="0 0 24 24"
     fill="none"
     stroke="url(#smartGrad)"
@@ -140,26 +140,25 @@ export default function SmartModal({
       {/* Header — non-sticky, compact. Matches the shared <Modal>'s
           padding/layout. The vertical sparkle bar sits to the left of
           the title in lieu of the typed accent bar used elsewhere. */}
+      {/* Header — title + sparkle icon ONLY, no subtitle. Subtitle/
+          description text (when passed) renders as a standalone
+          paragraph at the top of the body so it visually separates
+          from the title bar instead of crowding it. */}
       <div
         className="sf-modal-header"
         style={{
           padding: '12px 14px 12px 18px',
           background: 'var(--card)',
           display: 'flex',
-          alignItems: 'flex-start',
+          alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
           borderBottom: '1px solid transparent',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <SparkleHeader />
-          <div style={{ minWidth: 0 }}>
-            <h2 className="sf-modal-title" style={{ fontSize: 17, fontWeight: 700, margin: 0, color: 'var(--text)', fontFamily: 'var(--font-d)' }}>{title}</h2>
-            {subtitle && (
-              <p style={{ fontSize: 12, margin: '3px 0 0', color: 'var(--muted)' }}>{subtitle}</p>
-            )}
-          </div>
+          <h2 className="sf-modal-title" style={{ fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--text)', fontFamily: 'var(--font-d)' }}>{title}</h2>
         </div>
         <button
           className="sf-modal-close-x"
@@ -189,8 +188,14 @@ export default function SmartModal({
         </button>
       </div>
 
-      {/* Body — scrollable */}
-      <div className="sf-modal-body" style={{ padding: '14px 20px 20px', overflowY: 'auto', flex: 1 }}>{children}</div>
+      {/* Body — scrollable. Subtitle (if any) renders as a body
+          paragraph here so it's visually separated from the title row. */}
+      <div className="sf-modal-body" style={{ padding: '6px 20px 20px', overflowY: 'auto', flex: 1 }}>
+        {subtitle && (
+          <p style={{ fontSize: 13, margin: '8px 0 18px', color: 'var(--muted)', lineHeight: 1.55 }}>{subtitle}</p>
+        )}
+        {children}
+      </div>
 
       {/* Footer (optional). Flows with the form per the same pattern
           as the Create New Event CTA row (no border-top separator). */}
