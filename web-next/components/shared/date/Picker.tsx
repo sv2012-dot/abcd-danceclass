@@ -32,9 +32,14 @@ const DAYS_SHORT   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 // adjacent <Input>s in mixed form rows. minHeight matches them now.
 const STANDARD_CTRL_HEIGHT = 45;
 
-const triggerStyle = (open, size, hasValue) => ({
+const triggerStyle = (open, size, hasValue, bg) => ({
   width: '100%',
-  background: 'var(--surface)',
+  // Trigger background defaults to --surface (the standard input bg used
+  // in modal forms). Callers can override via the `background` prop on
+  // <DateField> / <TimeField> when the field sits on a non-default
+  // surface — e.g. the recital meta grid uses --card so the trigger
+  // blends with the cell instead of standing out as a lighter chip.
+  background: bg || 'var(--surface)',
   border: `1.5px solid ${open ? 'var(--accent)' : 'var(--border)'}`,
   borderRadius: 9,
   padding: size === 'sm' ? '7px 11px' : '10px 13px',
@@ -291,7 +296,7 @@ export function WhenField({ label = null, value = '', onChange = () => {}, minDa
 }
 
 // ─── <DateField> — date only, same calendar ─────────────────────────────────
-export function DateField({ label = null, value = '', onChange = () => {}, min = undefined, max = undefined, futureOnly = false, size = 'md', placeholder = 'Pick a date…' }: any) {
+export function DateField({ label = null, value = '', onChange = () => {}, min = undefined, max = undefined, futureOnly = false, size = 'md', placeholder = 'Pick a date…', background = undefined }: any) {
   const { open, setOpen, ref } = usePopover();
   const parsed = useMemo(() => parseLocalDate(value), [value]);
 
@@ -311,7 +316,7 @@ export function DateField({ label = null, value = '', onChange = () => {}, min =
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       {label && <label style={labelStyle}>{label}</label>}
-      <button type="button" onClick={() => setOpen(p => !p)} style={triggerStyle(open, size, !!parsed)}>
+      <button type="button" onClick={() => setOpen(p => !p)} style={triggerStyle(open, size, !!parsed, background)}>
         <CalendarIcon />
         {parsed
           ? <span style={{ color: 'var(--text)', fontWeight: 600 }}>{formatDate(value, 'full')}</span>
@@ -334,7 +339,7 @@ export function DateField({ label = null, value = '', onChange = () => {}, min =
 }
 
 // ─── <TimeField> — time only, AM/PM 15-min steps ────────────────────────────
-export function TimeField({ label = null, value = '', onChange = () => {}, nullable = false, size = 'md', placeholder = 'Pick a time…' }: any) {
+export function TimeField({ label = null, value = '', onChange = () => {}, nullable = false, size = 'md', placeholder = 'Pick a time…', background = undefined }: any) {
   const { open, setOpen, ref } = usePopover();
   const [h, m] = (value || '').split(':').map(n => parseInt(n, 10));
   const hasValue = !isNaN(h);
@@ -348,7 +353,7 @@ export function TimeField({ label = null, value = '', onChange = () => {}, nulla
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       {label && <label style={labelStyle}>{label}</label>}
-      <button type="button" onClick={() => setOpen(p => !p)} style={triggerStyle(open, size, hasValue)}>
+      <button type="button" onClick={() => setOpen(p => !p)} style={triggerStyle(open, size, hasValue, background)}>
         <ClockIcon />
         {hasValue
           ? <span style={{ color: 'var(--text)', fontWeight: 600 }}>{formatTime(value)}</span>

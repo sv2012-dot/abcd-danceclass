@@ -1245,11 +1245,29 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
               color:"var(--text)", fontSize:14, fontFamily:"inherit",
               outline:"none", boxSizing:"border-box" as const,
             };
+            // Per-cell border-radius. The grid container uses
+            // overflow:visible (so the date/time popover isn't clipped),
+            // which means each corner cell needs to round its own outer
+            // corner. The editing cell (when expanded across the full
+            // row) picks up the corners on whichever row it occupies.
+            const cellRadius = (i: number, isFullRow: boolean) => {
+              const R = '14px';
+              const myRow = Math.floor(i / 2);
+              const tl = i === 0 || (isFullRow && myRow === 0);
+              const tr = i === 1 || (isFullRow && myRow === 0);
+              const bl = i === 2 || (isFullRow && myRow === 1);
+              const br = i === 3 || (isFullRow && myRow === 1);
+              return `${tl?R:'0'} ${tr?R:'0'} ${br?R:'0'} ${bl?R:'0'}`;
+            };
             return (
               <div style={{
                 display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:0,
-                background:"var(--border)", borderRadius:14, overflow:"hidden",
+                background:"var(--border)", borderRadius:14,
+                // overflow:visible so the date/time popover can render
+                // outside the grid. Corner rounding is handled per-cell.
+                overflow:"visible",
                 border:"1px solid var(--border)", marginBottom:22,
+                position:"relative",
               }}>
                 {META.map((m, i) => {
                   const isEditing = metaEditing === m.id;
@@ -1264,10 +1282,14 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                       padding: isEditing ? "16px" : "14px 16px",
                       borderRight: !isFullRow && i % 2 === 0 ? "1px solid var(--border)" : "none",
                       borderBottom: isFirstRow ? "1px solid var(--border)" : "none",
+                      borderRadius: cellRadius(i, isFullRow),
                       gridColumn: isFullRow ? "1 / -1" : undefined,
                       outline: isEditing ? "1.5px solid rgba(124,58,237,.45)" : "none",
                       outlineOffset: isEditing ? "-1.5px" : 0,
                       position:"relative",
+                      // Editing cell needs to layer above its non-editing
+                      // siblings so the popover doesn't render behind them.
+                      zIndex: isEditing ? 5 : 1,
                       cursor: isEditing ? "default" : "pointer",
                       transition:"padding .12s",
                     }}
@@ -1287,10 +1309,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                         <>
                           <div onClick={e => e.stopPropagation()} style={{ marginBottom:12 }}>
                             {m.id === 'date' && (
-                              <DateField value={metaForm.date || ''} onChange={v => setMetaForm(f => ({...f, date: v}))} size="md" placeholder="Pick a date…" />
+                              <DateField value={metaForm.date || ''} onChange={v => setMetaForm(f => ({...f, date: v}))} size="md" placeholder="Pick a date…" background="var(--card)" />
                             )}
                             {m.id === 'time' && (
-                              <TimeField value={metaForm.time || ''} onChange={v => setMetaForm(f => ({...f, time: v}))} size="md" nullable placeholder="HH:MM" />
+                              <TimeField value={metaForm.time || ''} onChange={v => setMetaForm(f => ({...f, time: v}))} size="md" nullable placeholder="HH:MM" background="var(--card)" />
                             )}
                             {m.id === 'venue' && (
                               <input
@@ -1518,12 +1540,24 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                 color:"var(--text)", fontSize:13, fontFamily:"inherit",
                 outline:"none", boxSizing:"border-box" as const,
               };
+              // Per-cell radius — first/last cells own the outer corners
+              // since the container uses overflow:visible (so popovers
+              // aren't clipped).
+              const cellRadiusD = (i: number, last: number) => {
+                const R = '14px';
+                if (i === 0) return `${R} 0 0 ${R}`;
+                if (i === last) return `0 ${R} ${R} 0`;
+                return '0';
+              };
+              const lastIdx = META.length - 1;
               return (
                 <div style={{
                   display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:0,
-                  background:"var(--border)", borderRadius:14, overflow:"hidden",
+                  background:"var(--border)", borderRadius:14,
+                  overflow:"visible",
                   border:"1px solid var(--border)",
                   alignItems:"stretch",
+                  position:"relative",
                 }}>
                   {META.map((m, i) => {
                     const isEditing = metaEditing === m.id;
@@ -1532,9 +1566,11 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                         background:"var(--card)",
                         padding:"16px 22px",
                         borderRight: i < META.length-1 ? "1px solid var(--border)" : "none",
+                        borderRadius: cellRadiusD(i, lastIdx),
                         outline: isEditing ? "1.5px solid rgba(124,58,237,.45)" : "none",
                         outlineOffset: isEditing ? "-1.5px" : 0,
                         position:"relative",
+                        zIndex: isEditing ? 5 : 1,
                         cursor: isEditing ? "default" : "pointer",
                       }}
                       onMouseEnter={e => { if (!metaEditing) e.currentTarget.style.background="var(--surface)"; }}
@@ -1553,10 +1589,10 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
                           <>
                             <div onClick={e => e.stopPropagation()} style={{ marginBottom:10 }}>
                               {m.id === 'date' && (
-                                <DateField value={metaForm.date || ''} onChange={v => setMetaForm(f => ({...f, date: v}))} size="md" placeholder="Pick a date…" />
+                                <DateField value={metaForm.date || ''} onChange={v => setMetaForm(f => ({...f, date: v}))} size="md" placeholder="Pick a date…" background="var(--card)" />
                               )}
                               {m.id === 'time' && (
-                                <TimeField value={metaForm.time || ''} onChange={v => setMetaForm(f => ({...f, time: v}))} size="md" nullable placeholder="HH:MM" />
+                                <TimeField value={metaForm.time || ''} onChange={v => setMetaForm(f => ({...f, time: v}))} size="md" nullable placeholder="HH:MM" background="var(--card)" />
                               )}
                               {m.id === 'venue' && (
                                 <input
