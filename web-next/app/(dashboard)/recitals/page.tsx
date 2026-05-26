@@ -557,24 +557,45 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
     updateMutation.mutate(editForm);
   };
 
-  const saveMetaField = async (field) => {
+  // saveMetaField(field) — saves the current metaForm value for the field
+  // saveMetaField(field, { override }) — bypasses metaForm and writes
+  //   `override` directly. Used by the "Set TBD" button so it can save
+  //   `null` immediately without waiting for a setState round-trip.
+  //   (Arrow function has no `arguments`, so we use a sentinel object.)
+  const saveMetaField = async (field, opts) => {
     try {
       setMetaSaving(true);
+      const useOverride = opts && Object.prototype.hasOwnProperty.call(opts, 'override');
+      const override = useOverride ? opts.override : undefined;
+      const dateVal = field === 'date'
+        ? (useOverride ? override : (metaForm.date || null))
+        : (recital.event_date||'').slice(0,10);
+      const timeVal = field === 'time'
+        ? (useOverride ? override : (metaForm.time || null))
+        : recital.event_time||'';
+      const venueVal = field === 'venue'
+        ? (useOverride ? override : (metaForm.venue || null))
+        : recital.venue||'';
+      const participantsVal = field === 'participants'
+        ? (useOverride
+            ? override
+            : (metaForm.participants ? Number(metaForm.participants) : null))
+        : recital.participant_count??null;
       const updates = {
         title: recital.title,
-        event_date: field === 'date' ? (metaForm.date || null) : (recital.event_date||'').slice(0,10),
-        event_time: field === 'time' ? (metaForm.time || null) : recital.event_time||'',
-        venue: field === 'venue' ? (metaForm.venue || null) : recital.venue||'',
+        event_date: dateVal,
+        event_time: timeVal,
+        venue: venueVal,
         status: recital.status||'Planning',
         description: recital.description||'',
         is_featured: recital.is_featured??0,
-        participant_count: field === 'participants' ? (metaForm.participants ? Number(metaForm.participants) : null) : recital.participant_count??null,
+        participant_count: participantsVal,
       };
       await api.update(sid, id, updates);
       qc.invalidateQueries({ queryKey: ["recital-detail", sid, id] });
       setMetaEditing(null);
       setMetaForm({});
-      toast.success(`${field} updated`);
+      toast.success(useOverride && override == null ? `${field} set to TBD` : `${field} updated`);
     } catch {
       toast.error(`Failed to update ${field}`);
     } finally {
@@ -1194,64 +1215,157 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
             Smart Announce
           </button>
 
-          {/* ── Metadata strip ── */}
-          <div style={{
-            display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:0,
-            background:"var(--border)", borderRadius:14, overflow:"hidden",
-            border:"1px solid var(--border)", marginBottom:22,
-          }}>
-            {META.map((m, i) => (
-              <div key={m.id} data-meta-edit style={{
-                background:"var(--card)", padding:"14px 16px",
-                borderRight: i % 2 === 0 ? "1px solid var(--border)" : "none",
-                borderBottom: i < 2 ? "1px solid var(--border)" : "none",
-                position:"relative",
-                cursor:"pointer",
-              }}
-              onMouseEnter={e => e.currentTarget.style.background="var(--surface)"}
-              onMouseLeave={e => e.currentTarget.style.background="var(--card)"}
-              onClick={() => {
-                setMetaForm({ [m.id]: m.raw });
-                setMetaEditing(m.id);
-              }}
-              >
-                <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7, color:"var(--muted)" }}>
-                  {m.icon}
-                  <span style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".07em" }}>{m.label}</span>
-                </div>
-                {metaEditing === m.id ? (
-                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                    {m.id === 'date' && (
-                      <>
-                        <div style={{ flex:1 }}>
-                          <DateField value={metaForm.date || ''} onChange={v => setMetaForm(f => ({...f, date: v}))} size="sm" placeholder="Pick a date…" />
-                        </div>
-                        <button onClick={e => { e.stopPropagation(); setMetaForm(f => ({...f, date: null})); }} style={{ padding:"4px 10px", fontSize:11, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:6, cursor:"pointer", color:"var(--text)" }}>TBD</button>
-                      </>
-                    )}
-                    {m.id === 'time' && (
-                      <div style={{ flex:1 }}>
-                        <TimeField value={metaForm.time || ''} onChange={v => setMetaForm(f => ({...f, time: v}))} size="sm" nullable placeholder="TBD" />
+          {/* ── Metadata strip ──
+              Tap any cell to edit in place. The editing cell expands to
+              span the full row (hiding its sibling for the duration), so
+              long values (Location, Participants) get the room they need
+              on phone screens. Save shows only when the value differs
+              from current; "Set TBD" writes null in one tap (date excluded
+              since a recital should converge on a real date). */}
+          {(() => {
+            const editingIdx = metaEditing ? META.findIndex(x => x.id === metaEditing) : -1;
+            const editingRow = editingIdx >= 0 ? Math.floor(editingIdx / 2) : -1;
+            // Dirty check — show Save only when the form value differs from
+            // the persisted value. Participants needs Number coercion.
+            const computeDirty = () => {
+              if (!metaEditing) return false;
+              const cur = metaForm[metaEditing];
+              const raw = META.find(x => x.id === metaEditing)?.raw;
+              if (metaEditing === 'participants') {
+                const n = cur === '' || cur == null ? null : Number(cur);
+                const r = raw == null ? null : Number(raw);
+                return n !== r;
+              }
+              return (cur || null) !== (raw || null);
+            };
+            const isDirty = computeDirty();
+            const INPUT_STYLE = {
+              width:"100%", padding:"10px 12px", borderRadius:9,
+              border:"1.5px solid var(--border)", background:"var(--card)",
+              color:"var(--text)", fontSize:14, fontFamily:"inherit",
+              outline:"none", boxSizing:"border-box" as const,
+            };
+            return (
+              <div style={{
+                display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:0,
+                background:"var(--border)", borderRadius:14, overflow:"hidden",
+                border:"1px solid var(--border)", marginBottom:22,
+              }}>
+                {META.map((m, i) => {
+                  const isEditing = metaEditing === m.id;
+                  const myRow = Math.floor(i / 2);
+                  const isHiddenSibling = editingIdx >= 0 && editingIdx !== i && myRow === editingRow;
+                  if (isHiddenSibling) return null;
+                  const isFullRow = isEditing;
+                  const isFirstRow = myRow === 0;
+                  return (
+                    <div key={m.id} data-meta-edit style={{
+                      background:"var(--card)",
+                      padding: isEditing ? "16px" : "14px 16px",
+                      borderRight: !isFullRow && i % 2 === 0 ? "1px solid var(--border)" : "none",
+                      borderBottom: isFirstRow ? "1px solid var(--border)" : "none",
+                      gridColumn: isFullRow ? "1 / -1" : undefined,
+                      outline: isEditing ? "1.5px solid rgba(124,58,237,.45)" : "none",
+                      outlineOffset: isEditing ? "-1.5px" : 0,
+                      position:"relative",
+                      cursor: isEditing ? "default" : "pointer",
+                      transition:"padding .12s",
+                    }}
+                    onMouseEnter={e => { if (!metaEditing) e.currentTarget.style.background="var(--surface)"; }}
+                    onMouseLeave={e => { if (!isEditing) e.currentTarget.style.background="var(--card)"; }}
+                    onClick={() => {
+                      if (isEditing) return;
+                      setMetaForm({ [m.id]: m.raw });
+                      setMetaEditing(m.id);
+                    }}
+                    >
+                      <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom: isEditing ? 12 : 7, color:"var(--muted)" }}>
+                        {m.icon}
+                        <span style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".07em" }}>{m.label}</span>
                       </div>
-                    )}
-                    {m.id === 'venue' && (
-                      <input type="text" placeholder="e.g. Lincoln Center" value={metaForm.venue || ''} onChange={e => setMetaForm(f => ({...f, venue: e.target.value}))} style={{ flex:1, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:13 }} />
-                    )}
-                    {m.id === 'participants' && (
-                      <>
-                        <input type="number" min="0" placeholder="Count" value={metaForm.participants || ''} onChange={e => setMetaForm(f => ({...f, participants: e.target.value}))} style={{ width:72, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:13 }} />
-                        <button onClick={e => { e.stopPropagation(); setMetaForm(f => ({...f, participants: null})); }} style={{ padding:"2px 8px", fontSize:11, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:4, cursor:"pointer", color:"var(--text)" }}>TBD</button>
-                      </>
-                    )}
-                    <button onClick={e => { e.stopPropagation(); saveMetaField(m.id); }} disabled={metaSaving} style={{ padding:"2px 8px", fontSize:11, background:"var(--accent)", color:"#fff", border:"none", borderRadius:4, cursor:"pointer", opacity: metaSaving ? 0.6 : 1 }}>Save</button>
-                    <button onClick={e => { e.stopPropagation(); setMetaEditing(null); }} style={{ padding:"2px 8px", fontSize:11, background:"var(--surface)", color:"var(--text)", border:"1px solid var(--border)", borderRadius:4, cursor:"pointer" }}>Cancel</button>
-                  </div>
-                ) : (
-                  <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
-                )}
+                      {isEditing ? (
+                        <>
+                          <div onClick={e => e.stopPropagation()} style={{ marginBottom:12 }}>
+                            {m.id === 'date' && (
+                              <DateField value={metaForm.date || ''} onChange={v => setMetaForm(f => ({...f, date: v}))} size="md" placeholder="Pick a date…" />
+                            )}
+                            {m.id === 'time' && (
+                              <TimeField value={metaForm.time || ''} onChange={v => setMetaForm(f => ({...f, time: v}))} size="md" nullable placeholder="HH:MM" />
+                            )}
+                            {m.id === 'venue' && (
+                              <input
+                                type="text" autoFocus
+                                placeholder="e.g. Lincoln Center"
+                                value={metaForm.venue || ''}
+                                onChange={e => setMetaForm(f => ({...f, venue: e.target.value}))}
+                                onKeyDown={e => { if (e.key === 'Escape') setMetaEditing(null); if (e.key === 'Enter' && isDirty) saveMetaField(m.id); }}
+                                style={INPUT_STYLE}
+                              />
+                            )}
+                            {m.id === 'participants' && (
+                              <input
+                                type="number" min="0" autoFocus
+                                placeholder="e.g. 24"
+                                value={metaForm.participants ?? ''}
+                                onChange={e => setMetaForm(f => ({...f, participants: e.target.value}))}
+                                onKeyDown={e => { if (e.key === 'Escape') setMetaEditing(null); if (e.key === 'Enter' && isDirty) saveMetaField(m.id); }}
+                                style={INPUT_STYLE}
+                              />
+                            )}
+                          </div>
+                          <div onClick={e => e.stopPropagation()} style={{ display:"flex", gap:8, alignItems:"center" }}>
+                            {m.id !== 'date' && (
+                              <button
+                                onClick={() => saveMetaField(m.id, { override: null })}
+                                disabled={metaSaving}
+                                style={{
+                                  padding:"7px 12px",
+                                  background:"transparent",
+                                  color:"var(--muted)",
+                                  border:"1px dashed var(--border)",
+                                  borderRadius:8, fontSize:12, fontWeight:600,
+                                  cursor:"pointer", marginRight:"auto",
+                                  opacity: metaSaving ? 0.6 : 1,
+                                }}
+                              >Set TBD</button>
+                            )}
+                            <button
+                              onClick={() => setMetaEditing(null)}
+                              style={{
+                                padding:"7px 14px",
+                                background:"var(--surface)",
+                                color:"var(--text)",
+                                border:"1px solid var(--border)",
+                                borderRadius:8, fontSize:12, fontWeight:600,
+                                cursor:"pointer",
+                              }}
+                            >Cancel</button>
+                            {isDirty && (
+                              <button
+                                onClick={() => saveMetaField(m.id)}
+                                disabled={metaSaving}
+                                style={{
+                                  padding:"7px 14px",
+                                  background:"linear-gradient(135deg,#7C3AED,#D946EF)",
+                                  color:"#fff", border:"none",
+                                  borderRadius:8, fontSize:12, fontWeight:700,
+                                  cursor:"pointer",
+                                  opacity: metaSaving ? 0.6 : 1,
+                                  boxShadow:"0 2px 8px rgba(124,58,237,.3)",
+                                }}
+                              >{metaSaving ? '…' : 'Save'}</button>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </>
       ) : (
         <>
@@ -1381,63 +1495,145 @@ export function RecitalDetail({ id, onBack, sid, onEdit, onDeleted, onDuplicated
               </div>
             </div>
 
-            {/* Metadata strip */}
-            <div style={{
-              display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:0,
-              background:"var(--border)", borderRadius:14, overflow:"hidden",
-              border:"1px solid var(--border)",
-            }}>
-              {META.map((m, i) => (
-                <div key={m.id} data-meta-edit style={{
-                  background:"var(--card)", padding:"16px 22px",
-                  borderRight: i < META.length-1 ? "1px solid var(--border)" : "none",
-                  position:"relative",
-                  cursor:"pointer",
-                }}
-                onMouseEnter={e => !metaEditing && (e.currentTarget.style.background="var(--surface)")}
-                onMouseLeave={e => !metaEditing && (e.currentTarget.style.background="var(--card)")}
-                onClick={() => {
-                  setMetaForm({ [m.id]: m.raw });
-                  setMetaEditing(m.id);
-                }}
-                >
-                  <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7, color:"var(--muted)" }}>
-                    {m.icon}
-                    <span style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".07em" }}>{m.label}</span>
-                  </div>
-                  {metaEditing === m.id ? (
-                    <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
-                      {m.id === 'date' && (
-                        <>
-                          <div style={{ flex:1, minWidth:120 }}>
-                            <DateField value={metaForm.date || ''} onChange={v => setMetaForm(f => ({...f, date: v}))} size="sm" placeholder="Pick a date…" />
-                          </div>
-                          <button onClick={e => { e.stopPropagation(); setMetaForm(f => ({...f, date: null})); }} style={{ padding:"4px 8px", fontSize:11, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:6, cursor:"pointer", whiteSpace:"nowrap", color:"var(--text)" }}>TBD</button>
-                        </>
-                      )}
-                      {m.id === 'time' && (
-                        <div style={{ flex:1, minWidth:120 }}>
-                          <TimeField value={metaForm.time || ''} onChange={v => setMetaForm(f => ({...f, time: v}))} size="sm" nullable placeholder="TBD" />
+            {/* Metadata strip — desktop. Same inline-edit pattern as mobile
+                (dark input bg, "Set TBD" for non-date fields, Save shown
+                only when value is dirty). Cells stay 4-wide; the editing
+                cell grows vertically to fit the stacked input + button row. */}
+            {(() => {
+              const computeDirty = () => {
+                if (!metaEditing) return false;
+                const cur = metaForm[metaEditing];
+                const raw = META.find(x => x.id === metaEditing)?.raw;
+                if (metaEditing === 'participants') {
+                  const n = cur === '' || cur == null ? null : Number(cur);
+                  const r = raw == null ? null : Number(raw);
+                  return n !== r;
+                }
+                return (cur || null) !== (raw || null);
+              };
+              const isDirty = computeDirty();
+              const INPUT_STYLE_D = {
+                width:"100%", padding:"9px 11px", borderRadius:9,
+                border:"1.5px solid var(--border)", background:"var(--card)",
+                color:"var(--text)", fontSize:13, fontFamily:"inherit",
+                outline:"none", boxSizing:"border-box" as const,
+              };
+              return (
+                <div style={{
+                  display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:0,
+                  background:"var(--border)", borderRadius:14, overflow:"hidden",
+                  border:"1px solid var(--border)",
+                  alignItems:"stretch",
+                }}>
+                  {META.map((m, i) => {
+                    const isEditing = metaEditing === m.id;
+                    return (
+                      <div key={m.id} data-meta-edit style={{
+                        background:"var(--card)",
+                        padding:"16px 22px",
+                        borderRight: i < META.length-1 ? "1px solid var(--border)" : "none",
+                        outline: isEditing ? "1.5px solid rgba(124,58,237,.45)" : "none",
+                        outlineOffset: isEditing ? "-1.5px" : 0,
+                        position:"relative",
+                        cursor: isEditing ? "default" : "pointer",
+                      }}
+                      onMouseEnter={e => { if (!metaEditing) e.currentTarget.style.background="var(--surface)"; }}
+                      onMouseLeave={e => { if (!isEditing) e.currentTarget.style.background="var(--card)"; }}
+                      onClick={() => {
+                        if (isEditing) return;
+                        setMetaForm({ [m.id]: m.raw });
+                        setMetaEditing(m.id);
+                      }}
+                      >
+                        <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom: isEditing ? 10 : 7, color:"var(--muted)" }}>
+                          {m.icon}
+                          <span style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".07em" }}>{m.label}</span>
                         </div>
-                      )}
-                      {m.id === 'venue' && (
-                        <input type="text" placeholder="Venue" value={metaForm.venue || ''} onChange={e => setMetaForm(f => ({...f, venue: e.target.value}))} style={{ flex:1, minWidth:100, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:12 }} />
-                      )}
-                      {m.id === 'participants' && (
-                        <>
-                          <input type="number" min="0" placeholder="Count" value={metaForm.participants || ''} onChange={e => setMetaForm(f => ({...f, participants: e.target.value}))} onKeyDown={e => e.key === 'Escape' && setMetaEditing(null)} style={{ width:72, padding:"4px 6px", borderRadius:4, border:"1px solid var(--border)", fontSize:12 }} />
-                          <button onClick={e => { e.stopPropagation(); setMetaForm(f => ({...f, participants: null})); }} style={{ padding:"2px 6px", fontSize:10, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:4, cursor:"pointer", whiteSpace:"nowrap", color:"var(--text)" }}>TBD</button>
-                        </>
-                      )}
-                      <button onClick={e => { e.stopPropagation(); saveMetaField(m.id); }} disabled={metaSaving} style={{ padding:"2px 6px", fontSize:10, background:"var(--accent)", color:"#fff", border:"none", borderRadius:4, cursor:"pointer", opacity: metaSaving ? 0.6 : 1, whiteSpace:"nowrap" }}>Save</button>
-                      <button onClick={e => { e.stopPropagation(); setMetaEditing(null); }} style={{ padding:"2px 6px", fontSize:10, background:"var(--surface)", color:"var(--text)", border:"1px solid var(--border)", borderRadius:4, cursor:"pointer", whiteSpace:"nowrap" }}>✕</button>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
-                  )}
+                        {isEditing ? (
+                          <>
+                            <div onClick={e => e.stopPropagation()} style={{ marginBottom:10 }}>
+                              {m.id === 'date' && (
+                                <DateField value={metaForm.date || ''} onChange={v => setMetaForm(f => ({...f, date: v}))} size="md" placeholder="Pick a date…" />
+                              )}
+                              {m.id === 'time' && (
+                                <TimeField value={metaForm.time || ''} onChange={v => setMetaForm(f => ({...f, time: v}))} size="md" nullable placeholder="HH:MM" />
+                              )}
+                              {m.id === 'venue' && (
+                                <input
+                                  type="text" autoFocus
+                                  placeholder="Venue"
+                                  value={metaForm.venue || ''}
+                                  onChange={e => setMetaForm(f => ({...f, venue: e.target.value}))}
+                                  onKeyDown={e => { if (e.key === 'Escape') setMetaEditing(null); if (e.key === 'Enter' && isDirty) saveMetaField(m.id); }}
+                                  style={INPUT_STYLE_D}
+                                />
+                              )}
+                              {m.id === 'participants' && (
+                                <input
+                                  type="number" min="0" autoFocus
+                                  placeholder="Count"
+                                  value={metaForm.participants ?? ''}
+                                  onChange={e => setMetaForm(f => ({...f, participants: e.target.value}))}
+                                  onKeyDown={e => { if (e.key === 'Escape') setMetaEditing(null); if (e.key === 'Enter' && isDirty) saveMetaField(m.id); }}
+                                  style={INPUT_STYLE_D}
+                                />
+                              )}
+                            </div>
+                            <div onClick={e => e.stopPropagation()} style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
+                              {m.id !== 'date' && (
+                                <button
+                                  onClick={() => saveMetaField(m.id, { override: null })}
+                                  disabled={metaSaving}
+                                  style={{
+                                    padding:"6px 10px",
+                                    background:"transparent",
+                                    color:"var(--muted)",
+                                    border:"1px dashed var(--border)",
+                                    borderRadius:7, fontSize:11, fontWeight:600,
+                                    cursor:"pointer", marginRight:"auto",
+                                    opacity: metaSaving ? 0.6 : 1,
+                                    whiteSpace:"nowrap",
+                                  }}
+                                >Set TBD</button>
+                              )}
+                              <button
+                                onClick={() => setMetaEditing(null)}
+                                style={{
+                                  padding:"6px 12px",
+                                  background:"var(--surface)",
+                                  color:"var(--text)",
+                                  border:"1px solid var(--border)",
+                                  borderRadius:7, fontSize:11, fontWeight:600,
+                                  cursor:"pointer", whiteSpace:"nowrap",
+                                }}
+                              >Cancel</button>
+                              {isDirty && (
+                                <button
+                                  onClick={() => saveMetaField(m.id)}
+                                  disabled={metaSaving}
+                                  style={{
+                                    padding:"6px 12px",
+                                    background:"linear-gradient(135deg,#7C3AED,#D946EF)",
+                                    color:"#fff", border:"none",
+                                    borderRadius:7, fontSize:11, fontWeight:700,
+                                    cursor:"pointer",
+                                    opacity: metaSaving ? 0.6 : 1,
+                                    boxShadow:"0 2px 8px rgba(124,58,237,.3)",
+                                    whiteSpace:"nowrap",
+                                  }}
+                                >{metaSaving ? '…' : 'Save'}</button>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>{m.value}</div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </div>
         </>
       )}
