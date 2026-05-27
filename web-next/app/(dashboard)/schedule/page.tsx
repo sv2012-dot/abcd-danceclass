@@ -253,22 +253,6 @@ export default function SchedulePage() {
   const [form, setForm]           = useState(EMPTY_FORM);
   const [detailEvent, setDetailEvent] = useState(null);
 
-  // Date & Time block — V3 collapsed/expand. Default collapsed; clicking
-  // the summary line opens the editor; clicking outside collapses back.
-  // (The block only renders when the panel is in edit/add mode.)
-  const [dtBlockOpen, setDtBlockOpen] = useState(false);
-  const dtBlockRef = useRef(null);
-  useEffect(() => {
-    if (!dtBlockOpen) return;
-    const handler = (e) => {
-      const c = dtBlockRef.current;
-      if (c && !c.contains(e.target)) setDtBlockOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [dtBlockOpen]);
-  // Collapse whenever the panel mode flips so the user lands clean.
-  useEffect(() => { setDtBlockOpen(false); }, [panelMode]);
 
   // Event cover override — admin can replace the inherited batch cover
   // with an event-specific image. coverCropFile holds the pending File
@@ -1881,145 +1865,82 @@ export default function SchedulePage() {
                   </Field>
                 )}
 
-                {/* ── Date & Time — V3 collapsed/expand ──
-                    Default: one readable line ("Tue, May 26 · 6:00 PM ·
-                    1 hr · Ends 7:00 PM") with a pencil hint on the
-                    right. Click the line to expand into the full editor
-                    (Date picker + 4 dropdowns + Ends-at + Repeat).
-                    Click anywhere outside the block to collapse back. */}
-                {(() => {
-                  // Build readable summary pieces from form state.
-                  // parseLocalDate returns null on malformed input, so guard
-                  // against calling .toLocaleDateString on null (which would
-                  // crash the whole form render).
-                  const summaryDay = (() => {
-                    if (!dPart) return 'Pick a date';
-                    const d = sharedParseLocalDate(dPart);
-                    if (!d) return 'Pick a date';
-                    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                  })();
-                  const summaryTime = dPart
-                    ? `${hour12}:${String(minsSnapped).padStart(2, '0')} ${ampm}`
-                    : '';
-                  const summaryDur =
-                    form.duration < 60 ? `${form.duration} min`
-                    : form.duration === 60 ? '1 hr'
-                    : form.duration === 120 ? '2 hr'
-                    : form.duration === 180 ? '3 hr+'
-                    : `${form.duration} min`;
-                  return (
-                    <div ref={dtBlockRef} style={{ gridColumn:'1/-1', marginBottom:16 }}>
-                      <Field label="Date & Time *" style={{ marginBottom:0 }}>
-                        {dtBlockOpen ? (
-                          <div
-                            onClick={(e)=>e.stopPropagation()}
-                            style={{
-                              border:'1.5px solid rgba(124,58,237,0.55)',
-                              borderRadius:11,
-                              background:'var(--card)',
-                              boxShadow:'0 4px 20px rgba(124,58,237,0.18)',
-                              padding:14,
-                              display:'flex',flexDirection:'column',gap:10,
-                            }}
-                          >
-                            <DateField value={dPart} onChange={d => updateStart({ date: d })} />
-                            <div style={{ display:'grid', gridTemplateColumns:'0.9fr 0.9fr 1.1fr 1.3fr', gap:6 }}>
-                              <Select value={String(hour12)} onChange={e => updateStart({ hour12: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
-                                {Array.from({length: 12}, (_, i) => i + 1).map(h => <option key={h} value={String(h)}>{h}</option>)}
-                              </Select>
-                              <Select value={String(minsSnapped)} onChange={e => updateStart({ mins: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
-                                <option value="0">00</option>
-                                <option value="15">15</option>
-                                <option value="30">30</option>
-                                <option value="45">45</option>
-                              </Select>
-                              <Select value={ampm} onChange={e => updateStart({ ampm: e.target.value })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
-                                <option value="AM">AM</option>
-                                <option value="PM">PM</option>
-                              </Select>
-                              <Select
-                                value={String(form.duration)}
-                                onChange={e => {
-                                  const d = Number(e.target.value);
-                                  setForm(f => ({ ...f, duration: d, end_datetime: computeEndFromDuration(f.start_datetime, d) }));
-                                }}
-                                style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}
-                              >
-                                <option value="30">30 m</option>
-                                <option value="60">1 hr</option>
-                                <option value="120">2 hrs</option>
-                                <option value="180">3 hrs+</option>
-                              </Select>
-                            </div>
-                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-                              {showEndsAt && endsAtLabel ? (
-                                <span style={{fontSize:13, color:'var(--muted)'}}>
-                                  Ends at <b style={{color:'var(--text)'}}>{endsAtLabel}</b>
-                                </span>
-                              ) : <span />}
-                              <label style={{display:'inline-flex', alignItems:'center', gap:8, cursor: panelMode === 'edit' ? 'default' : 'pointer', fontSize:14, color: panelMode === 'edit' ? 'var(--muted)' : 'var(--text)', userSelect:'none'}}>
-                                <input
-                                  type="checkbox"
-                                  disabled={panelMode === 'edit'}
-                                  checked={form.recurrence !== 'none'}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      const base = dPart || new Date().toISOString().slice(0, 10);
-                                      const d = new Date(base + 'T00:00:00');
-                                      d.setMonth(d.getMonth() + 6);
-                                      const sixMonthsOut = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                                      setForm(f => ({ ...f, recurrence: 'weekly', recurrence_end: sixMonthsOut }));
-                                    } else {
-                                      setForm(f => ({ ...f, recurrence: 'none', recurrence_end: '' }));
-                                    }
-                                  }}
-                                  style={{width:18, height:18, accentColor:'var(--accent)', cursor: panelMode === 'edit' ? 'default' : 'pointer'}}
-                                />
-                                Repeat
-                              </label>
-                            </div>
-                          </div>
-                        ) : (
-                          <div
-                            onClick={() => setDtBlockOpen(true)}
-                            style={{
-                              display:'flex', alignItems:'center', gap:8, flexWrap:'wrap',
-                              padding:'12px 14px',
-                              borderRadius:9,
-                              border:'1.5px solid var(--border)',
-                              background:'var(--surface)',
-                              cursor:'pointer',
-                              fontSize:14, color:'var(--text)', lineHeight:1.4,
-                              transition:'border-color .12s, background .12s',
-                            }}
-                            onMouseEnter={(e) => { e.currentTarget.style.borderColor='rgba(124,58,237,0.45)'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.borderColor='var(--border)'; }}
-                          >
-                            <span style={{ fontWeight:700, color:'var(--text)' }}>{summaryDay}</span>
-                            {dPart && <>
-                              <span style={{ color:'var(--muted)' }}>·</span>
-                              <span style={{ fontWeight:600 }}>{summaryTime}</span>
-                              <span style={{ color:'var(--muted)' }}>·</span>
-                              <span style={{ color:'var(--muted)', fontWeight:500 }}>{summaryDur}</span>
-                              {showEndsAt && endsAtLabel && <>
-                                <span style={{ color:'var(--muted)' }}>·</span>
-                                <span style={{ color:'var(--muted)', fontWeight:500 }}>
-                                  Ends <b style={{ color:'var(--text)', fontWeight:600 }}>{endsAtLabel}</b>
-                                </span>
-                              </>}
-                            </>}
-                            <span style={{ marginLeft:'auto', color:'var(--muted)', display:'inline-flex', opacity:0.55, flexShrink:0 }}>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 20h9"/>
-                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/>
-                              </svg>
-                            </span>
-                          </div>
-                        )}
-                      </Field>
-                    </div>
-                  );
-                })()}
+                <Field label="Date *" style={{gridColumn:"1/-1"}}>
+                  <DateField value={dPart} onChange={d => updateStart({ date: d })} />
+                </Field>
+
+                {/* Time row — Field-wrapped hour with the "Time *"
+                    floating label; 3 unheaded selects beside it. */}
+                <div style={{gridColumn:"1/-1", display:"grid", gridTemplateColumns:"0.9fr 0.9fr 1.1fr 1.3fr", gap:6}}>
+                  <Field label="Time *" style={{marginBottom:20}}>
+                    <Select value={String(hour12)} onChange={e => updateStart({ hour12: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
+                      {Array.from({length: 12}, (_, i) => i + 1).map(h => <option key={h} value={String(h)}>{h}</option>)}
+                    </Select>
+                  </Field>
+                  <Select value={String(minsSnapped)} onChange={e => updateStart({ mins: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center', alignSelf:'start'}}>
+                    <option value="0">00</option>
+                    <option value="15">15</option>
+                    <option value="30">30</option>
+                    <option value="45">45</option>
+                  </Select>
+                  <Select value={ampm} onChange={e => updateStart({ ampm: e.target.value })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center', alignSelf:'start'}}>
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </Select>
+                  <Select
+                    value={String(form.duration)}
+                    onChange={e => {
+                      const d = Number(e.target.value);
+                      setForm(f => ({ ...f, duration: d, end_datetime: computeEndFromDuration(f.start_datetime, d) }));
+                    }}
+                    style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center', alignSelf:'start'}}
+                  >
+                    <option value="30">30 m</option>
+                    <option value="60">1 hr</option>
+                    <option value="120">2 hrs</option>
+                    <option value="180">3 hrs+</option>
+                  </Select>
+                </div>
+
+                {/* Ends-at + Repeat checkbox row. */}
+                <div style={{
+                  gridColumn:"1/-1",
+                  display:"flex",
+                  justifyContent:"space-between",
+                  alignItems:"center",
+                  marginTop:-8,
+                  marginBottom:16,
+                  gap:12,
+                  flexWrap:"wrap",
+                  paddingLeft: 14,
+                  paddingRight: 14,
+                }}>
+                  {showEndsAt && endsAtLabel ? (
+                    <span style={{fontSize:13, color:"var(--muted)"}}>
+                      Ends at <b style={{color:"var(--text)"}}>{endsAtLabel}</b>
+                    </span>
+                  ) : <span />}
+                  <label style={{display:"inline-flex", alignItems:"center", gap:8, cursor: panelMode === 'edit' ? "default" : "pointer", fontSize:14, color: panelMode === 'edit' ? "var(--muted)" : "var(--text)", userSelect:"none"}}>
+                    <input
+                      type="checkbox"
+                      disabled={panelMode === 'edit'}
+                      checked={form.recurrence !== "none"}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          const base = dPart || new Date().toISOString().slice(0, 10);
+                          const d = new Date(base + 'T00:00:00');
+                          d.setMonth(d.getMonth() + 6);
+                          const sixMonthsOut = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                          setForm(f => ({ ...f, recurrence: 'weekly', recurrence_end: sixMonthsOut }));
+                        } else {
+                          setForm(f => ({ ...f, recurrence: 'none', recurrence_end: '' }));
+                        }
+                      }}
+                      style={{width:18, height:18, accentColor:"var(--accent)", cursor: panelMode === 'edit' ? "default" : "pointer"}}
+                    />
+                    Repeat
+                  </label>
+                </div>
 
                 {form.recurrence !== "none" && (
                   <>
