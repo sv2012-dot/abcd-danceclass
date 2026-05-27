@@ -1708,17 +1708,32 @@ function SuperAdminDash() {
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                       <div style={{ fontWeight:700, fontSize:14, color:C.ebony }}>{s.name}</div>
-                      {/* Pro / Free badge */}
-                      <span style={{
-                        fontSize:10, fontWeight:800, letterSpacing:'.06em', textTransform:'uppercase',
-                        padding:'2px 8px', borderRadius:10,
-                        background: s.plan_tier === 'paid' ? 'linear-gradient(135deg,#7C3AED,#DC4EFF)' : 'var(--surface)',
-                        color: s.plan_tier === 'paid' ? '#fff' : 'var(--muted)',
-                        border: s.plan_tier === 'paid' ? 'none' : '1px solid var(--border)',
-                      }}>
-                        {s.plan_tier === 'paid' ? '★ Pro' : 'Free'}
-                      </span>
-                      {/* Subscribed badge — only when stripe_subscription_id is set */}
+                      {/* Pro / Free badge — Pro now requires BOTH a paid
+                          plan_tier AND a Stripe subscription id. The old
+                          trial flow used to flip plan_tier='paid' without
+                          a subscription; with trials removed those rows
+                          are stale and should display as Free until the
+                          school actually subscribes. */}
+                      {(() => {
+                        const isPro = s.plan_tier === 'paid' && !!s.stripe_subscription_id;
+                        return (
+                          <span style={{
+                            fontSize:10, fontWeight:800, letterSpacing:'.06em', textTransform:'uppercase',
+                            padding:'2px 8px', borderRadius:10,
+                            background: isPro ? 'linear-gradient(135deg,#7C3AED,#DC4EFF)' : 'var(--surface)',
+                            color: isPro ? '#fff' : 'var(--muted)',
+                            border: isPro ? 'none' : '1px solid var(--border)',
+                          }}>
+                            {isPro ? '★ Pro' : 'Free'}
+                          </span>
+                        );
+                      })()}
+                      {/* Subscribed badge — kept as a separate signal
+                          so superadmin can spot schools with a Stripe
+                          association even if plan_tier hasn't been
+                          updated yet. Pro now requires both, but
+                          Subscribed surfaces the Stripe linkage by
+                          itself for diagnostic purposes. */}
                       {s.stripe_subscription_id && (
                         <span style={{
                           fontSize:10, fontWeight:800, letterSpacing:'.06em', textTransform:'uppercase',
@@ -1789,7 +1804,11 @@ function SuperAdminDash() {
                       <Button size="sm" variant="secondary"
                         disabled={resetStripeMut.isPending}
                         onClick={() => {
-                          const msg = s.plan_tier === 'paid'
+                          // Use the same definition the badge uses
+                          // — only treat as "on a paid plan" when there's
+                          // both a paid plan_tier AND a live subscription.
+                          const isPro = s.plan_tier === 'paid' && !!s.stripe_subscription_id;
+                          const msg = isPro
                             ? `⚠ ${s.name} is on a PAID plan. This will clear the saved Stripe customer + subscription id and mark them as 'free' in the DB. The Stripe subscription itself is NOT cancelled — do that in the Stripe dashboard first if needed.\n\nContinue?`
                             : `Clear Stripe customer id for ${s.name}? This lets the next checkout create a fresh live-mode customer (fixes the "No such customer" error after switching from test to live mode).`;
                           if (window.confirm(msg)) resetStripeMut.mutate(s.id);
