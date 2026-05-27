@@ -379,6 +379,23 @@ function SchoolHomePage() {
   // ── modal state ───────────────────────────────────────────────────────────
   const [modal, setModal]           = useState(null);
   const [form, setForm]             = useState(EMPTY_EVENT);
+
+  // Date & Time block — V3 collapsed/expand inside the Create/Edit
+  // Event modal. Default collapsed; click the summary line to expand;
+  // click anywhere outside the block to collapse.
+  const [dtBlockOpen, setDtBlockOpen] = useState(false);
+  const dtBlockRef = useRef(null);
+  useEffect(() => {
+    if (!dtBlockOpen) return;
+    const handler = (e) => {
+      const c = dtBlockRef.current;
+      if (c && !c.contains(e.target)) setDtBlockOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [dtBlockOpen]);
+  // Reset whenever the modal opens / closes so the user lands clean.
+  useEffect(() => { setDtBlockOpen(false); }, [modal]);
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [showAddBatch,   setShowAddBatch]   = useState(false);
   const [showSmartAdd,   setShowSmartAdd]   = useState(false);
@@ -1339,105 +1356,141 @@ function SchoolHomePage() {
               </Field>
             )}
 
-            {/* Date row. */}
-            <Field label="Date *" style={{gridColumn:"1/-1"}}>
-              <DateField value={dPart} onChange={d => updateStart({ date: d })} />
-            </Field>
-
-            {/* Time row — four side-by-side selects: hour / min / AM-PM /
-                duration. The first (hour) is wrapped in a <Field
-                label="Time *"> so the row gets a floating chip label
-                consistent with the Date and Batch rows above. The
-                other three sit unheaded next to it. Column widths +
-                shrunken chevron gutter keep "PM" from truncating. */}
-            <div style={{gridColumn:"1/-1", display:"grid", gridTemplateColumns:"0.9fr 0.9fr 1.1fr 1.3fr", gap:6}}>
-              <Field label="Time *" style={{marginBottom:20}}>
-                <Select value={String(hour12)} onChange={e => updateStart({ hour12: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
-                  {Array.from({length: 12}, (_, i) => i + 1).map(h => <option key={h} value={String(h)}>{h}</option>)}
-                </Select>
-              </Field>
-              <Select value={String(minsSnapped)} onChange={e => updateStart({ mins: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center', alignSelf:'start'}}>
-                <option value="0">00</option>
-                <option value="15">15</option>
-                <option value="30">30</option>
-                <option value="45">45</option>
-              </Select>
-              <Select value={ampm} onChange={e => updateStart({ ampm: e.target.value as 'AM' | 'PM' })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center', alignSelf:'start'}}>
-                <option value="AM">AM</option>
-                <option value="PM">PM</option>
-              </Select>
-              {/* Duration: short labels ("30 m", "1 hr", "2 hrs",
-                  "3 hrs+") to fit the narrow column. 180-min value is
-                  the sentinel for "3 hrs+ / open-ended"; Ends-at line
-                  below hides when that's selected. */}
-              <Select
-                value={String(form.duration)}
-                onChange={e => {
-                  const d = Number(e.target.value);
-                  setForm(f => ({ ...f, duration: d, end_datetime: computeEndFromDuration(f.start_datetime, d) }));
-                }}
-                style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center', alignSelf:'start'}}
-              >
-                <option value="30">30 m</option>
-                <option value="60">1 hr</option>
-                <option value="120">2 hrs</option>
-                <option value="180">3 hrs+</option>
-              </Select>
-            </div>
-
-            {/* Ends-at hint + Repeat checkbox on the same row.
-                - Ends-at hides when duration is 3 hrs+ (180 sentinel).
-                - Repeat checkbox is unchecked by default. Toggling it on
-                  sets recurrence='weekly' and recurrence_end=+6 months
-                  from the event date; toggling off clears both.
-                - On Edit (modal.id set) the checkbox reflects the saved
-                  state but stays disabled — changing recurrence on an
-                  existing event is not currently supported. */}
-            <div style={{
-              gridColumn:"1/-1",
-              display:"flex",
-              justifyContent:"space-between",
-              alignItems:"center",
-              marginTop:-8,
-              marginBottom:16,
-              gap:12,
-              flexWrap:"wrap",
-              // paddingLeft aligns the "Ends at" text with the input's
-              // text content above (Input has 13px internal padding +
-              // 1.5px border = 14.5px to text). Without this, the text
-              // sat flush at the modal-body padding edge and looked
-              // out-of-line during a vertical scan of the form.
-              paddingLeft: 14,
-              paddingRight: 14,
-            }}>
-              {showEndsAt && endsAtLabel ? (
-                <span style={{fontSize:13, color:"var(--muted)"}}>
-                  Ends at <b style={{color:"var(--text)"}}>{endsAtLabel}</b>
-                </span>
-              ) : <span />}
-              <label style={{display:"inline-flex", alignItems:"center", gap:8, cursor: modal.id ? "default" : "pointer", fontSize:14, color: modal.id ? "var(--muted)" : "var(--text)", userSelect:"none"}}>
-                <input
-                  type="checkbox"
-                  disabled={!!modal.id}
-                  checked={form.recurrence !== "none"}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      // Base the +6 month default off the selected event
-                      // date when present, otherwise today.
-                      const base = dPart || new Date().toISOString().slice(0, 10);
-                      const d = new Date(base + 'T00:00:00');
-                      d.setMonth(d.getMonth() + 6);
-                      const sixMonthsOut = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                      setForm(f => ({ ...f, recurrence: 'weekly', recurrence_end: sixMonthsOut }));
-                    } else {
-                      setForm(f => ({ ...f, recurrence: 'none', recurrence_end: '' }));
-                    }
-                  }}
-                  style={{width:18, height:18, accentColor:"var(--accent)", cursor: modal.id ? "default" : "pointer"}}
-                />
-                Repeat
-              </label>
-            </div>
+            {/* ── Date & Time — V3 collapsed/expand ──
+                Default: one readable line ("Tue, May 26 · 6:00 PM ·
+                1 hr · Ends 7:00 PM") with a pencil hint on the right.
+                Click to expand into Date picker + 4 dropdowns + Ends-
+                at + Repeat checkbox. Click outside the form to
+                collapse. Same pattern shipped to the schedule page. */}
+            {(() => {
+              const summaryDay = (() => {
+                if (!dPart) return 'Pick a date';
+                const d = sharedParseLocalDate(dPart);
+                if (!d) return 'Pick a date';
+                return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+              })();
+              const summaryTime = dPart
+                ? `${hour12}:${String(minsSnapped).padStart(2, '0')} ${ampm}`
+                : '';
+              const summaryDur =
+                form.duration < 60 ? `${form.duration} min`
+                : form.duration === 60 ? '1 hr'
+                : form.duration === 120 ? '2 hr'
+                : form.duration === 180 ? '3 hr+'
+                : `${form.duration} min`;
+              return (
+                <div ref={dtBlockRef} style={{ gridColumn:'1/-1', marginBottom:16 }}>
+                  <Field label="Date & Time *" style={{ marginBottom:0 }}>
+                    {dtBlockOpen ? (
+                      <div
+                        onClick={(e)=>e.stopPropagation()}
+                        style={{
+                          border:'1.5px solid rgba(124,58,237,0.55)',
+                          borderRadius:11,
+                          background:'var(--card)',
+                          boxShadow:'0 4px 20px rgba(124,58,237,0.18)',
+                          padding:14,
+                          display:'flex',flexDirection:'column',gap:10,
+                        }}
+                      >
+                        <DateField value={dPart} onChange={d => updateStart({ date: d })} />
+                        <div style={{ display:'grid', gridTemplateColumns:'0.9fr 0.9fr 1.1fr 1.3fr', gap:6 }}>
+                          <Select value={String(hour12)} onChange={e => updateStart({ hour12: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
+                            {Array.from({length: 12}, (_, i) => i + 1).map(h => <option key={h} value={String(h)}>{h}</option>)}
+                          </Select>
+                          <Select value={String(minsSnapped)} onChange={e => updateStart({ mins: Number(e.target.value) })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
+                            <option value="0">00</option>
+                            <option value="15">15</option>
+                            <option value="30">30</option>
+                            <option value="45">45</option>
+                          </Select>
+                          <Select value={ampm} onChange={e => updateStart({ ampm: e.target.value as 'AM' | 'PM' })} style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}>
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                          </Select>
+                          <Select
+                            value={String(form.duration)}
+                            onChange={e => {
+                              const d = Number(e.target.value);
+                              setForm(f => ({ ...f, duration: d, end_datetime: computeEndFromDuration(f.start_datetime, d) }));
+                            }}
+                            style={{paddingLeft:10, paddingRight:24, backgroundPosition:'right 8px center'}}
+                          >
+                            <option value="30">30 m</option>
+                            <option value="60">1 hr</option>
+                            <option value="120">2 hrs</option>
+                            <option value="180">3 hrs+</option>
+                          </Select>
+                        </div>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+                          {showEndsAt && endsAtLabel ? (
+                            <span style={{fontSize:13, color:'var(--muted)'}}>
+                              Ends at <b style={{color:'var(--text)'}}>{endsAtLabel}</b>
+                            </span>
+                          ) : <span />}
+                          <label style={{display:'inline-flex', alignItems:'center', gap:8, cursor: modal.id ? 'default' : 'pointer', fontSize:14, color: modal.id ? 'var(--muted)' : 'var(--text)', userSelect:'none'}}>
+                            <input
+                              type="checkbox"
+                              disabled={!!modal.id}
+                              checked={form.recurrence !== 'none'}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  const base = dPart || new Date().toISOString().slice(0, 10);
+                                  const d = new Date(base + 'T00:00:00');
+                                  d.setMonth(d.getMonth() + 6);
+                                  const sixMonthsOut = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                  setForm(f => ({ ...f, recurrence: 'weekly', recurrence_end: sixMonthsOut }));
+                                } else {
+                                  setForm(f => ({ ...f, recurrence: 'none', recurrence_end: '' }));
+                                }
+                              }}
+                              style={{width:18, height:18, accentColor:'var(--accent)', cursor: modal.id ? 'default' : 'pointer'}}
+                            />
+                            Repeat
+                          </label>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => setDtBlockOpen(true)}
+                        style={{
+                          display:'flex', alignItems:'center', gap:8, flexWrap:'wrap',
+                          padding:'12px 14px',
+                          borderRadius:9,
+                          border:'1.5px solid var(--border)',
+                          background:'var(--surface)',
+                          cursor:'pointer',
+                          fontSize:14, color:'var(--text)', lineHeight:1.4,
+                          transition:'border-color .12s, background .12s',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor='rgba(124,58,237,0.45)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor='var(--border)'; }}
+                      >
+                        <span style={{ fontWeight:700, color:'var(--text)' }}>{summaryDay}</span>
+                        {dPart && <>
+                          <span style={{ color:'var(--muted)' }}>·</span>
+                          <span style={{ fontWeight:600 }}>{summaryTime}</span>
+                          <span style={{ color:'var(--muted)' }}>·</span>
+                          <span style={{ color:'var(--muted)', fontWeight:500 }}>{summaryDur}</span>
+                          {showEndsAt && endsAtLabel && <>
+                            <span style={{ color:'var(--muted)' }}>·</span>
+                            <span style={{ color:'var(--muted)', fontWeight:500 }}>
+                              Ends <b style={{ color:'var(--text)', fontWeight:600 }}>{endsAtLabel}</b>
+                            </span>
+                          </>}
+                        </>}
+                        <span style={{ marginLeft:'auto', color:'var(--muted)', display:'inline-flex', opacity:0.55, flexShrink:0 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 20h9"/>
+                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/>
+                          </svg>
+                        </span>
+                      </div>
+                    )}
+                  </Field>
+                </div>
+              );
+            })()}
 
             {/* Dynamic recurrence rows — only render when the Repeat
                 checkbox above is on. Both rows span the full width. */}

@@ -1889,10 +1889,15 @@ export default function SchedulePage() {
                     Click anywhere outside the block to collapse back. */}
                 {(() => {
                   // Build readable summary pieces from form state.
-                  const summaryDay = dPart ? (() => {
+                  // parseLocalDate returns null on malformed input, so guard
+                  // against calling .toLocaleDateString on null (which would
+                  // crash the whole form render).
+                  const summaryDay = (() => {
+                    if (!dPart) return 'Pick a date';
                     const d = sharedParseLocalDate(dPart);
+                    if (!d) return 'Pick a date';
                     return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                  })() : 'Pick a date';
+                  })();
                   const summaryTime = dPart
                     ? `${hour12}:${String(minsSnapped).padStart(2, '0')} ${ampm}`
                     : '';
