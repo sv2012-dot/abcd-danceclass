@@ -28,6 +28,14 @@ const ALLOWED_ORIGINS = [
   ...(process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean),
 ];
 
+// Vercel preview deploys land on auto-generated subdomains like
+// `abcd-danceclass-git-<branch>-<team>.vercel.app` or
+// `abcd-danceclass-<deploy-hash>.vercel.app`. Hardcoding each one in
+// ALLOWED_ORIGINS is unworkable, so allow anything that looks like a
+// preview URL belonging to either of this project's known Vercel
+// project names (abcd-danceclass = repo name, manchq = brand).
+const VERCEL_PREVIEW_RX = /^https:\/\/(abcd-danceclass|manchq)[-a-z0-9]*\.vercel\.app$/i;
+
 app.use(cors({
   origin: (origin, cb) => {
     // Allow requests with no origin (curl, mobile apps, same-origin)
@@ -35,6 +43,8 @@ app.use(cors({
     // Allow any localhost origin for local development
     if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return cb(null, true);
     if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    // Allow Vercel preview deploys of this project (see regex above)
+    if (VERCEL_PREVIEW_RX.test(origin)) return cb(null, true);
     cb(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
