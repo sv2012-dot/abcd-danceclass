@@ -6,8 +6,8 @@ import SmartModal from './SmartModal';
 import SmartButton from './SmartButton';
 import SmartUsageFooter from './SmartUsageFooter';
 import { smart, type SmartParsedEvent } from '@/lib/api/smart';
-import { events as eventsApi, batches as batchesApi, recitals as recitalsApi } from '@/lib/api';
-import { DateField, TimeField } from '@/components/shared/date/Picker';
+import { events as eventsApi, batches as batchesApi, recitals as recitalsApi, studios as studiosApi } from '@/lib/api';
+import { DateField } from '@/components/shared/date/Picker';
 
 // Centralised friendly mapping for AI errors
 function friendlyError(e: any): string {
@@ -127,9 +127,39 @@ function buildDynamicExamples(
 
 type Row = SmartParsedEvent & {
   _selected: boolean;
-  _editTime: string;       // user-editable
+  _editTime: string;       // "HH:MM" 24h, user-editable
   _editDate: string;       // user-editable
+  _editDuration: number;   // minutes, user-editable
+  _venue: string;          // per-event venue when "Customize per event" is on
 };
+
+// ── Time helpers — 24h ↔ 12h for the 4-dropdown time picker ───────────────
+function to12h(hhmm: string): { hour: number; minute: number; ampm: 'AM' | 'PM' } {
+  const [h, m] = (hhmm || '18:00').split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hr12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  // Snap minutes to the nearest 15-min step the dropdown offers.
+  const minRounded = Math.floor((m || 0) / 15) * 15;
+  return { hour: hr12, minute: minRounded, ampm };
+}
+function to24h(hour12: number, minute: number, ampm: 'AM' | 'PM'): string {
+  let h24 = hour12;
+  if (ampm === 'PM' && hour12 < 12) h24 += 12;
+  if (ampm === 'AM' && hour12 === 12) h24 = 0;
+  return `${String(h24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+const HOURS_12   = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const MINUTES_15 = [0, 15, 30, 45];
+const DURATIONS  = [
+  { v: 30,  label: '30 min' },
+  { v: 45,  label: '45 min' },
+  { v: 60,  label: '1 hr'   },
+  { v: 75,  label: '1 hr 15' },
+  { v: 90,  label: '1 hr 30' },
+  { v: 120, label: '2 hr'   },
+  { v: 180, label: '3 hr'   },
+];
 
 // ── helpers ────────────────────────────────────────────────────────────────
 function toLocalDate(yyyymmdd: string) {
@@ -161,8 +191,19 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
   const [rows, setRows] = useState<Row[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [yearAssumed, setYearAssumed] = useState<number | null>(null);
-  const [defaultTime, setDefaultTime] = useState('17:00'); // 5 PM
+  // Default start time for events the prompt didn't specify a time for.
+  // Hardcoded to 6 PM — no UI disclosure, the user will see it on each row
+  // once events are created and can edit there if it's wrong.
+  const DEFAULT_TIME = '18:00';
   const [batchesCache, setBatchesCache] = useState<{ id: number; name: string }[]>([]);
+  // Studios (a.k.a. venues/rooms) — power the chip strip in the universal
+  // venue picker. Fetched once on open.
+  const [studioRooms, setStudioRooms] = useState<any[]>([]);
+  // Universal venue applied to ALL rows when "Customize per event" is OFF.
+  const [universalVenue, setUniversalVenue] = useState('');
+  // When true, hide universal venue + show per-row Batch / Type / Venue
+  // editors inside each block. Tertiary opt-in.
+  const [customizePerEvent, setCustomizePerEvent] = useState(false);
   // Collapsible "TRY THESE PROMPTS" section — open by default for
   // first-time users; user can collapse to reclaim vertical space.
   const [promptsOpen, setPromptsOpen] = useState(true);
@@ -193,7 +234,8 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
     Promise.all([
       recitalsApi.list(schoolId).catch(() => []) as Promise<any[]>,
       batchesApi.list(schoolId).catch(() => []) as Promise<any[]>,
-    ]).then(([recs, bats]) => {
+      studiosApi.list(schoolId).catch(() => ({ studios: [] })) as Promise<any>,
+    ]).then(([recs, bats, studiosRes]) => {
       if (cancelled) return;
       const todayStr = new Date().toISOString().slice(0, 10);
       const upcoming = (recs || [])
@@ -206,6 +248,12 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
       if (bats && bats.length) {
         setBatchesCache((bats as any[]).map((b: any) => ({ id: b.id, name: b.name })));
       }
+      // studios endpoint returns { studios: [...] } or a plain array
+      const rooms = Array.isArray(studiosRes) ? studiosRes : (studiosRes?.studios || []);
+      setStudioRooms(rooms);
+      // Pre-fill universal venue with the favorite studio if there is one
+      const fav = rooms.find((s: any) => s.is_favorite);
+      if (fav) setUniversalVenue((prev) => prev || fav.name);
     });
     return () => { cancelled = true; };
   }, [open, schoolId]);
@@ -218,6 +266,7 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
     setWarnings([]);
     setYearAssumed(null);
     setError(null);
+    setCustomizePerEvent(false);
   };
 
   const handleClose = () => {
@@ -248,8 +297,10 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
         parsed.events.map((e) => ({
           ...e,
           _selected: !(e.warning === 'duplicate'),  // dedupe by default
-          _editTime: e.time || defaultTime,
+          _editTime: e.time || DEFAULT_TIME,
           _editDate: e.date,
+          _editDuration: e.duration_min || 60,
+          _venue: '',
         }))
       );
       setWarnings(parsed.warnings || []);
@@ -271,9 +322,15 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
     let ok = 0;
     let failed = 0;
     try {
+      // When "Customize per event" is OFF, every event picks up the
+      // universal venue. Batch / Type still come from each row (AI's
+      // parsed values) since they vary naturally per event.
+      // When ON, each row's _venue is used instead.
       for (const r of selected) {
         const start = isoFromDateTime(r._editDate, r._editTime);
-        const end = addMinutes(r._editDate, r._editTime, r.duration_min || 60);
+        const dur = r._editDuration || r.duration_min || 60;
+        const end = addMinutes(r._editDate, r._editTime, dur);
+        const location = (customizePerEvent ? r._venue : universalVenue) || '';
         try {
           await eventsApi.create(schoolId, {
             title: r.proposed_batch_name
@@ -283,8 +340,8 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
             batch_ids: r.batch_id ? [r.batch_id] : [],
             start_datetime: start,
             end_datetime: end,
-            duration: r.duration_min || 60,
-            location: '',
+            duration: dur,
+            location,
             recurrence: 'none',
             notes: '',
           });
@@ -292,6 +349,13 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
         } catch {
           failed++;
         }
+      }
+      // Best-effort: persist a brand-new free-text venue as a quick-add
+      // studio so the next Smart Add session finds it as a chip. Mirrors
+      // the schedule create-event flow. Silent on failure.
+      const venueToSave = (customizePerEvent ? '' : universalVenue || '').trim();
+      if (venueToSave && !studioRooms.some((s) => s.name?.toLowerCase() === venueToSave.toLowerCase())) {
+        studiosApi.create(schoolId, { name: venueToSave, is_quick_add: 1 }).catch(() => {});
       }
       if (ok > 0) toast.success(`Created ${ok} event${ok > 1 ? 's' : ''}${failed ? `, ${failed} failed` : ''}`);
       if (ok > 0 && failed === 0) {
@@ -450,23 +514,13 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
           </div>
 
           {/* Full-width primary CTA — matches the Create New Event
-              modal pattern (no inline secondary content stealing
-              space). Uses the new 4-point sparkle icon via SmartButton. */}
+              modal pattern. The old default-time row that sat below
+              this CTA was removed: any prompt that omits a time now
+              silently uses 6 PM, and the user can adjust per-row in
+              the preview that follows. */}
           <SmartButton onClick={doParse} loading={parsing} disabled={!text.trim()} size="md" style={{ width: '100%', justifyContent: 'center', padding: '14px 18px', fontSize: 15 }}>
             {parsing ? 'Thinking…' : 'Create Events'}
           </SmartButton>
-
-          {/* Default-time row — descriptive text on the left, the
-              time picker on the right. Renders as a quiet footer
-              under the primary action. */}
-          <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5, flex: 1, minWidth: 200 }}>
-              We will use this time as default if not specified in the prompt for creating the event.
-            </span>
-            <div style={{ minWidth: 130 }}>
-              <TimeField value={defaultTime} onChange={(v: string) => setDefaultTime(v)} size="sm" />
-            </div>
-          </div>
         </>
       ) : (
         // ── Preview table ──
@@ -488,107 +542,238 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
             );
           })()}
 
-          {/* Preview rows — one rounded card per parsed event with
-              spacing between. Replaces the prior single bordered
-              list. Mobile + desktop both use the stacked layout
-              (Date+Time row → Batch → Type) to match the mock; the
-              prior desktop inline grid is gone for visual consistency. */}
-          <div style={{ display: 'grid', gap: 12 }}>
-            {rows.map((r, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '28px 1fr',
-                  gap: 12,
-                  padding: '14px 14px',
-                  borderRadius: 12,
-                  border: '1px solid var(--border)',
-                  background: r._selected ? 'var(--card)' : 'var(--surface)',
-                  opacity: r._selected ? 1 : 0.55,
-                  alignItems: 'start',
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={r._selected}
-                  onChange={(e) =>
-                    setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _selected: e.target.checked } : row)))
-                  }
-                  style={{ width: 18, height: 18, cursor: 'pointer', marginTop: 6, accentColor: 'var(--accent)' }}
-                />
-                {/* Stacked layout for mobile + desktop alike — matches
-                    the mock. Date+Time on first row, then full-width
-                    Batch select, then full-width Type select. */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    <DateField value={r._editDate} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDate: v } : row)))} size="md" />
-                    <TimeField value={r._editTime} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editTime: v } : row)))} size="md" />
-                  </div>
-                  <select
-                    value={r.batch_id ?? ''}
-                    onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, batch_id: e.target.value ? Number(e.target.value) : null, proposed_batch_name: null } : row)))}
-                    style={{
-                      padding: '12px 13px',
-                      minHeight: 45,
-                      borderRadius: 9,
-                      border: '1.5px solid var(--border)',
-                      background: 'var(--surface)',
-                      color: 'var(--text)',
-                      fontSize: 14,
-                      cursor: 'pointer',
-                      width: '100%',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    {r.proposed_batch_name && !r.batch_id ? (
-                      <option value="">+ Create "{r.proposed_batch_name}"</option>
-                    ) : (
-                      <option value="">— No batch —</option>
-                    )}
-                    {batchesCache.map((b) => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={r.type}
-                    onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, type: e.target.value as any } : row)))}
-                    style={{
-                      padding: '12px 13px',
-                      minHeight: 45,
-                      borderRadius: 9,
-                      border: '1.5px solid var(--border)',
-                      background: 'var(--surface)',
-                      color: 'var(--text)',
-                      fontSize: 14,
-                      cursor: 'pointer',
-                      width: '100%',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    <option>Class</option>
-                    <option>Recital</option>
-                    <option>Rehearsal</option>
-                    <option>Workshop</option>
-                    <option>Other</option>
-                  </select>
-                  {r.warning && (
-                    <div style={{ fontSize: 11, color: '#B45309', marginTop: 2 }}>⚠ {r.warning === 'duplicate' ? 'Same date appears twice — unchecked by default. Check it to add anyway.' : r.warning}</div>
-                  )}
-                  {r.proposed_batch_name && !r.batch_id && (
-                    <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
-                      Will create a new batch named "{r.proposed_batch_name}" — or pick one above.
+          {/* Preview rows — one rounded card per parsed event.
+              Default layout (compact):
+                · Date on its own row
+                · Time as 4 native dropdowns (H · M · AM/PM · Dur)
+              Customize-per-event layout (full):
+                · adds Batch, Type, Venue selectors per row
+              Batch + Type are hidden by default — the AI's parsed
+              values are still applied silently on submit. */}
+          {(() => {
+            // Shared native-select styling for the per-row controls.
+            const SELECT: React.CSSProperties = {
+              padding: '10px 9px',
+              minHeight: 42,
+              borderRadius: 9,
+              border: '1.5px solid var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text)',
+              fontSize: 13,
+              cursor: 'pointer',
+              width: '100%',
+              fontFamily: 'inherit',
+              boxSizing: 'border-box',
+            };
+            return (
+              <div style={{ display: 'grid', gap: 12 }}>
+                {rows.map((r, i) => {
+                  const t = to12h(r._editTime);
+                  const updateTime = (next: { hour?: number; minute?: number; ampm?: 'AM' | 'PM' }) => {
+                    const hour = next.hour ?? t.hour;
+                    const minute = next.minute ?? t.minute;
+                    const ampm = next.ampm ?? t.ampm;
+                    const hhmm = to24h(hour, minute, ampm);
+                    setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editTime: hhmm } : row)));
+                  };
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '28px 1fr',
+                        gap: 12,
+                        padding: '14px',
+                        borderRadius: 12,
+                        border: '1px solid var(--border)',
+                        background: r._selected ? 'var(--card)' : 'var(--surface)',
+                        opacity: r._selected ? 1 : 0.55,
+                        alignItems: 'start',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={r._selected}
+                        onChange={(e) =>
+                          setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _selected: e.target.checked } : row)))
+                        }
+                        style={{ width: 18, height: 18, cursor: 'pointer', marginTop: 6, accentColor: 'var(--accent)' }}
+                      />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+                        {/* Row 1 — Date (full width, own row) */}
+                        <DateField value={r._editDate} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDate: v } : row)))} size="md" />
+
+                        {/* Row 2 — Time + Duration as 4 native dropdowns */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1.4fr', gap: 6 }}>
+                          <select aria-label="Hour" value={t.hour} onChange={(e) => updateTime({ hour: Number(e.target.value) })} style={SELECT}>
+                            {HOURS_12.map((h) => <option key={h} value={h}>{h}</option>)}
+                          </select>
+                          <select aria-label="Minute" value={t.minute} onChange={(e) => updateTime({ minute: Number(e.target.value) })} style={SELECT}>
+                            {MINUTES_15.map((m) => <option key={m} value={m}>:{String(m).padStart(2, '0')}</option>)}
+                          </select>
+                          <select aria-label="AM or PM" value={t.ampm} onChange={(e) => updateTime({ ampm: e.target.value as 'AM' | 'PM' })} style={SELECT}>
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                          </select>
+                          <select
+                            aria-label="Duration"
+                            value={r._editDuration}
+                            onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDuration: Number(e.target.value) } : row)))}
+                            style={SELECT}
+                          >
+                            {DURATIONS.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
+                          </select>
+                        </div>
+
+                        {/* Conditional rows — only when user opts in */}
+                        {customizePerEvent && (
+                          <>
+                            <select
+                              value={r.batch_id ?? ''}
+                              onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, batch_id: e.target.value ? Number(e.target.value) : null, proposed_batch_name: null } : row)))}
+                              style={SELECT}
+                            >
+                              {r.proposed_batch_name && !r.batch_id ? (
+                                <option value="">+ Create "{r.proposed_batch_name}"</option>
+                              ) : (
+                                <option value="">— No batch —</option>
+                              )}
+                              {batchesCache.map((b) => (
+                                <option key={b.id} value={b.id}>{b.name}</option>
+                              ))}
+                            </select>
+                            <select
+                              value={r.type}
+                              onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, type: e.target.value as any } : row)))}
+                              style={SELECT}
+                            >
+                              <option>Class</option>
+                              <option>Recital</option>
+                              <option>Rehearsal</option>
+                              <option>Workshop</option>
+                              <option>Other</option>
+                            </select>
+                            <input
+                              type="text"
+                              placeholder="Venue / Location"
+                              value={r._venue}
+                              onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _venue: e.target.value } : row)))}
+                              style={{
+                                ...SELECT,
+                                cursor: 'text',
+                              }}
+                            />
+                          </>
+                        )}
+
+                        {r.warning && (
+                          <div style={{ fontSize: 11, color: '#B45309', marginTop: 2 }}>⚠ {r.warning === 'duplicate' ? 'Same date appears twice — unchecked by default. Check it to add anyway.' : r.warning}</div>
+                        )}
+                        {r.proposed_batch_name && !r.batch_id && (
+                          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                            Will create a new batch named "{r.proposed_batch_name}".
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            );
+          })()}
+
+          {/* ── Universal venue (hidden when "Customize per event" is ON) ──
+              Mirrors the schedule create-event flow: free-text input plus
+              up to 4 chips (favorites first) of existing studios. Applies
+              to every parsed event on submit. */}
+          {!customizePerEvent && (
+            <div style={{ marginTop: 16 }}>
+              <label style={{
+                display: 'block',
+                fontSize: 11, fontWeight: 700, color: 'var(--muted)',
+                letterSpacing: '0.07em', textTransform: 'uppercase',
+                marginBottom: 8,
+              }}>
+                Venue / Location <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted)' }}>· applies to all</span>
+              </label>
+              <input
+                type="text"
+                value={universalVenue}
+                onChange={(e) => setUniversalVenue(e.target.value)}
+                placeholder={studioRooms.length > 0 ? 'Or type a custom location…' : 'e.g. Studio A'}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  padding: '11px 13px', borderRadius: 9,
+                  border: '1.5px solid var(--border)',
+                  background: 'var(--surface)', color: 'var(--text)',
+                  fontSize: 14, fontFamily: 'inherit', outline: 'none',
+                }}
+              />
+              {studioRooms.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginTop: 9 }}>
+                  {[...studioRooms]
+                    .sort((a: any, b: any) =>
+                      (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0) ||
+                      (Number(b.id) || 0) - (Number(a.id) || 0)
+                    )
+                    .slice(0, 4)
+                    .map((s: any) => {
+                      const active = universalVenue === s.name;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          title={s.name}
+                          onClick={() => setUniversalVenue(active ? '' : s.name)}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                            padding: '6px 12px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                            border: `1.5px solid ${active ? 'var(--accent)' : s.is_favorite ? '#F59E0B' : 'var(--border)'}`,
+                            background: active ? 'var(--accent)' : s.is_favorite ? '#FFFBEB' : 'transparent',
+                            color: active ? '#fff' : s.is_favorite ? '#B45309' : 'var(--muted)',
+                            transition: 'all .12s', minWidth: 0,
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          {!!s.is_favorite && !active && <span style={{ fontSize: 11, flexShrink: 0 }}>★</span>}
+                          {active && <span style={{ flexShrink: 0 }}>✓</span>}
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                        </button>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── "Customize per event" — tertiary opt-in.
+              Lives just above the back-link, small, muted; matches
+              the spec (tertiary treatment, opted out by default). */}
+          <label
+            style={{
+              marginTop: 18,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              cursor: 'pointer',
+              fontSize: 11.5,
+              color: 'var(--muted)',
+              userSelect: 'none',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={customizePerEvent}
+              onChange={(e) => setCustomizePerEvent(e.target.checked)}
+              style={{ width: 13, height: 13, cursor: 'pointer', accentColor: 'var(--accent)' }}
+            />
+            Customize per event (batch, type, venue)
+          </label>
 
           <button
             onClick={() => setRows([])}
             disabled={creating}
-            style={{ marginTop: 12, fontSize: 12, background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', textDecoration: 'underline' }}
+            style={{ display: 'block', marginTop: 10, fontSize: 12, background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', textDecoration: 'underline' }}
           >
             ← back to edit
           </button>
