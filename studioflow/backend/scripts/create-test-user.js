@@ -5,29 +5,41 @@
  * (typically prod Railway for testing on Vercel preview URLs):
  *
  *   cd studioflow/backend
- *   node scripts/create-test-user.js
  *
- * Optional CLI args (override the defaults below):
- *   --email=<email>     default: tester@manchq.dev
- *   --password=<pw>     default: PrevTest2026!
- *   --role=<role>       default: school_admin   (one of: superadmin, school_admin, teacher, parent)
- *   --school-id=<id>    default: first school in DB
- *   --name=<full name>  default: Preview Tester
+ *   # First, list available schools to pick one:
+ *   node scripts/create-test-user.js --list-schools
+ *
+ *   # Then create the user attached to a specific school:
+ *   node scripts/create-test-user.js --school-id=3
+ *     # or
+ *   node scripts/create-test-user.js --school-name="Crazzy4 Dance House"
+ *
+ * Optional CLI args:
+ *   --email=<email>             default: tester@manchq.dev
+ *   --password=<pw>             default: PrevTest2026!
+ *   --role=<role>               default: school_admin
+ *                                (superadmin | school_admin | teacher | parent)
+ *   --school-id=<id>            REQUIRED for non-superadmin roles, unless
+ *                                --school-name is given. No auto-pick.
+ *   --school-name=<name>        Alternative to --school-id; case-insensitive
+ *                                exact match against schools.name.
+ *   --name=<full name>          default: Preview Tester
+ *   --list-schools              Print schools + exit. Does not create user.
  *
  * Behavior:
  *   - If a user with that email already exists, the password / role /
  *     school_id are UPDATED (so re-running rotates the password).
  *   - If not, a new user is INSERTED.
  *   - Password is hashed with bcrypt (cost 12, same as setup.js).
+ *   - For non-superadmin roles, a school must be explicitly specified.
+ *     The script refuses to auto-pick a "random" school.
  *
  * Notes:
  *   - This creates a real row in the connected DB. If you run it
  *     against the prod Railway DB, the test user can sign in to prod
  *     too via /ops/signin. Delete it (or rotate the password) when
- *     you're not actively testing.
- *   - The seed setup.js also creates a 'admin@studioflow.app /
- *     Admin123!' superadmin row but only when run against a fresh
- *     local DB — that path doesn't help on Railway. This script does.
+ *     you're not actively testing:
+ *       DELETE FROM users WHERE email = 'tester@manchq.dev';
  */
 
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
@@ -35,16 +47,21 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 
 // ── parse simple CLI args ─────────────────────────────────────────
+function flag(name) {
+  return process.argv.includes(`--${name}`);
+}
 function arg(name, fallback) {
   const m = process.argv.find(a => a.startsWith(`--${name}=`));
   return m ? m.slice(name.length + 3) : fallback;
 }
 
-const EMAIL     = arg('email',     'tester@manchq.dev');
-const PASSWORD  = arg('password',  'PrevTest2026!');
-const ROLE      = arg('role',      'school_admin');
-const NAME      = arg('name',      'Preview Tester');
-const SCHOOL_ID = arg('school-id', null);
+const LIST_ONLY  = flag('list-schools');
+const EMAIL      = arg('email',       'tester@manchq.dev');
+const PASSWORD   = arg('password',    'PrevTest2026!');
+const ROLE       = arg('role',        'school_admin');
+const NAME       = arg('name',        'Preview Tester');
+const SCHOOL_ID  = arg('school-id',   null);
+const SCHOOL_NM  = arg('school-name', null);
 
 (async () => {
   const conn = await mysql.createConnection({
@@ -56,22 +73,69 @@ const SCHOOL_ID = arg('school-id', null);
   });
 
   try {
-    // Resolve school_id — explicit arg wins, otherwise first school in DB.
-    let schoolId = SCHOOL_ID ? Number(SCHOOL_ID) : null;
-    if (!schoolId && ROLE !== 'superadmin') {
-      const [rows] = await conn.query('SELECT id, name FROM schools ORDER BY id ASC LIMIT 1');
+    // ── --list-schools mode: print and exit ─────────────────────
+    if (LIST_ONLY) {
+      const [rows] = await conn.query('SELECT id, name, city FROM schools ORDER BY id ASC');
       if (rows.length === 0) {
-        throw new Error('No schools found in DB — pass --school-id=<id> or create a school first.');
+        console.log('\nNo schools found in this DB.\n');
+      } else {
+        console.log('\nSchools in this DB:\n');
+        for (const r of rows) {
+          const city = r.city ? `  (${r.city})` : '';
+          console.log(`  ${String(r.id).padStart(3)}  ${r.name}${city}`);
+        }
+        console.log('\nRun again with --school-id=<id> or --school-name=<exact name>.\n');
+      }
+      return;
+    }
+
+    // ── Resolve school id ──────────────────────────────────────
+    let schoolId = null;
+    if (ROLE === 'superadmin') {
+      // superadmin has no school. Anything passed is ignored.
+      if (SCHOOL_ID || SCHOOL_NM) {
+        console.log('  Note: superadmin role ignores --school-id / --school-name.');
+      }
+    } else if (SCHOOL_ID) {
+      // Verify the id exists so we don't create a dangling user.
+      const [rows] = await conn.query('SELECT id, name FROM schools WHERE id = ? LIMIT 1', [Number(SCHOOL_ID)]);
+      if (rows.length === 0) {
+        throw new Error(`No school with id=${SCHOOL_ID}. Run with --list-schools to see options.`);
       }
       schoolId = rows[0].id;
-      console.log(`  Using school_id=${schoolId} (${rows[0].name})`);
+      console.log(`  Using school: ${rows[0].name} (id=${schoolId})`);
+    } else if (SCHOOL_NM) {
+      // Case-insensitive exact match against schools.name.
+      const [rows] = await conn.query(
+        'SELECT id, name FROM schools WHERE LOWER(name) = LOWER(?) LIMIT 1',
+        [SCHOOL_NM]
+      );
+      if (rows.length === 0) {
+        throw new Error(`No school named "${SCHOOL_NM}". Run with --list-schools to see options.`);
+      }
+      schoolId = rows[0].id;
+      console.log(`  Using school: ${rows[0].name} (id=${schoolId})`);
+    } else {
+      // No school specified for a role that needs one — refuse to
+      // pick a random one. Show options and bail.
+      const [rows] = await conn.query('SELECT id, name, city FROM schools ORDER BY id ASC');
+      console.error('\n✗ A school is required for role=' + ROLE + '.\n');
+      if (rows.length === 0) {
+        console.error('  No schools exist yet. Create one before running this script.\n');
+      } else {
+        console.error('  Pick one with --school-id=<id> or --school-name=<exact name>:\n');
+        for (const r of rows) {
+          const city = r.city ? `  (${r.city})` : '';
+          console.error(`    ${String(r.id).padStart(3)}  ${r.name}${city}`);
+        }
+        console.error('');
+      }
+      process.exit(1);
     }
 
     const hash = bcrypt.hashSync(PASSWORD, 12);
 
     // INSERT ... ON DUPLICATE KEY UPDATE — re-runnable.
-    // (Assumes users.email has a UNIQUE constraint; the seed schema
-    //  declares it UNIQUE.)
     await conn.query(
       `INSERT INTO users (name, email, password, role, school_id)
        VALUES (?, ?, ?, ?, ?)
@@ -80,14 +144,14 @@ const SCHOOL_ID = arg('school-id', null);
          password   = VALUES(password),
          role       = VALUES(role),
          school_id  = VALUES(school_id)`,
-      [NAME, EMAIL, hash, ROLE, ROLE === 'superadmin' ? null : schoolId]
+      [NAME, EMAIL, hash, ROLE, schoolId]
     );
 
     console.log('\n✓ Test user ready\n');
     console.log('  email     :', EMAIL);
     console.log('  password  :', PASSWORD);
     console.log('  role      :', ROLE);
-    console.log('  school_id :', ROLE === 'superadmin' ? '(none — superadmin)' : schoolId);
+    console.log('  school_id :', schoolId == null ? '(none — superadmin)' : schoolId);
     console.log('\n  Sign in at: <your-url>/ops/signin\n');
   } catch (err) {
     console.error('✗ Failed:', err.message);
