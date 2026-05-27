@@ -161,6 +161,24 @@ const DURATIONS  = [
   { v: 180, label: '3 hr'   },
 ];
 
+// Helpers used by the V3 collapsed summary line.
+function fmtTimeLabel(hhmm: string): string {
+  const t = to12h(hhmm);
+  return `${t.hour}:${String(t.minute).padStart(2, '0')} ${t.ampm}`;
+}
+function fmtDurLabel(mins: number): string {
+  const f = DURATIONS.find((d) => d.v === mins);
+  return f ? f.label : `${mins} min`;
+}
+
+// Small pencil — same affordance the inline-edit cells use elsewhere.
+const PencilIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z" />
+  </svg>
+);
+
 // ── helpers ────────────────────────────────────────────────────────────────
 function toLocalDate(yyyymmdd: string) {
   const [y, m, d] = yyyymmdd.split('-').map(Number);
@@ -204,6 +222,12 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
   // When true, hide universal venue + show per-row Batch / Type / Venue
   // editors inside each block. Tertiary opt-in.
   const [customizePerEvent, setCustomizePerEvent] = useState(false);
+  // V3 row pattern — index of the currently-expanded row (or null).
+  // Default: all rows collapsed (single readable summary line).
+  // Clicking a row expands it; clicking outside the rows container
+  // collapses back. Only one row open at a time.
+  const [expandedRowIdx, setExpandedRowIdx] = useState<number | null>(null);
+  const rowsContainerRef = useRef<HTMLDivElement | null>(null);
   // Collapsible "TRY THESE PROMPTS" section — open by default for
   // first-time users; user can collapse to reclaim vertical space.
   const [promptsOpen, setPromptsOpen] = useState(true);
@@ -224,6 +248,23 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
       return () => clearTimeout(t);
     }
   }, [open, rows.length]);
+
+  // Collapse expanded V3 row on click outside the rows container.
+  // DateField / TimeField popovers live INSIDE the row DOM, so their
+  // clicks are still considered inside and won't trigger collapse.
+  useEffect(() => {
+    if (expandedRowIdx === null) return;
+    const handler = (e: MouseEvent) => {
+      const c = rowsContainerRef.current;
+      if (c && !c.contains(e.target as Node)) setExpandedRowIdx(null);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [expandedRowIdx]);
+
+  // When the rows list changes (e.g. user re-parses), collapse any
+  // open editor so the new list lands clean.
+  useEffect(() => { setExpandedRowIdx(null); }, [rows.length]);
 
   // Preload one recital + one batch name on open. These power dynamic
   // example prompts. Pick the soonest upcoming recital (or most recent
@@ -566,8 +607,9 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
               boxSizing: 'border-box',
             };
             return (
-              <div style={{ display: 'grid', gap: 12 }}>
+              <div ref={rowsContainerRef} style={{ display: 'grid', gap: 10 }}>
                 {rows.map((r, i) => {
+                  const isExpanded = expandedRowIdx === i;
                   const t = to12h(r._editTime);
                   const updateTime = (next: { hour?: number; minute?: number; ampm?: 'AM' | 'PM' }) => {
                     const hour = next.hour ?? t.hour;
@@ -579,102 +621,151 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
                   return (
                     <div
                       key={i}
+                      onClick={() => { if (!isExpanded) setExpandedRowIdx(i); }}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '28px 1fr',
-                        gap: 12,
-                        padding: '14px',
+                        gridTemplateColumns: '20px 1fr',
+                        gap: 8,
+                        padding: isExpanded ? '14px' : '13px 14px',
                         borderRadius: 12,
-                        border: '1px solid var(--border)',
-                        background: r._selected ? 'var(--card)' : 'var(--surface)',
+                        border: `1px solid ${isExpanded ? 'rgba(124,58,237,0.55)' : 'var(--border)'}`,
+                        background: !r._selected ? 'var(--surface)' : isExpanded ? 'var(--card)' : 'var(--surface)',
                         opacity: r._selected ? 1 : 0.55,
-                        alignItems: 'start',
+                        alignItems: isExpanded ? 'start' : 'center',
+                        cursor: isExpanded ? 'default' : 'pointer',
+                        boxShadow: isExpanded ? '0 4px 20px rgba(124,58,237,0.18)' : 'none',
+                        transition: 'background .12s, border-color .12s, box-shadow .12s, padding .15s',
                       }}
                     >
                       <input
                         type="checkbox"
                         checked={r._selected}
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) =>
                           setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _selected: e.target.checked } : row)))
                         }
-                        style={{ width: 18, height: 18, cursor: 'pointer', marginTop: 6, accentColor: 'var(--accent)' }}
+                        style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--accent)' }}
                       />
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-                        {/* Row 1 — Date (full width, own row) */}
-                        <DateField value={r._editDate} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDate: v } : row)))} size="md" />
+                      {isExpanded ? (
+                        // ── Expanded editor — clicks inside don't bubble
+                        //    to the row click handler (which would no-op
+                        //    anyway, but stop them for clarity).
+                        <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+                          <DateField value={r._editDate} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDate: v } : row)))} size="md" />
 
-                        {/* Row 2 — Time + Duration as 4 native dropdowns */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1.4fr', gap: 6 }}>
-                          <select aria-label="Hour" value={t.hour} onChange={(e) => updateTime({ hour: Number(e.target.value) })} style={SELECT}>
-                            {HOURS_12.map((h) => <option key={h} value={h}>{h}</option>)}
-                          </select>
-                          <select aria-label="Minute" value={t.minute} onChange={(e) => updateTime({ minute: Number(e.target.value) })} style={SELECT}>
-                            {MINUTES_15.map((m) => <option key={m} value={m}>:{String(m).padStart(2, '0')}</option>)}
-                          </select>
-                          <select aria-label="AM or PM" value={t.ampm} onChange={(e) => updateTime({ ampm: e.target.value as 'AM' | 'PM' })} style={SELECT}>
-                            <option value="AM">AM</option>
-                            <option value="PM">PM</option>
-                          </select>
-                          <select
-                            aria-label="Duration"
-                            value={r._editDuration}
-                            onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDuration: Number(e.target.value) } : row)))}
-                            style={SELECT}
-                          >
-                            {DURATIONS.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
-                          </select>
-                        </div>
-
-                        {/* Conditional rows — only when user opts in */}
-                        {customizePerEvent && (
-                          <>
-                            <select
-                              value={r.batch_id ?? ''}
-                              onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, batch_id: e.target.value ? Number(e.target.value) : null, proposed_batch_name: null } : row)))}
-                              style={SELECT}
-                            >
-                              {r.proposed_batch_name && !r.batch_id ? (
-                                <option value="">+ Create "{r.proposed_batch_name}"</option>
-                              ) : (
-                                <option value="">— No batch —</option>
-                              )}
-                              {batchesCache.map((b) => (
-                                <option key={b.id} value={b.id}>{b.name}</option>
-                              ))}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1.4fr', gap: 6 }}>
+                            <select aria-label="Hour" value={t.hour} onChange={(e) => updateTime({ hour: Number(e.target.value) })} style={SELECT}>
+                              {HOURS_12.map((h) => <option key={h} value={h}>{h}</option>)}
+                            </select>
+                            <select aria-label="Minute" value={t.minute} onChange={(e) => updateTime({ minute: Number(e.target.value) })} style={SELECT}>
+                              {MINUTES_15.map((m) => <option key={m} value={m}>:{String(m).padStart(2, '0')}</option>)}
+                            </select>
+                            <select aria-label="AM or PM" value={t.ampm} onChange={(e) => updateTime({ ampm: e.target.value as 'AM' | 'PM' })} style={SELECT}>
+                              <option value="AM">AM</option>
+                              <option value="PM">PM</option>
                             </select>
                             <select
-                              value={r.type}
-                              onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, type: e.target.value as any } : row)))}
+                              aria-label="Duration"
+                              value={r._editDuration}
+                              onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDuration: Number(e.target.value) } : row)))}
                               style={SELECT}
                             >
-                              <option>Class</option>
-                              <option>Recital</option>
-                              <option>Rehearsal</option>
-                              <option>Workshop</option>
-                              <option>Other</option>
+                              {DURATIONS.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
                             </select>
-                            <input
-                              type="text"
-                              placeholder="Venue / Location"
-                              value={r._venue}
-                              onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _venue: e.target.value } : row)))}
-                              style={{
-                                ...SELECT,
-                                cursor: 'text',
-                              }}
-                            />
-                          </>
-                        )}
-
-                        {r.warning && (
-                          <div style={{ fontSize: 11, color: '#B45309', marginTop: 2 }}>⚠ {r.warning === 'duplicate' ? 'Same date appears twice — unchecked by default. Check it to add anyway.' : r.warning}</div>
-                        )}
-                        {r.proposed_batch_name && !r.batch_id && (
-                          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
-                            Will create a new batch named "{r.proposed_batch_name}".
                           </div>
-                        )}
-                      </div>
+
+                          {customizePerEvent && (
+                            <>
+                              <select
+                                value={r.batch_id ?? ''}
+                                onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, batch_id: e.target.value ? Number(e.target.value) : null, proposed_batch_name: null } : row)))}
+                                style={SELECT}
+                              >
+                                {r.proposed_batch_name && !r.batch_id ? (
+                                  <option value="">+ Create "{r.proposed_batch_name}"</option>
+                                ) : (
+                                  <option value="">— No batch —</option>
+                                )}
+                                {batchesCache.map((b) => (
+                                  <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                              </select>
+                              <select
+                                value={r.type}
+                                onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, type: e.target.value as any } : row)))}
+                                style={SELECT}
+                              >
+                                <option>Class</option>
+                                <option>Recital</option>
+                                <option>Rehearsal</option>
+                                <option>Workshop</option>
+                                <option>Other</option>
+                              </select>
+                              <input
+                                type="text"
+                                placeholder="Venue / Location"
+                                value={r._venue}
+                                onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _venue: e.target.value } : row)))}
+                                style={{ ...SELECT, cursor: 'text' }}
+                              />
+                            </>
+                          )}
+
+                          {r.warning && (
+                            <div style={{ fontSize: 11, color: '#B45309', marginTop: 2 }}>⚠ {r.warning === 'duplicate' ? 'Same date appears twice — unchecked by default. Check it to add anyway.' : r.warning}</div>
+                          )}
+                          {r.proposed_batch_name && !r.batch_id && (
+                            <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                              Will create a new batch named "{r.proposed_batch_name}".
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        // ── Collapsed read-only summary
+                        //    Day · Time · Duration, with pencil hint
+                        //    on the right that fades in on hover.
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                          <div
+                            className="smart-row-summary"
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 7,
+                              flexWrap: 'wrap',
+                              fontSize: 14,
+                              lineHeight: 1.4,
+                              color: 'var(--text)',
+                            }}
+                          >
+                            <span style={{ fontWeight: 700, color: 'var(--text)' }}>{fmtNice(r._editDate)}</span>
+                            <span style={{ color: 'var(--muted)' }}>·</span>
+                            <span style={{ fontWeight: 600, color: 'var(--text)' }}>{fmtTimeLabel(r._editTime)}</span>
+                            <span style={{ color: 'var(--muted)' }}>·</span>
+                            <span style={{ color: 'var(--muted)', fontWeight: 500 }}>{fmtDurLabel(r._editDuration)}</span>
+                            <span
+                              aria-label="Edit"
+                              style={{
+                                marginLeft: 'auto',
+                                color: 'var(--muted)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                opacity: 0.55,
+                                flexShrink: 0,
+                              }}
+                            >
+                              <PencilIcon />
+                            </span>
+                          </div>
+                          {r.warning && (
+                            <div style={{ fontSize: 11, color: '#B45309' }}>⚠ {r.warning === 'duplicate' ? 'Same date appears twice — unchecked by default. Check it to add anyway.' : r.warning}</div>
+                          )}
+                          {r.proposed_batch_name && !r.batch_id && (
+                            <div style={{ fontSize: 11, color: '#6B7280' }}>
+                              Will create a new batch named "{r.proposed_batch_name}".
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
