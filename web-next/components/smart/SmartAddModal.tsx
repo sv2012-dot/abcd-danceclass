@@ -217,7 +217,13 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
   // Studios (a.k.a. venues/rooms) — power the chip strip in the universal
   // venue picker. Fetched once on open.
   const [studioRooms, setStudioRooms] = useState<any[]>([]);
-  // Universal venue applied to ALL rows when "Customize per event" is OFF.
+  // Universal values applied to ALL rows when "Customize per event" is OFF.
+  //   '' (empty) for batch/type → "Match per event" sentinel; each row
+  //   uses whatever the AI parsed for it. Otherwise the universal value
+  //   forces every event to the same batch / type.
+  //   'none' on batch → explicit "No batch" for all.
+  const [universalBatchId, setUniversalBatchId] = useState<string>('');
+  const [universalType, setUniversalType] = useState<string>('');
   const [universalVenue, setUniversalVenue] = useState('');
   // When true, hide universal venue + show per-row Batch / Type / Venue
   // editors inside each block. Tertiary opt-in.
@@ -308,6 +314,8 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
     setYearAssumed(null);
     setError(null);
     setCustomizePerEvent(false);
+    setUniversalBatchId('');
+    setUniversalType('');
   };
 
   const handleClose = () => {
@@ -334,16 +342,26 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
         setError("Couldn't detect any events. Try being more specific — e.g. include a date and a class name.");
         return;
       }
-      setRows(
-        parsed.events.map((e) => ({
-          ...e,
-          _selected: !(e.warning === 'duplicate'),  // dedupe by default
-          _editTime: e.time || DEFAULT_TIME,
-          _editDate: e.date,
-          _editDuration: e.duration_min || 60,
-          _venue: '',
-        }))
-      );
+      const builtRows = parsed.events.map((e) => ({
+        ...e,
+        _selected: !(e.warning === 'duplicate'),  // dedupe by default
+        _editTime: e.time || DEFAULT_TIME,
+        _editDate: e.date,
+        _editDuration: e.duration_min || 60,
+        _venue: '',
+      }));
+      setRows(builtRows);
+      // Smart pre-fill the universal Batch + Type selectors. If every
+      // parsed event landed on the same batch_id (incl. all-null) we
+      // pre-select that specific value so the user can see + confirm
+      // it; if the rows differ we leave the selector on the "Match per
+      // event" sentinel so each row keeps its own AI-parsed value.
+      const allBatch = builtRows.map((r) => r.batch_id);
+      const allTypes = builtRows.map((r) => r.type);
+      const sameBatch = allBatch.length > 0 && allBatch.every((b) => b === allBatch[0]);
+      const sameType  = allTypes.length > 0 && allTypes.every((t) => t === allTypes[0]);
+      setUniversalBatchId(sameBatch ? (allBatch[0] ? String(allBatch[0]) : 'none') : '');
+      setUniversalType(sameType ? (allTypes[0] || '') : '');
       setWarnings(parsed.warnings || []);
       setYearAssumed(parsed.year_assumed);
     } catch (e: any) {
@@ -364,21 +382,43 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
     let failed = 0;
     try {
       // When "Customize per event" is OFF, every event picks up the
-      // universal venue. Batch / Type still come from each row (AI's
-      // parsed values) since they vary naturally per event.
-      // When ON, each row's _venue is used instead.
+      // universal venue / batch / type (with "Match per event" sentinel
+      // falling back to each row's AI-parsed value). When ON, each
+      // row's own values are used.
+      // resolve universal batch — '' means "match per event", 'none'
+      // forces null, anything else is a specific batch id string.
+      const universalBatchEffective: number | null | 'PER_EVENT' =
+        universalBatchId === '' ? 'PER_EVENT'
+        : universalBatchId === 'none' ? null
+        : Number(universalBatchId);
+      const universalTypeEffective: string | 'PER_EVENT' =
+        universalType === '' ? 'PER_EVENT' : universalType;
+
       for (const r of selected) {
         const start = isoFromDateTime(r._editDate, r._editTime);
         const dur = r._editDuration || r.duration_min || 60;
         const end = addMinutes(r._editDate, r._editTime, dur);
+        // Effective batch + type per row, accounting for customize toggle
+        // and the universal-vs-per-event sentinel.
+        const effectiveBatchId: number | null = customizePerEvent
+          ? (r.batch_id ?? null)
+          : (universalBatchEffective === 'PER_EVENT' ? (r.batch_id ?? null) : universalBatchEffective);
+        const effectiveType: string = customizePerEvent
+          ? r.type
+          : (universalTypeEffective === 'PER_EVENT' ? r.type : universalTypeEffective);
         const location = (customizePerEvent ? r._venue : universalVenue) || '';
+        // Title: honor proposed_batch_name only when we're actually
+        // using the AI's per-row batch (user didn't override). Once
+        // overridden, the chosen batch's name wins.
+        const usingAiBatch = effectiveBatchId === (r.batch_id ?? null);
+        const title = usingAiBatch && r.proposed_batch_name
+          ? `${r.proposed_batch_name} class`
+          : batchesCache.find((b) => b.id === effectiveBatchId)?.name || effectiveType;
         try {
           await eventsApi.create(schoolId, {
-            title: r.proposed_batch_name
-              ? `${r.proposed_batch_name} class`
-              : batchesCache.find((b) => b.id === r.batch_id)?.name || r.type,
-            type: r.type,
-            batch_ids: r.batch_id ? [r.batch_id] : [],
+            title,
+            type: effectiveType,
+            batch_ids: effectiveBatchId ? [effectiveBatchId] : [],
             start_datetime: start,
             end_datetime: end,
             duration: dur,
@@ -773,12 +813,74 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
             );
           })()}
 
-          {/* ── Universal venue (hidden when "Customize per event" is ON) ──
-              Mirrors the schedule create-event flow: free-text input plus
-              up to 4 chips (favorites first) of existing studios. Applies
-              to every parsed event on submit. */}
+          {/* ── Universal Batch + Event Type + Venue ──
+              Hidden when "Customize per event" is ON (per-row editors
+              take over inside each expanded row). Smart pre-fill from
+              parsed rows; "Match per event" sentinel keeps AI's per-row
+              values intact when the rows differ. */}
           {!customizePerEvent && (
-            <div style={{ marginTop: 16 }}>
+            <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Batch */}
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 11, fontWeight: 700, color: 'var(--muted)',
+                  letterSpacing: '0.07em', textTransform: 'uppercase',
+                  marginBottom: 8,
+                }}>
+                  Batch <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted)' }}>· applies to all</span>
+                </label>
+                <select
+                  value={universalBatchId}
+                  onChange={(e) => setUniversalBatchId(e.target.value)}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    padding: '11px 13px', borderRadius: 9,
+                    border: '1.5px solid var(--border)',
+                    background: 'var(--surface)', color: 'var(--text)',
+                    fontSize: 14, fontFamily: 'inherit', cursor: 'pointer',
+                  }}
+                >
+                  <option value="">— Match per event —</option>
+                  <option value="none">— No batch —</option>
+                  {batchesCache.map((b) => (
+                    <option key={b.id} value={String(b.id)}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Event Type */}
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 11, fontWeight: 700, color: 'var(--muted)',
+                  letterSpacing: '0.07em', textTransform: 'uppercase',
+                  marginBottom: 8,
+                }}>
+                  Event Type <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted)' }}>· applies to all</span>
+                </label>
+                <select
+                  value={universalType}
+                  onChange={(e) => setUniversalType(e.target.value)}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    padding: '11px 13px', borderRadius: 9,
+                    border: '1.5px solid var(--border)',
+                    background: 'var(--surface)', color: 'var(--text)',
+                    fontSize: 14, fontFamily: 'inherit', cursor: 'pointer',
+                  }}
+                >
+                  <option value="">— Match per event —</option>
+                  <option value="Class">Class</option>
+                  <option value="Recital">Recital</option>
+                  <option value="Rehearsal">Rehearsal</option>
+                  <option value="Workshop">Workshop</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              {/* Venue */}
+              <div>
               <label style={{
                 display: 'block',
                 fontSize: 11, fontWeight: 700, color: 'var(--muted)',
@@ -834,6 +936,7 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
                     })}
                 </div>
               )}
+              </div>{/* /Venue inner */}
             </div>
           )}
 
