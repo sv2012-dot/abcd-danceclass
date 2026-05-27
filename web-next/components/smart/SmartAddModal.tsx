@@ -65,7 +65,7 @@ type Props = {
 const STATIC_EXAMPLES = [
   'Hip Hop Mon Wed Fri 5pm starting next Monday for 6 weeks',
   'Bharatanatyam Beg Tuesdays 6pm for the next 6 weeks',
-  'Weekly Saturday class at 5pm starting June 7 for 10 weeks',
+  'Weekly Saturday class at 5pm starting June 7 for 3 weeks',
 ];
 
 // ── helpers used to build parser-friendly prompts ─────────────────────────
@@ -119,7 +119,7 @@ function buildDynamicExamples(
 
   // 3. Seasonal series — anchored to the next real Saturday.
   examples.push(
-    `Weekly Saturday class at 5pm starting ${nextSaturdayMonthDay()} for 10 weeks.`
+    `Weekly Saturday class at 5pm starting ${nextSaturdayMonthDay()} for 3 weeks.`
   );
 
   return examples.length >= 3 ? examples.slice(0, 3) : [...examples, ...STATIC_EXAMPLES].slice(0, 3);
@@ -234,6 +234,11 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
   // collapses back. Only one row open at a time.
   const [expandedRowIdx, setExpandedRowIdx] = useState<number | null>(null);
   const rowsContainerRef = useRef<HTMLDivElement | null>(null);
+  // Time / Duration popover inside the expanded row — only one is open
+  // at a time. Lives at this scope (not per-row) since only one row is
+  // expanded at a time.
+  const [ttPopoverKind, setTtPopoverKind] = useState<'time' | 'dur' | null>(null);
+  const ttPopoverRef = useRef<HTMLDivElement | null>(null);
   // Collapsible "TRY THESE PROMPTS" section — open by default for
   // first-time users; user can collapse to reclaim vertical space.
   const [promptsOpen, setPromptsOpen] = useState(true);
@@ -271,6 +276,25 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
   // When the rows list changes (e.g. user re-parses), collapse any
   // open editor so the new list lands clean.
   useEffect(() => { setExpandedRowIdx(null); }, [rows.length]);
+  // Whenever the expanded row changes (or closes), reset any open
+  // time/duration popover so it doesn't linger.
+  useEffect(() => { setTtPopoverKind(null); }, [expandedRowIdx]);
+  // Close popover when user clicks outside it (but still inside the
+  // row). The row-level outside-click handler above handles clicks
+  // outside the whole rows container.
+  useEffect(() => {
+    if (!ttPopoverKind) return;
+    const handler = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      // Clicks on the trigger button toggle via its own onClick; ignore
+      // them here so the toggle isn't double-fired.
+      if (t && t.closest && t.closest('[data-tt-trigger]')) return;
+      if (ttPopoverRef.current && ttPopoverRef.current.contains(t)) return;
+      setTtPopoverKind(null);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [ttPopoverKind]);
 
   // Preload one recital + one batch name on open. These power dynamic
   // example prompts. Pick the soonest upcoming recital (or most recent
@@ -693,25 +717,121 @@ export default function SmartAddModal({ open, onClose, schoolId, onCreated }: Pr
                         <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
                           <DateField value={r._editDate} onChange={(v: string) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDate: v } : row)))} size="md" />
 
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1.4fr', gap: 6 }}>
-                            <select aria-label="Hour" value={t.hour} onChange={(e) => updateTime({ hour: Number(e.target.value) })} style={SELECT}>
-                              {HOURS_12.map((h) => <option key={h} value={h}>{h}</option>)}
-                            </select>
-                            <select aria-label="Minute" value={t.minute} onChange={(e) => updateTime({ minute: Number(e.target.value) })} style={SELECT}>
-                              {MINUTES_15.map((m) => <option key={m} value={m}>:{String(m).padStart(2, '0')}</option>)}
-                            </select>
-                            <select aria-label="AM or PM" value={t.ampm} onChange={(e) => updateTime({ ampm: e.target.value as 'AM' | 'PM' })} style={SELECT}>
-                              <option value="AM">AM</option>
-                              <option value="PM">PM</option>
-                            </select>
-                            <select
-                              aria-label="Duration"
-                              value={r._editDuration}
-                              onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDuration: Number(e.target.value) } : row)))}
-                              style={SELECT}
+                          {/* Time + Duration — nested popover pattern.
+                              Time button opens a 3-dropdown popover
+                              spanning the full row width. Duration
+                              button opens a chip menu. Only one popover
+                              open at a time. */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, position: 'relative' }}>
+                            <button
+                              type="button"
+                              data-tt-trigger
+                              onClick={(e) => { e.stopPropagation(); setTtPopoverKind((p) => p === 'time' ? null : 'time'); }}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                padding: '11px 13px', borderRadius: 9,
+                                border: `1.5px solid ${ttPopoverKind === 'time' ? 'var(--accent)' : 'var(--border)'}`,
+                                background: 'var(--surface)', color: 'var(--text)',
+                                fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                                fontFamily: 'inherit', textAlign: 'left',
+                                boxShadow: ttPopoverKind === 'time' ? '0 0 0 3px rgba(124,58,237,0.16)' : 'none',
+                              }}
                             >
-                              {DURATIONS.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
-                            </select>
+                              <span aria-hidden style={{ opacity: 0.7, fontSize: 12 }}>🕐</span>
+                              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtTimeLabel(r._editTime)}</span>
+                              <span style={{ color: 'var(--muted)', fontSize: 11 }}>▾</span>
+                            </button>
+                            <button
+                              type="button"
+                              data-tt-trigger
+                              onClick={(e) => { e.stopPropagation(); setTtPopoverKind((p) => p === 'dur' ? null : 'dur'); }}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                padding: '11px 13px', borderRadius: 9,
+                                border: `1.5px solid ${ttPopoverKind === 'dur' ? 'var(--accent)' : 'var(--border)'}`,
+                                background: 'var(--surface)', color: 'var(--text)',
+                                fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                                fontFamily: 'inherit', textAlign: 'left',
+                                boxShadow: ttPopoverKind === 'dur' ? '0 0 0 3px rgba(124,58,237,0.16)' : 'none',
+                              }}
+                            >
+                              <span aria-hidden style={{ opacity: 0.7, fontSize: 12 }}>⏱</span>
+                              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtDurLabel(r._editDuration)}</span>
+                              <span style={{ color: 'var(--muted)', fontSize: 11 }}>▾</span>
+                            </button>
+
+                            {/* Time popover — three native dropdowns
+                                spanning the full row width. */}
+                            {ttPopoverKind === 'time' && (
+                              <div
+                                ref={ttPopoverRef}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  position: 'absolute', top: 'calc(100% + 6px)',
+                                  left: 0, right: 0, zIndex: 50,
+                                  background: 'var(--card)',
+                                  border: '1px solid rgba(124,58,237,0.35)',
+                                  borderRadius: 11,
+                                  boxShadow: '0 16px 48px rgba(0,0,0,0.55)',
+                                  padding: 10,
+                                  display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6,
+                                }}
+                              >
+                                <select aria-label="Hour" value={t.hour} onChange={(e) => updateTime({ hour: Number(e.target.value) })} style={{ ...SELECT, padding: '11px 9px', fontSize: 14, fontWeight: 600, textAlign: 'center' }}>
+                                  {HOURS_12.map((h) => <option key={h} value={h}>{h}</option>)}
+                                </select>
+                                <select aria-label="Minute" value={t.minute} onChange={(e) => updateTime({ minute: Number(e.target.value) })} style={{ ...SELECT, padding: '11px 9px', fontSize: 14, fontWeight: 600, textAlign: 'center' }}>
+                                  {MINUTES_15.map((m) => <option key={m} value={m}>:{String(m).padStart(2, '0')}</option>)}
+                                </select>
+                                <select aria-label="AM or PM" value={t.ampm} onChange={(e) => updateTime({ ampm: e.target.value as 'AM' | 'PM' })} style={{ ...SELECT, padding: '11px 9px', fontSize: 14, fontWeight: 600, textAlign: 'center' }}>
+                                  <option value="AM">AM</option>
+                                  <option value="PM">PM</option>
+                                </select>
+                              </div>
+                            )}
+
+                            {/* Duration popover — chip menu, anchored
+                                to the dur button on the right. */}
+                            {ttPopoverKind === 'dur' && (
+                              <div
+                                ref={ttPopoverRef}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  position: 'absolute', top: 'calc(100% + 6px)',
+                                  right: 0, minWidth: 180, zIndex: 50,
+                                  background: 'var(--card)',
+                                  border: '1px solid rgba(124,58,237,0.35)',
+                                  borderRadius: 11,
+                                  boxShadow: '0 16px 48px rgba(0,0,0,0.55)',
+                                  padding: 6,
+                                  display: 'flex', flexDirection: 'column', gap: 2,
+                                }}
+                              >
+                                {DURATIONS.map((d) => {
+                                  const isSel = d.v === r._editDuration;
+                                  return (
+                                    <button
+                                      key={d.v}
+                                      type="button"
+                                      onClick={() => {
+                                        setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, _editDuration: d.v } : row)));
+                                        setTtPopoverKind(null);
+                                      }}
+                                      style={{
+                                        padding: '9px 12px', borderRadius: 8,
+                                        border: 'none', cursor: 'pointer',
+                                        background: isSel ? 'linear-gradient(135deg,#7C3AED,#D946EF)' : 'transparent',
+                                        color: isSel ? '#fff' : 'var(--text)',
+                                        fontSize: 13, fontWeight: isSel ? 700 : 600,
+                                        fontFamily: 'inherit', textAlign: 'left',
+                                      }}
+                                    >
+                                      {d.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
 
                           {customizePerEvent && (
