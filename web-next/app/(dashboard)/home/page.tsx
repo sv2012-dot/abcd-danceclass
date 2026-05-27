@@ -113,11 +113,28 @@ const GRAD_TEXT_STYLE = {
 };
 function SectionTitle({ first, accent, onViewAll }) {
   return (
-    <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:16 }}>
+    // Whole header row is clickable when onViewAll is provided. The
+    // "View All" affordance stays on the right but is now a span (the
+    // row handles the click), and the trailing arrow was removed —
+    // the row's purple "View All" label is enough hint that the row
+    // navigates.
+    <div
+      onClick={onViewAll}
+      style={{
+        display:'flex',
+        alignItems:'baseline',
+        justifyContent:'space-between',
+        marginBottom:16,
+        cursor: onViewAll ? 'pointer' : 'default',
+        userSelect: 'none',
+      }}
+    >
       <h2 style={{ fontSize:22, fontWeight:800, color:C.ebony, margin:0, letterSpacing:'-0.02em', textTransform:'uppercase' }}>
         {first}{' '}<span style={GRAD_TEXT_STYLE}>{accent}</span>
       </h2>
-      {onViewAll && <button onClick={onViewAll} style={{ fontSize:12, fontWeight:600, color:C.accentPurple, background:'none', border:'none', cursor:'pointer', padding:0 }}>View All →</button>}
+      {onViewAll && (
+        <span style={{ fontSize:12, fontWeight:600, color:C.accentPurple }}>View All</span>
+      )}
     </div>
   );
 }
@@ -1002,11 +1019,16 @@ function SchoolHomePage() {
           }
         </div>
 
-        {/* Upcoming Classes */}
+        {/* Upcoming Classes — whole header row clickable like the
+            UPCOMING RECITALS section above. Lands on /schedule with
+            the default All filter active. */}
         <Card padding={0} style={{display:"flex",flexDirection:"column",minWidth:0,overflow:'hidden'}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px"}}>
+          <div
+            onClick={()=>router.push("/schedule")}
+            style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",cursor:"pointer",userSelect:"none"}}
+          >
             <div style={{fontSize:11,fontWeight:700,color:C.grayChate,textTransform:"uppercase",letterSpacing:".1em"}}>Upcoming Classes</div>
-            <button onClick={()=>router.push("/schedule")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.accentPurple,fontWeight:600,padding:0}}>View All</button>
+            <span style={{fontSize:12,color:C.accentPurple,fontWeight:600}}>View All</span>
           </div>
           {upcomingClasses.length === 0
             ? <div style={{padding:"28px 16px",color:C.grayChate,fontSize:13,textAlign:"center"}}>No upcoming events</div>

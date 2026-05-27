@@ -38,9 +38,21 @@ const EMPTY_BLOCK = { daysOfWeek: [1], start_time: "17:00", duration: 60, room: 
 // BatchCoverCropModal removed — the shared <CoverCropModal variant="hero" />
 // covers this exact use case (16:9 landscape, 1280×720). See its docs.
 
-function PSection({ title, children }) {
+// `last` skips the bottom separator + matched padding on the final
+// section so the divider doesn't trail into empty space. Caller sets
+// it explicitly on the bottom-most PSection in the detail panel.
+function PSection({ title, children, last = false }) {
   return (
-    <div style={{ marginBottom:20 }}>
+    <div style={{
+      // Original spacing between sections was a single 20px marginBottom.
+      // To insert a separator line while keeping the visual gap roughly
+      // the same, split: 10px paddingBottom (content → line) + 1px
+      // borderBottom (the separator itself) + 10px marginBottom (line
+      // → next section's content) = ~21px total.
+      paddingBottom: last ? 0 : 10,
+      marginBottom: last ? 0 : 10,
+      borderBottom: last ? "none" : "1px solid var(--border)",
+    }}>
       <div style={{ fontSize:10, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em", marginBottom:10, paddingBottom:6, borderBottom:"1px solid var(--border)" }}>{title}</div>
       {children}
     </div>
@@ -1119,7 +1131,7 @@ export default function BatchesPage() {
                   prompt. Filled state: text shown with a click-to-edit
                   affordance. Switching to edit mode reveals a textarea
                   with Save/Cancel; Save persists via api.update. */}
-              <PSection title="Notes">
+              <PSection title="Notes" last>
                 <NotesInlineEditor
                   batch={activeBatch}
                   schoolId={sid}
