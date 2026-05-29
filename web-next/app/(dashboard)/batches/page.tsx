@@ -1068,7 +1068,7 @@ export default function BatchesPage() {
                           </div>
                         ))}
                       </div>
-                      <Button size="sm" variant="ghost" onClick={openEnroll}><SvgIcon name="users" size={14} style={{marginRight:6}} /> Manage Students</Button>
+                      <Button size="sm" variant="ghost" onClick={openEnroll}><SvgIcon name="users" size={14} style={{marginRight:6}} /> Add/Remove Student from Batch</Button>
                     </>
                   )
                 }
@@ -1251,7 +1251,7 @@ export default function BatchesPage() {
         const navigateToStudents = () => { setEnrollModal(null); router.push('/students'); };
         return (
         <Modal title={`Enrol Students — ${enrollModal.name}`} onClose={()=>setEnrollModal(null)} wide>
-          <p style={{ color:"var(--muted)", fontSize:13, marginBottom:14 }}>Select which students belong to this batch. {enrollSel.length} selected.</p>
+          <p style={{ color:"var(--muted)", fontSize:13, marginBottom:14 }}>Select students for all students of your school to enroll in this batch.</p>
           {allStudents.length === 0 ? <p style={{ color:"var(--muted)" }}>No students yet. Add students first.</p> : (
             <>
               {/* Mobile-only top bar: Select all (left, as a real
