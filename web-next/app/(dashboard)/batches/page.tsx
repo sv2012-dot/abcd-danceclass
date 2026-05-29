@@ -1251,7 +1251,7 @@ export default function BatchesPage() {
         const navigateToStudents = () => { setEnrollModal(null); router.push('/students'); };
         return (
         <Modal title={`Enrol Students — ${enrollModal.name}`} onClose={()=>setEnrollModal(null)} wide>
-          <p style={{ color:"var(--muted)", fontSize:13, marginBottom:14 }}>Select students for all students of your school to enroll in this batch.</p>
+          <p style={{ color:"var(--muted)", fontSize:13, marginBottom:14 }}>Select students from all students of your school to enroll in this batch.</p>
           {allStudents.length === 0 ? <p style={{ color:"var(--muted)" }}>No students yet. Add students first.</p> : (
             <>
               {/* Mobile-only top bar: Select all (left, as a real
