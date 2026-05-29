@@ -1246,40 +1246,105 @@ export default function BatchesPage() {
       )}
 
       {/* ── Enrol Students Modal ── */}
-      {enrollModal && (
+      {enrollModal && (() => {
+        const allSelected = allStudents.length > 0 && enrollSel.length === allStudents.length;
+        const navigateToStudents = () => { setEnrollModal(null); router.push('/students'); };
+        return (
         <Modal title={`Enrol Students — ${enrollModal.name}`} onClose={()=>setEnrollModal(null)} wide>
           <p style={{ color:"var(--muted)", fontSize:13, marginBottom:14 }}>Select which students belong to this batch. {enrollSel.length} selected.</p>
           {allStudents.length === 0 ? <p style={{ color:"var(--muted)" }}>No students yet. Add students first.</p> : (
-            <div style={{ display:"grid", gap:7, maxHeight:340, overflowY:"auto", marginBottom:16 }}>
-              {allStudents.map(s => {
-                const checked = enrollSel.includes(s.id);
-                return (
-                  <div key={s.id} onClick={()=>toggleEnroll(s.id)}
-                    style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 13px", borderRadius:10,
-                      border:`1.5px solid ${checked ? "var(--accent)" : "var(--border)"}`,
-                      background:checked ? "#c4527a11" : "var(--surface)", cursor:"pointer", transition:"all .15s" }}>
-                    <div style={{ width:22, height:22, borderRadius:6, border:`2px solid ${checked ? "var(--accent)" : "var(--border)"}`,
-                      background:checked ? "var(--accent)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                      {checked && <span style={{ color:"#fff", fontSize:12, fontWeight:800 }}>✓</span>}
+            <>
+              {/* Mobile-only top bar: Select all (left, as a real
+                  checkbox) + Clear (right, as an inline link). Sits
+                  directly above the list since the previous footer
+                  placement clipped these controls below 380px wide.
+                  Desktop keeps the original footer-right Select All /
+                  Clear buttons. */}
+              {isMobile && (
+                <div style={{
+                  display:"flex", alignItems:"center", justifyContent:"space-between",
+                  padding:"2px 4px 10px",
+                }}>
+                  <label style={{
+                    display:"inline-flex", alignItems:"center", gap:8,
+                    cursor:"pointer", userSelect:"none",
+                    fontSize:13, fontWeight:600, color:"var(--text)",
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={(e) => setEnrollSel(e.target.checked ? allStudents.map(s=>s.id) : [])}
+                      style={{ width:18, height:18, accentColor:"var(--accent)", cursor:"pointer" }}
+                    />
+                    Select all
+                  </label>
+                  <button
+                    type="button"
+                    onClick={()=>setEnrollSel([])}
+                    disabled={enrollSel.length === 0}
+                    style={{
+                      background:"none", border:"none", padding:"4px 6px",
+                      color: enrollSel.length === 0 ? "var(--muted)" : "var(--accent)",
+                      opacity: enrollSel.length === 0 ? 0.5 : 1,
+                      fontSize:13, fontWeight:600,
+                      cursor: enrollSel.length === 0 ? "default" : "pointer",
+                      fontFamily:"inherit",
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+
+              <div style={{ display:"grid", gap:7, maxHeight:340, overflowY:"auto", marginBottom:16 }}>
+                {allStudents.map(s => {
+                  const checked = enrollSel.includes(s.id);
+                  return (
+                    <div key={s.id} onClick={()=>toggleEnroll(s.id)}
+                      style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 13px", borderRadius:10,
+                        border:`1.5px solid ${checked ? "var(--accent)" : "var(--border)"}`,
+                        background:checked ? "#c4527a11" : "var(--surface)", cursor:"pointer", transition:"all .15s" }}>
+                      <div style={{ width:22, height:22, borderRadius:6, border:`2px solid ${checked ? "var(--accent)" : "var(--border)"}`,
+                        background:checked ? "var(--accent)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                        {checked && <span style={{ color:"#fff", fontSize:12, fontWeight:800 }}>✓</span>}
+                      </div>
+                      <StudentAvatar student={s} size={32} />
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontWeight:600, fontSize:13 }}>{s.name}</div>
+                        {s.age && <div style={{ fontSize:11, color:"var(--muted)" }}>Age {s.age}</div>}
+                      </div>
                     </div>
-                    <StudentAvatar student={s} size={32} />
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontWeight:600, fontSize:13 }}>{s.name}</div>
-                      {s.age && <div style={{ fontSize:11, color:"var(--muted)" }}>Age {s.age}</div>}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            </>
+          )}
+          {/* Footer — responsive. Mobile stacks the primary CTA full-
+              width with Cancel + View All Students sharing a row
+              below it. Desktop keeps a single inline row with the
+              bulk-select helpers pushed to the right. */}
+          {isMobile ? (
+            <div style={{ display:"flex", flexDirection:"column", gap:9, paddingTop:10, borderTop:"1px solid var(--border)" }}>
+              <Button onClick={()=>enrollMutation.mutate()} disabled={enrollMutation.isPending} style={{ width:"100%", justifyContent:"center" }}>
+                {enrollMutation.isPending ? "Saving…" : `Save Enrolment (${enrollSel.length})`}
+              </Button>
+              <div style={{ display:"flex", gap:9 }}>
+                <Button variant="secondary" onClick={()=>setEnrollModal(null)} style={{ flex:1, justifyContent:"center" }}>Cancel</Button>
+                <Button variant="ghost" onClick={navigateToStudents} style={{ flex:1, justifyContent:"center" }}>View All Students →</Button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display:"flex", gap:9, paddingTop:8, borderTop:"1px solid var(--border)", flexWrap:"wrap" }}>
+              <Button onClick={()=>enrollMutation.mutate()} disabled={enrollMutation.isPending}>{enrollMutation.isPending ? "Saving…" : `Save Enrolment (${enrollSel.length})`}</Button>
+              <Button variant="secondary" onClick={()=>setEnrollModal(null)}>Cancel</Button>
+              <Button variant="ghost" onClick={navigateToStudents}>View All Students →</Button>
+              <Button variant="ghost" onClick={()=>setEnrollSel(allStudents.map(s=>s.id))} style={{ marginLeft:"auto" }}>Select All</Button>
+              <Button variant="ghost" onClick={()=>setEnrollSel([])}>Clear</Button>
             </div>
           )}
-          <div style={{ display:"flex", gap:9, paddingTop:8, borderTop:"1px solid var(--border)" }}>
-            <Button onClick={()=>enrollMutation.mutate()} disabled={enrollMutation.isPending}>{enrollMutation.isPending ? "Saving…" : `Save Enrolment (${enrollSel.length})`}</Button>
-            <Button variant="secondary" onClick={()=>setEnrollModal(null)}>Cancel</Button>
-            <Button variant="ghost" onClick={()=>setEnrollSel(allStudents.map(s=>s.id))} style={{ marginLeft:"auto" }}>Select All</Button>
-            <Button variant="ghost" onClick={()=>setEnrollSel([])}>Clear</Button>
-          </div>
         </Modal>
-      )}
+        );
+      })()}
     </div>
   );
 }
