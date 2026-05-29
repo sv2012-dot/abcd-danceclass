@@ -636,6 +636,24 @@ export default function BatchesPage() {
     onError: err => toast.error(err.error || "Failed"),
   });
 
+  // Row-level remove on the batch detail Students list. Calls the
+  // same /enroll endpoint with the current roster minus the removed
+  // student so the user doesn't have to open the full Add/Remove
+  // modal just to drop one person.
+  const removeFromBatchMutation = useMutation({
+    mutationFn: (studentId) => {
+      const remaining = detailStudents.filter(s => s.id !== studentId).map(s => s.id);
+      return api.enroll(sid, activeBatch.id, remaining);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["batches", sid] });
+      qc.invalidateQueries({ queryKey: ["students", sid] });
+      toast.success("Removed from batch");
+      refreshDetail();
+    },
+    onError: err => toast.error(err.error || "Failed to remove"),
+  });
+
   const openAdd = () => {
     // On mobile, route to a dedicated full-page form at /batches/new.
     // The slide-in panel on mobile had dual-scroll / picker-overflow / gap-
@@ -1058,15 +1076,60 @@ export default function BatchesPage() {
                   ) : (
                     <>
                       <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:5, marginBottom:10 }}>
-                        {detailStudents.map(s => (
+                        {detailStudents.map(s => {
+                          const isRemoving = removeFromBatchMutation.isPending && removeFromBatchMutation.variables === s.id;
+                          return (
                           <div key={s.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"7px 9px", borderRadius:8, background:"var(--surface)" }}>
                             <StudentAvatar student={s} size={28} />
                             <div style={{ flex:1, minWidth:0 }}>
                               <div style={{ fontWeight:600, fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name}</div>
                               {s.age && <div style={{ fontSize:10, color:"var(--muted)" }}>Age {s.age}</div>}
                             </div>
+                            {/* Quick remove — drops just this student
+                                from the batch without opening the
+                                Add/Remove modal. Confirms to avoid
+                                accidental taps; the student stays in
+                                the studio roster (only the batch
+                                enrollment is removed). */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isRemoving) return;
+                                if (window.confirm(`Remove ${s.name} from this batch? (They'll stay in your studio's student list.)`)) {
+                                  removeFromBatchMutation.mutate(s.id);
+                                }
+                              }}
+                              disabled={isRemoving}
+                              title="Remove from batch"
+                              aria-label={`Remove ${s.name} from batch`}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                cursor: isRemoving ? "default" : "pointer",
+                                padding: "4px 7px",
+                                borderRadius: 6,
+                                color: "var(--muted)",
+                                fontSize: 16,
+                                lineHeight: 1,
+                                flexShrink: 0,
+                                opacity: isRemoving ? 0.4 : 1,
+                                transition: "color .12s, background .12s",
+                              }}
+                              onMouseEnter={(e) => {
+                                if (isRemoving) return;
+                                (e.currentTarget as HTMLElement).style.color = "#EF4444";
+                                (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.08)";
+                              }}
+                              onMouseLeave={(e) => {
+                                (e.currentTarget as HTMLElement).style.color = "var(--muted)";
+                                (e.currentTarget as HTMLElement).style.background = "none";
+                              }}
+                            >
+                              {isRemoving ? "…" : "×"}
+                            </button>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                       <Button size="sm" variant="ghost" onClick={openEnroll}><SvgIcon name="users" size={14} style={{marginRight:6}} /> Add/Remove Student from Batch</Button>
                     </>
