@@ -440,6 +440,33 @@ export default function Home() {
               </div>
             ))}
           </div>
+          {/* Quiet "see more" link to the long-form /advertise page.
+              Sits below the benefit cards as natural after-content;
+              "10 reasons" is gradient-painted to draw the eye without
+              shouting. Reader-engaged readers click, fast scrollers
+              skip it harmlessly. */}
+          <div style={{ textAlign:'center', marginTop: isMobile ? 32 : 40 }}>
+            <a
+              href="/advertise"
+              style={{
+                display:'inline-flex',
+                alignItems:'baseline',
+                gap:6,
+                fontSize: isMobile ? 14 : 15,
+                fontWeight: 600,
+                color: '#9CA3AF',
+                textDecoration: 'none',
+                padding: '4px 2px',
+                transition: 'color .15s',
+              }}
+              onMouseEnter={e=>{ (e.currentTarget as HTMLElement).style.color = '#fff'; }}
+              onMouseLeave={e=>{ (e.currentTarget as HTMLElement).style.color = '#9CA3AF'; }}
+            >
+              Read all{' '}
+              <span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', fontWeight:800 }}>10 reasons</span>
+              {' '}studio owners pick ManchQ →
+            </a>
+          </div>
         </div>
       </section>
 

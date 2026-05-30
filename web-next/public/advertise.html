@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>10 reasons to use ManchQ</title>
+<title>Why studio owners pick ManchQ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;0,900;1,400&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
@@ -18,9 +18,60 @@ html{scroll-behavior:smooth}
 body{
   margin:0; background:var(--page); color:var(--text);
   font-family:'Lato',-apple-system,sans-serif; -webkit-font-smoothing:antialiased;
-  padding:56px 18px 80px;
+  padding:0 18px 80px;
 }
-.deck{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:42px}
+.deck{max-width:520px;margin:36px auto 0;display:flex;flex-direction:column;gap:42px}
+
+/* ── Top nav — keeps the page from feeling orphan. Links back to
+   the landing page sections so visitors can navigate the rest of
+   the site. Sticky so it stays reachable on the long scroll. */
+.topnav{
+  position:sticky; top:0; z-index:100;
+  display:flex; align-items:center; justify-content:space-between;
+  margin:0 -18px; padding:14px 24px;
+  background:rgba(233,230,241,.85);
+  backdrop-filter:saturate(140%) blur(10px);
+  -webkit-backdrop-filter:saturate(140%) blur(10px);
+  border-bottom:1px solid rgba(0,0,0,.06);
+}
+.topnav-brand{
+  display:flex; align-items:center; gap:10px;
+  font-family:'Lato',sans-serif;
+  font-weight:700; font-size:13px; letter-spacing:.22em;
+  color:var(--text); text-decoration:none;
+}
+.topnav-brand::before{
+  content:""; width:11px; height:11px; border-radius:50%;
+  background:var(--magenta);
+}
+.topnav-right{display:flex; align-items:center; gap:22px}
+.topnav-link{
+  font-family:'Lato',sans-serif;
+  font-size:13px; font-weight:600;
+  color:var(--muted); text-decoration:none;
+  transition:color .15s;
+}
+.topnav-link:hover{color:var(--text)}
+.topnav-cta{
+  display:inline-block;
+  background:linear-gradient(135deg,var(--purple),var(--magenta));
+  color:#fff;
+  font-family:'Lato',sans-serif;
+  font-weight:700; font-size:13px;
+  padding:10px 20px; border-radius:999px;
+  text-decoration:none;
+  box-shadow:0 4px 14px rgba(124,58,237,.28);
+  transition:transform .15s, box-shadow .15s;
+}
+.topnav-cta:hover{
+  transform:translateY(-1px);
+  box-shadow:0 6px 20px rgba(124,58,237,.38);
+}
+@media (max-width:520px){
+  .topnav{margin:0 -12px; padding:12px 16px}
+  .topnav-right{gap:14px}
+  .topnav-link{display:none}
+}
 .card{
   position:relative; background:var(--card); border-radius:20px;
   padding:46px 44px 34px; overflow:hidden;
@@ -100,6 +151,15 @@ body{
   </linearGradient>
 </defs></svg>
 
+<nav class="topnav" aria-label="Site">
+  <a href="/" class="topnav-brand">MANCHQ</a>
+  <div class="topnav-right">
+    <a href="/#features" class="topnav-link">Features</a>
+    <a href="/#why" class="topnav-link">Why us</a>
+    <a href="/" class="topnav-cta">Start Free</a>
+  </div>
+</nav>
+
 <main class="deck">
 
   <section class="card cover">
@@ -107,7 +167,7 @@ body{
     <div class="blob m" style="width:210px;height:210px;bottom:-70px;right:30px"></div>
     <div class="wordmark">MANCHQ</div>
     <div class="eyebrow">DANCE SCHOOL MANAGEMENT APP</div>
-    <h1 class="lead">10 reasons to use<span class="brandword grad">ManchQ</span></h1>
+    <h1 class="lead">10 reasons studio owners pick<span class="brandword grad">ManchQ</span></h1>
     <p class="subhead">From plain-English scheduling and one-tap parent messages to end-to-end recitals, secure data, and one-click attendance — here are ten reasons studio owners run their whole school on ManchQ, right from their phone.</p>
     <div class="spacer"></div>
     <div class="tag">WHY STUDIO OWNERS CHOOSE MANCHQ</div>
