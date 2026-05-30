@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10 reasons to use ManchQ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;0,900;1,400&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --purple:#7C3AED; --magenta:#D946EF;
+  --page:#e9e6f1; --card:#ffffff; --text:#1a1330; --muted:#6b7280;
+  --body:#3a3346; --amber:#D97706; --ghost:#ece6f7; --tag:#9a86b0;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--page); color:var(--text);
+  font-family:'Lato',-apple-system,sans-serif; -webkit-font-smoothing:antialiased;
+  padding:56px 18px 80px;
+}
+.deck{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:42px}
+.card{
+  position:relative; background:var(--card); border-radius:20px;
+  padding:46px 44px 34px; overflow:hidden;
+  display:flex; flex-direction:column;
+  box-shadow:0 20px 60px rgba(74,40,110,.12), 0 2px 6px rgba(0,0,0,.04);
+}
+.spacer{flex:1 1 30px;min-height:30px}
+.grad{background:linear-gradient(135deg,var(--purple),var(--magenta));-webkit-background-clip:text;background-clip:text;color:transparent}
+.eyebrow{color:var(--magenta);font-weight:700;font-size:12px;letter-spacing:.17em;text-transform:uppercase;line-height:1.3}
+
+/* feature card */
+.feature .num{font-family:'Playfair Display',serif;font-weight:800;font-size:80px;line-height:.8;color:var(--ghost);margin-bottom:6px;letter-spacing:-.01em}
+.title{font-family:'Lato';font-weight:900;font-size:30px;line-height:1.06;color:var(--text);margin:7px 0 0;display:flex;align-items:flex-start;gap:11px;letter-spacing:-.01em}
+.title .spark{width:27px;height:27px;flex:none;margin-top:3px;stroke:var(--magenta)}
+.icon{display:flex;justify-content:center;margin:38px 0}
+.ic{width:68px;height:68px}
+.ic,.spark{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic{stroke:url(#ig)}
+.body{font-size:20px;line-height:1.5;color:var(--body);margin:0;letter-spacing:-.003em}
+.why{margin-top:30px}
+.why .lbl{display:flex;align-items:center;gap:9px;color:var(--amber);font-weight:700;font-size:11px;letter-spacing:.15em;text-transform:uppercase}
+.why .lbl::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--amber)}
+.why p{margin:9px 0 0;font-size:13.5px;line-height:1.5;color:var(--muted)}
+   .foot{margin-top:0;display:flex;align-items:center;gap:9px;color:var(--muted);font-weight:700;font-size:11px;letter-spacing:.2em}
+.foot::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--magenta)}
+
+/* title + closing shared bg circles */
+.blob{position:absolute;border-radius:50%;pointer-events:none}
+.blob.p{background:radial-gradient(circle at 30% 30%,rgba(124,58,237,.18),rgba(124,58,237,.05))}
+.blob.m{background:radial-gradient(circle at 30% 30%,rgba(217,70,239,.16),rgba(217,70,239,.04))}
+
+/* title card */
+.cover{padding:54px 44px 46px}
+.wordmark{display:flex;align-items:center;gap:10px;font-weight:700;font-size:12px;letter-spacing:.22em;color:var(--text)}
+.wordmark::before{content:"";width:11px;height:11px;border-radius:50%;background:var(--magenta)}
+.cover .eyebrow{margin-top:64px}
+.lead{font-family:'Playfair Display',serif;font-weight:700;font-size:48px;line-height:1.04;margin:14px 0 0}
+.brandword{font-family:'Playfair Display',serif;font-weight:800;font-size:70px;line-height:1;display:block;margin-top:2px}
+.subhead{font-size:16px;line-height:1.55;color:var(--muted);margin:30px 0 0;max-width:30em}
+   .cover .tag{margin-top:0;color:var(--tag);font-weight:700;font-size:11px;letter-spacing:.2em;text-transform:uppercase}
+
+/* closing card */
+.closing{padding:52px 44px 46px}
+.confetti{font-size:40px;line-height:1}
+.closing .brandword{margin-top:22px}
+.closing-sub-h{font-family:'Playfair Display',serif;font-weight:600;font-size:30px;line-height:1.12;margin:6px 0 0;color:var(--text)}
+.closing .subhead{max-width:28em}
+.cta-row{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-top:0}
+.btn{display:inline-block;background:linear-gradient(135deg,var(--purple),var(--magenta));color:#fff;font-weight:700;font-size:18px;padding:15px 34px;border-radius:999px;text-decoration:none;box-shadow:0 10px 26px rgba(124,58,237,.34)}
+.cta-meta .url{color:var(--magenta);font-weight:700;font-size:14px;letter-spacing:.04em}
+.cta-meta .tl{font-family:'Playfair Display',serif;font-style:italic;color:var(--muted);font-size:14px;margin-top:3px}
+
+/* reveal animation */
+.reveal,.cover,.closing{opacity:0;transform:translateY(16px);animation:up .7s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes up{to{opacity:1;transform:none}}
+
+@media (max-width:520px){
+  body{padding:28px 12px 50px}
+  .card{padding:36px 26px 28px;border-radius:16px}
+  .cover,.closing{padding:38px 26px}
+  .lead{font-size:38px}.brandword{font-size:56px}.title{font-size:26px}.body{font-size:18px}
+  .feature .num{font-size:66px}
+}
+@media print{
+  body{background:#fff;padding:0}
+  .card{min-height:0 !important}
+  .card{box-shadow:none;border:1px solid #eee;border-radius:0;break-inside:avoid;page-break-inside:avoid}
+  .deck{gap:0;max-width:none}
+  .reveal,.cover,.closing{opacity:1;transform:none;animation:none}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="ig" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#7C3AED"/><stop offset="100%" stop-color="#D946EF"/>
+  </linearGradient>
+</defs></svg>
+
+<main class="deck">
+
+  <section class="card cover">
+    <div class="blob p" style="width:300px;height:300px;top:-90px;right:-70px"></div>
+    <div class="blob m" style="width:210px;height:210px;bottom:-70px;right:30px"></div>
+    <div class="wordmark">MANCHQ</div>
+    <div class="eyebrow">DANCE SCHOOL MANAGEMENT APP</div>
+    <h1 class="lead">10 reasons to use<span class="brandword grad">ManchQ</span></h1>
+    <p class="subhead">From plain-English scheduling and one-tap parent messages to end-to-end recitals, secure data, and one-click attendance — here are ten reasons studio owners run their whole school on ManchQ, right from their phone.</p>
+    <div class="spacer"></div>
+    <div class="tag">WHY STUDIO OWNERS CHOOSE MANCHQ</div>
+  </section>
+
+
+  <article class="card feature reveal">
+    <div class="num">01</div>
+    <div class="eyebrow">TYPE IT. MANCHQ BUILDS IT.</div>
+    <h2 class="title"><svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path><path d="M20 3v4"></path><path d="M22 5h-4"></path><path d="M4 17v2"></path><path d="M5 18H3"></path></svg><span>AI Smart Add</span></h2>
+    <div class="icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4V2"></path><path d="M15 16v-2"></path><path d="M8 9h2"></path><path d="M20 9h2"></path><path d="M17.8 11.8 19 13"></path><path d="M15 9h.01"></path><path d="M17.8 6.2 19 5"></path><path d="m3 21 9-9"></path><path d="M12.2 6.2 11 5"></path></svg></div>
+    <p class="body">Type a class the way you’d say it out loud — “Ballet Mon / Wed / Fri 5pm starting next week for 6 weeks” — and ManchQ’s AI parses it into a full schedule. It infers the batch, spreads sessions across the right dates, and shows you a preview before anything is created, so you stay in control.</p>
+    <div class="why">
+      <div class="lbl">Why it matters</div>
+      <p>Most studio owners build their term schedule on a Sunday night, exhausted, after dinner. Turning a 45-minute data-entry chore into a 30-second sentence is the difference between dreading the new term and starting it ready.</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="foot">MANCHQ</div>
+  </article>
+
+  <article class="card feature reveal">
+    <div class="num">02</div>
+    <div class="eyebrow">NEVER FACE A BLANK MESSAGE BOX.</div>
+    <h2 class="title"><svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path><path d="M20 3v4"></path><path d="M22 5h-4"></path><path d="M4 17v2"></path><path d="M5 18H3"></path></svg><span>AI Smart Announce</span></h2>
+    <div class="icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><path d="M13 8H7"></path><path d="M17 12H7"></path></svg></div>
+    <p class="body">One tap drafts a parent-ready message for any class, recital, or last-minute schedule change. Review the tone, tweak a line, and send — the hardest part (starting from nothing) is already done for you.</p>
+    <div class="why">
+      <div class="lbl">Why it matters</div>
+      <p>Parent communication is the silent tax on every studio owner. When the message is already drafted, you actually send the heads-up — instead of letting it slide and dealing with confused parents at drop-off.</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="foot">MANCHQ</div>
+  </article>
+
+  <article class="card feature reveal">
+    <div class="num">03</div>
+    <div class="eyebrow">BUILT FOR THE FLOOR, NOT THE DESK.</div>
+    <h2 class="title"><span>Mobile-First Design</span></h2>
+    <div class="icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"></rect><path d="M12 18h.01"></path></svg></div>
+    <p class="body">Every flow — onboarding, batch creation, attendance, recital planning, billing — is designed thumb-first for phones. ManchQ is made for studio owners who work standing up, between classes, with a phone in one hand.</p>
+    <div class="why">
+      <div class="lbl">Why it matters</div>
+      <p>Studio owners don’t run their business from an office chair — they run it from the wings of a stage and the corner of a studio. Software that respects that reality saves you the nightly catch-up session at your laptop.</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="foot">MANCHQ</div>
+  </article>
+
+  <article class="card feature reveal">
+    <div class="num">04</div>
+    <div class="eyebrow">THE WHOLE SHOW, ONE PLACE.</div>
+    <h2 class="title"><span>End-to-End Recital Management</span></h2>
+    <div class="icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 11h.01"></path><path d="M14 6h.01"></path><path d="M18 6h.01"></path><path d="M6.5 13.1h.01"></path><path d="M22 5c0 9-4 12-6 12s-6-3-6-12c0-2 2-3 6-3s6 1 6 3"></path><path d="M17.4 9.9c-.8.8-2 .8-2.8 0"></path><path d="M10.1 7.1C9 7.2 7.7 7.7 6 8.6c-3.5 2-4.7 3.9-3.7 5.6 4.5 7.8 9.5 8.4 11.2 7.4.9-.5 1.9-2.1 1.9-4.7"></path><path d="M9.1 16.5c.3-1.1 1.4-1.7 2.4-1.4"></path></svg></div>
+    <p class="body">Plan a recital end-to-end without leaving ManchQ: a public RSVP page, program-order lineup, invitee list, volunteer and vendor coordination, an integrated to-do tracker, poster upload, Smart Announce blasts, and a celebratory “wrapped 🎉” tribute view when the curtain falls.</p>
+    <div class="why">
+      <div class="lbl">Why it matters</div>
+      <p>Recital season is when studios burn out. One tool for the whole production means nothing falls through the cracks between spreadsheets, group chats, and sticky notes — and you finish the show proud, not depleted.</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="foot">MANCHQ</div>
+  </article>
+
+  <article class="card feature reveal">
+    <div class="num">05</div>
+    <div class="eyebrow">A REAL PAGE, GENERATED FOR YOU.</div>
+    <h2 class="title"><span>Public Recital Pages</span></h2>
+    <div class="icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.54 15H17a2 2 0 0 0-2 2v4.54"></path><path d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17"></path><path d="M11 21.95V18a2 2 0 0 0-2-2a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2H2.05"></path><circle cx="12" cy="12" r="10"></circle></svg></div>
+    <p class="body">Every recital auto-generates a shareable public page with your poster, RSVP, location, and smart states that update themselves — switching to “cancelled” or “wrapped 🎉” as the event’s status changes. Share one link; ManchQ keeps it current.</p>
+    <div class="why">
+      <div class="lbl">Why it matters</div>
+      <p>A polished public page is how new families judge your studio before they ever meet you. Looking professional shouldn’t require hiring a web designer or wrestling Eventbrite — it should be the default.</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="foot">MANCHQ</div>
+  </article>
+
+  <article class="card feature reveal">
+    <div class="num">06</div>
+    <div class="eyebrow">YOUR DATA STAYS YOURS.</div>
+    <h2 class="title"><span>Secure Data</span></h2>
+    <div class="icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg></div>
+    <p class="body">Your studio’s data is always protected. Industry-standard authentication keeps accounts locked down, and every school is cleanly separated — no data is ever shared between studios. Add admins or teachers through the same secure flow, so the right people get access and no one else does.</p>
+    <div class="why">
+      <div class="lbl">Why it matters</div>
+      <p>You’re holding families’ contact details and children’s schedules. Knowing the data is isolated per school and access is controlled means you can invite staff freely — without worrying about who can see what.</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="foot">MANCHQ</div>
+  </article>
+
+  <article class="card feature reveal">
+    <div class="num">07</div>
+    <div class="eyebrow">PROVE THE VALUE BEFORE YOU PAY.</div>
+    <h2 class="title"><span>A Real Free Tier</span></h2>
+    <div class="icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg></div>
+    <p class="body">Run a small studio on the free Hobby plan indefinitely — no trial expiry, no card required. Grow into a paid plan only when your roster does, on your timeline rather than a countdown clock.</p>
+    <div class="why">
+      <div class="lbl">Why it matters</div>
+      <p>Trying new software shouldn’t feel like signing a contract. A genuine free tier lets you switch on your terms, prove the workflow on real classes, and only pay once ManchQ is unmistakably earning its keep.</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="foot">MANCHQ</div>
+  </article>
+
+  <article class="card feature reveal">
+    <div class="num">08</div>
+    <div class="eyebrow">OPEN CLASS. TAP NAMES. DONE.</div>
+    <h2 class="title"><span>One-Click Attendance</span></h2>
+    <div class="icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg></div>
+    <p class="body">Open a class and tap student names to mark them present or absent — that’s the whole flow. No separate attendance screen, no multi-step module to wade through while a room full of kids waits.</p>
+    <div class="why">
+      <div class="lbl">Why it matters</div>
+      <p>Attendance happens 50+ times a week. Shaving four taps off each one isn’t a luxury — it’s hours back in your month, and it means attendance actually gets recorded instead of being reconstructed from memory later.</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="foot">MANCHQ</div>
+  </article>
+
+  <article class="card feature reveal">
+    <div class="num">09</div>
+    <div class="eyebrow">USEFUL IN 30 SECONDS.</div>
+    <h2 class="title"><span>Sample-Data Onboarding</span></h2>
+    <div class="icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path></svg></div>
+    <p class="body">New accounts arrive pre-loaded with a practice batch, dummy students, sample recitals, and pre-filled to-dos — so you can explore a working studio in about 30 seconds and learn by clicking around, not by reading docs.</p>
+    <div class="why">
+      <div class="lbl">Why it matters</div>
+      <p>Most studio owners abandon new software in the first 10 minutes if they can’t see how it works. Landing in a populated studio means you grasp the value immediately and never face the cold-start tax of an empty dashboard.</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="foot">MANCHQ</div>
+  </article>
+
+  <article class="card feature reveal">
+    <div class="num">10</div>
+    <div class="eyebrow">EVERY WEEK IS ITS OWN THING.</div>
+    <h2 class="title"><svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path><path d="M20 3v4"></path><path d="M22 5h-4"></path><path d="M4 17v2"></path><path d="M5 18H3"></path></svg><span>Smart Recurring Classes</span></h2>
+    <div class="icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg></div>
+    <p class="body">Set up a weekly class once — “Ballet, every Monday at 5pm” — and ManchQ generates each session as its own instance. Take attendance, fire a Smart Announce, or change just one week’s time or venue without disrupting the whole series.</p>
+    <div class="why">
+      <div class="lbl">Why it matters</div>
+      <p>Real studio life doesn’t run on rigid templates — a holiday weekend, a studio swap, a substitute teacher. Treating each session as its own thing means the software bends to your week, instead of you bending around the software.</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="foot">MANCHQ</div>
+  </article>
+
+  <section class="card closing">
+    <div class="blob p" style="width:300px;height:300px;bottom:-110px;right:-70px"></div>
+    <div class="blob m" style="width:180px;height:180px;top:-60px;right:40px"></div>
+    <div class="confetti">🎉</div>
+    <span class="brandword grad">ManchQ</span>
+    <h2 class="closing-sub-h">Your dance school management app</h2>
+    <p class="subhead">Spin up your studio in 30 seconds — free, no card, no trial clock. Explore a fully-loaded sample studio, then make it yours.</p>
+    <div class="spacer"></div>
+    <div class="cta-row">
+      <a class="btn" href="https://manchq.com">Start Free</a>
+      <div class="cta-meta"><div class="url">manchq.com</div><div class="tl">Built for studio owners — not for desks.</div></div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  const cards=[...document.querySelectorAll('.deck > .card')];
+  cards.forEach((c,i)=>c.style.animationDelay=(Math.min(i,8)*0.06)+'s');
+  function equalize(){
+    cards.forEach(c=>c.style.minHeight='0px');
+    const m=Math.max(...cards.map(c=>c.getBoundingClientRect().height));
+    cards.forEach(c=>c.style.minHeight=Math.ceil(m)+'px');
+  }
+  if(document.fonts&&document.fonts.ready){document.fonts.ready.then(equalize);}
+  window.addEventListener('load',equalize);
+  let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(equalize,150);});
+  if('IntersectionObserver' in window){
+    cards.forEach(c=>{c.style.animationPlayState='paused';});
+    const io=new IntersectionObserver((es)=>es.forEach(e=>{if(e.isIntersecting){e.target.style.animationPlayState='running';io.unobserve(e.target);}}),{threshold:.12});
+    cards.forEach(c=>io.observe(c));
+  }
+</script>
+</body>
+</html>

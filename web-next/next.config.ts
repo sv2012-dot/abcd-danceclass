@@ -14,6 +14,19 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Clean-URL alias so /advertise serves the standalone marketing
+  // HTML in public/advertise.html (single self-contained page, not
+  // linked from anywhere in the app). The .html file is also
+  // reachable directly at /advertise.html — this rewrite just gives
+  // it a prettier URL for sharing.
+  async rewrites() {
+    return [
+      {
+        source: '/advertise',
+        destination: '/advertise.html',
+      },
+    ];
+  },
 };
 
 export default nextConfig;
