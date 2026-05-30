@@ -446,25 +446,30 @@ export default function Home() {
               shouting. Reader-engaged readers click, fast scrollers
               skip it harmlessly. */}
           <div style={{ textAlign:'center', marginTop: isMobile ? 32 : 40 }}>
+            {/* Inline anchor (not inline-flex) so the browser wraps
+                this like normal prose at word boundaries instead of
+                breaking it into 3 flex items that each wrap inside
+                themselves. "10 reasons" and "ManchQ →" are wrapped
+                in nowrap spans so the gradient phrase + brand+arrow
+                stay glued; everything else breaks naturally. */}
             <a
               href="/why-manchq"
               style={{
-                display:'inline-flex',
-                alignItems:'baseline',
-                gap:6,
                 fontSize: isMobile ? 14 : 15,
                 fontWeight: 600,
                 color: '#9CA3AF',
                 textDecoration: 'none',
                 padding: '4px 2px',
+                lineHeight: 1.6,
                 transition: 'color .15s',
               }}
               onMouseEnter={e=>{ (e.currentTarget as HTMLElement).style.color = '#fff'; }}
               onMouseLeave={e=>{ (e.currentTarget as HTMLElement).style.color = '#9CA3AF'; }}
             >
               Read all{' '}
-              <span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', fontWeight:800 }}>10 reasons</span>
-              {' '}studio owners pick ManchQ →
+              <span style={{ background:BTN_GRAD, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', fontWeight:800, whiteSpace:'nowrap' }}>10 reasons</span>
+              {' '}studio owners pick{' '}
+              <span style={{ whiteSpace:'nowrap' }}>ManchQ →</span>
             </a>
           </div>
         </div>
