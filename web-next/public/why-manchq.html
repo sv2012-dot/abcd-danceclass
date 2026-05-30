@@ -4,6 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Why studio owners pick ManchQ</title>
+<!-- Google Analytics 4 — same property as the app
+     (G-V209G5KWYS, the fallback id in components/analytics/
+     GoogleAnalytics.tsx). This static page can't share the React
+     <GoogleAnalytics/> component, but it pushes page_view events
+     to the same measurement id so /why-manchq shows up alongside
+     /home, /schedule etc. in the GA dashboard. -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-V209G5KWYS"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-V209G5KWYS', { page_path: '/why-manchq' });
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;0,900;1,400&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
@@ -18,59 +31,127 @@ html{scroll-behavior:smooth}
 body{
   margin:0; background:var(--page); color:var(--text);
   font-family:'Lato',-apple-system,sans-serif; -webkit-font-smoothing:antialiased;
-  padding:0 18px 80px;
+  /* Top padding = nav height (60px) + breathing room */
+  padding:60px 18px 80px;
 }
 .deck{max-width:520px;margin:36px auto 0;display:flex;flex-direction:column;gap:42px}
 
-/* ── Top nav — keeps the page from feeling orphan. Links back to
-   the landing page sections so visitors can navigate the rest of
-   the site. Sticky so it stays reachable on the long scroll. */
+/* ── Top nav — matches the landing page nav (dark bar, ManchQ
+   logo + wordmark with gradient "Q", same menu links, Sign in
+   outlined + Register gradient). Fixed at top, 60px tall. The
+   page body has 60px top-padding to compensate. */
 .topnav{
-  position:sticky; top:0; z-index:100;
+  position:fixed; top:0; left:0; right:0; z-index:200;
+  height:60px;
   display:flex; align-items:center; justify-content:space-between;
-  margin:0 -18px; padding:14px 24px;
-  background:rgba(233,230,241,.85);
-  backdrop-filter:saturate(140%) blur(10px);
-  -webkit-backdrop-filter:saturate(140%) blur(10px);
-  border-bottom:1px solid rgba(0,0,0,.06);
+  padding:0 48px;
+  background:rgba(10,8,20,.94);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(124,58,237,.18);
+  font-family:'Lato','Inter',-apple-system,sans-serif;
 }
 .topnav-brand{
-  display:flex; align-items:center; gap:10px;
-  font-family:'Lato',sans-serif;
-  font-weight:700; font-size:13px; letter-spacing:.22em;
-  color:var(--text); text-decoration:none;
+  display:flex; align-items:center; gap:8px;
+  text-decoration:none;
 }
-.topnav-brand::before{
-  content:""; width:11px; height:11px; border-radius:50%;
-  background:var(--magenta);
+.topnav-brand img{height:26px;width:26px;display:block;flex-shrink:0}
+.topnav-brand-text{
+  font-weight:900; font-size:19px; letter-spacing:-.02em;
+  color:#fff;
 }
-.topnav-right{display:flex; align-items:center; gap:22px}
+.topnav-brand-q{
+  background:linear-gradient(135deg,var(--purple),var(--magenta));
+  -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent; color:transparent;
+}
+.topnav-links{display:flex; gap:8px; align-items:center}
 .topnav-link{
-  font-family:'Lato',sans-serif;
-  font-size:13px; font-weight:600;
-  color:var(--muted); text-decoration:none;
+  font-size:13px; font-weight:600; color:#9CA3AF;
+  padding:8px 14px; text-decoration:none;
   transition:color .15s;
 }
-.topnav-link:hover{color:var(--text)}
-.topnav-cta{
-  display:inline-block;
-  background:linear-gradient(135deg,var(--purple),var(--magenta));
-  color:#fff;
-  font-family:'Lato',sans-serif;
-  font-weight:700; font-size:13px;
-  padding:10px 20px; border-radius:999px;
+.topnav-link:hover{color:#fff}
+.topnav-signin{
+  font-size:13px; font-weight:600; color:#fff;
+  border:1.5px solid rgba(255,255,255,.2);
+  padding:8px 18px; border-radius:10px;
   text-decoration:none;
-  box-shadow:0 4px 14px rgba(124,58,237,.28);
-  transition:transform .15s, box-shadow .15s;
+  display:inline-flex; align-items:center;
 }
-.topnav-cta:hover{
-  transform:translateY(-1px);
-  box-shadow:0 6px 20px rgba(124,58,237,.38);
+.topnav-signin:hover{border-color:rgba(255,255,255,.4)}
+.topnav-register{
+  padding:9px 22px; border-radius:10px;
+  background:linear-gradient(135deg,var(--purple),var(--magenta));
+  color:#fff; font-weight:700; font-size:13px;
+  text-decoration:none;
+  box-shadow:0 2px 14px rgba(124,58,237,.42);
+  white-space:nowrap;
+  display:inline-flex; align-items:center;
 }
-@media (max-width:520px){
-  .topnav{margin:0 -12px; padding:12px 16px}
-  .topnav-right{gap:14px}
-  .topnav-link{display:none}
+.topnav-register:hover{box-shadow:0 4px 20px rgba(124,58,237,.55)}
+.topnav-menu-btn{
+  background:none; border:none; cursor:pointer; color:#fff;
+  padding:4px; display:none; align-items:center;
+}
+.topnav-menu-btn svg{width:24px; height:24px}
+.topnav-menu-btn .icon-close{display:none}
+body.menu-open .topnav-menu-btn .icon-open{display:none}
+body.menu-open .topnav-menu-btn .icon-close{display:inline-flex}
+
+/* Mobile drawer (slides in from the right when menu is open) */
+.mobile-drawer-scrim{
+  position:fixed; inset:0; top:60px;
+  background:rgba(0,0,0,.55);
+  backdrop-filter:blur(2px);
+  z-index:198; opacity:0; pointer-events:none;
+  transition:opacity .26s ease;
+}
+.mobile-drawer{
+  position:fixed; top:60px; right:0; bottom:0; width:280px;
+  background:rgba(12,9,24,.98);
+  border-left:1px solid rgba(124,58,237,.2);
+  backdrop-filter:blur(20px);
+  transform:translateX(100%);
+  transition:transform .26s cubic-bezier(.4,0,.2,1);
+  z-index:199;
+  display:flex; flex-direction:column; overflow-y:auto;
+}
+body.menu-open .mobile-drawer{transform:translateX(0)}
+body.menu-open .mobile-drawer-scrim{opacity:1; pointer-events:auto}
+.mobile-drawer .nav-links{flex:1; padding-top:8px; display:flex; flex-direction:column}
+.mobile-drawer .nav-links a{
+  padding:14px 24px;
+  color:#fff; text-decoration:none;
+  font-size:15px; font-weight:600;
+  border-bottom:1px solid rgba(255,255,255,.04);
+}
+.mobile-drawer .footer{
+  padding:20px 24px;
+  border-top:1px solid rgba(255,255,255,.08);
+  display:flex; flex-direction:column; gap:10px;
+}
+.mobile-drawer .footer .reg{
+  width:100%; padding:14px; border-radius:12px;
+  background:linear-gradient(135deg,var(--purple),var(--magenta));
+  color:#fff; font-weight:700; font-size:15px;
+  text-decoration:none; text-align:center;
+  box-sizing:border-box;
+}
+.mobile-drawer .footer .signin{
+  width:100%; padding:14px; border-radius:12px;
+  border:1.5px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.04);
+  color:#fff; font-weight:600; font-size:14px;
+  text-decoration:none; text-align:center;
+  box-sizing:border-box;
+}
+body.menu-open{overflow:hidden}
+
+@media (max-width:768px){
+  .topnav{padding:0 20px}
+  .topnav-links{display:none}
+  .topnav-menu-btn{display:inline-flex}
 }
 .card{
   position:relative; background:var(--card); border-radius:20px;
@@ -152,13 +233,49 @@ body{
 </defs></svg>
 
 <nav class="topnav" aria-label="Site">
-  <a href="/" class="topnav-brand">MANCHQ</a>
-  <div class="topnav-right">
-    <a href="/#features" class="topnav-link">Features</a>
-    <a href="/#why" class="topnav-link">Why us</a>
-    <a href="/" class="topnav-cta">Start Free</a>
+  <a href="/" class="topnav-brand">
+    <img src="/ManchQ-Logo.png" alt="ManchQ">
+    <span class="topnav-brand-text">Manch<span class="topnav-brand-q">Q</span></span>
+  </a>
+
+  <!-- Desktop menu -->
+  <div class="topnav-links">
+    <a href="/#features"  class="topnav-link">Features</a>
+    <a href="/#why"       class="topnav-link">Why us</a>
+    <a href="/#community" class="topnav-link">Community</a>
+    <a href="/pricing"    class="topnav-link">Pricing</a>
+    <a href="/login"      class="topnav-signin">Sign in</a>
+    <a href="/register"   class="topnav-register">Register</a>
   </div>
+
+  <!-- Mobile hamburger -->
+  <button class="topnav-menu-btn" id="menuBtn" aria-label="Toggle menu">
+    <svg class="icon-open"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+      <line x1="3" y1="6"  x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+    <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+      <line x1="18" y1="6" x2="6"  y2="18"/>
+      <line x1="6"  y1="6" x2="18" y2="18"/>
+    </svg>
+  </button>
 </nav>
+
+<!-- Mobile drawer (mirrors landing page) -->
+<div class="mobile-drawer-scrim" id="drawerScrim"></div>
+<aside class="mobile-drawer" aria-label="Mobile menu">
+  <nav class="nav-links">
+    <a href="/#features"  data-close>Features</a>
+    <a href="/#why"       data-close>Why us</a>
+    <a href="/#community" data-close>Community</a>
+    <a href="/pricing"    data-close>Pricing</a>
+  </nav>
+  <div class="footer">
+    <a href="/register" class="reg"    data-close>Register</a>
+    <a href="/login"    class="signin" data-close>Sign in</a>
+  </div>
+</aside>
 
 <main class="deck">
 
@@ -346,6 +463,21 @@ body{
     const io=new IntersectionObserver((es)=>es.forEach(e=>{if(e.isIntersecting){e.target.style.animationPlayState='running';io.unobserve(e.target);}}),{threshold:.12});
     cards.forEach(c=>io.observe(c));
   }
+
+  // Mobile menu open/close — mirrors landing-page behavior:
+  // hamburger toggles, scrim click closes, any link with
+  // [data-close] closes after navigation triggers.
+  (function(){
+    var btn = document.getElementById('menuBtn');
+    var scrim = document.getElementById('drawerScrim');
+    function close(){ document.body.classList.remove('menu-open'); }
+    function toggle(){ document.body.classList.toggle('menu-open'); }
+    if (btn) btn.addEventListener('click', toggle);
+    if (scrim) scrim.addEventListener('click', close);
+    document.querySelectorAll('[data-close]').forEach(function(a){
+      a.addEventListener('click', close);
+    });
+  })();
 </script>
 </body>
 </html>

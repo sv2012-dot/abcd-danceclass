@@ -447,7 +447,7 @@ export default function Home() {
               skip it harmlessly. */}
           <div style={{ textAlign:'center', marginTop: isMobile ? 32 : 40 }}>
             <a
-              href="/advertise"
+              href="/why-manchq"
               style={{
                 display:'inline-flex',
                 alignItems:'baseline',

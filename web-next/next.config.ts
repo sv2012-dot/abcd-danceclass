@@ -14,16 +14,16 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Clean-URL alias so /advertise serves the standalone marketing
-  // HTML in public/advertise.html (single self-contained page, not
-  // linked from anywhere in the app). The .html file is also
-  // reachable directly at /advertise.html — this rewrite just gives
+  // Clean-URL alias so /why-manchq serves the standalone marketing
+  // HTML in public/why-manchq.html (linked from the landing page's
+  // "why us" section as a "read all 10 reasons" follow-on). The
+  // .html file is also reachable directly — this rewrite just gives
   // it a prettier URL for sharing.
   async rewrites() {
     return [
       {
-        source: '/advertise',
-        destination: '/advertise.html',
+        source: '/why-manchq',
+        destination: '/why-manchq.html',
       },
     ];
   },
